@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vite-plus/test';
 import { UserRole } from '../../enums/UserRole';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
-import { buildChecklist, buildHomeTiles, groupSettingsTabs, resolveHomeRole } from './homeModel';
+import {
+    buildChecklist,
+    buildHomeTiles,
+    groupSettingsTabs,
+    mailServerStatus,
+    pickHeroAction,
+    resolveHomeRole,
+} from './homeModel';
 import { agencyPageComplete, isAgencyComplete, summariseOwnTenant } from './useHomeFacts';
 import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 
@@ -36,7 +43,15 @@ const tree = {
         { id: 'links:tenants', to: '/admin/links/tenants', labelKey: 'links.tabs.tenants' },
         { id: 'links:counsellor', to: '/admin/links/counsellor', labelKey: 'links.tabs.counsellor' },
     ],
-    counselors: [{ id: 'users:consultants', to: '/admin/users/consultants', labelKey: 'users.consultants' }],
+    counselors: [
+        {
+            id: 'users:platform-admins',
+            to: '/admin/users/platform-admins',
+            labelKey: 'users.sectionPills.platformAdmins',
+        },
+        { id: 'users:tenant-admins', to: '/admin/users/tenant-admins', labelKey: 'users.sectionPills.tenantAdmins' },
+        { id: 'users:counsellors', to: '/admin/users/consultants', labelKey: 'users.sectionPills.counsellors' },
+    ],
     logs: [{ id: 'logs:deletions', to: '/admin/logs/deletions', labelKey: 'sidebar.deletionAudit' }],
 };
 
@@ -71,7 +86,43 @@ describe('buildHomeTiles — only areas this admin can open', () => {
 
         expect(linksOf('invite')).toEqual(['home.link.invite.tenants.platform', 'home.link.invite.counsellor']);
         expect(linksOf('organisation')).toEqual(['home.link.foundTenant', 'home.link.foundAgency']);
-        expect(linksOf('accounts')).toEqual(['home.link.tenants', 'home.link.agencies', 'users.consultants']);
+        expect(linksOf('accounts')).toEqual([
+            'home.link.tenants',
+            'home.link.agencies',
+            'home.link.admins',
+            'home.link.counsellors',
+        ]);
+    });
+
+    it('groups the admin lists into one row, counts on the rows that have a fact', () => {
+        const accounts = buildHomeTiles({
+            role: 'platform',
+            navItems: nav('tenants', 'agency', 'counselors'),
+            tree,
+        }).find((tile) => tile.id === 'accounts');
+
+        expect(accounts?.links.map((link) => [link.id, link.count, link.separated])).toEqual([
+            ['edit-tenants', 'tenants', undefined],
+            ['edit-agencies', 'agencies', undefined],
+            ['edit-admins', undefined, true],
+            ['edit-counsellors', 'consultants', undefined],
+        ]);
+        expect(accounts?.links[2]).toMatchObject({
+            to: '/admin/users/platform-admins',
+            detailKeys: ['home.link.admins.platform-admins', 'home.link.admins.tenant-admins'],
+        });
+    });
+
+    it('offers inviting BST-Admins only to whoever may hand out that role, on the Berater tab', () => {
+        const linksFor = (canInviteAgencyAdmins: boolean) =>
+            buildHomeTiles({ role: 'tenant', navItems: nav('links'), tree, canInviteAgencyAdmins })[0].links;
+
+        expect(linksFor(true).map((link) => [link.id, link.to])).toEqual([
+            ['links:tenants', '/admin/links/tenants'],
+            ['invite-agency-admin', '/admin/links/counsellor'],
+            ['links:counsellor', '/admin/links/counsellor'],
+        ]);
+        expect(linksFor(false).map((link) => link.id)).toEqual(['links:tenants', 'links:counsellor']);
     });
 
     it('points a Träger admin at founding Beratungsstellen, never at Träger', () => {
@@ -99,12 +150,36 @@ describe('buildHomeTiles — only areas this admin can open', () => {
         const [invite] = buildHomeTiles({ role: 'agency', navItems: nav('links'), tree });
 
         expect(invite.links.map((link) => link.id)).toEqual(['links:counsellor']);
+        expect(pickHeroAction('agency', [invite])).toEqual({
+            to: '/admin/links/counsellor',
+            labelKey: 'home.link.invite.counsellor',
+            kind: 'invite',
+        });
     });
 
     it('lists only the log views this admin may read', () => {
         const [logs] = buildHomeTiles({ role: 'platform', navItems: nav('logs'), tree });
 
         expect(logs.links.map((link) => link.to)).toEqual(['/admin/logs/deletions']);
+        expect(logs.links[0].descriptionKey).toBe('home.logs.description.deletions');
+    });
+
+    it('leads each level with its first job, and only with what its tiles offer', () => {
+        const tilesFor = (role: 'platform' | 'tenant', canCreateAgency: boolean) =>
+            buildHomeTiles({ role, navItems: nav('tenants', 'agency', 'links'), tree, canCreateAgency });
+
+        expect(pickHeroAction('platform', tilesFor('platform', true))).toMatchObject({
+            to: '/admin/links/tenants',
+            labelKey: 'home.hero.inviteTenant',
+        });
+        expect(pickHeroAction('tenant', tilesFor('tenant', true))).toMatchObject({
+            labelKey: 'home.link.foundAgency',
+            kind: 'found',
+        });
+        expect(pickHeroAction('tenant', tilesFor('tenant', false))).toMatchObject({
+            labelKey: 'home.link.invite.counsellor',
+        });
+        expect(pickHeroAction('other', tilesFor('tenant', true))).toBeUndefined();
     });
 
     it('uses role-specific explanations', () => {
@@ -312,5 +387,32 @@ describe('groupSettingsTabs', () => {
             ['communication', ['/s/legal', '/s/smtp']],
         ]);
         expect(groups[0].items[0].iconName).toBe('appearance');
+        expect(groups[1].items.map((item) => [item.descriptionKey, item.isMailServer])).toEqual([
+            ['home.settings.description.legal', undefined],
+            ['home.settings.description.smtp', true],
+        ]);
+    });
+
+    it('describes Funktionszugriff per level', () => {
+        const tabs = [{ to: '/s/permissions', titleKey: 'settings.subhead.functionAccess', iconName: 'x' }];
+
+        expect(groupSettingsTabs(tabs, 'platform')[0].items[0].descriptionKey).toBe(
+            'home.settings.description.permissions.platform',
+        );
+        expect(groupSettingsTabs(tabs, 'tenant')[0].items[0].descriptionKey).toBe(
+            'home.settings.description.permissions.tenant',
+        );
+    });
+});
+
+describe('mailServerStatus', () => {
+    it('shows a status only for an own mail server whose SMTP block was read', () => {
+        expect(mailServerStatus({ appearanceComplete: true, smtpMode: 'OWN', smtpComplete: true })).toBe('complete');
+        expect(mailServerStatus({ appearanceComplete: true, smtpMode: 'OWN', smtpComplete: false })).toBe('incomplete');
+        expect(mailServerStatus({ appearanceComplete: true, smtpMode: 'OWN' })).toBeUndefined();
+        expect(
+            mailServerStatus({ appearanceComplete: true, smtpMode: 'PLATFORM', smtpComplete: true }),
+        ).toBeUndefined();
+        expect(mailServerStatus(undefined)).toBeUndefined();
     });
 });

@@ -46,15 +46,19 @@ const getInvitePhases = async (tab: AccountInviteListTab) => {
 
 const OPEN_PHASES = ['PREPARED', 'INVITED', 'ACCOUNT_CREATED'] as const;
 
-const useFact = <T>(key: string, enabled: boolean, load: () => Promise<T>) =>
+/**
+ * A fact that could not be read is cached as `null`: React Query rejects `undefined`
+ * as query data (and logs an error for it). Home itself reads both as "unknown".
+ */
+const useFact = <T>(key: string, enabled: boolean, load: () => Promise<T | undefined>) =>
     useQuery({
         queryKey: ['HOME_FACT', key],
-        queryFn: load,
+        queryFn: async () => (await load()) ?? null,
         enabled,
         retry: false,
         refetchOnWindowFocus: false,
         staleTime: 60_000,
-    }).data;
+    }).data ?? undefined;
 
 const hasText = (value: unknown): boolean => {
     if (typeof value === 'string') return value.trim() !== '';

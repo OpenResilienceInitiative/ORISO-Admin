@@ -45,11 +45,15 @@ export const HomeIntroVideo = ({
                 // eslint-disable-next-line jsx-a11y/media-has-caption -- captions ship inside the video file
                 <video className={styles.video} src={source} controls preload="metadata" key={source} />
             ) : (
-                <div className={styles.videoPlaceholder} role="img" aria-label={t('home.video.placeholder')}>
-                    <span className={styles.playButton} aria-hidden>
-                        <PlayArrowRounded fontSize="inherit" />
-                    </span>
-                    <span className={styles.videoPlaceholderText}>{t('home.video.placeholder')}</span>
+                <div className={styles.videoFrame}>
+                    <div className={styles.videoPlaceholder} role="img" aria-label={t('home.video.placeholder')}>
+                        <span className={styles.playButton} aria-hidden>
+                            <PlayArrowRounded fontSize="inherit" />
+                        </span>
+                        <span className={styles.videoPlaceholderText}>{t('home.video.placeholder')}</span>
+                    </div>
+                    {/* Only while no file is uploaded: the length is the planned one, not a measured one. */}
+                    <span className={styles.videoCaption}>{t('home.video.placeholderCaption')}</span>
                 </div>
             )}
             <p className={styles.cardText}>{t('home.video.text')}</p>

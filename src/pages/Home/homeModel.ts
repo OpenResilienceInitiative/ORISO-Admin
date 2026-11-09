@@ -71,6 +71,9 @@ export type HomeSectionId = 'people' | 'configure' | 'observe';
 
 export const HOME_SECTIONS: HomeSectionId[] = ['people', 'configure', 'observe'];
 
+/** A count Home already loads; shown at the end of the row it belongs to. */
+export type HomeCountFact = 'tenants' | 'agencies' | 'consultants';
+
 /** A shortcut inside a tile; always one of the admin's own nav destinations. */
 export interface HomeTileLink {
     id: string;
@@ -79,6 +82,14 @@ export interface HomeTileLink {
     fallbackKey?: string;
     /** `add` = creates or invites something new, `open` = goes to something that exists. */
     kind: 'add' | 'open';
+    glyph?: NavGlyphName;
+    /** One line under the label: what the destination holds. */
+    descriptionKey?: string;
+    /** Secondary text joined from several keys, e.g. which admin lists one row covers. */
+    detailKeys?: string[];
+    count?: HomeCountFact;
+    /** Starts a new group inside the tile (a thin rule above it). */
+    separated?: boolean;
 }
 
 export interface HomeTile {
@@ -111,6 +122,8 @@ export interface HomeTileContext {
     tree?: Record<string, AdminNavSubsection[]>;
     /** May this admin found a Beratungsstelle (`Create Agency`)? */
     canCreateAgency?: boolean;
+    /** May this admin hand out the role BST-Admin on the Berater tab (`invitableRoles`)? */
+    canInviteAgencyAdmins?: boolean;
 }
 
 const subsectionLinks = (subsections: AdminNavSubsection[] | undefined, kind: HomeTileLink['kind']) =>
@@ -124,7 +137,7 @@ const subsectionLinks = (subsections: AdminNavSubsection[] | undefined, kind: Ho
 
 const linksFor = (
     id: HomeTileId,
-    { role, navItems, tree = {}, canCreateAgency = false }: HomeTileContext,
+    { role, navItems, tree = {}, canCreateAgency = false, canInviteAgencyAdmins = false }: HomeTileContext,
 ): HomeTileLink[] => {
     const has = (key: string) => navItems.some((nav) => nav.key === key);
 
@@ -134,18 +147,39 @@ const linksFor = (
             // further admins of the own Träger for everybody else.
             // A Beratungsstellen admin sees "Träger-Invites" read-only (the composer
             // refuses agency viewers, useInviteDraft), so it is no shortcut to invite.
-            return (tree.links ?? [])
-                .filter((sub) => !(sub.id === 'links:tenants' && (role === 'agency' || role === 'other')))
-                .map((sub) => ({
+            // BST-Admins are invited on the Berater tab, by whoever may hand out that role.
+            return (tree.links ?? []).flatMap<HomeTileLink>((sub) => {
+                if (sub.id === 'links:tenants') {
+                    if (role === 'agency' || role === 'other') return [];
+                    return [
+                        {
+                            id: sub.id,
+                            to: sub.to,
+                            labelKey: `home.link.invite.tenants.${role === 'platform' ? 'platform' : 'other'}`,
+                            fallbackKey: sub.labelKey,
+                            kind: 'add',
+                        },
+                    ];
+                }
+                const counsellors: HomeTileLink = {
                     id: sub.id,
                     to: sub.to,
-                    labelKey:
-                        sub.id === 'links:tenants'
-                            ? `home.link.invite.tenants.${role === 'platform' ? 'platform' : 'other'}`
-                            : 'home.link.invite.counsellor',
+                    labelKey: 'home.link.invite.counsellor',
                     fallbackKey: sub.labelKey,
                     kind: 'add',
-                }));
+                };
+                return sub.id === 'links:counsellor' && canInviteAgencyAdmins
+                    ? [
+                          {
+                              id: 'invite-agency-admin',
+                              to: sub.to,
+                              labelKey: 'home.link.invite.agencyAdmin',
+                              kind: 'add',
+                          },
+                          counsellors,
+                      ]
+                    : [counsellors];
+            });
         case 'organisation': {
             const links: HomeTileLink[] = [];
             if (role === 'platform' && has('links') && (tree.links ?? []).some((sub) => sub.id === 'links:tenants')) {
@@ -171,13 +205,58 @@ const linksFor = (
             const tenants = navItems.find((nav) => nav.key === 'tenants');
             const agency = navItems.find((nav) => nav.key === 'agency');
             if (tenants)
-                links.push({ id: 'edit-tenants', to: tenants.to, labelKey: 'home.link.tenants', kind: 'open' });
+                links.push({
+                    id: 'edit-tenants',
+                    to: tenants.to,
+                    labelKey: 'home.link.tenants',
+                    kind: 'open',
+                    glyph: 'tenants',
+                    count: 'tenants',
+                });
             if (agency)
-                links.push({ id: 'edit-agencies', to: agency.to, labelKey: 'home.link.agencies', kind: 'open' });
-            return [...links, ...subsectionLinks(tree.counselors, 'open')];
+                links.push({
+                    id: 'edit-agencies',
+                    to: agency.to,
+                    labelKey: 'home.link.agencies',
+                    kind: 'open',
+                    glyph: 'counseling',
+                    count: 'agencies',
+                });
+            // People below the organisations: the admin lists share one row, the
+            // types they cover as secondary text; each type is a list this admin may open.
+            const users = tree.counselors ?? [];
+            const isCounsellorList = (sub: AdminNavSubsection) => sub.id === 'users:counsellors';
+            const admins = users.filter((sub) => !isCounsellorList(sub));
+            const counsellors = users.find(isCounsellorList);
+            const firstPerson = links.length;
+            if (admins.length > 0)
+                links.push({
+                    id: 'edit-admins',
+                    to: admins[0].to,
+                    labelKey: 'home.link.admins',
+                    kind: 'open',
+                    glyph: 'profile',
+                    detailKeys: admins.map((sub) => `home.link.admins.${sub.id.replace('users:', '')}`),
+                });
+            if (counsellors)
+                links.push({
+                    id: 'edit-counsellors',
+                    to: counsellors.to,
+                    labelKey: 'home.link.counsellors',
+                    fallbackKey: counsellors.labelKey,
+                    kind: 'open',
+                    glyph: 'users',
+                    count: 'consultants',
+                });
+            return links.map((link, index) =>
+                index === firstPerson && index > 0 ? { ...link, separated: true } : link,
+            );
         }
         case 'logs':
-            return subsectionLinks(tree.logs, 'open');
+            return subsectionLinks(tree.logs, 'open').map((link) => ({
+                ...link,
+                descriptionKey: `home.logs.description.${link.id.replace('logs:', '')}`,
+            }));
         default:
             return [];
     }
@@ -217,6 +296,33 @@ const dropEmptyOrganisation = (tiles: HomeTile[]) =>
         : tiles;
 
 export const buildHomeTiles = (context: HomeTileContext) => dropEmptyOrganisation(buildAllTiles(context));
+
+/** The one thing each level does first; leads to the same place as its tile shortcut. */
+export interface HomeHeroAction {
+    to: string;
+    labelKey: string;
+    kind: 'invite' | 'found';
+}
+
+const HERO_CANDIDATES: Record<HomeRole, Array<[HomeTileId, string, string, HomeHeroAction['kind']]>> = {
+    platform: [['invite', 'links:tenants', 'home.hero.inviteTenant', 'invite']],
+    // A Träger admin who may not found Beratungsstellen still invites.
+    tenant: [
+        ['organisation', 'found-agency', 'home.link.foundAgency', 'found'],
+        ['invite', 'links:counsellor', 'home.link.invite.counsellor', 'invite'],
+    ],
+    agency: [['invite', 'links:counsellor', 'home.link.invite.counsellor', 'invite']],
+    other: [],
+};
+
+/** Taken from the tiles, so the hero never offers what the tiles (and the navigation) hide. */
+export const pickHeroAction = (role: HomeRole, tiles: HomeTile[]): HomeHeroAction | undefined =>
+    HERO_CANDIDATES[role]
+        .map(([tileId, linkId, labelKey, kind]) => {
+            const link = tiles.find((tile) => tile.id === tileId)?.links.find((candidate) => candidate.id === linkId);
+            return link ? { to: link.to, labelKey, kind } : undefined;
+        })
+        .find(Boolean);
 
 export type StepState = 'done' | 'open' | 'unknown';
 
@@ -357,17 +463,65 @@ const GROUP_BY_SEGMENT: Record<string, SettingsGroupId> = {
 
 const GROUP_ORDER: SettingsGroupId[] = ['appearance', 'communication', 'access'];
 
+export interface SettingsItem {
+    to: string;
+    labelKey: string;
+    iconName?: string;
+    /** One line: what the tab holds. Missing for a tab Home has no text for. */
+    descriptionKey?: string;
+    /** Set on the mail server tab only. */
+    isMailServer?: boolean;
+}
+
 export interface SettingsGroup {
     id: SettingsGroupId;
     titleKey: string;
-    items: Array<{ to: string; labelKey: string; iconName?: string }>;
+    items: SettingsItem[];
 }
 
-export const groupSettingsTabs = (tabs: SettingsTab[]): SettingsGroup[] =>
+const segmentOf = (to: string) => to.split('/').filter(Boolean).pop() ?? '';
+
+/** Tabs whose content Home describes; Funktionszugriff reads differently per level. */
+const DESCRIBED_SEGMENTS = new Set([
+    'global-config',
+    'master-data',
+    'general',
+    'erstantwort',
+    'legal',
+    'smtp',
+    'service-notices',
+    'app-settings',
+]);
+
+const descriptionFor = (segment: string, role: HomeRole) => {
+    if (segment === 'permissions')
+        return `home.settings.description.permissions.${role === 'platform' ? 'platform' : 'tenant'}`;
+    return DESCRIBED_SEGMENTS.has(segment) ? `home.settings.description.${segment}` : undefined;
+};
+
+export const groupSettingsTabs = (tabs: SettingsTab[], role: HomeRole = 'tenant'): SettingsGroup[] =>
     GROUP_ORDER.map((id) => ({
         id,
         titleKey: `home.settings.group.${id}`,
         items: tabs
-            .filter((tab) => (GROUP_BY_SEGMENT[tab.to.split('/').filter(Boolean).pop() ?? ''] ?? 'access') === id)
-            .map((tab) => ({ to: tab.to, labelKey: tab.titleKey, iconName: tab.iconName })),
+            .filter((tab) => (GROUP_BY_SEGMENT[segmentOf(tab.to)] ?? 'access') === id)
+            .map((tab) => ({
+                to: tab.to,
+                labelKey: tab.titleKey,
+                iconName: tab.iconName,
+                descriptionKey: descriptionFor(segmentOf(tab.to), role),
+                isMailServer: segmentOf(tab.to) === 'smtp' || undefined,
+            })),
     })).filter((group) => group.items.length > 0);
+
+export type MailServerStatus = 'complete' | 'incomplete';
+
+/**
+ * Only a Träger with its own mail server has a status to show, and only when the
+ * tenant service exposes the stored SMTP block. Whether a test mail arrived is not
+ * stored anywhere, so Home says "complete", never "checked".
+ */
+export const mailServerStatus = (ownTenant?: OwnTenantFacts): MailServerStatus | undefined => {
+    if (ownTenant?.smtpMode !== 'OWN' || ownTenant.smtpComplete === undefined) return undefined;
+    return ownTenant.smtpComplete ? 'complete' : 'incomplete';
+};

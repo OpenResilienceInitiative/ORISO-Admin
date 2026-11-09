@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import classNames from 'classnames';
+import CheckRounded from '@mui/icons-material/CheckRounded';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutlineOutlined';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import AddRounded from '@mui/icons-material/AddRounded';
 import MailOutlineRounded from '@mui/icons-material/MailOutlineRounded';
+import buttonStyles from '../../components/M3Button/styles.module.scss';
 import { NavGlyph } from '../../components/NavGlyph';
 import { tabIcons } from '../../components/Page';
 import welcomePicture from '../../resources/img/tile-help/conversation.webp';
@@ -15,42 +16,36 @@ import { Resource } from '../../enums/Resource';
 import { useUserData } from '../../hooks/useUserData.hook';
 import { useUserPermissions } from '../../hooks/useUserPermission';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
-import { resolveVisibleLinksTabs } from '../../constants/linksAccess';
+import { resolveInviteViewerScope, resolveVisibleLinksTabs } from '../../constants/linksAccess';
+import { invitableRoles } from '../Links/inviteRules';
 import {
     buildChecklist,
     buildHomeTiles,
     groupSettingsTabs,
     HOME_SECTIONS,
+    mailServerStatus,
+    pickHeroAction,
     resolveHomeRole,
     type HomeFacts,
     type HomeTile,
+    type HomeTileLink,
 } from './homeModel';
 import { useHomeFacts } from './useHomeFacts';
 import { HomeIntroVideo } from './HomeIntroVideo';
 import styles from './home.module.scss';
 
-/** The live facts a tile shows; only counts that loaded. */
-const factsFor = (tile: HomeTile, facts: HomeFacts, t: (key: string, options?: object) => string) => {
-    const lines: string[] = [];
-    // Singular has its own key: "1 Beratungsstelle", not "1 Beratungsstellen".
-    const add = (key: string, count?: number) => {
-        if (typeof count === 'number') lines.push(t(count === 1 ? `${key}.one` : key, { count }));
-    };
+type Translate = (key: string, options?: object) => string;
 
-    if (tile.id === 'organisation') {
-        add('home.fact.tenants', tile.to.endsWith('/tenants') ? facts.tenants : undefined);
-        add('home.fact.agencies', facts.agencies);
-    }
-    if (tile.id === 'invite') {
-        add('home.fact.openInvites', facts.openInvites);
-        if (facts.needsActionInvites) add('home.fact.needsAction', facts.needsActionInvites);
-    }
-    if (tile.id === 'accounts') {
-        add('home.fact.consultants', facts.consultants);
-    }
+/** "1 Beratungsstelle", not "1 Beratungsstellen": the singular has its own key. */
+const countText = (t: Translate, key: string, count: number) => t(count === 1 ? `${key}.one` : key, { count });
 
-    return lines;
-};
+/** The live facts a tile footer shows; only counts that loaded. Row counts sit on their rows. */
+const factsFor = (tile: HomeTile, facts: HomeFacts, t: Translate) =>
+    tile.id === 'invite' && typeof facts.openInvites === 'number'
+        ? [countText(t, 'home.fact.openInvites', facts.openInvites)]
+        : [];
+
+const STATISTICS_PREVIEW = ['requests', 'conversations', 'topics', 'tutorials'] as const;
 
 /**
  * Start page for every admin (ORISO-Admin#1323, docs/home-dashboard-spec.md):
@@ -81,7 +76,12 @@ export const HomePage = () => {
         navItems,
         tree,
         canCreateAgency: can(PermissionAction.Create, Resource.Agency),
+        canInviteAgencyAdmins: invitableRoles(
+            resolveInviteViewerScope({ isSuperAdmin, hasRole }),
+            'counsellor',
+        ).includes('AGENCY_ADMIN'),
     });
+    const heroAction = pickHeroAction(role, tiles);
     const steps = buildChecklist(
         role,
         facts,
@@ -90,11 +90,43 @@ export const HomePage = () => {
     );
     const doneCount = steps.filter((step) => step.state === 'done').length;
     const showChecklist = steps.length > 0 && doneCount < steps.length;
-    const settingsGroups = groupSettingsTabs(settingsTabs);
+    // The first step still to do leads; unknown steps never do (we cannot tell they are open).
+    const currentStepId = steps.find((step) => step.state === 'open')?.id;
+    const settingsGroups = groupSettingsTabs(settingsTabs, role);
+    const mailStatus = mailServerStatus(facts.ownTenant);
     const firstName = typeof userData?.firstName === 'string' ? userData.firstName.trim() : '';
+
+    const renderShortcut = (link: HomeTileLink) => {
+        const count = link.count ? facts[link.count] : undefined;
+        const secondary = link.descriptionKey
+            ? t(link.descriptionKey)
+            : link.detailKeys?.map((key) => t(key)).join(' · ');
+
+        return (
+            <li key={link.id} data-separated={link.separated || undefined}>
+                <Link className={styles.tileShortcut} to={link.to} data-kind={link.kind}>
+                    {link.kind === 'add' && <AddRounded className={styles.shortcutIcon} aria-hidden />}
+                    {link.kind === 'open' && link.glyph && (
+                        <span className={styles.shortcutIcon} aria-hidden>
+                            <NavGlyph name={link.glyph} size={20} />
+                        </span>
+                    )}
+                    <span className={styles.shortcutText}>
+                        <span className={styles.shortcutLabel}>
+                            {t(link.labelKey, link.fallbackKey ? t(link.fallbackKey) : undefined)}
+                        </span>
+                        {secondary && <span className={styles.shortcutDescription}>{secondary}</span>}
+                    </span>
+                    {typeof count === 'number' && <span className={styles.shortcutCount}>{count}</span>}
+                    {link.kind === 'open' && <ChevronRightIcon className={styles.chevron} aria-hidden />}
+                </Link>
+            </li>
+        );
+    };
 
     const renderTile = (tile: HomeTile) => {
         const lines = factsFor(tile, facts, t);
+        const needsAction = tile.id === 'invite' ? facts.needsActionInvites ?? 0 : 0;
 
         return (
             <li key={tile.id} className={styles.tileItem} data-tile={tile.id}>
@@ -104,34 +136,33 @@ export const HomePage = () => {
                             {tile.id === 'invite' ? <MailOutlineRounded /> : <NavGlyph name={tile.glyph} />}
                         </span>
                         <h3 className={styles.tileTitle}>{t(tile.titleKey)}</h3>
+                        {needsAction > 0 && (
+                            <span className={styles.badge}>{countText(t, 'home.fact.needsAction', needsAction)}</span>
+                        )}
+                        {tile.id === 'statistics' && (
+                            <span className={styles.tileHeaderAction}>{t('home.tile.statistics.allFigures')}</span>
+                        )}
                         <ChevronRightIcon className={styles.chevron} aria-hidden />
                     </Link>
                     <p className={styles.tileText}>{t(tile.textKey)}</p>
-                    {tile.links.length > 0 && (
-                        <ul className={styles.tileLinks}>
-                            {tile.links.map((link) => (
-                                <li key={link.id}>
-                                    <Link className={styles.tileShortcut} to={link.to} data-kind={link.kind}>
-                                        {link.kind === 'add' && (
-                                            <AddRounded className={styles.shortcutIcon} aria-hidden />
-                                        )}
-                                        <span className={styles.shortcutLabel}>
-                                            {t(link.labelKey, link.fallbackKey ? t(link.fallbackKey) : undefined)}
-                                        </span>
-                                        {link.kind === 'open' && (
-                                            <ChevronRightIcon className={styles.chevron} aria-hidden />
-                                        )}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
+                    {tile.links.length > 0 && <ul className={styles.tileLinks}>{tile.links.map(renderShortcut)}</ul>}
                     {tile.id === 'statistics' && (
-                        <ul className={styles.statisticsPreview}>
-                            {(['requests', 'conversations', 'topics', 'tutorials'] as const).map((item) => (
-                                <li key={item}>{t(`home.tile.statistics.contents.${item}`)}</li>
-                            ))}
-                        </ul>
+                        <>
+                            {/* Home loads no statistics: the chips name what the page shows, without a made-up value. */}
+                            <ul className={styles.statisticsPreview}>
+                                {STATISTICS_PREVIEW.map((item) => (
+                                    <li key={item}>
+                                        <span className={styles.kpiLabel}>
+                                            {t(`home.tile.statistics.contents.${item}`)}
+                                        </span>
+                                        <span className={styles.kpiValue} aria-hidden>
+                                            –
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className={styles.kpiNote}>{t('home.tile.statistics.where')}</p>
+                        </>
                     )}
                     {tile.id === 'settings' && settingsGroups.length > 0 && (
                         <div className={styles.settingsGroups}>
@@ -147,12 +178,27 @@ export const HomePage = () => {
                                     <ul className={styles.tileLinks}>
                                         {group.items.map((item) => {
                                             const Icon = item.iconName ? tabIcons[item.iconName] : undefined;
+                                            const status = item.isMailServer ? mailStatus : undefined;
 
                                             return (
                                                 <li key={item.to}>
                                                     <Link className={styles.tileShortcut} to={item.to} data-kind="open">
                                                         {Icon && <Icon className={styles.shortcutIcon} aria-hidden />}
-                                                        <span className={styles.shortcutLabel}>{t(item.labelKey)}</span>
+                                                        <span className={styles.shortcutText}>
+                                                            <span className={styles.shortcutLabel}>
+                                                                {t(item.labelKey)}
+                                                            </span>
+                                                            {item.descriptionKey && (
+                                                                <span className={styles.shortcutDescription}>
+                                                                    {t(item.descriptionKey)}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        {status && (
+                                                            <span className={styles.statusChip} data-status={status}>
+                                                                {t(`home.settings.mailServer.${status}`)}
+                                                            </span>
+                                                        )}
                                                         <ChevronRightIcon className={styles.chevron} aria-hidden />
                                                     </Link>
                                                 </li>
@@ -184,6 +230,19 @@ export const HomePage = () => {
                         {firstName ? t('home.greeting.named', { name: firstName }) : t('home.greeting')}
                     </h1>
                     <p className={styles.intro}>{t(`home.intro.${role}`)}</p>
+                    {heroAction && (
+                        <div className={styles.heroActions}>
+                            <Link
+                                className={classNames(buttonStyles.button, buttonStyles.filled, styles.heroAction)}
+                                to={heroAction.to}
+                            >
+                                <span className={buttonStyles.icon} aria-hidden>
+                                    {heroAction.kind === 'invite' ? <MailOutlineRounded /> : <AddRounded />}
+                                </span>
+                                {t(heroAction.labelKey)}
+                            </Link>
+                        </div>
+                    )}
                 </div>
                 <img className={styles.heroPicture} src={welcomePicture} alt="" aria-hidden />
             </header>
@@ -210,28 +269,46 @@ export const HomePage = () => {
                             <span style={{ width: `${(doneCount / steps.length) * 100}%` }} />
                         </div>
                         <ol className={styles.steps}>
-                            {steps.map((step) => (
-                                <li key={step.id}>
-                                    <Link className={styles.step} to={step.to} data-state={step.state}>
-                                        {step.state === 'done' && <CheckCircleIcon className={styles.stepIcon} />}
-                                        {step.state === 'open' && (
-                                            <RadioButtonUncheckedIcon className={styles.stepIcon} />
-                                        )}
-                                        {step.state === 'unknown' && <HelpOutlineIcon className={styles.stepIcon} />}
-                                        <span className={styles.stepText}>
-                                            <span className={styles.stepLabel}>{t(step.labelKey)}</span>
-                                            <span className={styles.stepHint}>{t(`${step.labelKey}.hint`)}</span>
-                                        </span>
-                                        {step.state === 'done' && (
-                                            <span className={styles.visuallyHidden}>{t('home.checklist.done')}</span>
-                                        )}
-                                        {step.state === 'unknown' && (
-                                            <span className={styles.visuallyHidden}>{t('home.checklist.unknown')}</span>
-                                        )}
-                                        <ChevronRightIcon className={styles.chevron} aria-hidden />
-                                    </Link>
-                                </li>
-                            ))}
+                            {steps.map((step, index) => {
+                                const current = step.id === currentStepId;
+                                const hint = t(`${step.labelKey}.hint`);
+
+                                return (
+                                    <li key={step.id}>
+                                        <Link
+                                            className={styles.step}
+                                            to={step.to}
+                                            data-state={step.state}
+                                            data-current={current || undefined}
+                                            aria-current={current ? 'step' : undefined}
+                                        >
+                                            <span className={styles.stepMarker} aria-hidden>
+                                                {step.state === 'done' && <CheckRounded fontSize="inherit" />}
+                                                {step.state === 'open' && index + 1}
+                                                {step.state === 'unknown' && <HelpOutlineIcon fontSize="inherit" />}
+                                            </span>
+                                            <span className={styles.stepText}>
+                                                <span className={styles.stepLabel}>{t(step.labelKey)}</span>
+                                                <span className={styles.stepHint}>
+                                                    {/* The hints say why a step matters; once done, "done" is all there is to say. */}
+                                                    {step.state === 'done' ? t('home.checklist.doneHint') : hint}
+                                                </span>
+                                            </span>
+                                            {step.state === 'unknown' && (
+                                                <span className={styles.visuallyHidden}>
+                                                    {t('home.checklist.unknown')}
+                                                </span>
+                                            )}
+                                            {current && (
+                                                <span className={styles.stepNext}>{t('home.checklist.next')}</span>
+                                            )}
+                                            {!current && step.state !== 'done' && (
+                                                <ChevronRightIcon className={styles.chevron} aria-hidden />
+                                            )}
+                                        </Link>
+                                    </li>
+                                );
+                            })}
                         </ol>
                     </section>
                 )}

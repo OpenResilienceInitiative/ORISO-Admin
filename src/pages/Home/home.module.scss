@@ -84,6 +84,27 @@
     line-height: 24px;
 }
 
+.heroActions {
+    display: flex;
+    flex-wrap: wrap;
+    padding-top: 8px;
+    gap: 12px;
+}
+
+// M3 filled button on a router link: 48px touch target, link colours pinned.
+.heroAction {
+    height: 48px;
+    border-radius: 24px;
+    text-decoration: none;
+
+    &,
+    &:hover,
+    &:focus,
+    &:visited {
+        color: var(--m3-on-primary, #ffffff);
+    }
+}
+
 // First steps + welcome video side by side, same height: no blank hole under a
 // short checklist next to the taller video.
 .startRow {
@@ -116,6 +137,36 @@
 
     @media (max-width: 899px) {
         max-width: none;
+    }
+}
+
+// Checklist done and hidden: the video card takes the row, video left, text right,
+// instead of a narrow card next to an empty hole.
+.videoCard:only-child {
+    max-width: none;
+
+    @media (min-width: 900px) {
+        display: grid;
+        align-content: start;
+        gap: 12px 32px;
+        grid-template-areas:
+            'video header'
+            'video text';
+        grid-template-columns: minmax(0, 520px) minmax(0, 1fr);
+        grid-template-rows: auto 1fr;
+
+        .cardHeader {
+            grid-area: header;
+        }
+
+        .videoFrame,
+        .video {
+            grid-area: video;
+        }
+
+        .cardText {
+            grid-area: text;
+        }
     }
 }
 
@@ -191,21 +242,81 @@
     }
 }
 
-.stepIcon {
-    flex: 0 0 24px;
-    color: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
+.stepMarker {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    box-sizing: border-box;
+    flex: 0 0 32px;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--m3-outline, #747878);
+    border-radius: 50%;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    font-weight: 600;
 }
 
-.step[data-state='done'] .stepIcon {
-    color: var(--m3-on-surface, #1b1b1c);
+.step[data-state='done'] .stepMarker {
+    border-color: var(--m3-on-surface, #1b1b1c);
+    background: var(--m3-on-surface, #1b1b1c);
+    color: var(--m3-surface-container-lowest, #ffffff);
+    font-size: 18px;
 }
 
 .step[data-state='done'] .stepLabel {
     color: var(--m3-on-surface-variant, #444748);
+    text-decoration: line-through;
 }
 
-.step[data-state='unknown'] .stepIcon {
-    color: var(--m3-on-surface-variant, #444748);
+// Could not be loaded: neither open nor done, so no number and no check.
+.step[data-state='unknown'] .stepMarker {
+    border-style: dashed;
+    font-size: 18px;
+}
+
+// The first open step leads: tinted row, filled number, "Weiter".
+.step[data-current] {
+    background: color-mix(in srgb, var(--m3-primary-fixed, #ffdad5) 35%, var(--m3-surface-container-lowest, #ffffff));
+    box-shadow: inset 0 0 0 2px var(--m3-primary-fixed-dim, #ffb4aa);
+
+    &:hover {
+        background: color-mix(
+            in srgb,
+            var(--m3-primary-fixed, #ffdad5) 55%,
+            var(--m3-surface-container-lowest, #ffffff)
+        );
+    }
+
+    .stepMarker {
+        border-color: var(--m3-primary, #a5000a);
+        background: var(--m3-primary, #a5000a);
+        color: var(--m3-on-primary, #ffffff);
+    }
+}
+
+.stepNext {
+    display: inline-flex;
+    height: 36px;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 16px;
+    border-radius: 18px;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    font-size: 14px;
+    font-weight: 500;
+
+    // On a phone the tinted row and the filled number lead; the label keeps the width.
+    @media (max-width: 479px) {
+        position: absolute;
+        overflow: hidden;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
 }
 
 .stepText {
@@ -242,6 +353,22 @@
 
 .video {
     background: #000000;
+}
+
+.videoFrame {
+    position: relative;
+}
+
+.videoCaption {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
 }
 
 .videoPlaceholder {
@@ -429,9 +556,82 @@
     color: var(--m3-primary, #a5000a);
 }
 
-.shortcutLabel {
+.tileShortcut .shortcutIcon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shortcutText {
+    display: flex;
     min-width: 0;
     flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.shortcutLabel {
+    min-width: 0;
+}
+
+.shortcutDescription {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.shortcutCount {
+    flex: 0 0 auto;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+// People rows below the organisation rows.
+.tileLinks > li[data-separated] {
+    padding-top: 6px;
+    border-top: 1px solid var(--m3-surface-container-high, #eae7e8);
+    margin-top: 4px;
+}
+
+// "1 braucht Aktion" next to the tile title.
+.badge {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--m3-primary-fixed, #ffdad5);
+    color: var(--m3-on-primary-fixed-variant, #930008);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+.tileHeaderAction {
+    flex: 0 0 auto;
+    color: var(--m3-primary, #a5000a);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+// Mail server: "Eingerichtet" stays neutral, "Unvollständig" asks for attention (amber, never green).
+.statusChip {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    border-radius: 12px;
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+}
+
+.statusChip[data-status='incomplete'] {
+    background: color-mix(
+        in srgb,
+        var(--admin-status-warning, #ff9f00) 18%,
+        var(--m3-surface-container-lowest, #ffffff)
+    );
+    color: color-mix(in srgb, var(--admin-status-warning, #ff9f00) 45%, var(--m3-on-surface, #1b1b1c));
 }
 
 .statisticsPreview {
@@ -439,17 +639,37 @@
     padding: 0;
     margin: 0;
     gap: 8px;
-    grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr));
     list-style: none;
 
     li {
+        display: flex;
+        flex-direction: column;
         padding: 12px 14px;
         border-radius: 16px;
         background: var(--m3-surface-container-low, #f6f3f3);
-        color: var(--m3-on-surface-variant, #444748);
-        font-size: 13px;
-        line-height: 18px;
+        gap: 4px;
     }
+}
+
+.kpiLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.kpiValue {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 22px;
+    font-weight: 500;
+    line-height: 28px;
+}
+
+.kpiNote {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
 }
 
 .facts {
