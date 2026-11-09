@@ -365,6 +365,7 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
         const pending = [...state.visible, ...state.queued];
         lastRaised.clear();
         lastCause.clear();
+        lastSpecificError = -Infinity;
         setState([], []);
         pending.forEach((item) => finish(item, 'dismiss'));
     };
