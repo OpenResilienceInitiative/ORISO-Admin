@@ -11,8 +11,8 @@ import { USER_TABLE_API_SAFE_SORT } from '../../constants/userTableSort';
 import getPublicTenantData from '../../api/tenant/getPublicTenantData';
 import getTenantData from '../../api/tenant/getTenantData';
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
-import { getDpaStatus } from '../../api/tenant/getDpaStatus';
 import { useAppConfigContext } from '../../context/useAppConfig';
+import { useDpaStatus } from '../../hooks/useDpaStatus.hook';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
@@ -130,10 +130,12 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
         // Same normalisation as the settings editor (claim may come top-level).
         return (record ? summariseOwnTenant(mapTenantDataToTenantAdminData(record)) : undefined) ?? null;
     });
-    const dpaStatus = useFact('dpa-status', access.role === 'tenant' && tenantId != null, async () => {
-        const result = await getDpaStatus(tenantId ?? 0).catch(() => undefined);
-        return (result?.status as DpaStatusFact | undefined) ?? null;
+    // Observe the DPA gate's own query (no second cache): a signature the gate
+    // sees — e.g. by the forwarded signatory — updates the checklist too.
+    const { data: dpaInfo } = useDpaStatus(tenantId ?? 0, access.role === 'tenant' && tenantId != null, {
+        dropCacheOnMount: false,
     });
+    const dpaStatus = dpaInfo?.status as DpaStatusFact | undefined;
     const agencyComplete = useFact('agency-complete', access.role === 'agency' && access.canReadAgencies, async () => {
         const result = await fetchData({
             url: `${agencyEndpointBase}?q=*&page=1&perPage=20&order=ASC&field=NAME`,
@@ -167,7 +169,7 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
 
     return {
         ownTenant: ownTenant ?? undefined,
-        dpaStatus: dpaStatus ?? undefined,
+        dpaStatus,
         agencyComplete: agencyComplete ?? undefined,
         tenants,
         agencies,

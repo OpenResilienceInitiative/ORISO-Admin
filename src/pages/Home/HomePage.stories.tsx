@@ -20,6 +20,12 @@ const BASE_HANDLERS = [
     http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 1, name: 'Demo', settings: {} })),
 ];
 
+/** The DPA status comes from the gate's shared query, so stories answer the endpoint instead of seeding it. */
+const dpaStatus = (status: string | null) =>
+    http.get('*/service/tenantadmin/:tenantId/dpa/status', () =>
+        status ? HttpResponse.json({ status }) : new HttpResponse(null, { status: 500 }),
+    );
+
 const TRAEGER_ROLES = [UserRole.TenantAdmin, UserRole.AgencyAdmin, UserRole.UserAdmin];
 
 /** The page fades in; wait until an element is really visible before asserting on the rest. */
@@ -82,14 +88,14 @@ export const PlatformAdminFirstLogin: Story = {
 
 /** Träger admin (usual role bundle) halfway through: one Beratungsstelle, invitations out, one stuck. */
 export const TraegerAdmin: Story = {
+    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('UNSIGNED')] } },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
             return withSeededAdminProviders(
                 Story,
                 seedFacts({
-                    // AVV still to sign, own mail server not finished (#1374).
-                    'dpa-status': 'UNSIGNED',
+                    // Own mail server not finished (#1374); the AVV is still unsigned (handler below).
                     'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: false },
                     agencies: 1,
                     consultants: 0,
@@ -100,8 +106,12 @@ export const TraegerAdmin: Story = {
     ],
     play: async ({ canvas }) => {
         await visible(() => canvas.getByRole('banner'));
-        const current = canvas.getByRole('link', { current: 'step' });
-        await expect(current).toHaveAccessibleName(/^(Auftragsverarbeitungsvertrag|Sign the data processing)/);
+        // The AVV status arrives from the DPA endpoint after the first paint; until then the step is "unknown".
+        await waitFor(() =>
+            expect(canvas.getByRole('link', { current: 'step' })).toHaveAccessibleName(
+                /^(Auftragsverarbeitungsvertrag|Sign the data processing)/,
+            ),
+        );
         await expect(
             canvas.getByRole('link', { name: /^(Einladen|Invite)\s*(1 braucht Aktion|1 needs action)$/ }),
         ).toBeVisible();
@@ -147,13 +157,13 @@ export const BeratungsstellenAdmin: Story = {
 
 /** Träger admin with everything set up: the checklist is gone, the own mail server reads "set up". */
 export const AllStepsDone: Story = {
+    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('VALID')] } },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
             return withSeededAdminProviders(
                 Story,
                 seedFacts({
-                    'dpa-status': 'VALID',
                     'own-tenant': { appearanceComplete: true, smtpMode: 'OWN', smtpComplete: true },
                     agencies: 3,
                     consultants: 12,
@@ -164,7 +174,9 @@ export const AllStepsDone: Story = {
     ],
     play: async ({ canvas }) => {
         await visible(() => canvas.getByRole('banner'));
-        await expect(canvas.queryByRole('region', { name: /^(Erste Schritte|First steps)$/ })).toBeNull();
+        await waitFor(() =>
+            expect(canvas.queryByRole('region', { name: /^(Erste Schritte|First steps)$/ })).toBeNull(),
+        );
         await expect(
             canvas.getByRole('link', { name: /^(Email Server|E-?mail server).*(Eingerichtet|Set up)$/i }),
         ).toBeVisible();
@@ -178,6 +190,7 @@ export const UnknownFacts: Story = {
         msw: {
             handlers: [
                 ...BASE_HANDLERS,
+                dpaStatus(null),
                 // Answers without a total: Home must show "unknown", not zero.
                 http.get('*/service/agencyadmin/agencies', () => HttpResponse.json({})),
                 http.get('*/service/users/consultants/search', () => HttpResponse.json({})),
@@ -188,7 +201,7 @@ export const UnknownFacts: Story = {
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
-            return withSeededAdminProviders(Story, seedFacts({ 'own-tenant': null, 'dpa-status': null }));
+            return withSeededAdminProviders(Story, seedFacts({ 'own-tenant': null }));
         },
     ],
     play: async ({ canvas }) => {
@@ -209,7 +222,7 @@ export const Phone390: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     play: async ({ canvas }) => {
         await visible(() => canvas.getByRole('banner'));
-        await expect(canvas.getByRole('link', { current: 'step' })).toBeVisible();
+        await visible(() => canvas.getByRole('link', { current: 'step' }));
         await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
     },
 };
