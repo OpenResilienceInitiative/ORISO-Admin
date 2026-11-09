@@ -714,7 +714,10 @@ export const ConsultantsTabAt960SortedByDate: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await rowOf(canvasElement, 'Muster');
         // Default order is "last updated, newest first".
-        const pill = canvas.getByRole('button', { name: /nach Zuletzt aktualisiert/ });
+        const pill = canvas.getByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert, neueste zuerst',
+            exact: true,
+        });
         await user.click(pill);
         await expect(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' })).toHaveAttribute(
             'aria-checked',
@@ -725,7 +728,38 @@ export const ConsultantsTabAt960SortedByDate: Story = {
 
         await user.click(canvas.getByRole('button', { name: /Name nach Vorname/ }));
         await user.click(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' }));
-        await expect(await canvas.findByRole('button', { name: /nach Zuletzt aktualisiert/ })).toBeVisible();
+        await expect(
+            await canvas.findByRole('button', {
+                name: 'Sortiert nach Zuletzt aktualisiert, neueste zuerst',
+                exact: true,
+            }),
+        ).toBeVisible();
+    },
+};
+
+export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
+    ...ConsultantsTabAt960,
+    parameters: {
+        ...WIDTHS,
+        msw: {
+            handlers: withDefaults([
+                http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS)),
+                http.get(PREFERENCES_ENDPOINT, () =>
+                    HttpResponse.json({ sorts: { consultants: { field: 'UPDATE_DATE', order: 'ASC' } } }),
+                ),
+            ]),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await rowOf(canvasElement, 'Muster');
+        await expect(
+            await canvas.findByRole('button', {
+                name: 'Sortiert nach Zuletzt aktualisiert, älteste zuerst',
+                exact: true,
+            }),
+        ).toBeVisible();
+        await noSideScroll(canvasElement);
     },
 };
 
