@@ -17,6 +17,7 @@ import { useFeatureContext } from '../../context/FeatureContext';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
+import { isOwnSmtpServerComplete } from '../../utils/smtpCompleteness';
 import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
 
 /**
@@ -89,11 +90,8 @@ export const summariseOwnTenant = (tenant: any): OwnTenantFacts | undefined => {
         appearanceComplete: masterDataComplete && hasText(tenant.theming?.logo),
         masterDataComplete,
         smtpMode: tenant.settings?.smtpMode ?? null,
-        // Same reading as the SMTP editor: `passwordSet` from the write-only API, else an
-        // older backend's stored `password`.
-        smtpComplete: smtp
-            ? hasText(smtp.host) && hasText(smtp.from) && Boolean(smtp.passwordSet ?? hasText(smtp.password))
-            : undefined,
+        // The SMTP editor's own rule (host, sender, username, port, stored password).
+        smtpComplete: smtp ? isOwnSmtpServerComplete(smtp) : undefined,
     };
 };
 

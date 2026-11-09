@@ -24,6 +24,7 @@ import { TilePicture } from '../../../TileFill';
 import { TileSections } from '../../../TileSections';
 import mailServerPicture from '../../../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
+import { isOwnSmtpServerComplete, isSmtpPasswordStored } from '../../../../utils/smtpCompleteness';
 
 const DEFAULT_SMTP_SETTINGS = {
     featureSystemNotificationEmailsEnabled: false,
@@ -87,19 +88,9 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
         }),
         [systemEmailsAllowed],
     );
-    const tenantSmtpPasswordSet = useMemo(() => {
-        const tenantSmtpSettings = data?.settings?.smtp ?? {};
-        // passwordSet comes from the write-only API (#730); tolerate older backends
-        // that still return the password value itself without ever displaying it.
-        return Boolean(tenantSmtpSettings.passwordSet ?? !isBlank(tenantSmtpSettings.password));
-    }, [data]);
-    const canTestStoredOwnServer =
-        data?.settings?.smtpMode === 'OWN' &&
-        tenantSmtpPasswordSet &&
-        !isBlank(data?.settings?.smtp?.host) &&
-        !isBlank(data?.settings?.smtp?.from) &&
-        !isBlank(data?.settings?.smtp?.username) &&
-        Number(data?.settings?.smtp?.port) >= 1;
+    const tenantSmtpPasswordSet = useMemo(() => isSmtpPasswordStored(data?.settings?.smtp), [data]);
+    // Same rule as Home's "own mail server set up" (src/utils/smtpCompleteness.ts).
+    const canTestStoredOwnServer = data?.settings?.smtpMode === 'OWN' && isOwnSmtpServerComplete(data?.settings?.smtp);
     const sendTest = async () => {
         setTestSending(true);
         try {

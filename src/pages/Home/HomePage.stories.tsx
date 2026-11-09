@@ -46,6 +46,8 @@ const ownTenant = (smtp: SmtpState | null) => {
                       smtpMode: 'OWN',
                       smtp: {
                           host: 'mail.caritas-sued.example',
+                          port: 587,
+                          username: 'beratung',
                           from: 'beratung@caritas-sued.example',
                           passwordSet: smtp === 'own-complete',
                       },

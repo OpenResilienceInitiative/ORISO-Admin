@@ -348,19 +348,20 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
 
     it('reads the SMTP block only when the API exposes it', () => {
         const base = { id: 3, name: 'x', settings: { smtpMode: 'OWN' } };
+        const connection = { host: 'mail.x', port: 587, from: 'a@x', username: 'mailer' };
 
         expect(summariseOwnTenant(base)?.smtpComplete).toBeUndefined();
         expect(
             summariseOwnTenant({
                 ...base,
-                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', passwordSet: true } },
+                settings: { smtpMode: 'OWN', smtp: { ...connection, passwordSet: true } },
             })?.smtpComplete,
         ).toBe(true);
         // Older backends send the stored password instead of `passwordSet` (as the SMTP editor reads it).
         const legacy = (password: string) =>
             summariseOwnTenant({
                 ...base,
-                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', password } },
+                settings: { smtpMode: 'OWN', smtp: { ...connection, password } },
             })?.smtpComplete;
         expect(legacy('secret')).toBe(true);
         expect(legacy('  ')).toBe(false);
@@ -368,9 +369,18 @@ describe('summariseOwnTenant / isAgencyComplete', () => {
         expect(
             summariseOwnTenant({
                 ...base,
-                settings: { smtpMode: 'OWN', smtp: { host: 'mail.x', from: 'a@x', passwordSet: false, password: 'x' } },
+                settings: { smtpMode: 'OWN', smtp: { ...connection, passwordSet: false, password: 'x' } },
             })?.smtpComplete,
         ).toBe(false);
+        // Like the SMTP editor: no username or no valid port means not set up yet.
+        const without = (patch: Record<string, unknown>) =>
+            summariseOwnTenant({
+                ...base,
+                settings: { smtpMode: 'OWN', smtp: { ...connection, passwordSet: true, ...patch } },
+            })?.smtpComplete;
+        expect(without({ username: '' })).toBe(false);
+        expect(without({ port: undefined })).toBe(false);
+        expect(without({ port: 70000 })).toBe(false);
     });
 
     it('counts a centre complete with postcode and topics', () => {
