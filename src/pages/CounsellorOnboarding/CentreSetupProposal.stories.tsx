@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { findPopup } from '../../test/storyPopups';
 import { CentreSetupProposal } from './CentreSetupProposal/CentreSetupProposal';
 
 const meta = {
@@ -102,23 +103,12 @@ export const MultipleTopics: Story = {
         await expect(await canvas.findByText('Allgemeine Sozialberatung · Eltern und Familie')).toBeVisible();
     },
 };
-/** Pop-ups live in the app-level host (outside the canvas): find the one carrying this text. */
-const findPopup = async (canvasElement: HTMLElement, text: string) => {
-    const body = within(canvasElement.ownerDocument.body);
-    await waitFor(() =>
-        expect(body.queryAllByTestId('snackbar').some((popup) => popup.textContent?.includes(text))).toBe(true),
-    );
-    const popup = body.queryAllByTestId('snackbar').find((candidate) => candidate.textContent?.includes(text))!;
-    await expect(popup).toHaveAttribute('data-severity', 'error');
-    return popup;
-};
-
 export const SaveError: Story = {
     args: { failNextSave: true },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten');
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten', 'error');
     },
 };
 export const SaveRetry: Story = {
@@ -126,7 +116,7 @@ export const SaveRetry: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten');
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten', 'error');
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
         await expect(await canvas.findByRole('button', { name: 'Einrichtung abschließen' })).toBeVisible();
         await expect(canvas.getAllByRole('heading', { name: 'Beratung Mitte' })).toHaveLength(1);
