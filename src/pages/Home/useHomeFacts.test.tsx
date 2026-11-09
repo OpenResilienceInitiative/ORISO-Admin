@@ -16,9 +16,11 @@ vi.mock('../../context/useAppConfig', () => ({
 }));
 
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
+import { fetchData } from '../../api/fetchData';
 import { useHomeFacts, type HomeFactAccess } from './useHomeFacts';
 
 const getSingleTenantDataMock = vi.mocked(getSingleTenantData);
+const fetchDataMock = vi.mocked(fetchData);
 
 const TENANT_ADMIN: HomeFactAccess = {
     role: 'tenant',
@@ -58,5 +60,25 @@ describe('useHomeFacts', () => {
         const second = renderHook(() => useHomeFacts(TENANT_ADMIN), { wrapper });
         await waitFor(() => expect(second.result.current.ownTenant?.appearanceComplete).toBe(true));
         expect(getSingleTenantDataMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('re-reads the centres on the next Home visit, so completing a centre shows up at once', async () => {
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const AGENCY_ADMIN: HomeFactAccess = { ...TENANT_ADMIN, role: 'agency', canReadAgencies: true };
+        const page = (postcode: string) => ({ _embedded: [{ _embedded: { id: 1, postcode } }], total: 1 });
+
+        // First visit: no postcode yet, so "complete your centre" is open.
+        fetchDataMock.mockResolvedValue(page('') as never);
+        const first = renderHook(() => useHomeFacts(AGENCY_ADMIN), { wrapper });
+        await waitFor(() => expect(first.result.current.agencyComplete).toBe(false));
+        first.unmount();
+
+        // The admin adds the postcode in the agency editor and comes straight back.
+        fetchDataMock.mockResolvedValue(page('20095') as never);
+        const second = renderHook(() => useHomeFacts(AGENCY_ADMIN), { wrapper });
+        await waitFor(() => expect(second.result.current.agencyComplete).toBe(true));
     });
 });

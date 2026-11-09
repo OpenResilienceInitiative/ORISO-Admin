@@ -155,13 +155,23 @@ export const TraegerAdmin: Story = {
 
 /** Beratungsstellen admin: their agency, invitations, nothing from Träger level. */
 export const BeratungsstellenAdmin: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                ...BASE_HANDLERS,
+                // Home re-reads the centre on every visit: one centre, postcode still missing.
+                http.get('*/service/agencyadmin/agencies', () =>
+                    HttpResponse.json({ _embedded: [{ _embedded: { id: 1, postcode: '' } }], total: 1 }),
+                ),
+            ],
+        },
+    },
     decorators: [
         (Story) => {
             setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], 7);
             return withSeededAdminProviders(
                 Story,
                 seedFacts(7, {
-                    'agency-complete': false,
                     agencies: 1,
                     consultants: 4,
                     'invites-unit': { INVITED: 2 },

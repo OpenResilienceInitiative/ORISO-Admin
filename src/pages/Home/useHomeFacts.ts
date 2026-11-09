@@ -171,6 +171,9 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
             if (!Array.isArray(agencies)) return null;
             return agencyPageComplete(agencies, page?.total);
         },
+        // Same as the own tenant: the step links to the agency editor, so a save
+        // there must show as soon as the admin comes back to Home.
+        { staleTime: 0 },
     );
     const tenants = useFact(tenantId, 'tenants', access.role === 'platform' && access.canReadTenants, () =>
         getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),
