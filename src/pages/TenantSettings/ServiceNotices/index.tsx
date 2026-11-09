@@ -203,12 +203,20 @@ export const ServiceNoticesPage = () => {
                             <Typography role="status">{t('serviceNotices.loadingPreview')}</Typography>
                         )}
                         {preview.isError && (
-                            <Notify title={t('notify.title.serviceNotices')} severity="error">
+                            <Notify
+                                title={t('notify.title.serviceNotices')}
+                                severity="error"
+                                quietText={t(serviceNoticeErrorKey(preview.error))}
+                            >
                                 {t(serviceNoticeErrorKey(preview.error))}
                             </Notify>
                         )}
                         {actualPreview && !previewMatches && (
-                            <Notify title={t('notify.title.serviceNotices')} severity="error">
+                            <Notify
+                                title={t('notify.title.serviceNotices')}
+                                severity="error"
+                                quietText={t('serviceNotices.errors.variantUnavailable')}
+                            >
                                 {t('serviceNotices.errors.variantUnavailable')}
                             </Notify>
                         )}
