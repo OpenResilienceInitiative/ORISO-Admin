@@ -64,12 +64,38 @@
     --snackbar-action: var(--m3-on-error);
 }
 
-.text {
+.body {
     min-width: 0;
     flex: 1 1 0;
-    margin: 0;
     padding: 14px 0;
+}
+
+.text {
+    margin: 0;
     overflow-wrap: break-word;
+}
+
+// "Ansehen": its own link row under the message. It never takes an action slot, so a pop-up with two
+// real actions still has it. 24px tall at least (WCAG 2.2 target size).
+.jump {
+    display: inline-block;
+    min-height: 24px;
+    margin: 2px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--snackbar-action);
+    cursor: pointer;
+    font: 500 14px/24px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:focus-visible {
+        border-radius: 2px;
+        outline: 3px solid var(--snackbar-focus);
+        outline-offset: 2px;
+    }
 }
 
 .title {
@@ -103,6 +129,11 @@
     color: var(--snackbar-action);
     cursor: pointer;
     font: inherit;
+
+    &:disabled {
+        cursor: default;
+        opacity: 0.38;
+    }
 
     &:hover .stateLayer,
     &[data-state='hovered'] .stateLayer {
@@ -214,12 +245,32 @@
     gap: 0;
     padding: 0;
 
-    .text {
+    .body {
         padding: 14px 16px 0;
     }
 
     .controls {
+        min-width: 0;
+        flex-shrink: 1;
         justify-content: flex-end;
+    }
+
+    // Two long labels ("Eigene Fassung weiterbearbeiten") wrap onto their own rows instead of being clipped.
+    .actions {
+        display: flex;
+        min-width: 0;
+        flex: 1 1 0;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .action {
+        max-width: 100%;
+    }
+
+    .stateLayer {
+        text-align: right;
+        white-space: normal;
     }
 
     &:not(.hasClose) .controls {
