@@ -62,9 +62,13 @@ describe('AdminSearchView', () => {
         expect(input.getAttribute('aria-activedescendant')).not.toBe(first);
         expect(input.getAttribute('aria-activedescendant')).toBeTruthy();
 
+        // Enter opens the option the cursor is on, not just any result.
+        const active = document.getElementById(input.getAttribute('aria-activedescendant') as string);
+
         await user.keyboard('{Enter}');
 
-        expect(onOpen.mock.calls[0][0].id).not.toBe('');
+        expect(onOpen).toHaveBeenCalledTimes(1);
+        expect(active?.textContent).toContain(onOpen.mock.calls[0][0].title);
     });
 
     it('closes with Escape', async () => {
@@ -223,6 +227,35 @@ describe('AdminSearchView', () => {
         await user.click(screen.getAllByRole('option')[0]);
 
         expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+
+    // Found in review: the engine's default cap of 60 cut a broad query short, so the chip counts stopped at
+    // 60 and a type whose rows ranked below the best 60 got no chip at all.
+    it('counts and offers every type, not only the best 60 hits', async () => {
+        const terms = (title: string) => ({ title: [title], fields: [], synonyms: [], description: [], context: [] });
+        const pages = Array.from({ length: 70 }, (_, number) => ({
+            id: `page:mailbox-${number}`,
+            kind: 'page' as const,
+            title: `Mailbox ${number}`,
+            breadcrumb: ['Pages'],
+            to: `/admin/mailbox-${number}`,
+            terms: terms(`Mailbox ${number}`),
+        }));
+        const account = {
+            id: 'account:consultants:9',
+            kind: 'account' as const,
+            title: 'Mailbox Anna',
+            breadcrumb: ['Accounts'],
+            to: '/admin/users/consultants/9',
+            level: 'agency' as const,
+            terms: terms('Mailbox Anna'),
+        };
+        const { user, input } = setup({ index: pages, entityDocs: [account] });
+
+        await user.type(input, 'mailbox');
+
+        await waitFor(() => expect(screen.getByRole('button', { name: /^Pages\s*70/ })).toBeTruthy());
+        expect(screen.getByRole('button', { name: /^Accounts\s*1/ })).toBeTruthy();
     });
 
     it('narrows by type with a filter chip', async () => {
