@@ -138,10 +138,9 @@
         text-decoration: underline;
     }
 
+    /* The ring itself comes from the shared :focus-visible rule in app.css. */
     &:focus-visible {
         border-radius: 4px;
-        outline: 2px solid #273270;
-        outline-offset: 2px;
     }
 }
 
@@ -191,11 +190,6 @@
 
     &:hover:not(:disabled) {
         background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid #273270;
-        outline-offset: 2px;
     }
 
     &:disabled {
@@ -307,11 +301,6 @@
 
     &:hover:not(:disabled) {
         background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, transparent);
-    }
-
-    &:focus-visible {
-        outline: 2px solid #273270;
-        outline-offset: 2px;
     }
 
     &:disabled {
