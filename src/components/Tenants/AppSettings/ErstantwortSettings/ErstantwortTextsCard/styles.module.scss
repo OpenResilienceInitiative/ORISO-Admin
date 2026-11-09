@@ -7,6 +7,12 @@
  */
 
 .card {
+    /* The dialog-variant card follows the colour scheme (dark in the inverted one), so the editor's language and
+       version chips follow it too: text and border get the scheme's roles instead of the fixed light-card greys. */
+    --editor-chip-text: var(--m3-on-surface-variant, #444748);
+    --editor-chip-border: var(--m3-outline, #747878);
+    --editor-chip-hover: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+
     width: 100%;
     min-width: 0;
 
@@ -67,7 +73,7 @@
 
     &:focus-visible {
         border-radius: mui.$mui-unit;
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 }

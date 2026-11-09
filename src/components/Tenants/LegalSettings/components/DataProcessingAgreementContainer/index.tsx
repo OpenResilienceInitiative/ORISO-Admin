@@ -398,6 +398,7 @@ export const DataProcessingAgreementContainer = ({
                 <>
                     <Alert
                         type="warning"
+                        className={styles.signAlert}
                         showIcon
                         message={t('legal.dpa.sign.required')}
                         description={
