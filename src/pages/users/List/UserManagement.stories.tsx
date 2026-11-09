@@ -715,8 +715,7 @@ export const ConsultantsTabAt960SortedByDate: Story = {
         await rowOf(canvasElement, 'Muster');
         // Default order is "last updated, newest first".
         const pill = canvas.getByRole('button', {
-            name: 'Sortiert nach Zuletzt aktualisiert, neueste zuerst',
-            exact: true,
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
         });
         await user.click(pill);
         await expect(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' })).toHaveAttribute(
@@ -728,12 +727,14 @@ export const ConsultantsTabAt960SortedByDate: Story = {
 
         await user.click(canvas.getByRole('button', { name: /Name nach Vorname/ }));
         await user.click(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' }));
-        await expect(
-            await canvas.findByRole('button', {
-                name: 'Sortiert nach Zuletzt aktualisiert, neueste zuerst',
-                exact: true,
-            }),
-        ).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
     },
 };
 
@@ -753,12 +754,14 @@ export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
-        await expect(
-            await canvas.findByRole('button', {
-                name: 'Sortiert nach Zuletzt aktualisiert, älteste zuerst',
-                exact: true,
-            }),
-        ).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert älteste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
         await noSideScroll(canvasElement);
     },
 };
