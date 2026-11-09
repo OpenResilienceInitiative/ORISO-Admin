@@ -1,8 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
-import { ThemeProvider } from '@mui/material/styles';
-// eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, within } from 'storybook/test';
+import { ThemeProvider } from '@mui/material/styles';
 import { findPopup, popupsOf } from '../../test/storyPopups';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PasswordResetConfirmForm } from './PasswordResetConfirm';
@@ -39,8 +38,8 @@ export const InvalidLink: Story = {
     args: { tokenOverride: '' },
 };
 
-/** P2: the server refuses the new password - one error pop-up titled "Passwort zurücksetzen". */
-export const ConfirmFails: Story = {
+/** The server refuses the new password: one error pop-up titled "Passwort zurücksetzen", and the way out stays in the page. */
+export const RejectedLink: Story = {
     parameters: {
         msw: {
             handlers: [
@@ -50,12 +49,17 @@ export const ConfirmFails: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const password = 'Sehr-Sicher-1234!';
-        await userEvent.type(await canvas.findByLabelText('Neues Passwort'), password);
-        await userEvent.type(canvas.getByLabelText('Neues Passwort wiederholen'), password);
-        await userEvent.click(canvas.getByRole('button', { name: 'Passwort festlegen' }));
+        await userEvent.type(canvas.getByLabelText(/^(Neues Passwort|New password)$/i), 'StorybookPassword1!');
+        await userEvent.type(
+            canvas.getByLabelText(/^(Neues Passwort wiederholen|Repeat new password)$/i),
+            'StorybookPassword1!',
+        );
+        await userEvent.click(canvas.getByRole('button', { name: /^(Passwort festlegen|Set password)$/i }));
         const popup = await findPopup(canvasElement, 'Das Passwort konnte nicht geändert werden.', 'error');
         await expect(popup).toHaveTextContent('Passwort zurücksetzen');
         await expect(popupsOf(canvasElement)).toHaveLength(1);
+        const recovery = canvas.getByRole('link', { name: /^(Neuen Link anfordern|Request a new reset link)$/i });
+        await expect(recovery).toBeVisible();
+        await expect(recovery).toHaveAttribute('href', '/admin/password-reset');
     },
 };
