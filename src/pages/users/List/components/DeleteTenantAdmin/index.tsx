@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../../../components/Snackbar';
 import { useDeleteTenantAdmin } from '../../../../../hooks/useDeleteTenantAdmin';
 import { Modal } from '../../../../../components/Modal';
 import { CounselorData } from '../../../../../types/counselor';
@@ -14,7 +14,7 @@ export const DeleteTenantAdminModal = ({ user, onClose }: DeleteTenantAdminModal
     const { t } = useTranslation();
     const { mutate: deleteAdmin } = useDeleteTenantAdmin({
         onSuccess: () => {
-            notification.success({
+            snackbar.success({
                 message: t('tenantAdmins.delete.success'),
             });
             onClose();
