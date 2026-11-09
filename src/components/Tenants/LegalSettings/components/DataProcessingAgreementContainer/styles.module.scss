@@ -1,3 +1,9 @@
+.signAlert:global(.ant-alert) {
+    /* The theme-derived warning tint came out as a mid grey (#807573): the buttons' focus ring (6.56:1 on the tile
+       surface) measured 1.81:1 on it, and the notice text 3.36:1. The box now sits on the tile surface. */
+    background: var(--admin-form-card-surface, #eae7e8);
+}
+
 .recoveryActions {
     width: 100%;
 
