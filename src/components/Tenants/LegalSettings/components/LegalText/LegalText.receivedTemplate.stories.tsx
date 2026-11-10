@@ -140,7 +140,8 @@ const handlers = ({ proposals = [template], draft = null as TenantLegalDraft | n
 };
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Received template (Träger)',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Received template (Träger)',
+    id: 'organisms-legal-legaltext-received-template-träger',
     component: TraegerLegalText,
     parameters: { layout: 'fullscreen' },
     decorators: [
@@ -214,7 +215,7 @@ export const PlatformInspectsExistingTraeger: Story = {
             LOAD,
         );
         await expect(
-            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this tenant/),
+            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this provider/),
         ).toBeVisible();
         await expect(within(region).getByRole('button', { name: /Vorlage übernehmen|Adopt template/ })).toBeDisabled();
         await expect(within(region).getByRole('button', { name: /Verwerfen|Dismiss/ })).toBeDisabled();

@@ -55,7 +55,8 @@ const Harness = ({
 };
 
 const meta = {
-    title: 'Organisms/Permissions/RecipientScopeControl',
+    title: 'Settings/Einstellungen/Funktionszugriff/RecipientScopeControl',
+    id: 'organisms-permissions-recipientscopecontrol',
     component: Harness,
     parameters: { layout: 'padded' },
     args: { level: 'platform' },
@@ -250,7 +251,7 @@ export const EnglishPlatformRequirement: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getByRole('button', { name: 'Requirement' })).toHaveAttribute('aria-pressed', 'true');
-        await expect(canvas.getByText('Requirement: no Träger can change it.')).toBeVisible();
+        await expect(canvas.getByText('Requirement: no provider can change it.')).toBeVisible();
     },
 };
 

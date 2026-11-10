@@ -200,7 +200,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await userEvent.setup().click(await screen.findByRole('tab', { name: /Planned/i }));
 
-        expect(screen.getByText(/Träger administration sets these rules/i)).toBeInTheDocument();
+        expect(screen.getByText(/provider administration sets these rules/i)).toBeInTheDocument();
         expect(await clientConsentButton()).toBeDisabled();
         expect(server.requests.every((request) => request.method === 'GET')).toBe(true);
     });
@@ -212,14 +212,14 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
         await waitFor(() => expect(server.store.get('8')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
-        expect(screen.queryByText(/Träger administration sets these rules/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/provider administration sets these rules/i)).not.toBeInTheDocument();
     });
 
     it('asks for a Träger on the platform-wide page instead of requesting rules without one', async () => {
         access.isSuperAdmin = true;
         mountCard(undefined);
 
-        expect(await screen.findByText(/Handover rules are set per Träger/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Handover rules are set per provider/i)).toBeInTheDocument();
         expect(server.requests).toHaveLength(0);
     });
 
@@ -389,7 +389,7 @@ describe('agency handover master HTTP boundary', () => {
             expect(master).toHaveAccessibleName(expect.stringContaining(activatedText(value)));
             // A Beratungsstelle only sees the parent's suggestion: no lock to turn it into a requirement.
             expect(masterRow().queryByRole('button', { name: /Make it (a requirement|adjustable)/ })).toBeNull();
-            expect(await screen.findByText(/Träger administration sets these rules/i)).toBeVisible();
+            expect(await screen.findByText(/provider administration sets these rules/i)).toBeVisible();
             await userEvent.setup().click(master);
             expect(await clientConsentButton()).toBeDisabled();
             expect(screen.getByTestId('case-handover-template-input')).toBeDisabled();
@@ -421,7 +421,7 @@ describe('independent master while reason HTTP authority is unavailable', () => 
         expect(await masterButton()).toHaveAccessibleName(expect.stringContaining(activatedText(true)));
         if (level === 'agency') {
             expect(await masterButton()).toBeDisabled();
-            expect(screen.getByText(/Träger administration sets these rules/i)).toBeVisible();
+            expect(screen.getByText(/provider administration sets these rules/i)).toBeVisible();
         } else expect(await masterButton()).toBeEnabled();
         expect(screen.queryByRole('tablist', { name: /Handover reasons/i })).not.toBeInTheDocument();
         expect(alert).not.toHaveTextContent('private upstream failure body');

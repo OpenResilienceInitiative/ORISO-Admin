@@ -1455,7 +1455,7 @@ const toolbarLabels = {
     },
     en: {
         tenant: 'Provider',
-        centre: 'Agency',
+        centre: 'Counselling centre',
         expand: 'Expand search',
         collapse: 'Collapse search',
         invitations: 'Go to invitations',

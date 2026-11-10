@@ -12,7 +12,8 @@ const STUB_APP_BASE_URL = 'https://theme-preview.test';
  * Preset circles under the dark accent and a purpose line per colour (#1374).
  */
 const meta = {
-    title: 'Organisms/Tenants/ThemeBuilder',
+    title: 'Settings/Einstellungen/Erscheinungsbild/ThemeBuilder',
+    id: 'organisms-tenants-themebuilder',
     component: ThemeEditorModal,
     parameters: { layout: 'fullscreen' },
     args: {

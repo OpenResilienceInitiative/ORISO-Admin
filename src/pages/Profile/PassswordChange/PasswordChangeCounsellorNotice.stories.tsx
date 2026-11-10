@@ -6,7 +6,8 @@ import { PasswordChangeCounsellorNotice } from './PasswordChangeCounsellorNotice
  * (ORISO-Frontend#1931). Informational only; the password change is never blocked.
  */
 const meta = {
-    title: 'Pages/Profile/PasswordChangeCounsellorNotice',
+    title: 'Settings/Mein Account/PasswordChangeCounsellorNotice',
+    id: 'pages-profile-passwordchangecounsellornotice',
     component: PasswordChangeCounsellorNotice,
 } satisfies Meta<typeof PasswordChangeCounsellorNotice>;
 

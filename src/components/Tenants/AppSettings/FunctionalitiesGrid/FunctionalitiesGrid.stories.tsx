@@ -17,7 +17,8 @@ const tenant = {
 };
 
 const meta = {
-    title: 'Organisms/AppSettings/FunctionalitiesGrid',
+    title: 'Settings/Einstellungen/Funktionalitäten/FunctionalitiesGrid',
+    id: 'organisms-appsettings-functionalitiesgrid',
     component: FunctionalitiesGrid,
     args: { tenantId: '7', hideSmtp: true },
     parameters: {

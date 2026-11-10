@@ -26,7 +26,17 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'getting started',
     ],
     theme: ['einstellungen', 'konfiguration', 'optionen', 'settings', 'configuration', 'preferences', 'setup'],
-    tenants: ['träger', 'organisation', 'mandant', 'mandanten', 'tenant', 'organisation', 'organization', 'provider'],
+    tenants: [
+        'träger',
+        'organisation',
+        'mandant',
+        'mandanten',
+        'tenant',
+        'tenants',
+        'organisation',
+        'organization',
+        'provider',
+    ],
     agency: [
         'beratungsstelle',
         'beratungsstellen',

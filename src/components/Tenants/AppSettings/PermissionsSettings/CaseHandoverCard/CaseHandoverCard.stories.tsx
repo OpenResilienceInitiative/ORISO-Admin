@@ -77,7 +77,8 @@ const RETIRED_CODES: Record<string, string> = {
 const retiredCodePolicies = policies.map((policy) => ({ ...policy, code: RETIRED_CODES[policy.code] }));
 
 const meta = {
-    title: 'Organisms/Permissions/CaseHandoverCard',
+    title: 'Settings/Einstellungen/Funktionszugriff/CaseHandoverCard',
+    id: 'organisms-permissions-casehandovercard',
     component: CaseHandoverCardView,
     parameters: {
         layout: 'padded',
