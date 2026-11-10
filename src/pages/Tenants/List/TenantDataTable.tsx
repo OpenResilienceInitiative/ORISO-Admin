@@ -54,12 +54,11 @@ export interface TenantDataTableProps {
 }
 
 // Measured in Storybook "Pages/Tenants/TenantList" (2026-11-10) on the list container, with long
-// names, subdomains and e-mails: the wide row needs 1011px, 1141px with the subdomain column (the
-// status column, header plus cell padding, adds about 80px to the former 931px / 1061px). The
-// tablet row fits down to 400px; below 600px cards read better (same band as the accounts list).
+// names and e-mails: the wide row (name, status, ID, e-mail, both dates, actions) needs 862px; subdomain
+// and the maximum of counsellors are in the details. The tablet row fits down to 400px; below 600px
+// cards read better (same band as the accounts list).
 const PHONE_BELOW = 600;
-const WIDE_BASE = 1020;
-const WIDE_SUBDOMAIN = 130;
+const WIDE_FROM = 875;
 
 const adminsOf = (row: TenantRow) => (row.adminEmails ?? []).filter(Boolean);
 const nameOf = (row: TenantRow) => decodeHTML(row.name);
@@ -183,7 +182,7 @@ export const TenantDataTable = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const layout = useMeasuredListLayout(containerRef, {
         phoneBelow: PHONE_BELOW,
-        wideFrom: WIDE_BASE + (showSubdomain ? WIDE_SUBDOMAIN : 0),
+        wideFrom: WIDE_FROM,
     });
     const tablet = layout === 'tablet';
     const [openRows, setOpenRows] = useState<number[]>([]);
@@ -196,13 +195,12 @@ export const TenantDataTable = ({
     const rowIds = rows.map((row) => row.id).join(',');
     useEffect(() => setOpenRows([]), [rowIds]);
 
+    // Subdomain and the maximum of allowed counsellors live in the details (expanded row, phone card).
     const columns: DataTableColumn[] = [
-        { key: 'name', label: t('tenants.list.name'), sortable: true },
+        { key: 'name', label: t('tenants.list.name'), sortable: true, width: tablet ? undefined : '28%' },
         { key: 'status', label: t('entityStatus.title'), width: 110 },
-        ...(tablet ? [] : [{ key: 'id', label: t('tenants.list.tenantId'), sortable: true, width: 96 }]),
-        ...(showSubdomain ? [{ key: 'subdomain', label: t('tenants.list.subdomain'), sortable: true }] : []),
+        ...(tablet ? [] : [{ key: 'id', label: t('tenants.list.tenantIdShort'), sortable: true, width: 72 }]),
         { key: 'admins', label: t('tenants.list.adminEmails') },
-        { key: 'licences', label: t('tenants.list.maxConsultants'), sortable: true, align: 'right', width: 120 },
         ...(tablet ? [] : [{ key: 'created', label: t('tenants.list.created', 'Angelegt'), width: 120 }]),
         ...(tablet ? [] : [{ key: 'lastChange', label: t('users.table.lastUpdated'), width: 160 }]),
         {
@@ -232,10 +230,10 @@ export const TenantDataTable = ({
                 ? ([
                       [t('entityStatus.title'), statusCell(row)],
                       [t('tenants.list.tenantId'), row.id],
-                      [t('tenants.list.subdomain'), showSubdomain ? subdomainLink(row) : null],
-                      [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
                   ] as [string, ReactNode][])
                 : []),
+            [t('tenants.list.subdomain'), showSubdomain ? subdomainLink(row) : null],
+            [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
             [
                 t('tenants.list.adminEmails'),
                 admins.length ? (
@@ -278,8 +276,6 @@ export const TenantDataTable = ({
                 return statusCell(row);
             case 'id':
                 return <span className={styles.secondary}>{row.id}</span>;
-            case 'subdomain':
-                return subdomainLink(row);
             case 'admins': {
                 const [first, ...more] = adminsOf(row);
                 if (!first) return <span className={styles.secondary}>{t('tenants.list.noAdmins', 'Kein Admin')}</span>;
@@ -292,8 +288,6 @@ export const TenantDataTable = ({
                     </span>
                 );
             }
-            case 'licences':
-                return row.licensing?.allowedNumberOfUsers ?? '—';
             case 'created':
                 return formatDate(row.createDate, locale) ?? '—';
             case 'lastChange':

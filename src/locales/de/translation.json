@@ -1420,6 +1420,7 @@
     "tenants.list.adminEmails": "E-Mail Träger-Admin",
     "tenants.list.subdomain": "Subdomain",
     "tenants.list.tenantId": "Träger-ID",
+    "tenants.list.tenantIdShort": "ID",
     "tenants.list.maxConsultants": "Max. erlaubte Berater",
     "tenants.list.created": "Angelegt",
     "tenants.list.noAdmins": "Kein Admin",

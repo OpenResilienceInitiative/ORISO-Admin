@@ -640,6 +640,7 @@
     "tenants.list.name": "Name",
     "tenants.list.subdomain": "Subdomain",
     "tenants.list.tenantId": "Tenant ID",
+    "tenants.list.tenantIdShort": "ID",
     "tenants.list.maxConsultants": "Max. allowed consultants",
     "tenants.list.created": "Created",
     "tenants.list.noAdmins": "No admin",
