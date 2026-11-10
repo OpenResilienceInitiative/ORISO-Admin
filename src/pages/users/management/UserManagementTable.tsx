@@ -488,7 +488,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 />
             )}
             {deleteTenantAdmin && can(PermissionAction.Delete, config.updateResource) && (
-                <DeleteTenantAdminModal user={deleteTenantAdmin} onClose={onCloseDelete} />
+                <DeleteTenantAdminModal
+                    user={deleteTenantAdmin}
+                    onClose={onCloseDelete}
+                    isPlatformAdmin={isPlatformAdmins}
+                />
             )}
             {tenantToDelete !== null && (
                 <Modal
