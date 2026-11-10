@@ -35,10 +35,10 @@ const toggleInitialValues = { tenantAdminControls: { allowedPermissionToggles: {
 export const Default: Story = {
     render: () => (
         <Page>
-            <Page.BackWithActions path="/admin/tenants" title="Dreambau" tabs={tabs} />
+            <Page.BackWithActions path="/admin/tenants" parentKey="sidebar.tenants" title="Dreambau" tabs={tabs} />
             <div className={styles.appearancePage}>
                 <CardGrid raster>
-                    <CardGrid.Item span={2}>
+                    <CardGrid.Item span={3}>
                         <Card autoHeight dialogContentPadding titleKey="Individuelle Bilder" variant="dialog">
                             Bitte beachten Sie, dass wir nur JPG-/PNG-Formate bis zu 500 KB annehmen können.
                         </Card>

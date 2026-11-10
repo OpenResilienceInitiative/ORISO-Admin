@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
 import {
     useRecipientScopeControlsMutation,
@@ -35,7 +35,7 @@ export const SuperAdminPermissionsSettings = ({
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const updateTenantAdminControls = useTenantAdminControlsMutation({
         successMessageKey: false,
-        onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
+        onError: () => snackbar.error({ message: t('tenants.permissions.policy.saveError') }),
     });
     // The scope control reports its own failure beside the edit, so no second, generic notification.
     const updateRecipientScope = useRecipientScopeControlsMutation();
@@ -122,7 +122,7 @@ export const SuperAdminPermissionsSettings = ({
                     ...toRecipientScopeWrite({ ...next, inherited: false }),
                 });
                 rebuildEffectivePlatformControls();
-                notification.success({
+                snackbar.success({
                     message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
                     duration: 3,
                 });

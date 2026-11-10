@@ -12,6 +12,7 @@ import { useFeatureContext } from '../../context/FeatureContext';
 import AdminSidebar from './AdminSidebar';
 import AdminMobileNavBar from './AdminMobileNavBar';
 import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
+import { AdminSearchButton, AdminSearchProvider } from '../AdminSearch';
 import { useAdminNavigation } from './useAdminNavigation';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
@@ -88,32 +89,52 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
 
     return (
         <MobileNavProvider>
-            <Layout className="protectedLayout">
-                {/* One resolved item list, two presentations. Rendering only the
+            <AdminSearchProvider
+                navItems={upperNavItems}
+                account={accountNavItem}
+                tree={mobileNavTree}
+                disabled={restricted}
+            >
+                <Layout className="protectedLayout">
+                    {/* One resolved item list, two presentations. Rendering only the
                     one that applies keeps a single navigation landmark in the
                     accessibility tree instead of two copies of the same links. */}
-                {isDesktopLayout ? (
-                    <AdminSidebar
-                        items={upperNavItems}
-                        account={accountNavItem}
-                        logout={{ label: navLabels.logout, onLogout: handleLogout }}
-                        lang={navLanguage}
-                        currentPath={location.pathname}
-                    />
-                ) : (
-                    <AdminMobileNavBar
-                        items={upperNavItems}
-                        tree={mobileNavTree}
-                        account={accountNavItem}
-                        logout={{ label: navLabels.logout, onLogout: handleLogout }}
-                        currentPath={location.pathname}
-                    />
-                )}
+                    {isDesktopLayout ? (
+                        <AdminSidebar
+                            items={upperNavItems}
+                            account={accountNavItem}
+                            logout={{ label: navLabels.logout, onLogout: handleLogout }}
+                            lang={navLanguage}
+                            currentPath={location.pathname}
+                        />
+                    ) : (
+                        <AdminMobileNavBar
+                            items={upperNavItems}
+                            tree={mobileNavTree}
+                            account={accountNavItem}
+                            logout={{ label: navLabels.logout, onLogout: handleLogout }}
+                            currentPath={location.pathname}
+                        />
+                    )}
 
-                <Layout className={classNames(styles.mainContent)}>
-                    <Content className={styles.content}>{children}</Content>
+                    <Layout className={classNames(styles.mainContent)}>
+                        {/* Material 3 search bar, centred above the page. Phones
+                        have it in the bottom bar (the round button), so no row is spent there. */}
+                        {isDesktopLayout && !restricted && (
+                            <div className={styles.topBar}>
+                                <AdminSearchButton variant="bar" />
+                            </div>
+                        )}
+                        <Content
+                            className={classNames(styles.content, {
+                                [styles.contentWithTopBar]: isDesktopLayout && !restricted,
+                            })}
+                        >
+                            {children}
+                        </Content>
+                    </Layout>
                 </Layout>
-            </Layout>
+            </AdminSearchProvider>
             {isEnabled(FeatureFlag.Developer) && <ReactQueryDevtools />}
         </MobileNavProvider>
     );

@@ -20,7 +20,6 @@ export const AppSettingsPage = () => {
                 tenantId={resolvedTenantId}
                 hideSmtp
                 hideCommunication
-                hideTopicsCard
                 hideStatistics
                 hideGroupChatToggle
             />

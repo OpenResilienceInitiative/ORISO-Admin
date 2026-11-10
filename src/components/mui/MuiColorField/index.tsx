@@ -16,9 +16,20 @@ interface MuiColorControlProps {
     label: string;
     helpText?: string;
     disabled?: boolean;
+    showContrast?: boolean;
+    description?: string;
 }
 
-const MuiColorControl = ({ value, onChange, fieldName, label, helpText, disabled }: MuiColorControlProps) => {
+const MuiColorControl = ({
+    value,
+    onChange,
+    fieldName,
+    label,
+    helpText,
+    disabled,
+    showContrast,
+    description,
+}: MuiColorControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
@@ -35,6 +46,8 @@ const MuiColorControl = ({ value, onChange, fieldName, label, helpText, disabled
                 tenantColor={value}
                 setColorValue={(_field, color: string) => onChange?.(color)}
                 field="primaryColor"
+                showContrast={showContrast}
+                description={description}
             />
             {helperText ? <FormHelperText error={isError}>{helperText}</FormHelperText> : null}
         </>
@@ -51,6 +64,10 @@ export interface MuiColorFieldProps {
     disabled?: boolean;
     rules?: Rule[];
     className?: string;
+    /** Show the WCAG contrast badge next to the hex code (theme colours, #1374). */
+    showContrast?: boolean;
+    /** i18n key for one line under the label saying what the colour is used for (#1374). */
+    descriptionKey?: string;
 }
 
 /**
@@ -70,6 +87,8 @@ export const MuiColorField = ({
     disabled,
     rules = [],
     className,
+    showContrast,
+    descriptionKey,
 }: MuiColorFieldProps) => {
     const { t } = useTranslation();
 
@@ -85,6 +104,8 @@ export const MuiColorField = ({
                     label={t(labelKey)}
                     helpText={help ? t(help) : undefined}
                     disabled={disabled}
+                    showContrast={showContrast}
+                    description={descriptionKey ? t(descriptionKey) : undefined}
                 />
             </Form.Item>
         </div>
