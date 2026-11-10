@@ -27,7 +27,9 @@ const Recovery = ({ retry }: { retry: () => void }) => {
     const navigate = useNavigate();
     return (
         <div className={styles.setup}>
-            <HintText tone="error">{t('agency.setup.unavailable')}</HintText>
+            <HintText tone="error" role="alert">
+                {t('agency.setup.unavailable')}
+            </HintText>
             <div className={styles.actions}>
                 <M3Button variant="outlined" onClick={retry}>
                     {t('agency.setup.retry')}

@@ -222,9 +222,10 @@ export const OnboardingEmailSendFailure: Story = {
     play: async ({ canvas, canvasElement, userEvent }) => {
         await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
         // The failure is a pop-up in the screen-corner host, outside the story canvas.
-        await waitFor(async () =>
-            expect(await within(canvasElement.ownerDocument.body).findByTestId('snackbar')).toBeVisible(),
-        );
+        const popup = await within(canvasElement.ownerDocument.body).findByTestId('snackbar');
+        await waitFor(() => expect(popup).toBeVisible());
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(popup).toHaveTextContent('Der Code konnte nicht gesendet werden');
         await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
     },
 };

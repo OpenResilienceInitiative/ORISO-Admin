@@ -221,6 +221,8 @@ const CentreSetupExample = ({
                                 <Notify
                                     title={t('notify.title.onboarding')}
                                     severity="error"
+                                    // The reason stays in the form after the pop-up is closed, like the way back above.
+                                    quietText={text.denied}
                                     actions={[{ label: text.return, onClick: () => setStep('saved') }]}
                                 >
                                     {text.denied}

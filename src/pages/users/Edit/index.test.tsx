@@ -2175,10 +2175,15 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
 
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
 
-            // The refusal is an error pop-up on the shared snackbar channel, outside the dialog.
-            expect(await within(await screen.findByTestId('snackbar-host')).findByRole('alert')).toHaveTextContent(
-                'Letzte Beratungsperson einer aktiven Stelle.',
+            // The refusal is announced in the dialog and also raised as a pop-up on the snackbar channel.
+            await waitFor(() =>
+                expect(within(dialog).getByRole('alert')).toHaveTextContent(
+                    'Letzte Beratungsperson einer aktiven Stelle.',
+                ),
             );
+            expect(
+                await within(await screen.findByTestId('snackbar-host')).findByText(/Letzte Beratungsperson/),
+            ).toBeVisible();
             expect(mocks.navigate).not.toHaveBeenCalled();
             await user.click(within(dialog).getByRole('button', { name: 'Zurück zum Bearbeiten' }));
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -2193,7 +2198,10 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
             renderForm();
             const dialog = await reviewMoveTo(user);
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
-            await within(await screen.findByTestId('snackbar-host')).findByRole('alert');
+            // The refusal text itself, not just an alert region: the region exists before any text does.
+            await waitFor(() =>
+                expect(within(dialog).getByRole('alert')).toHaveTextContent('Anmeldedienst lehnt ab, nichts geändert.'),
+            );
 
             await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }));
 
