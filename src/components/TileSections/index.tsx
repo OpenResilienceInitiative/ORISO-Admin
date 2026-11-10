@@ -60,7 +60,18 @@ const TileSection = ({ id, title, titleAction, note, footer, picture, pictureBes
     );
 };
 
+interface TileSectionStackProps {
+    children: ReactNode;
+    /**
+     * By default the panels of a stack fill a whole row between 752 and 1007 px, which suits a tile whose other
+     * panels fill the row before it. A tile with long panels beside it keeps the column at every width.
+     */
+    keepColumn?: boolean;
+}
+
 /** Short topics that share one column, so they do not leave half a row empty. */
-const TileSectionStack = ({ children }: { children: ReactNode }) => <div className={styles.stack}>{children}</div>;
+const TileSectionStack = ({ children, keepColumn }: TileSectionStackProps) => (
+    <div className={classNames(styles.stack, { [styles.stackColumn]: keepColumn })}>{children}</div>
+);
 
 export const TileSections = Object.assign(TileSectionsRoot, { Section: TileSection, Stack: TileSectionStack });
