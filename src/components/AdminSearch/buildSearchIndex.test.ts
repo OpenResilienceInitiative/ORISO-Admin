@@ -100,7 +100,7 @@ describe('buildSearchIndex: single and multi-tenant domain gates', () => {
         expect(has(ids({ role: 'tenant', singleDomain: false }), 'legal:settings@')).toBe(false);
     });
 
-    it.each(['app:communication@', 'app:topics@'])('offers %s only on the multi-tenant domain', (prefix) => {
+    it.each(['app:communication@'])('offers %s only on the multi-tenant domain', (prefix) => {
         expect(has(ids({ role: 'tenant', singleDomain: false }), prefix)).toBe(true);
         expect(has(ids({ role: 'tenant', singleDomain: true }), prefix)).toBe(false);
     });

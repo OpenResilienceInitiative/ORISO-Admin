@@ -13,7 +13,6 @@ vi.mock('../OtherFunctionsSettings', () => ({
         <div data-testid="other-functions">{JSON.stringify(props)}</div>
     ),
 }));
-vi.mock('../TopicsSettings', () => ({ TopicsSettings: () => <div data-testid="topics" /> }));
 
 // eslint-disable-next-line import/first
 import { FunctionalitiesGrid } from './index';
@@ -27,8 +26,7 @@ describe('FunctionalitiesGrid', () => {
         expect(screen.getByTestId('smtp')).toHaveTextContent('7');
         expect(screen.getByTestId('communication')).toHaveTextContent('7');
         expect(screen.getByTestId('other-functions')).toBeInTheDocument();
-        expect(screen.getByTestId('topics')).toBeInTheDocument();
-        expect(tileCount(container)).toBe(4);
+        expect(tileCount(container)).toBe(3);
         // The old layout was an antd Row/Col stack; the raster must not fall back to it.
         expect(container.querySelector('.ant-row')).toBeNull();
     });
@@ -47,11 +45,10 @@ describe('FunctionalitiesGrid', () => {
     });
 
     it('drops the tiles a level hides', () => {
-        const { container } = render(<FunctionalitiesGrid tenantId="7" hideSmtp hideCommunication hideTopicsCard />);
+        const { container } = render(<FunctionalitiesGrid tenantId="7" hideSmtp hideCommunication />);
 
         expect(screen.queryByTestId('smtp')).toBeNull();
         expect(screen.queryByTestId('communication')).toBeNull();
-        expect(screen.queryByTestId('topics')).toBeNull();
         expect(tileCount(container)).toBe(1);
     });
 
