@@ -1,4 +1,4 @@
-import { Alert, Button, Grid, Popover } from 'antd';
+import { Button, Grid, Popover } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
@@ -9,7 +9,6 @@ import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
-import { SortNotice } from '../../../components/UserTable/SortNotice';
 import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -44,8 +43,12 @@ import {
 } from '../../../constants/userTableSort';
 import type { UserSearchResult } from '../../../utils/fetchUserSearchWithSortFallback';
 import styles from './UserManagementTable.module.scss';
+import { Notify } from '../../../components/Notify';
 
 const NO_FILTERS: UserSearchFilters = {};
+
+/** The list itself: where "Ansehen" of a list error or a rejected sort takes the person. */
+const USER_LIST_ID = 'user-management-list';
 
 interface UserManagementTableProps {
     figmaTableHeader?: boolean;
@@ -143,7 +146,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         if (isPlatformAdmins) return platformAdminsQuery;
         return consultantsQuery;
     })();
-    const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
+    const { data: responseList, isLoading, isError, refetch } = activeQuery;
     // When the server refused the chosen order, the arrow follows the rows it actually sent.
     const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
     const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : userQueryState.sortBy;
@@ -401,64 +404,75 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 )}
             </div>
             {isError && (
-                <Alert
-                    message={t('error.loading')}
-                    description={(error as Error)?.message || t('error.default')}
-                    type="error"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                />
+                <Notify
+                    severity="error"
+                    title={t('notify.title.users')}
+                    quietText={t('notify.tile.notLoaded')}
+                    causeKey={`users:list:${sectionId}`}
+                    jump={USER_LIST_ID}
+                    retry
+                >
+                    {t('error.loading')}
+                </Notify>
             )}
-            {rejectedSort && <SortNotice shownOrder={t('userTable.sortNotice.safeOrder', 'Vorname A–Z')} />}
-            {!isTenants && (
-                <UserDataTable
-                    sectionId={sectionId}
-                    rows={tableData as CounselorData[]}
-                    loading={isLoading || preferencesPending}
-                    showTenant={showTenantColumn}
-                    showSubdomain={showSubdomain}
-                    canEditOrDelete={canEditOrDelete}
-                    sortBy={shownSortBy}
-                    order={shownOrder}
-                    onSortChange={onUserSortChange}
-                    onEdit={onEditUser}
-                    onDelete={onDeleteUser}
-                    onCancelDeletion={canEndDeletion ? onCancelDeletion : undefined}
-                    onPauseDeletion={canEndDeletion ? onPauseDeletion : undefined}
-                    page={tableState.current}
-                    pageSize={tableState.pageSize}
-                    total={responseList?.total ?? 0}
-                    onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
-                    onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
-                    onTenantClick={
-                        scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
-                    }
-                    onAgencyClick={
-                        scopeFilters.canListAgencies
-                            ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
-                            : undefined
-                    }
-                    ariaLabel={t(config.searchPlaceholderKey)}
-                />
+            {rejectedSort && (
+                <Notify severity="warning" title={t('notify.title.users')} jump={USER_LIST_ID}>
+                    {t('userTable.sortNotice', 'Diese Sortierung ist hier nicht möglich. Angezeigt wird: {{order}}.', {
+                        order: t('userTable.sortNotice.safeOrder', 'Vorname A–Z'),
+                    })}
+                </Notify>
             )}
-            {isTenants && (
-                <TenantTable
-                    rows={tenantsQuery.data?.data ?? []}
-                    loading={isLoading}
-                    pagination={pagination}
-                    onChange={handleTableAction}
-                    emptyTextKey={config.emptyTextKey}
-                    figmaTableHeader={figmaTableHeader}
-                    showSubdomain={showSubdomain}
-                    canEditOrDelete={canEditOrDelete}
-                    mainTenantSubdomain={settings.mainTenantSubdomainForSingleDomainMultitenancy}
-                    fixActionsColumn={!isMobile}
-                    sortBy={shownSortBy}
-                    order={shownOrder}
-                    onEdit={onEditTenant}
-                    onDelete={onDeleteTenant}
-                />
-            )}
+            <div id={USER_LIST_ID}>
+                {!isTenants && (
+                    <UserDataTable
+                        sectionId={sectionId}
+                        rows={tableData as CounselorData[]}
+                        loading={isLoading || preferencesPending}
+                        showTenant={showTenantColumn}
+                        showSubdomain={showSubdomain}
+                        canEditOrDelete={canEditOrDelete}
+                        sortBy={shownSortBy}
+                        order={shownOrder}
+                        onSortChange={onUserSortChange}
+                        onEdit={onEditUser}
+                        onDelete={onDeleteUser}
+                        onCancelDeletion={canEndDeletion ? onCancelDeletion : undefined}
+                        onPauseDeletion={canEndDeletion ? onPauseDeletion : undefined}
+                        page={tableState.current}
+                        pageSize={tableState.pageSize}
+                        total={responseList?.total ?? 0}
+                        onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
+                        onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
+                        onTenantClick={
+                            scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
+                        }
+                        onAgencyClick={
+                            scopeFilters.canListAgencies
+                                ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
+                                : undefined
+                        }
+                        ariaLabel={t(config.searchPlaceholderKey)}
+                    />
+                )}
+                {isTenants && (
+                    <TenantTable
+                        rows={tenantsQuery.data?.data ?? []}
+                        loading={isLoading}
+                        pagination={pagination}
+                        onChange={handleTableAction}
+                        emptyTextKey={config.emptyTextKey}
+                        figmaTableHeader={figmaTableHeader}
+                        showSubdomain={showSubdomain}
+                        canEditOrDelete={canEditOrDelete}
+                        mainTenantSubdomain={settings.mainTenantSubdomainForSingleDomainMultitenancy}
+                        fixActionsColumn={!isMobile}
+                        sortBy={shownSortBy}
+                        order={shownOrder}
+                        onEdit={onEditTenant}
+                        onDelete={onDeleteTenant}
+                    />
+                )}
+            </div>
             {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
                 <DeleteUserModal
                     deleteUserId={deleteUserId}
@@ -474,7 +488,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 />
             )}
             {deleteTenantAdmin && can(PermissionAction.Delete, config.updateResource) && (
-                <DeleteTenantAdminModal user={deleteTenantAdmin} onClose={onCloseDelete} />
+                <DeleteTenantAdminModal
+                    user={deleteTenantAdmin}
+                    onClose={onCloseDelete}
+                    isPlatformAdmin={isPlatformAdmins}
+                />
             )}
             {tenantToDelete !== null && (
                 <Modal

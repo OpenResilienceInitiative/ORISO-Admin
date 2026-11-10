@@ -722,6 +722,18 @@ describe('EmailTemplatesDialog', () => {
         expect(withinDialog.getByRole('button', { name: 'save' })).not.toHaveAccessibleDescription();
     });
 
+    it('keeps the load failure and its retry in the form view', async () => {
+        mocks.listInviteEmailTemplates.mockRejectedValue(new Error('down'));
+        renderDialog({ initialView: 'create' });
+
+        // The failure belongs to the whole dialog: opening straight into the form must not hide it.
+        expect(await screen.findByLabelText('Betreff')).toBeInTheDocument();
+        const popup = await screen.findByTestId('snackbar');
+        expect(popup).toHaveAttribute('data-severity', 'error');
+        expect(popup).toHaveTextContent('Could not load templates');
+        expect(within(popup).getByRole('button', { name: 'notify.retry' })).toBeInTheDocument();
+    });
+
     it('prefills the create deep link from initialTemplateId ("Neu aus …")', async () => {
         renderDialog({ initialView: 'create', initialTemplateId: 4 });
 

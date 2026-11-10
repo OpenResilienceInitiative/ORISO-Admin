@@ -9,7 +9,6 @@ describe('AGENCY_SORT_FIELD_BY_COLUMN', () => {
             id: 'ID',
             name: 'NAME',
             address: 'POST_CODE',
-            status: 'OFFLINE',
         });
     });
 });
@@ -31,10 +30,10 @@ describe('agencySortOf', () => {
 
 describe('nextAgencySortState', () => {
     it('sends the column API field and direction and returns to the first page', () => {
-        expect(nextAgencySortState(baseState, { key: 'status', direction: 'desc' })).toEqual({
+        expect(nextAgencySortState(baseState, { key: 'address', direction: 'desc' })).toEqual({
             ...baseState,
             current: 1,
-            sortBy: 'OFFLINE',
+            sortBy: 'POST_CODE',
             order: 'DESC',
         });
     });

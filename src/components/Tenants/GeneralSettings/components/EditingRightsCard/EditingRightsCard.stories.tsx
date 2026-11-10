@@ -6,7 +6,8 @@ import { inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matri
 import { expectReadOnlyTile } from '../../../../CardEditable/readOnlyTileStory.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/EditingRightsCard',
+    title: 'Settings/Einstellungen/Stammdaten & Mehr/EditingRightsCard',
+    id: 'organisms-tenants-appearance-editingrightscard',
     component: EditingRightsCard,
     args: { allowEdit: true, editable: true, onSave: () => {} },
     parameters: { layout: 'padded' },

@@ -8,6 +8,7 @@ import {
 } from '../../api/tenantOnboarding/dpaMailPreview';
 import styles from '../PlaceholderTemplate/EmailKitPreview.module.scss';
 import { Notify } from '../Notify';
+import { HintText } from '../HintText';
 
 interface DpaCanonicalMailPreviewProps {
     previewLabel: string;
@@ -145,15 +146,20 @@ export const DpaCanonicalMailPreview = ({
                 </div>
             )}
             {status === 'failed' && (
-                <Notify
-                    quietText={t('notify.tile.notLoaded')}
-                    title={t('notify.title.dpa')}
-                    testId="dpa-forward-preview-error"
-                    severity="error"
-                    actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: reload }]}
-                >
-                    {t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}
-                </Notify>
+                <>
+                    <Notify
+                        title={t('notify.title.dpa')}
+                        testId="dpa-forward-preview-error"
+                        severity="error"
+                        actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: reload }]}
+                    >
+                        {t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}
+                    </Notify>
+                    {/* The tile's own state, with the retry: inside a modal the pop-up is out of Tab reach and can be closed. */}
+                    <HintText actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: reload }]}>
+                        {t('notify.tile.notLoaded')}
+                    </HintText>
+                </>
             )}
         </section>
     );

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
@@ -320,7 +320,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -333,7 +333,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -423,7 +423,9 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('Your account is not fully set up yet.');
+        expect(await screen.findByTestId('login-setup-incomplete-hint')).toHaveTextContent(
+            'Your account is not fully set up yet.',
+        );
         expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
@@ -451,9 +453,12 @@ describe('LoginForm', () => {
         await user.type(otpField, '123456');
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        const hint = await screen.findByTestId('login-credentials-hint');
         // The OTP field stays so the person can correct the code, not start over.
         expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+        // The jump button points at the code, not at the user name.
+        await user.click(within(hint).getByRole('button', { name: 'snackbar.jump' }));
+        await waitFor(() => expect(screen.getByPlaceholderText('One-time password')).toHaveFocus());
     });
 
     /*
@@ -642,8 +647,9 @@ describe('LoginForm', () => {
         mocks.loginAsync.mockRejectedValueOnce({ message: FETCH_ERRORS.TIMEOUT });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-        expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(await screen.findByText(/The code could not be requested\. Please try again\./)).toBeInTheDocument();
+        // The failure is an error pop-up; the "request sent" confirmation must not appear next to it.
+        expect(screen.queryByText(/Request sent\./)).not.toBeInTheDocument();
     });
 
     /*

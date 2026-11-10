@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 import { expect, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
+import { findPopup, popupsOf } from '../../test/storyPopups';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { PasswordResetConfirmForm } from './PasswordResetConfirm';
 
@@ -37,6 +38,7 @@ export const InvalidLink: Story = {
     args: { tokenOverride: '' },
 };
 
+/** The server refuses the new password: one error pop-up titled "Passwort zurücksetzen", and the way out stays in the page. */
 export const RejectedLink: Story = {
     parameters: {
         msw: {
@@ -53,7 +55,9 @@ export const RejectedLink: Story = {
             'StorybookPassword1!',
         );
         await userEvent.click(canvas.getByRole('button', { name: /^(Passwort festlegen|Set password)$/i }));
-        await expect(await canvas.findByRole('alert')).toBeVisible();
+        const popup = await findPopup(canvasElement, 'Das Passwort konnte nicht geändert werden.', 'error');
+        await expect(popup).toHaveTextContent('Passwort zurücksetzen');
+        await expect(popupsOf(canvasElement)).toHaveLength(1);
         const recovery = canvas.getByRole('link', { name: /^(Neuen Link anfordern|Request a new reset link)$/i });
         await expect(recovery).toBeVisible();
         await expect(recovery).toHaveAttribute('href', '/admin/password-reset');

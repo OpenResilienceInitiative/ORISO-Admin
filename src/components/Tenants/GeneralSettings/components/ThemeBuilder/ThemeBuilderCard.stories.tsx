@@ -6,7 +6,8 @@ import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
 const meta = {
-    title: 'Organisms/Tenants/Appearance/ThemeBuilderCard',
+    title: 'Settings/Einstellungen/Erscheinungsbild/ThemeBuilderCard',
+    id: 'organisms-tenants-appearance-themebuildercard',
     component: ThemeBuilder,
     args: { tenantId: '1' },
     parameters: { layout: 'padded', msw: { handlers: appearanceHandlers } },

@@ -52,7 +52,8 @@ const Tile = ({ level }: { level: Level }) =>
     );
 
 const meta = {
-    title: 'Organisms/Permissions/RecipientScopeTile',
+    title: 'Settings/Einstellungen/Funktionszugriff/RecipientScopeTile',
+    id: 'organisms-permissions-recipientscopetile',
     component: Tile,
     parameters: {
         layout: 'fullscreen',

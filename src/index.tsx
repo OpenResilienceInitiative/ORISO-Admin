@@ -6,6 +6,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { createRoot, type Root } from 'react-dom/client';
 import { AdminApp } from './AdminApp';
 import { initObservability } from './observability/initObservability';
+import { installAdminTabLogoutListener } from './api/auth/logout';
 
 // OBS-P8 (ORISO-Helm#62): start Real User Monitoring (Core Web Vitals) export
 // to SigNoz as early as possible, before the app renders.
@@ -24,4 +25,5 @@ if (!container) {
 
 const root = window.orisoAdminRoot ?? createRoot(container);
 window.orisoAdminRoot = root;
+installAdminTabLogoutListener();
 root.render(<AdminApp />);

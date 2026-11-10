@@ -9,7 +9,8 @@ import { SupportEmailSettingsCard } from '.';
 
 /** ORISO-Frontend#1915: fallback support address when a counselling centre has no chat-reachable admin. */
 const meta = {
-    title: 'Organisms/GlobalSettings/SupportEmailSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/SupportEmailSettingsCard',
+    id: 'organisms-globalsettings-supportemailsettingscard',
     component: SupportEmailSettingsCard,
     decorators: [
         (Story, { parameters }) => (

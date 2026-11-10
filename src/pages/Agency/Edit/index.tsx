@@ -1,5 +1,5 @@
-import { Alert, Button, Form } from 'antd';
-import { ReactElement, useCallback, useState } from 'react';
+import { Button, Form } from 'antd';
+import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -30,6 +30,7 @@ import { AgencyDepartmentDetails } from './components/DepartmentDetails';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { AgencyMasterDataTile } from './components/MasterDataTile';
 import { AgencyTileGrid, type AgencyTile, type AgencyTileLayout } from './AgencyTileGrid';
 import {
@@ -54,13 +55,18 @@ import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSet
 import pageStyles from '../../../components/Page/styles.module.scss';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
 import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
+import { HintText } from '../../../components/HintText';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -93,16 +99,34 @@ const getEntityId = (value: unknown) => {
     return '';
 };
 
-export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+const AgencyPageEditForm = ({
+    id,
+    section,
+    legalLayout,
+    canCreateAgency,
+}: {
+    id?: string;
+    section: AgencySettingsSection;
+    legalLayout: AgencyTileLayout;
+    canCreateAgency: boolean;
+}) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { id } = useParams();
     const isEditing = id !== 'add';
     const isLegalSection = section === 'legal';
     const isFunctionalitiesSection = section === 'functionalities';
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [pendingStatusConfirmation, setPendingStatusConfirmation] = useState<{
+        entityId: string;
+        resolve: (approved: boolean) => void;
+    } | null>(null);
+    // Leaving the selected centre must cancel its outstanding approval, never write its status later.
+    // The cleanup also runs when the pending value changes to null after an answer. That is safe only because a
+    // promise settles once: `confirmNoTopicActivation` resolves with true before it clears the state, so the
+    // `resolve(false)` of this cleanup comes second and changes nothing. Keep that order.
+    useEffect(() => () => pendingStatusConfirmation?.resolve(false), [id, pendingStatusConfirmation]);
     const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
         formData: Record<string, unknown>;
@@ -127,7 +151,11 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
-    const { data: tenantTopics } = useTenantTopics(true);
+    const {
+        data: tenantTopics,
+        isLoading: tenantTopicsLoading,
+        isError: tenantTopicsError,
+    } = useTenantTopics(true, true, { failClosed: true });
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
     let legalTabIcon: ReactElement | null = null;
@@ -238,6 +266,8 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
 
     const persistAgency = useCallback(
         (formData) => {
+            if (!isEditing && !canCreateAgency) return;
+
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
@@ -259,7 +289,7 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, mutate, navigate, t],
     );
 
     /**
@@ -362,7 +392,27 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
         [isEditing, mutate, t],
     );
 
+    let activationBlockedReason: string | undefined;
+    if (tenantTopicsLoading) activationBlockedReason = 'entityStatus.activationTopicsLoading';
+    else if (tenantTopicsError) activationBlockedReason = 'entityStatus.activationTopicsError';
+    const beforeStatusChange = useCallback(
+        async (active: boolean, currentActive: boolean) => {
+            if (!active || currentActive) return true;
+            if (activationBlockedReason) return false;
+            if ((tenantTopics?.length ?? 0) === 0 || normalizeTopicIds(initialValues.topicIds).length > 0) return true;
+            return new Promise<boolean>((resolve) => {
+                setPendingStatusConfirmation({ entityId: id ?? '', resolve });
+            });
+        },
+        [id, activationBlockedReason, initialValues.topicIds, tenantTopics?.length],
+    );
+
     const confirmNoTopicActivation = useCallback(() => {
+        if (pendingStatusConfirmation) {
+            pendingStatusConfirmation.resolve(pendingStatusConfirmation.entityId === id);
+            setPendingStatusConfirmation(null);
+            return;
+        }
         if (pendingCardSave) {
             const pending = pendingCardSave;
             setPendingCardSave(null);
@@ -375,9 +425,14 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
         if (formData) {
             persistAgency(formData);
         }
-    }, [pendingCardSave, pendingNoTopicForm, persistAgency, persistCard]);
+    }, [id, pendingStatusConfirmation, pendingCardSave, pendingNoTopicForm, persistAgency, persistCard]);
 
     const cancelNoTopicActivation = useCallback(() => {
+        if (pendingStatusConfirmation) {
+            pendingStatusConfirmation.resolve(false);
+            setPendingStatusConfirmation(null);
+            return;
+        }
         if (pendingCardSave) {
             pendingCardSave.options?.onError?.();
             setPendingCardSave(null);
@@ -386,7 +441,7 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
 
         setPendingNoTopicForm(null);
         setSubmitted(false);
-    }, [pendingCardSave]);
+    }, [pendingStatusConfirmation, pendingCardSave]);
 
     const onSaveCard = useCallback(
         (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
@@ -452,6 +507,18 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
                             onSave={onSaveCard}
                             departmentFieldRequest={departmentFieldRequest}
                             persistedTeamAgency={initialValues.teamAgency}
+                            status={
+                                <ManagedEntityStatus
+                                    embedded
+                                    entityKind="agency"
+                                    entityName={agencyData?.name}
+                                    entityId={id}
+                                    canManage
+                                    targetTenantId={agencyTenantId}
+                                    onBeforeChange={beforeStatusChange}
+                                    activationBlockedReason={activationBlockedReason}
+                                />
+                            }
                         />
                     ),
                 },
@@ -642,23 +709,18 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
         );
     } else if (isAgencyCreationDpaBlocked) {
         agencyContent = (
-            <Alert
-                type="warning"
-                showIcon
-                message={t('agency.dpaGate.title')}
-                description={t('agency.dpaGate.description')}
-                action={
-                    isDpaGateError ? (
-                        <Button size="small" onClick={() => refetchDpaGate()}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    ) : (
-                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
-                            {t('agency.dpaGate.openLegalSettings')}
-                        </Button>
-                    )
-                }
-            />
+            <HintText
+                title={t('agency.dpaGate.title')}
+                actions={[
+                    { label: t('tenants.legal.version.retry'), onClick: () => refetchDpaGate() },
+                    {
+                        label: t('agency.dpaGate.openLegalSettings'),
+                        onClick: () => navigate(`${routePathNames.themeSettings}/legal`),
+                    },
+                ]}
+            >
+                {t('agency.dpaGate.description')}
+            </HintText>
         );
     } else {
         agencyContent = renderPageBody();
@@ -707,9 +769,23 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
                     )}
             </Page.BackWithActions>
             {agencyContent}
-            {(pendingNoTopicForm || pendingCardSave) && (
+            {(pendingNoTopicForm ||
+                pendingCardSave ||
+                (pendingStatusConfirmation && pendingStatusConfirmation.entityId === id)) && (
                 <NoTopicConfirmModal onConfirm={confirmNoTopicActivation} onClose={cancelNoTopicActivation} />
             )}
         </Page>
     );
+};
+
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+    const { id } = useParams();
+    const { can } = useUserPermissions();
+    const canCreateAgency = can(PermissionAction.Create, Resource.Agency);
+
+    if (id === 'add' && !canCreateAgency) {
+        return <AccessDenied />;
+    }
+
+    return <AgencyPageEditForm id={id} section={section} legalLayout={legalLayout} canCreateAgency={canCreateAgency} />;
 };

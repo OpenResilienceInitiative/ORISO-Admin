@@ -6,7 +6,8 @@ import { AgencyEditFrame, agencyEditHandlers, installAgencyStoryAuth } from './a
  * Two layouts for the document tiles are on offer, see the variant stories.
  */
 const meta = {
-    title: 'Admin/Agency/Legal',
+    title: 'Settings/Beratungsstellen/Rechtliches/Ganze Seite',
+    id: 'admin-agency-legal',
     component: AgencyEditFrame,
     parameters: { layout: 'fullscreen', msw: { handlers: agencyEditHandlers } },
     render: (args) => <AgencyEditFrame section="legal" legalLayout={args.legalLayout} />,

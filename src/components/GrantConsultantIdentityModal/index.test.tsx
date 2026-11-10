@@ -102,7 +102,9 @@ describe('GrantConsultantIdentityModal', () => {
         mocks.agencies = [agency(1, 'Beratungsstelle Nord', [])];
         await openAndPickAgency('Beratungsstelle Nord');
 
+        // Error-toned hint text under the form, announced as an alert (no alert box, no pop-up).
         expect(await screen.findByRole('alert')).toHaveTextContent('grantConsultantIdentity.modal.noTopics');
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'grantConsultantIdentity.modal.confirm' })).toBeDisabled();
     });
 });

@@ -78,6 +78,8 @@ import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
 import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 
+const tenantLegalSettingsPath = `${routePathNames.themeSettings}/legal`;
+
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
 
@@ -218,10 +220,7 @@ export const App = () => {
                                             />
                                         )}
                                         {canReadLegalText && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/legal`}
-                                                element={<LazyLegalSettingsPage />}
-                                            />
+                                            <Route path={tenantLegalSettingsPath} element={<LazyLegalSettingsPage />} />
                                         )}
                                         {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
                                             <Route
@@ -259,6 +258,12 @@ export const App = () => {
                                         />
                                         <Route index element={<Navigate to={defaultSettingsPath} replace />} />
                                     </Route>
+                                )}
+                                {!canReadLegalText && (
+                                    <Route
+                                        path={tenantLegalSettingsPath}
+                                        element={<Navigate to="/admin/access-denied" replace />}
+                                    />
                                 )}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
                                 <Route path={`${routePathNames.agency}/:id/setup`} element={<LazyAgencySetupPage />} />

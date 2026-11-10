@@ -47,7 +47,8 @@ it('loads the three confirmed periods and explains deletion, suspension and new-
             'Änderungen gelten nur für neu angelegte Personen. Bestehende Personen behalten ihre bisherige Frist.',
         ),
     ).toBeVisible();
-    expect(screen.getByText(/werden Ratsuchende gelöscht/)).toBeVisible();
+    expect(screen.getByText(/Konten nur mit der Rolle Ratsuchende.*gelöscht/)).toBeVisible();
+    expect(screen.getByText(/Wenn die automatische Verarbeitung aktiv ist/)).toBeVisible();
 });
 
 it('saves all three periods with revision zero and reads the confirmed values after remounting', async () => {

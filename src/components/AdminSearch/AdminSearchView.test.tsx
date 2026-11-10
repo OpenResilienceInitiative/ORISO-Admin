@@ -137,7 +137,7 @@ describe('AdminSearchView', () => {
 
         await user.type(input, 'springfield');
 
-        await waitFor(() => expect(screen.getByRole('button', { name: /^Tenants\s*1/ })).toBeTruthy());
+        await waitFor(() => expect(screen.getByRole('button', { name: /^Providers\s*1/ })).toBeTruthy());
     });
 
     // Found in review: the entity fetch trails the typing, so the rows of the previous query were still

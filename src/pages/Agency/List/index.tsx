@@ -22,6 +22,7 @@ import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { isAgencyScopedAdmin, resolveAgencyAdminLanding } from '../../../constants/agencyAdminLanding';
+import { Notify } from '../../../components/Notify';
 import { AgencyDataTable } from './AgencyDataTable';
 import { agencySortOf, nextAgencySortState } from './agencySort';
 import styles from './styles.module.scss';
@@ -134,31 +135,44 @@ export const AgencyList = () => {
                 </PageMobileActions>
             </Page.Title>
 
-            <AgencyDataTable
-                rows={data?.data ?? []}
-                loading={isLoading}
-                emptyText={isError ? t('message.error.default') : t('tenants.list.empty')}
-                sort={agencySortOf(tableState.sortBy, tableState.order)}
-                onSortChange={onSortChange}
-                page={tableState.current ?? 1}
-                pageSize={tableState.pageSize ?? 10}
-                total={data?.total ?? 0}
-                onPageChange={(current) => setTableState((state) => ({ ...state, current }))}
-                onPageSizeChange={(pageSize) => setTableState((state) => ({ ...state, current: 1, pageSize }))}
-                showTenant={isSuperAdmin}
-                tenantNameOf={(row) =>
-                    row.tenantName || tenantNameById.get(Number(row.tenantId)) || String(row.tenantId ?? '')
-                }
-                showTopics={can(PermissionAction.Read, Resource.Topic)}
-                markMissingTopics={isEnabled(FeatureFlag.TopicsInRegistration)}
-                onEdit={
-                    can(PermissionAction.Update, Resource.Agency)
-                        ? (row) => navigate(`${routePathNames.agency}/${row.id}`)
-                        : undefined
-                }
-                onDelete={can(PermissionAction.Delete, Resource.Agency) ? setAgencyToDelete : undefined}
-                ariaLabel={t('agency')}
-            />
+            {isError && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.agency')}
+                    causeKey="agency:list"
+                    jump="agency-list-table"
+                    actions={[{ label: t('notify.retry'), onClick: () => refetch() }]}
+                >
+                    {t('error.loading')}
+                </Notify>
+            )}
+            <div id="agency-list-table">
+                <AgencyDataTable
+                    rows={data?.data ?? []}
+                    loading={isLoading}
+                    emptyText={isError ? t('message.error.default') : t('tenants.list.empty')}
+                    sort={agencySortOf(tableState.sortBy, tableState.order)}
+                    onSortChange={onSortChange}
+                    page={tableState.current ?? 1}
+                    pageSize={tableState.pageSize ?? 10}
+                    total={data?.total ?? 0}
+                    onPageChange={(current) => setTableState((state) => ({ ...state, current }))}
+                    onPageSizeChange={(pageSize) => setTableState((state) => ({ ...state, current: 1, pageSize }))}
+                    showTenant={isSuperAdmin}
+                    tenantNameOf={(row) =>
+                        row.tenantName || tenantNameById.get(Number(row.tenantId)) || String(row.tenantId ?? '')
+                    }
+                    showTopics={can(PermissionAction.Read, Resource.Topic)}
+                    markMissingTopics={isEnabled(FeatureFlag.TopicsInRegistration)}
+                    onEdit={
+                        can(PermissionAction.Update, Resource.Agency)
+                            ? (row) => navigate(`${routePathNames.agency}/${row.id}`)
+                            : undefined
+                    }
+                    onDelete={can(PermissionAction.Delete, Resource.Agency) ? setAgencyToDelete : undefined}
+                    ariaLabel={t('agency')}
+                />
+            </div>
             {agencyToDelete && <AgencyDeletionModal agencyModel={agencyToDelete} onClose={onClose} />}
         </Page>
     );

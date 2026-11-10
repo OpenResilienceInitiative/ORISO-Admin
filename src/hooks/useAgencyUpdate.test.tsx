@@ -93,7 +93,8 @@ describe('useAgencyUpdate sequential card saves', () => {
         await result.current.mutateAsync({ online: false, postCodeRangesActive: false } as never);
 
         const request = mocks.updateAgencyData.mock.calls[0][1];
-        expect(request.online).toBe(false);
+        // Availability of an existing centre changes only through the narrow status command, never in this PUT.
+        expect(request.online).toBeUndefined();
         expect(request.dataProtection).toBeUndefined();
         // The cache still holds the contact for the other cards.
         expect(queryClient.getQueryData<{ dataProtection?: unknown }>(['AGENCY', '282'])?.dataProtection).toEqual(

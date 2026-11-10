@@ -12,6 +12,8 @@ import { TwoFactorAuthTypeButtons } from './TwoFactorAuthTypeButtons';
 import { TwoFactorType } from '../../enums/TwoFactorType';
 import type { OnboardingTwoFactorMethod } from '../../api/tenantOnboarding/tenantOnboarding';
 import styles from './styles.module.scss';
+import { Notify } from '../Notify';
+import { HintText } from '../HintText';
 
 /** Retryable error surfaced by the inline variant (Frontend taxonomy: invalidCode / appSetup). */
 export type TwoFactorSetupInlineError = 'invalid-code' | 'service' | null;
@@ -158,14 +160,14 @@ export const OnboardingTwoFactorSetup = ({
                 appLink && <TwoFactorAppConnect appLink={appLink} />
             )}
             {!supportsEmail && !supportsApp && (
-                <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                <HintText tone="error" role="alert" style={{ marginTop: 16 }}>
                     {t('twoFactorSetup.error.service')}
-                </Typography>
+                </HintText>
             )}
             {sendError && (
-                <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                <Notify title={t('notify.title.twoFactor')} severity="error">
                     {t('twoFactorSetup.email.error')}
-                </Typography>
+                </Notify>
             )}
             {canVerify && (
                 <>
@@ -185,14 +187,14 @@ export const OnboardingTwoFactorSetup = ({
                         />
                     </div>
                     {!hideVerificationError && error === 'invalid-code' && (
-                        <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                        <Notify title={t('notify.title.twoFactor')} severity="error">
                             {t('twoFactorSetup.otp.invalid')}
-                        </Typography>
+                        </Notify>
                     )}
                     {!hideVerificationError && !sendError && error === 'service' && (
-                        <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                        <Notify title={t('notify.title.twoFactor')} severity="error">
                             {t('twoFactorSetup.error.service')}
-                        </Typography>
+                        </Notify>
                     )}
                     <div className={styles.actions}>
                         <M3Button

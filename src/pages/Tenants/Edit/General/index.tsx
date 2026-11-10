@@ -7,8 +7,8 @@ import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { snackbar } from '../../../../components/Snackbar';
 import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
-import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
+import { ManagedEntityStatus } from '../../../../components/EntityStatusCard';
 import { TileSections } from '../../../../components/TileSections';
 import { CardGrid } from '../../../../components/CardGrid';
 import { GeneralSettings } from '../../../../components/Tenants/GeneralSettings';
@@ -27,9 +27,9 @@ import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import { MuiFormField, MuiPasswordFormField } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { TraegerFieldSections } from './TraegerFieldSections';
+import { TenantInformationCard } from './TenantInformationCard';
 
-/** Which parts the Träger tile shows: when editing, with the data protection officer; when creating, with the topic. */
-const EDIT_SECTIONS = ['general', 'sender', 'description', 'dpo'] as const;
+/** Which parts the create dialog shows (the edit tile lives in `TenantInformationCard`): with the topic. */
 const CREATE_SECTIONS = ['general', 'sender', 'description', 'topic'] as const;
 
 export const GeneralTenantSettings = () => {
@@ -173,24 +173,25 @@ export const GeneralTenantSettings = () => {
                     section="masterData"
                     leadingTiles={
                         <CardGrid.Item span={3}>
-                            <CardEditable
-                                isLoading={isLoading}
-                                editMode={false}
-                                titleKey="tenants.add.mainTenantTitle"
-                                headerIcon={<BusinessOutlinedIcon />}
-                                variant="dialog"
-                                editButtonPlacement="footer"
+                            <TenantInformationCard
+                                form={form}
                                 initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
-                                formProp={form}
+                                isLoading={isLoading}
+                                shouldShowSubdomainField={shouldShowSubdomainField}
+                                requiredRule={requiredRule}
                                 onSave={handleSave}
-                                className={styles.tenantInfoCard}
-                            >
-                                <TraegerFieldSections
-                                    subdomain={{ visible: shouldShowSubdomainField, editable: false }}
-                                    requiredRule={requiredRule}
-                                    sections={EDIT_SECTIONS}
-                                />
-                            </CardEditable>
+                                leading={
+                                    <TileSections.Section wide id="traeger-status" title={t('entityStatus.title')}>
+                                        <ManagedEntityStatus
+                                            embedded
+                                            entityKind="tenant"
+                                            entityName={data?.name}
+                                            entityId={id}
+                                            canManage
+                                        />
+                                    </TileSections.Section>
+                                }
+                            />
                         </CardGrid.Item>
                     }
                 />
