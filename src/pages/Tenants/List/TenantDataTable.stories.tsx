@@ -107,8 +107,13 @@ const settle = async (canvasElement: HTMLElement, layout: Layout) => {
     return canvas;
 };
 
-/** 1440 px viewport: 1144 px content next to the rail; admins and both dates per row. */
+/**
+ * 1440 px viewport: 1144 px content next to the rail; admins and both dates per row. The status
+ * column pushed the wide row with the subdomain column to 1150 px (see the threshold stories), so
+ * this story shows the single-domain installation.
+ */
 export const Desktop1440: Story = {
+    args: { showSubdomain: false },
     play: async (context) => {
         const canvas = await settle(context.canvasElement, 'wide');
         await meta.play?.(context);
@@ -147,17 +152,17 @@ const expectLayout =
     };
 
 // Boundaries (responsive-tables.md): at and just below each measured threshold.
-/** With the subdomain column: wide from 1070 px. */
-export const SubdomainAtWideThreshold: Story = { args: { width: 1070 }, play: expectLayout('wide') };
-export const SubdomainBelowWideThreshold: Story = { args: { width: 1069 }, play: expectLayout('tablet') };
+/** With the subdomain column: wide from 1150 px. */
+export const SubdomainAtWideThreshold: Story = { args: { width: 1150 }, play: expectLayout('wide') };
+export const SubdomainBelowWideThreshold: Story = { args: { width: 1149 }, play: expectLayout('tablet') };
 
-/** Single-domain installation without the subdomain column: wide from 940 px. */
+/** Single-domain installation without the subdomain column: wide from 1020 px. */
 export const SingleDomainAtWideThreshold: Story = {
-    args: { width: 940, showSubdomain: false },
+    args: { width: 1020, showSubdomain: false },
     play: expectLayout('wide'),
 };
 export const SingleDomainBelowWideThreshold: Story = {
-    args: { width: 939, showSubdomain: false },
+    args: { width: 1019, showSubdomain: false },
     play: expectLayout('tablet'),
 };
 

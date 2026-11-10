@@ -53,11 +53,12 @@ export interface TenantDataTableProps {
     ariaLabel: string;
 }
 
-// Measured in Storybook "Pages/Tenants/TenantList" (2026-11-01) on the list container, with long
-// names, subdomains and e-mails: the wide row needs 931px, 1061px with the subdomain column. The
+// Measured in Storybook "Pages/Tenants/TenantList" (2026-11-10) on the list container, with long
+// names, subdomains and e-mails: the wide row needs 1011px, 1141px with the subdomain column (the
+// status column, header plus cell padding, adds about 80px to the former 931px / 1061px). The
 // tablet row fits down to 400px; below 600px cards read better (same band as the accounts list).
 const PHONE_BELOW = 600;
-const WIDE_BASE = 940;
+const WIDE_BASE = 1020;
 const WIDE_SUBDOMAIN = 130;
 
 const adminsOf = (row: TenantRow) => (row.adminEmails ?? []).filter(Boolean);
