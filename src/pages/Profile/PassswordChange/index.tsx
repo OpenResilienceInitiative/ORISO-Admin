@@ -1,20 +1,30 @@
-import { Col, notification, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { RuleRender } from 'antd/es/form';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../components/Snackbar';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
+import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { TilePicture } from '../../../components/TileFill';
+import recoveryPicture from '../../../resources/img/tile-help/recovery.webp';
+import { ReactComponent as LockIcon } from '../../../resources/img/svg/lock.svg';
 import { validatePasswordCriteria } from '../../../utils/validateInputValue';
+import { PasswordChangeCounsellorNotice } from './PasswordChangeCounsellorNotice';
 import styles from './styles.module.scss';
 
 export const PasswordChange = () => {
     const { t } = useTranslation();
+    const { isCounsellor } = useUserRoles();
     const { mutate: updateData } = useUpdateUserPassword({
         onSuccess: () => {
-            notification.success({ message: t('profile.passwordChange.success') });
+            snackbar.success({
+                message: t('profile.passwordChange.success'),
+                description: isCounsellor ? t('profile.passwordChange.success.counsellor') : undefined,
+            });
         },
         onError: () => {
-            notification.error({ message: t('profile.passwordChange.error') });
+            snackbar.error({ message: t('profile.passwordChange.error') });
         },
     });
 
@@ -39,6 +49,8 @@ export const PasswordChange = () => {
     return (
         <CardEditable
             titleKey="profile.passwordChange.title"
+            headerIcon={<LockIcon />}
+            picture={<TilePicture src={recoveryPicture} />}
             subTitleKey="profile.passwordChange.info"
             saveKey="profile.passwordChange.save"
             onSave={(data, opts) => updateData(data as any, opts)}
@@ -47,6 +59,7 @@ export const PasswordChange = () => {
             {({ editing }) =>
                 editing && (
                     <>
+                        {isCounsellor && <PasswordChangeCounsellorNotice />}
                         <Row gutter={[16, 16]}>
                             <Col span={12} sm={6}>
                                 <FormInputPasswordField

@@ -58,7 +58,7 @@ const DialogExample = () => {
     const [selected, setSelected] = useState<string[]>(['2', '7']);
     return (
         <ConfigProvider theme={buildAdminAntdTheme()}>
-            <div style={{ minHeight: '100vh', background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+            <div style={{ minHeight: '100vh', background: 'var(--admin-workspace-background, #fcf9f9)' }}>
                 <Modal
                     title="Berater zuweisen"
                     icon={<PersonIcon />}

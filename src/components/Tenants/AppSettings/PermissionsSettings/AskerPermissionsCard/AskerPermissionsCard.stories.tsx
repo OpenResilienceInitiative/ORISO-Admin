@@ -1,11 +1,19 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
 import { AskerPermissionsCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
+import type { PolicyValue } from '../../../../../types/permissionPolicy';
 
+// The buttons write their decision back, so the story reacts to clicks like the real page.
 const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermissionsCard>) => {
-    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
-    return <AskerPermissionsCard {...args} openPolicyMenu={openPolicyMenu} onOpenPolicyMenu={setOpenPolicyMenu} />;
+    const [changes, setChanges] = useState<Record<string, PolicyValue<boolean>>>({});
+    return (
+        <AskerPermissionsCard
+            {...args}
+            permissionPolicies={{ ...args.permissionPolicies, ...changes }}
+            onPolicyChange={(field, policy) => setChanges((current) => ({ ...current, [field]: policy }))}
+        />
+    );
 };
 
 /**
@@ -24,7 +32,8 @@ const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermiss
  *   switch, so a Träger admin can see the choice exists and who holds it.
  */
 const meta = {
-    title: 'Tenants/Permissions/AskerPermissionsCard',
+    title: 'Settings/Einstellungen/Funktionszugriff/AskerPermissionsCard',
+    id: 'tenants-permissions-askerpermissionscard',
     component: AskerPermissionsCard,
     render: (args) => <ControlledAskerPermissionsCard {...args} />,
     tags: ['autodocs'],

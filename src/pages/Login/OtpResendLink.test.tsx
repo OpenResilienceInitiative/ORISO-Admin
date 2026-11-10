@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import OtpResendLink, {
     RESEND_ERROR_ALREADY_SHOWN,
@@ -68,8 +68,9 @@ describe('OtpResendLink', () => {
             link().click();
         });
 
+        // The failure is an error pop-up on the shared snackbar channel (outside the link's tile).
         expect(await screen.findByRole('alert')).toHaveTextContent('The code could not be requested.');
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(screen.queryByText(translations['login.otp.resend.requested'])).not.toBeInTheDocument();
     });
 
     it('stays quiet when the caller already named the reason itself, but still waits', async () => {

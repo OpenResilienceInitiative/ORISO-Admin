@@ -1,0 +1,139 @@
+.sections {
+    display: grid;
+    align-items: stretch;
+    gap: 16px;
+    container-type: inline-size;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.section {
+    --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
+    --input-label-bg: var(--m3-surface-container-lowest, #ffffff);
+
+    /* The panel surface follows the colour scheme, so the field text must too (it is a fixed #1b1b1c in app.css). */
+    --admin-form-field-text: var(--m3-on-surface, #1b1b1c);
+
+    /* Labels, helper text and placeholders follow the scheme too. app.css derives them from a fixed grey at the root,
+       which is 1.7:1 on the dark panel of the inverted scheme; in the light scheme the role is the same grey. */
+    --admin-form-muted-text: var(--m3-on-surface-variant, #444748);
+    --label-color: var(--m3-on-surface-variant, #444748);
+    --input-placeholder-color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 64%, transparent);
+
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+}
+
+.main {
+    display: flex;
+    min-width: 0;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.footer {
+    display: flex;
+    align-items: flex-start;
+    margin-top: auto;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    gap: 8px;
+    line-height: 20px;
+    padding-top: 12px;
+
+    svg {
+        flex: 0 0 auto;
+        color: var(--m3-primary, #a5000a);
+        font-size: 20px;
+    }
+}
+
+.picture {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    container-type: size;
+    pointer-events: none;
+}
+
+/* Absolute, so a panel without room gets no empty gap. */
+.pictureFrame {
+    position: absolute;
+    inset: 12px 0 0;
+}
+
+/* Below this a drawing is too small to tell anything. */
+@container (max-height: 83px) {
+    .pictureFrame {
+        display: none;
+    }
+}
+
+.stack {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 16px;
+
+    /* One above the other, the last panel gets all the rest, so its picture has room to show. */
+    > .section:first-child:not(:last-child) {
+        flex: 0 0 auto;
+    }
+}
+
+/* With three columns the short topics would leave two thirds of a row empty, so they fill it. */
+@container (min-width: 752px) and (max-width: 1007px) {
+    .stack:not(.stackColumn) {
+        flex-direction: row;
+        grid-column: 1 / -1;
+
+        > .section:first-child:not(:last-child),
+        > .section {
+            flex: 1 1 0;
+        }
+    }
+
+    .sectionBeside {
+        flex-direction: row;
+
+        .main {
+            flex: 1 1 0;
+        }
+
+        .picture {
+            flex: 0 1 40%;
+        }
+
+        .pictureFrame {
+            inset: 0 0 0 16px;
+        }
+    }
+}
+
+.heading {
+    display: flex;
+    min-height: 32px;
+    align-items: center;
+    gap: 4px;
+
+    h3 {
+        margin: 0;
+        color: var(--m3-on-surface, #1b1b1b);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 24px;
+    }
+}
+
+.note {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}

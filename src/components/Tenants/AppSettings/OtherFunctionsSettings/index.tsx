@@ -1,13 +1,17 @@
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
+import { TileSections } from '../../../TileSections';
+import { otherFunctionsHelp } from './help';
 import { FormSwitchField } from '../../../FormSwitchField';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 
+import { useSupervisionPrivacyConfirm } from '../../../SupervisionPrivacyConfirm';
 /**
  * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
  * conversation type of its own. It used to be wired as the master of the "groupInternal" chat-type
@@ -49,6 +53,8 @@ export const OtherFunctionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+    // OBP 2.1 #107: a supervisor reads along — ask about the privacy policy first.
+    const confirmSupervision = useSupervisionPrivacyConfirm();
     const extraI18nTopicKey = settings.multitenancyWithSingleDomainEnabled ? '.mtsd' : '';
     return (
         <CardEditable
@@ -56,82 +62,107 @@ export const OtherFunctionsSettings = ({
             initialValues={{ ...data }}
             titleKey="tenants.appSettings.otherFunctions.title"
             onSave={mutate}
+            variant="dialog"
+            editButtonPlacement="footer"
+            help={otherFunctionsHelp}
         >
-            {!hideTopics && (
-                <div className={styles.checkGroup}>
-                    <FormSwitchField
-                        labelKey={`tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.title`}
-                        name={['settings', 'featureTopicsEnabled']}
-                        inline
-                        disableLabels
-                    />
-                    <p className={styles.checkInfo}>
-                        {t(`tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.description`)}
-                    </p>
-                </div>
-            )}
-            {!hideStatistics && (
-                <div className={styles.checkGroup}>
-                    <FormSwitchField
-                        labelKey="tenants.appSettings.otherFunctions.statistics.title"
-                        name={['settings', 'featureStatisticsEnabled']}
-                        inline
-                        disableLabels
-                    />
-                    <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.statistics.description')}</p>
-                </div>
-            )}
-            {!hideGroupChatToggle && (
-                <div className={styles.checkGroup}>
-                    <FormSwitchField
-                        labelKey="tenants.appSettings.otherFunctions.groupChat.title"
-                        name={['settings', 'featureGroupChatV2Enabled']}
-                        inline
-                        disableLabels
-                    />
-                    <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.groupChat.description')}</p>
-                </div>
-            )}
-            <div className={styles.checkGroup}>
-                <FormSwitchField
-                    labelKey="tenants.appSettings.otherFunctions.supervision.title"
-                    name={['settings', 'featureSupervisionEnabled']}
-                    inline
-                    disableLabels
-                />
-                <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.supervision.description')}</p>
-            </div>
-            <>
-                {SUPERVISION_FEATURE_TOGGLES.map(({ labelKey, field }) => {
-                    const capabilityUnavailable =
-                        field === 'featureMediaAiScanSupervisionChatsEnabled' && !runtimeConfig.mediaAiScanAvailable;
-                    return (
-                        <div key={field} className={classNames(styles.checkGroup, styles.supervisionChild)}>
+            <TileSections>
+                <div className={styles.column}>
+                    <TileSections.Section id="other-general" title={t('tileHelp.otherFunctions.general.title')}>
+                        {!hideTopics && (
+                            <div className={styles.checkGroup}>
+                                <FormSwitchField
+                                    labelKey={`tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.title`}
+                                    name={['settings', 'featureTopicsEnabled']}
+                                    inline
+                                    disableLabels
+                                />
+                                <p className={styles.checkInfo}>
+                                    {t(
+                                        `tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.description`,
+                                    )}
+                                </p>
+                            </div>
+                        )}
+                        {!hideStatistics && (
+                            <div className={styles.checkGroup}>
+                                <FormSwitchField
+                                    labelKey="tenants.appSettings.otherFunctions.statistics.title"
+                                    name={['settings', 'featureStatisticsEnabled']}
+                                    inline
+                                    disableLabels
+                                />
+                                <p className={styles.checkInfo}>
+                                    {t('tenants.appSettings.otherFunctions.statistics.description')}
+                                </p>
+                            </div>
+                        )}
+                        {!hideGroupChatToggle && (
+                            <div className={styles.checkGroup}>
+                                <FormSwitchField
+                                    labelKey="tenants.appSettings.otherFunctions.groupChat.title"
+                                    name={['settings', 'featureGroupChatV2Enabled']}
+                                    inline
+                                    disableLabels
+                                />
+                                <p className={styles.checkInfo}>
+                                    {t('tenants.appSettings.otherFunctions.groupChat.description')}
+                                </p>
+                            </div>
+                        )}
+                    </TileSections.Section>
+                    <TileSections.Section id="other-team" title={t(TEAM_FUNCTIONS.chat.nameKey)}>
+                        {/* Same row as its siblings in this tile; name and description come from the shared source. */}
+                        <div className={styles.checkGroup}>
                             <FormSwitchField
-                                labelKey={labelKey}
-                                name={['settings', field]}
+                                labelKey={TEAM_FUNCTIONS.chat.nameKey}
+                                name={TEAM_FUNCTIONS.chat.field}
                                 inline
                                 disableLabels
-                                disabled={capabilityUnavailable}
                             />
-                            {capabilityUnavailable && (
-                                <p className={styles.checkInfo}>
-                                    {t('tenants.permissions.feature.mediaAiScanUnavailable')}
-                                </p>
-                            )}
+                            <p className={styles.checkInfo}>{t(TEAM_FUNCTIONS.chat.descriptionKey)}</p>
                         </div>
-                    );
-                })}
-            </>
-            <div className={styles.checkGroup}>
-                <FormSwitchField
-                    labelKey="tenants.appSettings.otherFunctions.teamDiscussion.title"
-                    name={['settings', 'featureTeamDiscussionEnabled']}
-                    inline
-                    disableLabels
-                />
-                <p className={styles.checkInfo}>{t('tenants.appSettings.otherFunctions.teamDiscussion.description')}</p>
-            </div>
+                    </TileSections.Section>
+                </div>
+                <TileSections.Section id="other-supervision" title={t('tileHelp.otherFunctions.supervision.title')}>
+                    <div className={styles.checkGroup}>
+                        <FormSwitchField
+                            labelKey="tenants.appSettings.otherFunctions.supervision.title"
+                            name={['settings', 'featureSupervisionEnabled']}
+                            inline
+                            disableLabels
+                            confirmEnable={confirmSupervision.confirmEnable}
+                        />
+                        <p className={styles.checkInfo}>
+                            {t('tenants.appSettings.otherFunctions.supervision.description')}
+                        </p>
+                        {confirmSupervision.dialog}
+                    </div>
+                    <>
+                        {SUPERVISION_FEATURE_TOGGLES.map(({ labelKey, field }) => {
+                            const capabilityUnavailable =
+                                field === 'featureMediaAiScanSupervisionChatsEnabled' &&
+                                !runtimeConfig.mediaAiScanAvailable;
+                            return (
+                                <div key={field} className={classNames(styles.checkGroup, styles.supervisionChild)}>
+                                    <FormSwitchField
+                                        labelKey={labelKey}
+                                        name={['settings', field]}
+                                        inline
+                                        disableLabels
+                                        disabled={capabilityUnavailable}
+                                    />
+                                    {capabilityUnavailable && (
+                                        <p className={styles.checkInfo}>
+                                            {t('tenants.permissions.feature.mediaAiScanUnavailable')}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </>
+                </TileSections.Section>
+            </TileSections>
         </CardEditable>
     );
 };

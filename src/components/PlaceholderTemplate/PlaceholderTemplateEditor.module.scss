@@ -34,7 +34,7 @@
     /* Absorbs the free space so the head reads icon → title on the left and
        keeps the template split button on the right edge. */
     margin: 0 auto 0 0;
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 18px;
     font-weight: 600;
     line-height: 1.3;
@@ -81,7 +81,7 @@
 }
 
 .fieldLabel {
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 14px;
     font-weight: 500;
 }
@@ -121,14 +121,14 @@
 .consentPreview {
     display: grid;
     padding: 16px 18px;
-    border: 1px solid var(--m3-outline-variant, #cac4d0);
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
     border-radius: 12px;
-    background: var(--m3-surface, #ffffff);
+    background: var(--m3-surface, #fcf9f9);
     gap: 10px;
 }
 
 .consentPreviewCaption {
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -143,7 +143,7 @@
 
 .consentSentence {
     padding-top: 9px;
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 15px;
     line-height: 1.55;
     overflow-wrap: anywhere;

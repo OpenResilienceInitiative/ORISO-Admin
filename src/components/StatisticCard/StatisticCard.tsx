@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ArrowDownward, ArrowUpward, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
-import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
-import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
+import { ArrowDownward, ArrowUpward, LockOutlined, MoreVert, NorthEast, SouthEast } from '@mui/icons-material';
+import cardStyles from '../Card/styles.module.scss';
 import { useAnimatedDisplayValue } from '../../pages/Statistic/useAnimatedDisplayValue';
 import type {
     CardMenuKey,
     IconTone,
     StatisticCardDefinition,
+    StatisticEmptyKind,
     SvgIcon,
     TrendBadgeDefinition,
     TrendDirection,
@@ -34,8 +34,10 @@ const translateDashboardKey = (
     options: Record<string, unknown> = {},
 ) => translate(key, { defaultValue, ...options });
 
-const getCardClassName = (card: StatisticCardDefinition) =>
-    `statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}`;
+const getCardClassName = (card: StatisticCardDefinition, emptyKind?: StatisticEmptyKind) =>
+    `${cardStyles.card} statisticDashboard__metricCard statisticDashboard__metricCard--${card.size}${
+        emptyKind ? ` statisticDashboard__metricCard--${emptyKind}` : ''
+    }`;
 
 const getTrendClassName = (tone: TrendScoreTone) => `statisticDashboard__trend statisticDashboard__trend--${tone}`;
 
@@ -99,24 +101,13 @@ const getTrendIcon = (direction: TrendDirection) => {
     }
 };
 
-const getEffectiveIconTone = (icon: SvgIcon, tone?: IconTone) => {
-    if (icon === RequestsIcon) {
-        return tone || 'muted';
-    }
-
-    if (icon === ConversationsIcon && tone === 'muted') {
-        return undefined;
-    }
-
-    return tone;
-};
-
 export const AnimatedValue = ({ locale = 'de-DE', value }: { locale?: string; value: string }) => (
-    <>{useAnimatedDisplayValue(value, 2800, locale)}</>
+    <>{useAnimatedDisplayValue(value, 480, locale)}</>
 );
 
 const MetricIcon = ({ icon: Icon, tone }: { icon: SvgIcon; tone?: IconTone }) => (
-    <span className={getIconClassName(getEffectiveIconTone(Icon, tone))} aria-hidden="true">
+    // Every glyph sits monochrome in the same neutral circle (ORISO-Admin#1374).
+    <span className={getIconClassName(tone)} aria-hidden="true">
         <Icon />
     </span>
 );
@@ -155,6 +146,76 @@ const TrendBadge = ({
     );
 };
 
+const CardValueRow = ({
+    detail,
+    emptyHint,
+    emptyKind,
+    locale,
+    translate,
+    trend,
+    value,
+}: {
+    detail?: string;
+    emptyHint?: string;
+    emptyKind?: StatisticEmptyKind;
+    locale: string;
+    translate: DashboardTranslate;
+    trend?: TrendBadgeDefinition;
+    value: string;
+}) => {
+    if (emptyKind === 'protected' || emptyKind === 'notTracked') {
+        // No dash: the hint itself says why there is no figure, so the card does not look broken.
+        return (
+            <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                {/* A dashed trend line marks where the figure will appear once it may be shown. */}
+                {emptyKind === 'protected' && (
+                    <svg
+                        className="statisticDashboard__cardSparkline"
+                        viewBox="0 0 240 36"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                        focusable="false"
+                    >
+                        <path d="M0 28 L30 24 L60 26 L90 18 L120 20 L150 12 L180 16 L210 8 L240 10" />
+                    </svg>
+                )}
+                <p className="statisticDashboard__cardEmptyState">
+                    {emptyKind === 'protected' && (
+                        <LockOutlined
+                            aria-hidden="true"
+                            focusable="false"
+                            data-testid="statistic-card-protected-icon"
+                        />
+                    )}
+                    <span>{emptyHint}</span>
+                </p>
+            </div>
+        );
+    }
+
+    if (emptyHint) {
+        return (
+            <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
+                {/* Screen readers get the explicit wording; the dash is purely visual. */}
+                <strong aria-label={value}>
+                    <span aria-hidden="true">–</span>
+                </strong>
+                <span className="statisticDashboard__cardEmptyHint">{emptyHint}</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="statisticDashboard__cardValueRow">
+            <strong>
+                <AnimatedValue locale={locale} value={value} />
+            </strong>
+            <TrendBadge locale={locale} translate={translate} trend={trend} />
+            {detail && <span className="statisticDashboard__cardDetail">{detail}</span>}
+        </div>
+    );
+};
+
 export interface StatisticCardProps {
     card: StatisticCardDefinition;
     locale: string;
@@ -175,6 +236,9 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
     const displayDetail = selectedMenuOption?.detail ?? card.detail;
     const displayTrend = selectedMenuOption?.trend || card.trend;
     const displayEmptyHint = selectedMenuOption ? selectedMenuOption.emptyHint : card.emptyHint;
+    const displayEmptyKind: StatisticEmptyKind | undefined = displayEmptyHint
+        ? (selectedMenuOption ? selectedMenuOption.emptyKind : card.emptyKind) ?? 'pending'
+        : undefined;
     const DisplayIcon = selectedMenuOption?.icon || card.icon;
     const displayIconTone = selectedMenuOption?.iconTone ?? card.iconTone;
     const menuLabel =
@@ -192,7 +256,9 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
 
     return (
         <section
-            className={`${getCardClassName(card)} ${isMenuOpen ? 'statisticDashboard__metricCard--menuOpen' : ''}`}
+            className={`${getCardClassName(card, displayEmptyKind)} ${
+                isMenuOpen ? 'statisticDashboard__metricCard--menuOpen' : ''
+            }`}
             data-card-key={card.key}
         >
             <div
@@ -267,23 +333,15 @@ export const StatisticCard = ({ card, locale, menuValue, onMenuChange, translate
                 )}
             </div>
 
-            {displayEmptyHint ? (
-                <div className="statisticDashboard__cardValueRow statisticDashboard__cardValueRow--empty">
-                    {/* Screen readers get the explicit wording; the dash is purely visual. */}
-                    <strong aria-label={displayValue}>
-                        <span aria-hidden="true">–</span>
-                    </strong>
-                    <span className="statisticDashboard__cardEmptyHint">{displayEmptyHint}</span>
-                </div>
-            ) : (
-                <div className="statisticDashboard__cardValueRow">
-                    <strong>
-                        <AnimatedValue locale={locale} value={displayValue} />
-                    </strong>
-                    <TrendBadge locale={locale} translate={translate} trend={displayTrend} />
-                    {displayDetail && <span className="statisticDashboard__cardDetail">{displayDetail}</span>}
-                </div>
-            )}
+            <CardValueRow
+                detail={displayDetail}
+                emptyHint={displayEmptyHint}
+                emptyKind={displayEmptyKind}
+                locale={locale}
+                translate={translate}
+                trend={displayTrend}
+                value={displayValue}
+            />
         </section>
     );
 };

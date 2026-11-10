@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
     refresh: vi.fn(),
@@ -34,7 +34,6 @@ vi.mock('../../appConfig', () => ({
     CSRF_WHITELIST_HEADER: '',
 }));
 vi.mock('../../utils/generateCsrfToken', () => ({ default: () => 'csrf' }));
-vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { language: 'de', t: (key: string) => key } }));
 
 // These tests run the real expiry timer, 401 retry and logout cleanup together.

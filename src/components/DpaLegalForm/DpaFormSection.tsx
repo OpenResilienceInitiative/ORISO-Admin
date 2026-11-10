@@ -1,5 +1,4 @@
 import classNames from 'classnames';
-import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import FormHelperText from '@mui/material/FormHelperText';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +7,7 @@ import { MuiFormField } from '../mui/MuiFormField';
 import type { DpaUnavailableReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { DpaLegalReader } from './DpaLegalReader';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 /**
  * What to tell the user when there is no agreement to show. The reasons have
@@ -129,15 +129,14 @@ export const DpaFormSection = ({
         const messageKey = (unavailableReason && UNAVAILABLE_MESSAGE_KEY[unavailableReason]) ?? null;
         return (
             <>
-                <Alert
-                    severity="error"
-                    role="alert"
+                <HintText
+                    tone="error"
                     data-testid="dpa-content-unavailable"
                     data-unavailable-reason={unavailableReason ?? undefined}
-                    sx={{ mb: 2 }}
+                    style={{ marginBottom: 16 }}
                 >
                     {t(messageKey ?? 'tenantOnboarding.dpa.unavailable')}
-                </Alert>
+                </HintText>
                 {/* The host's own block is NOT part of the signature — it must
                     survive the withdrawn signing block, or the wizard would
                     lose its organisation fields with the agreement. */}

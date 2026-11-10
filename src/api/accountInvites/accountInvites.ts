@@ -3,6 +3,7 @@ import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 import { withUtcInstants } from '../../utils/backendInstant';
 import type { AllocationMode } from '../idAllocation/idAllocation';
 import type { OnboardingPurpose } from '../tenantOnboarding/tenantOnboarding';
+import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 
 export type AccountInviteTargetRole =
     | 'TENANT_ADMIN'
@@ -41,6 +42,10 @@ export interface AccountInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
+    /** The inviting admin's suggestion for the counsellor profile (#1274); null = none. */
+    avatarKind?: CounsellorAvatarKind | null;
+    avatarId?: string | null;
+    displayName?: string | null;
     agencyId: number | null;
     departmentId: number | null;
     provisioningStatus: string | null;
@@ -121,6 +126,13 @@ export interface CreateAccountInviteRequest {
     recipientEmail: string;
     firstName?: string;
     lastName?: string;
+    /**
+     * Optional suggestion for the invitee's profile (#1274). `avatarId` is the motif id and
+     * only goes with `avatarKind: 'ICON'`. The invitee can change both on the account page.
+     */
+    avatarKind?: CounsellorAvatarKind;
+    avatarId?: string;
+    displayName?: string;
     agencyId?: number;
     /** Same contract for the agency id space (AgencyService, U2). */
     agencyIdAllocationMode?: AllocationMode;
@@ -149,6 +161,10 @@ export interface ListAccountInvitesParams {
     targetRole?: AccountInviteTargetRole;
     status?: AccountInviteStatus;
     tenantId?: number;
+    query?: string;
+    progressPhases?: InviteProgressPhase[];
+    sort?: 'recipient' | 'invitedAt';
+    sortDirection?: 'asc' | 'desc';
 }
 
 export interface InviteEmailTemplateDTO {
@@ -264,6 +280,15 @@ export const listAccountInvites = async (
     if (params.targetRole) search.set('target_role', params.targetRole);
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
+    if (params.query?.trim()) search.set('query', params.query.trim());
+    if (params.progressPhases?.length) {
+        search.set(
+            params.progressPhases.length > 1 ? 'progress_phases' : 'progress_phase',
+            params.progressPhases.join(','),
+        );
+    }
+    if (params.sort) search.set('sort', params.sort);
+    if (params.sortDirection) search.set('sort_direction', params.sortDirection);
 
     return withUtcInstants(
         await fetchData({

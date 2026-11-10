@@ -8,8 +8,10 @@ import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInv
 import previewDe from '../../components/EmailPreview/fixtures/invite-long-content-de.html?raw';
 import previewEn from '../../components/EmailPreview/fixtures/invite-platform-en.html?raw';
 import { UserRole } from '../../enums/UserRole';
+import { findPopup, popupsOf } from '../../test/storyPopups';
 import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
+import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
 
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
 
@@ -251,9 +253,43 @@ export const Loading: Story = {
 };
 
 /** Backend failure (500) — the load fails with the translated error message. */
+let templateRequests = 0;
+let templatesRecovered = false;
 export const Error: Story = {
     parameters: {
-        msw: { handlers: [http.get(TEMPLATES_ENDPOINT, () => new HttpResponse(null, { status: 500 }))] },
+        msw: {
+            handlers: [
+                http.get(TEMPLATES_ENDPOINT, ({ request }) => {
+                    templateRequests += 1;
+                    return templatesRecovered
+                        ? emptyUnlessBerater(request) ??
+                              HttpResponse.json(TEMPLATES.filter((template) => template.kind === 'COUNSELLOR_INVITE'))
+                        : new HttpResponse(null, { status: 500 });
+                }),
+            ],
+        },
+    },
+    beforeEach: () => {
+        templateRequests = 0;
+        templatesRecovered = false;
+    },
+    // U3: opening the dialog raises one error pop-up with "Erneut versuchen"; the list keeps quiet text.
+    // The retry asks again (a second request) and the list fills.
+    play: async ({ canvasElement }) => {
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Vorlagen verwalten' }));
+        const popup = await findPopup(canvasElement, 'Vorlagen konnten nicht geladen werden', 'error');
+        await expect(popup).toHaveTextContent('Einladungen');
+        await expect(
+            within(canvasElement.ownerDocument.body).getByText('Dieser Bereich konnte nicht geladen werden.'),
+        ).toBeInTheDocument();
+        const before = templateRequests;
+        templatesRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(templateRequests).toBeGreaterThan(before));
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+        await expect(
+            await within(canvasElement.ownerDocument.body).findByText('Berater-Willkommen'),
+        ).toBeInTheDocument();
     },
 };
 

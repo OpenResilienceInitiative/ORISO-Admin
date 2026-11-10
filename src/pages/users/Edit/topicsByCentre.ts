@@ -1,0 +1,225 @@
+import { Option } from '../../../components/mui/MuiSelectField';
+
+export interface CentreWithTopics {
+    id: number | string;
+    name?: string;
+    postcode?: string;
+    city?: string;
+    topics?: Array<{ id: number | string | null; name?: string }>;
+}
+
+/** Server shape (#1264). An entry without agencyId is a legacy assignment valid at every centre. */
+export interface AgencyTopicsEntry {
+    agencyId?: number | string | null;
+    topicIds?: Array<number | string>;
+}
+
+export interface StoredTopics {
+    topicsByAgency?: AgencyTopicsEntry[];
+    topics?: Array<{ id: number | string | null }>;
+}
+
+/** Form value: picked topics keyed by centre id. */
+export type TopicsByCentre = Record<string, Array<Option | string> | undefined>;
+
+export interface TopicsLostByMove {
+    topics: Option[];
+    target: CentreWithTopics;
+}
+
+export const idOf = (entry: Option | string) => String(typeof entry === 'string' ? entry : entry.value);
+
+export const centreTopicOptions = (centre?: CentreWithTopics): Option[] =>
+    (centre?.topics ?? [])
+        .filter((topic) => topic.id !== null && topic.id !== undefined)
+        .map((topic) => ({ value: String(topic.id), label: topic.name ?? String(topic.id) }));
+
+export const centreLabel = (centre: CentreWithTopics): string => {
+    const place = [centre.postcode, centre.city].filter(Boolean).join(' ');
+    return place ? `${centre.name} (${place})` : `${centre.name}`;
+};
+
+export const findCentre = (centres: CentreWithTopics[], id: string) =>
+    centres.find((centre) => String(centre.id) === String(id));
+
+/**
+ * Pre-fills each assigned centre with its stored topics. Legacy entries, and the flat list an
+ * older server returns, fill every centre that offers them. A stored topic the centre no longer
+ * offers stays in (after the offered ones) so a save cannot drop it unseen; so does a legacy
+ * topic no assigned centre offers.
+ */
+export const initialTopicsByCentre = (
+    centreIds: string[],
+    centres: CentreWithTopics[],
+    stored: StoredTopics,
+    topicName: (id: string) => string | undefined = () => undefined,
+): Record<string, Option[]> => {
+    const perCentre = new Map<string, Set<string>>();
+    const legacy = new Set<string>();
+
+    if (Array.isArray(stored.topicsByAgency)) {
+        stored.topicsByAgency.forEach(({ agencyId, topicIds = [] }) => {
+            const ids = topicIds.map(String);
+            if (agencyId === null || agencyId === undefined) {
+                ids.forEach((id) => legacy.add(id));
+                return;
+            }
+            const key = String(agencyId);
+            perCentre.set(key, new Set([...(perCentre.get(key) ?? []), ...ids]));
+        });
+    } else {
+        (stored.topics ?? []).forEach(({ id }) => id !== null && id !== undefined && legacy.add(String(id)));
+    }
+
+    const offeredAnywhere = new Set(
+        centreIds.flatMap((centreId) => centreTopicOptions(findCentre(centres, centreId)).map(({ value }) => value)),
+    );
+    const orphanLegacy = [...legacy].filter((id) => !offeredAnywhere.has(id));
+
+    return Object.fromEntries(
+        centreIds.map((centreId) => {
+            const held = new Set([...(perCentre.get(centreId) ?? []), ...legacy]);
+            const offered = centreTopicOptions(findCentre(centres, centreId));
+            const offeredIds = new Set(offered.map(({ value }) => value));
+            const dropped = [...(perCentre.get(centreId) ?? []), ...orphanLegacy]
+                .filter((id, index, all) => !offeredIds.has(id) && all.indexOf(id) === index)
+                .map((id) => ({ value: id, label: topicName(id) ?? id }));
+            return [centreId, [...offered.filter(({ value }) => held.has(value)), ...dropped]];
+        }),
+    );
+};
+
+/** Picked topics the centre does not offer (any more). */
+export const notOfferedAt = (centre: CentreWithTopics | undefined, picked: Array<Option | string> = []): string[] => {
+    if (!centre) {
+        return [];
+    }
+    const offered = new Set(centreTopicOptions(centre).map(({ value }) => value));
+    return picked.map(idOf).filter((id) => !offered.has(id));
+};
+
+/** Whether the centres or any centre's topics differ from what was loaded. */
+export const topicsChanged = (
+    initial: { ids: string[]; byCentre: Record<string, Option[]> },
+    centreIds: string[],
+    byCentre: TopicsByCentre = {},
+): boolean => {
+    const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((id) => b.includes(id));
+    if (!sameSet(initial.ids, centreIds)) {
+        return true;
+    }
+    return centreIds.some(
+        (id) => !sameSet((initial.byCentre[id] ?? []).map(idOf), [...new Set((byCentre[id] ?? []).map(idOf))]),
+    );
+};
+
+/**
+ * A flat topic list is stored at every centre that offers the topic. Per centre, the listed topics
+ * it offers but the admin did not pick there, which such a save would add there unseen.
+ */
+export const topicsMissingFromFlatList = (
+    centreIds: string[],
+    byCentre: TopicsByCentre,
+    centres: CentreWithTopics[],
+): Record<string, Option[]> => {
+    const listed = new Set(centreIds.flatMap((centreId) => (byCentre[centreId] ?? []).map(idOf)));
+    return Object.fromEntries(
+        centreIds
+            .map((centreId) => {
+                const picked = new Set((byCentre[centreId] ?? []).map(idOf));
+                const missing = centreTopicOptions(findCentre(centres, centreId)).filter(
+                    ({ value }) => listed.has(value) && !picked.has(value),
+                );
+                return [centreId, missing] as const;
+            })
+            .filter(([, missing]) => missing.length > 0),
+    );
+};
+
+export const buildTopicsPayload = (centreIds: string[], byCentre: TopicsByCentre = {}) => {
+    const topicsByAgency = centreIds.map((centreId) => ({
+        agencyId: Number(centreId),
+        topicIds: (byCentre[centreId] ?? []).map((entry) => Number(idOf(entry))),
+    }));
+    const topicIds = [...new Set(topicsByAgency.flatMap((entry) => entry.topicIds))].map(String);
+    return { topicIds, topicsByAgency };
+};
+
+/**
+ * A move keeps what the new centre offers: per added centre, the topics it offers that a removed
+ * centre still held (`byCentre` keeps a removed centre's last selection). Leaves out what the added
+ * centre's picker holds or held: one it no longer holds was removed there by hand.
+ */
+export const topicsCarriedByMove = ({
+    initialCentreIds,
+    centreIds,
+    byCentre,
+    heldByPicker,
+    centres,
+}: {
+    initialCentreIds: string[];
+    centreIds: string[];
+    byCentre: TopicsByCentre;
+    heldByPicker: Record<string, Set<string>>;
+    centres: CentreWithTopics[];
+}): Record<string, Option[]> => {
+    const removed = initialCentreIds.filter((id) => !centreIds.includes(id));
+    const held = new Set(removed.flatMap((id) => (byCentre[id] ?? []).map(idOf)));
+    return Object.fromEntries(
+        centreIds
+            .filter((id) => !initialCentreIds.includes(id))
+            .map((id) => {
+                const there = new Set([...(heldByPicker[id] ?? []), ...(byCentre[id] ?? []).map(idOf)]);
+                const carried = centreTopicOptions(findCentre(centres, id)).filter(
+                    ({ value }) => held.has(value) && !there.has(value),
+                );
+                return [id, carried] as const;
+            })
+            .filter(([, carried]) => carried.length > 0),
+    );
+};
+
+/**
+ * A move = a centre removed and another added. Returns the topics a removed centre still held (its
+ * last selection) that survive nowhere and that no added centre offers, plus the first added centre
+ * as target. What an added centre offers was pre-selected there (topicsCarriedByMove); if missing,
+ * the admin removed it.
+ */
+export const findTopicsLostByMove = ({
+    initialCentreIds,
+    centreIds,
+    initialByCentre,
+    byCentre,
+    centres,
+}: {
+    initialCentreIds: string[];
+    centreIds: string[];
+    initialByCentre: Record<string, Option[]>;
+    byCentre: TopicsByCentre;
+    centres: CentreWithTopics[];
+}): TopicsLostByMove | null => {
+    const removed = initialCentreIds.filter((id) => !centreIds.includes(id));
+    const added = centreIds.filter((id) => !initialCentreIds.includes(id));
+    const target = added.map((id) => findCentre(centres, id)).find(Boolean);
+    if (removed.length === 0 || !target) {
+        return null;
+    }
+
+    const kept = new Set(centreIds.flatMap((id) => (byCentre[id] ?? []).map(idOf)));
+    const offeredByAdded = new Set(
+        added.flatMap((id) => centreTopicOptions(findCentre(centres, id)).map(({ value }) => value)),
+    );
+    const lost = new Map<string, Option>();
+    removed.forEach((id) => {
+        // Named as loaded or listed: a picked chip of a dropped topic carries its notice text instead.
+        const named = [...(initialByCentre[id] ?? []), ...centreTopicOptions(findCentre(centres, id))];
+        (byCentre[id] ?? [])
+            .map(idOf)
+            .filter((topicId) => !kept.has(topicId) && !offeredByAdded.has(topicId))
+            .forEach((topicId) =>
+                lost.set(topicId, named.find(({ value }) => value === topicId) ?? { value: topicId, label: topicId }),
+            );
+    });
+
+    return lost.size > 0 ? { topics: [...lost.values()], target } : null;
+};

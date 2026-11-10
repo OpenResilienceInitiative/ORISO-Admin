@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import i18n from '../../../../../i18n';
 import { AskerPermissionsCard } from './index';
 
@@ -69,18 +69,26 @@ const expectations = {
         'መርበብ መርኣዪ ንጉጅለታት ርእሰ-ሓገዝ',
     ],
 } as const;
+// FE#1725: the card shows channel switches only for tiles hidden on the page.
+const ALL_CHANNELS = ['AgencyCounselling', 'LiveChat', 'SelfHelp'].flatMap((context) =>
+    ['email', 'browser'].map((channel) => ({
+        field: `featureAsker${channel === 'email' ? 'Email' : 'Browser'}${context}Enabled`,
+        labelKey: `tenants.permissions.asker.channels.${channel}${context}`,
+    })),
+);
 afterEach(cleanup);
 describe('conversation notification policy labels', () => {
     it.each(Object.entries(expectations))('renders all seven new feature strings in %s', async (language, labels) => {
         await i18n.changeLanguage(language);
         render(
             <I18nextProvider i18n={i18n}>
-                <AskerPermissionsCard restrictedFields={new Set()} />
+                <AskerPermissionsCard restrictedFields={new Set()} channelToggles={ALL_CHANNELS} />
             </I18nextProvider>,
         );
         expect(screen.getByRole('heading', { name: labels[0] })).toBeTruthy();
         labels.slice(1).forEach((label) => {
-            expect(screen.getByRole('button', { name: new RegExp(`^${label}:`) })).toBeTruthy();
+            // Every setting has two buttons: the round on/off button and the requirement lock.
+            expect(screen.getAllByRole('button', { name: new RegExp(`^${label}:`) })).toHaveLength(2);
         });
     });
 });

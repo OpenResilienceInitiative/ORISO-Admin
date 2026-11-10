@@ -18,9 +18,7 @@
     margin: -8px 0 24px;
 }
 
-.warning:global(.ant-alert.ant-alert-warning) {
-    padding: 14px 16px;
-
+.warning {
     & + div {
         margin-top: 24px;
     }

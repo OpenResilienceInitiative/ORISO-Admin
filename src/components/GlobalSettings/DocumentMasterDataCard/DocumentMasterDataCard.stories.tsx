@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { CardGrid } from '../../CardGrid';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { DocumentMasterDataCard } from './index';
 import { DpiaMasterData } from '../../../types/dpiaMasterData';
 
@@ -32,10 +34,11 @@ const filled: DpiaMasterData = {
 };
 
 const meta = {
-    title: 'Organisms/GlobalSettings/DocumentMasterDataCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/DocumentMasterDataCard',
+    id: 'organisms-globalsettings-documentmasterdatacard',
     component: DocumentMasterDataCard,
     parameters: { layout: 'padded' },
-    args: { onSave: () => undefined },
+    args: { data: filled, onSave: () => undefined },
 } satisfies Meta<typeof DocumentMasterDataCard>;
 
 export default meta;
@@ -72,4 +75,22 @@ export const GdprFramework: Story = {
             },
         },
     },
+};
+
+/** As it sits on the page, so the use of the free space shows. Narrow the viewport to see it adapt. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item span={3}>
+                <DocumentMasterDataCard {...args} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
+};
+
+/** The explanation behind the info button, one slide after the other. */
+export const HelpSlideshow: Story = {
+    ...InTheRaster,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

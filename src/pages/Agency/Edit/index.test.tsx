@@ -1,9 +1,13 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Form, notification } from 'antd';
+import { Form } from 'antd';
+import { snackbar as notification } from '../../../components/Snackbar';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
+import { UserRole } from '../../../enums/UserRole';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -26,12 +30,13 @@ const mocks = vi.hoisted(() => ({
     isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    canCreateAgency: true,
     userRoles: {
         hasRole: () => true,
         isSuperAdmin: true,
         isTechnicalAccount: false,
         isTenantScopedAdmin: false,
-        roles: [],
+        roles: [] as UserRole[],
         tenantId: 0,
     },
     dpaGate: { dpaPublished: true, dpaSigned: true },
@@ -41,13 +46,37 @@ const mocks = vi.hoisted(() => ({
     tenantTopics: [] as Array<{ id: number; name: string; status: string }>,
     consultants: [] as Array<{ id: number; firstname: string; lastname: string; email: string }>,
     hasConsultants: false,
+    consultantSearchFilters: [] as Array<unknown>,
+    consultantSearchCalls: [] as Array<{ filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }>,
+    consultantSearchFailed: false,
+    // Per Träger (the `tenantId` filter of the request): its search has not answered yet or failed.
+    consultantSearchByTenant: {} as Record<string, 'pending' | 'failed'>,
+    consultantSearchRefetch: vi.fn(),
+    // Mounted copies of the mocked search hook, so a test can make a retry re-render them.
+    consultantSearchListeners: new Set<() => void>(),
+    authTenantId: 0,
     cardSaveOnError: vi.fn(),
     legalForm: {
         setFields: vi.fn(),
         scrollToField: vi.fn(),
+        // The responsible card renders the responsible contact, so the service error lands there.
+        getFieldsValue: () => ({
+            dataProtection: { agencyDataProtectionResponsibleContact: { nameAndLegalForm: undefined } },
+        }),
     },
     agencyLegalProps: undefined as any,
+    agencyTabs: undefined as Array<{ to: string; titleKey: string } | false | null> | undefined,
 }));
+
+beforeEach(() => {
+    mocks.canCreateAgency = true;
+    mocks.consultantSearchFilters = [];
+    mocks.consultantSearchCalls = [];
+    mocks.consultantSearchFailed = false;
+    mocks.consultantSearchByTenant = {};
+    mocks.consultantSearchRefetch.mockReset();
+    mocks.authTenantId = 0;
+});
 
 const translations: Record<string, string> = {
     'agency.edit.general.headline': 'Zur Übersicht',
@@ -65,6 +94,12 @@ const translations: Record<string, string> = {
     'agency.form.registrationSettings.onlineWarning': 'Beratungsstelle sichtbar machen',
     'agency.form.registrationSettings.onlineDescription': 'Sichtbar stellen',
     'agency.form.registrationSettings.consultants.label': 'Berater:innen hinzufügen',
+    'agency.form.registrationSettings.consultants.selectTenantFirst':
+        'Wählen Sie zuerst die Trägerzuordnung, dann können Sie Berater:innen dieses Trägers zuweisen.',
+    'agency.form.registrationSettings.consultants.loadError': 'Die Berater:innen konnten nicht geladen werden.',
+    'agency.form.registrationSettings.consultants.retry': 'Erneut laden',
+    'agency.form.registrationSettings.consultants.noneInTenant':
+        'In diesem Träger gibt es keine weiteren Berater:innen zur Auswahl.',
     'agency.form.registrationSettings.onlineNeedsConsultant':
         'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.',
     'agency.form.registrationSettings.noTopicConfirm.title': 'Kein Thema ausgewählt',
@@ -84,6 +119,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
     'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -108,10 +144,13 @@ vi.mock('../../../components/Page', () => {
     Page.BackWithActions = function PageBackWithActions({
         children,
         title,
+        tabs,
     }: {
         children: React.ReactNode;
         title?: React.ReactNode;
+        tabs?: typeof mocks.agencyTabs;
     }) {
+        mocks.agencyTabs = tabs;
         return (
             <div>
                 <h1>{title}</h1>
@@ -142,13 +181,17 @@ vi.mock('../../../components/CardEditable', () => ({
     }: {
         children: any;
         initialValues?: object;
-        onSave?: (data: unknown, options: { onError: () => void }) => void;
+        onSave?: (data: unknown, options: { onError: () => void; form: unknown }) => void;
         titleKey?: string;
     }) {
+        // The real card hands its own form instance to onSave, so service field errors can
+        // land on it. Mirror that, or a field missing from the card is not observable.
+        const [form] = Form.useForm();
         return (
             <Form
+                form={form}
                 initialValues={initialValues}
-                onFinish={(values) => onSave?.(values, { onError: mocks.cardSaveOnError })}
+                onFinish={(values) => onSave?.(values, { onError: mocks.cardSaveOnError, form })}
             >
                 {typeof children === 'function'
                     ? children({ editing: true, form: undefined, startEditing: vi.fn() })
@@ -240,11 +283,42 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
-    useConsultantsOrAdminsData: () => ({ data: { data: mocks.consultants }, isLoading: false }),
+    useConsultantsOrAdminsData: (props: { filters?: unknown; enabled?: boolean; rethrowOnFailure?: boolean }) => {
+        const [, rerender] = React.useReducer((count: number) => count + 1, 0);
+        React.useEffect(() => {
+            mocks.consultantSearchListeners.add(rerender);
+            return () => {
+                mocks.consultantSearchListeners.delete(rerender);
+            };
+        }, []);
+        mocks.consultantSearchFilters.push(props.filters);
+        mocks.consultantSearchCalls.push(props);
+        const tenantKey = String((props.filters as { tenantId?: string } | undefined)?.tenantId);
+        const byTenant = props.enabled !== false ? mocks.consultantSearchByTenant[tenantKey] : undefined;
+        if (byTenant === 'pending') {
+            return { data: undefined, isLoading: true, isError: false, refetch: mocks.consultantSearchRefetch };
+        }
+        // A disabled query has no data; a failed one (rethrowOnFailure) has none either.
+        const failed = byTenant === 'failed' || (mocks.consultantSearchFailed && props.rethrowOnFailure);
+        const hasData = props.enabled !== false && !failed;
+        return {
+            data: hasData ? { data: mocks.consultants } : undefined,
+            isLoading: false,
+            isError: props.enabled !== false && (byTenant === 'failed' || mocks.consultantSearchFailed),
+            refetch: mocks.consultantSearchRefetch,
+        };
+    },
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => mocks.userRoles,
+}));
+
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: PermissionAction, resource: Resource) =>
+            action === PermissionAction.Create && resource === Resource.Agency && mocks.canCreateAgency,
+    }),
 }));
 
 vi.mock('../../../hooks/useDpaGate.hook', () => ({
@@ -262,31 +336,8 @@ vi.mock('../../../components/CreateConsultantModal', () => ({
     },
 }));
 
-beforeAll(() => {
-    // The create flow now lays its cards out with CardDeck, whose mount effect
-    // calls deck.scrollTo — not implemented in jsdom. Stub it (as the CardDeck
-    // component's own test does) so the effect doesn't throw.
-    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
-        configurable: true,
-        value: vi.fn(),
-    });
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            addEventListener: vi.fn(),
-            addListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-            matches: false,
-            media: query,
-            onchange: null,
-            removeEventListener: vi.fn(),
-            removeListener: vi.fn(),
-        })),
-    });
-});
-
 vi.mock('../../../utils/parseUserAuthInfo', () => ({
-    parseUserAuthInfo: () => ({ tenantId: 0 }),
+    parseUserAuthInfo: () => ({ tenantId: mocks.authTenantId }),
 }));
 
 describe('AgencyPageEdit create flow', () => {
@@ -330,11 +381,36 @@ describe('AgencyPageEdit create flow', () => {
         // <legend>), so a plain text query matches both.
         expect(await screen.findByLabelText('Trägerzuordnung *')).toBeInTheDocument();
         // #620: create flow lays its three cards out in the responsive CardGrid —
-        // cards share the row width and wrap/stack below the floor. The fixed-width
-        // horizontal CardDeck must be gone from the create surface.
+        // cards share the row width and wrap/stack below the floor.
         expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
-        expect(container.querySelector('[data-admin-card-deck]')).not.toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
+    });
+
+    it('denies the direct add route without the agency creation permission', () => {
+        mocks.canCreateAgency = false;
+        mocks.userRoles = {
+            ...mocks.userRoles,
+            isSuperAdmin: false,
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            tenantId: 2,
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing agency readable without the agency creation permission', async () => {
+        mocks.canCreateAgency = false;
+        mocks.routeId = '2';
+        mocks.agencyData = { id: 2, name: 'Springfield QA Dev Beratungsstelle', tenantId: 2 };
+
+        await act(async () => renderWithClient(<AgencyPageEdit />));
+
+        expect(screen.getByRole('heading', { name: 'Springfield QA Dev Beratungsstelle' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Schade!' })).not.toBeInTheDocument();
     });
 
     it('does not submit a new agency without a selected tenant', async () => {
@@ -371,7 +447,6 @@ describe('AgencyPageEdit create flow', () => {
                     message:
                         'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
                     description: 'Trägerzuordnung',
-                    duration: 8,
                 }),
             { timeout: 5000 },
         );
@@ -505,7 +580,7 @@ describe('AgencyPageEdit create flow', () => {
         await expect(
             mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
         ).rejects.toBe(rejection);
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 
@@ -559,7 +634,7 @@ describe('AgencyPageEdit create flow', () => {
             }),
         );
 
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 });
@@ -626,6 +701,11 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.tenantTopics = [];
         mocks.consultants = [];
         mocks.hasConsultants = false;
+        mocks.consultantSearchFilters = [];
+        mocks.consultantSearchCalls = [];
+        mocks.consultantSearchFailed = false;
+        mocks.consultantSearchRefetch.mockReset();
+        mocks.authTenantId = 0;
         mocks.cardSaveOnError.mockReset();
     });
 
@@ -690,6 +770,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
             postcode: '86161',
             city: 'Augsburg',
             offline: false,
@@ -720,6 +801,9 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics,
             tenantId: 7,
@@ -728,7 +812,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
     };
 
     const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
     };
 
     it('shows the confirm dialog when an existing offline agency goes live without a topic', async () => {
@@ -756,7 +840,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         expect(mocks.mutate).not.toHaveBeenCalled();
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        expect(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Allgemeine Informationen save' })).toBeInTheDocument();
     });
 
     it('saves the registration card online when the no-topic dialog is confirmed', async () => {
@@ -791,7 +875,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.';
 
     const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
     };
 
     const renderAgencyWithoutAssignedConsultants = () => {
@@ -802,6 +886,9 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics: [TOPIC],
             tenantId: 7,
@@ -851,11 +938,19 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.tenantTopics = [TOPIC];
         mocks.consultants = [CONSULTANT];
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
 
         expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
@@ -868,36 +963,190 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         // The HAS_CONSULTANTS request failed, so react-query leaves the flag undefined. The
         // agency is online and staffed; a postcode-only edit must not be rejected for it.
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: false, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         expect(await screen.findByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
     });
 
-    it('drops a counsellor picked before the tenant was chosen', async () => {
+    it('offers no counsellor to a platform admin until the Träger is chosen', async () => {
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        renderWithClient(<AgencyPageEdit />);
+
+        // Every Träger's counsellors came back here before; nobody may be picked blind.
+        expect(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' })).toBeDisabled();
+        expect(screen.getByText(/Wählen Sie zuerst die Trägerzuordnung/)).toBeInTheDocument();
+    });
+
+    it('asks the backend for the chosen Träger only and offers just its counsellors', async () => {
         const user = setupUser();
         mocks.routeId = 'add';
         mocks.tenantTopics = [TOPIC];
         mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
         mocks.hasConsultants = false;
-        // No tenant is picked yet, so the picker deliberately offers every tenant's counsellors.
         renderWithClient(<AgencyPageEdit />);
 
-        await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
-        await user.click(await screen.findByRole('option', { name: /Fremd Mandant/ }));
-
-        // Choosing tenant 7 narrows the options. The select keeps values it cannot resolve, so
-        // without pruning the foreign id would still be submitted and then assigned.
         await fillRequiredCreateFields(user);
-        fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        const saved = mocks.mutate.mock.calls[0][0] as { consultantIds?: unknown[] };
-        expect(saved.consultantIds ?? []).toEqual([]);
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+        expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '7' });
+    });
+
+    it('does not ask the server for counsellors until the Träger is chosen', async () => {
+        mocks.routeId = 'add';
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        renderWithClient(<AgencyPageEdit />);
+
+        await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' });
+        expect(mocks.consultantSearchCalls.length).toBeGreaterThan(0);
+        expect(mocks.consultantSearchCalls.every(({ enabled }) => enabled === false)).toBe(true);
+    });
+
+    it('offers a Träger admin only their own counsellors from the start on a new centre', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.authTenantId = 7;
+        mocks.userRoles = {
+            hasRole: () => true,
+            isSuperAdmin: false,
+            isTechnicalAccount: false,
+            isTenantScopedAdmin: true,
+            roles: [],
+            tenantId: 7,
+        };
+        mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+        renderWithClient(<AgencyPageEdit />);
+
+        const picker = await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' });
+        expect(picker).toBeEnabled();
+        await user.click(picker);
+
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+        expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
+        expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '7' });
+    });
+
+    it('shows an error with a retry, not the empty hint, when the counsellor search fails', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.consultantSearchFailed = true;
+        // The retry succeeds: the hook stops failing and answers with the Träger's counsellors.
+        mocks.consultantSearchRefetch.mockImplementation(() => {
+            mocks.consultantSearchFailed = false;
+            mocks.consultantSearchListeners.forEach((rerender) => rerender());
+        });
+        renderWithClient(<AgencyPageEdit />);
+
+        await fillRequiredCreateFields(user);
+
+        expect(await screen.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        expect(screen.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
+        expect(mocks.consultantSearchCalls.at(-1)?.rethrowOnFailure).toBe(true);
+
+        await user.click(screen.getByRole('button', { name: 'Erneut laden' }));
+        expect(mocks.consultantSearchRefetch).toHaveBeenCalledTimes(1);
+        await waitFor(() =>
+            expect(screen.queryByText('Die Berater:innen konnten nicht geladen werden.')).not.toBeInTheDocument(),
+        );
+        await user.click(screen.getByRole('combobox', { name: 'Berater:innen hinzufügen' }));
+        expect(await screen.findByRole('option', { name: CONSULTANT_LABEL })).toBeInTheDocument();
+    });
+
+    it.each(['pending', 'failed'] as const)(
+        'drops the counsellor of the old Träger as soon as the Träger changes, while the new search is %s',
+        async (newTenantSearch) => {
+            const user = setupUser();
+            mocks.routeId = 'add';
+            mocks.tenantTopics = [TOPIC];
+            mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
+            mocks.hasConsultants = false;
+            mocks.searchTenantData.mockResolvedValue({
+                data: [
+                    { id: 7, name: 'Caritas Augsburg' },
+                    { id: 8, name: 'Caritas Berlin' },
+                ],
+            });
+            // Träger 8 has not answered (or cannot): the old pick must not wait for that answer to go.
+            mocks.consultantSearchByTenant = { '8': newTenantSearch };
+            renderWithClient(<AgencyPageEdit />);
+
+            await fillRequiredCreateFields(user);
+            await assignConsultant(user);
+            await user.keyboard('{Escape}');
+            await waitFor(() => expect(screen.queryByRole('listbox')).not.toBeInTheDocument());
+            expect(screen.getByText(CONSULTANT_LABEL)).toBeInTheDocument();
+
+            await user.click(screen.getByRole('combobox', { name: /Trägerzuordnung/ }));
+            await user.click(await screen.findByRole('option', { name: 'Caritas Berlin' }));
+
+            await waitFor(() => expect(screen.queryByText(CONSULTANT_LABEL)).not.toBeInTheDocument());
+            expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '8' });
+
+            fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+            const saved = mocks.mutate.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
+            expect(JSON.stringify(saved.tenantId)).toContain('8');
+            // Nothing of Träger 7 may reach addAgencyData -> assignAgencyToConsultants for Träger 8.
+            expect(saved.consultantIds ?? []).toEqual([]);
+        },
+    );
+
+    it('keeps a stored counsellor when the search fails', async () => {
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [];
+        mocks.consultantSearchFailed = true;
+        mocks.hasConsultants = true;
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+            consultantIds: [{ value: '1', label: CONSULTANT_LABEL }],
+        };
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(await screen.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        expect(screen.getByText(CONSULTANT_LABEL)).toBeInTheDocument();
+    });
+
+    it('says so when the chosen Träger has no counsellor left to offer', async () => {
+        const user = setupUser();
+        mocks.routeId = 'add';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [FOREIGN_CONSULTANT];
+        mocks.hasConsultants = false;
+        renderWithClient(<AgencyPageEdit />);
+
+        await fillRequiredCreateFields(user);
+
+        expect(
+            await screen.findByText('In diesem Träger gibt es keine weiteren Berater:innen zur Auswahl.'),
+        ).toBeInTheDocument();
     });
 
     it('does not offer a counsellor from another tenant', async () => {
@@ -907,7 +1156,15 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         // The platform admin's consultant search spans tenants; the agency belongs to tenant 7.
         mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
         mocks.hasConsultants = false;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
@@ -956,5 +1213,99 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(saved.online).toBe(true);
         // The selection must reach the save, otherwise updateAgencyData has nothing to assign.
         expect(saved.consultantIds).toHaveLength(1);
+    });
+});
+
+// ORISO-Admin#1243: a platform admin switched a centre offline, AgencyService answered 400 because
+// the stored data protection contact was incomplete, and the registration card swallowed it — the
+// switch jumped back to online without a word.
+describe('AgencyPageEdit registration card service validation errors', () => {
+    const OFFICER_REQUIRED = 'agency.edit.settings.legal.validation.officer_required';
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.navigate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.routeId = '282';
+        mocks.tenantTopics = [TOPIC];
+        mocks.consultants = [CONSULTANT];
+        mocks.hasConsultants = true;
+        mocks.cardSaveOnError.mockReset();
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+            dataProtection: { dataProtectionResponsibleEntity: 'DATA_PROTECTION_OFFICER' },
+        };
+    });
+
+    it('names a data protection error that has no field on the registration card', async () => {
+        const user = setupUser();
+        const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
+        mocks.mutate.mockImplementation((_data, options) =>
+            options?.onError?.(
+                new Response(JSON.stringify({ field: 'dataProtection', reason: 'DATA_PROTECTION_OFFICER_IS_EMPTY' }), {
+                    status: 400,
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            ),
+        );
+        renderWithClient(<AgencyPageEdit />);
+
+        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
+        expect(toggle).toBeChecked();
+        await user.click(toggle);
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
+
+        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED }));
+        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
+        expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
+        notificationSpy.mockRestore();
+    });
+});
+
+// ORISO-Admin#1312: every Beratungsstelle view carries the section menu, whoever opens it. The tab
+// list has no role condition, so the roles that reach this page must all see the same sections.
+describe('AgencyPageEdit section menu', () => {
+    const roles = {
+        'platform admin': { isSuperAdmin: true, isTenantScopedAdmin: false },
+        'Träger admin': { isSuperAdmin: false, isTenantScopedAdmin: true },
+        'Beratungsstelle admin': { isSuperAdmin: false, isTenantScopedAdmin: false },
+    };
+    const tabTargets = () => (mocks.agencyTabs || []).filter(Boolean).map((tab) => (tab as { to: string }).to);
+
+    beforeEach(() => {
+        mocks.agencyTabs = undefined;
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
+    });
+
+    it.each(Object.entries(roles))('offers Stammdaten, Rechtliches and Funktionszugang to the %s', (_name, flags) => {
+        mocks.userRoles = { ...mocks.userRoles, ...flags, tenantId: flags.isTenantScopedAdmin ? 84 : 0 };
+        mocks.routeId = '282';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual([
+            '/admin/agency/282/general',
+            '/admin/agency/282/legal-settings',
+            '/admin/agency/282/functionalities',
+        ]);
+    });
+
+    it('offers only Stammdaten while the Beratungsstelle is being created (the other sections need a saved one)', () => {
+        mocks.userRoles = { ...mocks.userRoles, ...roles['platform admin'], tenantId: 0 };
+        mocks.routeId = 'add';
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(tabTargets()).toEqual(['/admin/agency/add/general']);
     });
 });

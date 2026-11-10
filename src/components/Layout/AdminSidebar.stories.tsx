@@ -45,7 +45,7 @@ const statisticsItem: AdminSidebarNavItem = {
 const linksItem: AdminSidebarNavItem = {
     key: 'links',
     to: routePathNames.links,
-    label: 'Links',
+    label: 'Einladen',
     iconPath: routePathNames.links,
     activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
 };
@@ -171,7 +171,8 @@ export const TenantAdminWithUserAdmin: Story = {
             labels: {
                 account: 'Mein Konto',
                 agency: 'Beratungsstellen',
-                links: 'Links',
+                home: 'Home',
+                links: 'Einladen',
                 logs: 'Logs',
                 settings: 'Einstellungen',
                 statistics: 'Statistik',
@@ -198,7 +199,8 @@ export const RestrictedAgencyAdmin: Story = {
             labels: {
                 account: 'Mein Konto',
                 agency: 'Beratungsstellen',
-                links: 'Links',
+                home: 'Home',
+                links: 'Einladen',
                 logs: 'Logs',
                 settings: 'Einstellungen',
                 statistics: 'Statistik',

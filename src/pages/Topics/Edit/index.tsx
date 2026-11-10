@@ -1,8 +1,9 @@
-import { Col, message, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { snackbar } from '../../../components/Snackbar';
 import { CardEditable } from '../../../components/CardEditable';
 import { Button, BUTTON_TYPES } from '../../../components/button/Button';
 import { FormInputField } from '../../../components/FormInputField';
@@ -25,7 +26,7 @@ export const TopicEditOrAdd = () => {
     const { mutate } = useAddOrUpdateTopicAdmin({
         id: isEditing ? id : null,
         onSuccess: (response) => {
-            message.success({
+            snackbar.success({
                 content: t(`message.topic.${isEditing ? 'update' : 'add'}`),
                 duration: 3,
             });
@@ -40,6 +41,7 @@ export const TopicEditOrAdd = () => {
         <Page isLoading={isLoading}>
             <Page.Back
                 path="/admin/topics"
+                parentKey="topics.title"
                 titleKey={isEditing ? 'topic.modal.headline.edit' : 'topic.modal.headline.add'}
             />
 

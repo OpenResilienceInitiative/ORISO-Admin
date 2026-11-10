@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { X_REASON } from '../api/fetchData';
 import { createUserSaveErrorHandler } from './userSaveErrorHandler';
 
@@ -91,5 +91,28 @@ describe('createUserSaveErrorHandler', () => {
         expect(notifyError).not.toHaveBeenCalledWith(
             translations('en')['message.error.TENANT_LICENSING_NOT_CONFIGURED'],
         );
+    });
+
+    it.each(['en', 'de'])('says in %s that the account exists when only the set-up e-mail failed', async (locale) => {
+        const notifyError = vi.fn();
+        const onAccountCreatedWithoutMail = vi.fn();
+        const handle = createUserSaveErrorHandler({
+            t: translatorFor(locale),
+            notifyError,
+            canReassignExistingEmail: true,
+            onAccountCreatedWithoutMail,
+        });
+
+        await handle(
+            new Response(JSON.stringify({ reason: 'SMTP_SEND_FAILED', detail: 'SMTP_TRANSPORT_FAILED' }), {
+                status: 502,
+            }),
+        );
+
+        expect(translations(locale)['counselor.create.setupMailNotSent']).toBeTruthy();
+        expect(onAccountCreatedWithoutMail).toHaveBeenCalledWith(
+            translations(locale)['counselor.create.setupMailNotSent'],
+        );
+        expect(notifyError).not.toHaveBeenCalled();
     });
 });

@@ -105,11 +105,14 @@ export const OrganisationAndDpaLongText: Story = {
 export const OrganisationAndDpaIncompleteSubmit: Story = {
     args: { client: longDpaClient() },
     play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
         // Language-agnostic: the step has exactly one submit control.
         await waitFor(() => expect(canvasElement.querySelector('button[type="submit"]')).not.toBeNull());
         await userEvent.click(canvasElement.querySelector<HTMLButtonElement>('button[type="submit"]')!);
-        await expect(await canvas.findByTestId('onboarding-submit-error')).toBeVisible();
+        // The reason is a pop-up on the shared channel (screen corner, outside the form), not a box.
+        const popup = await within(canvasElement.ownerDocument.body).findByTestId('onboarding-submit-error');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await waitFor(() => expect(popup).toBeVisible());
+        await expect(canvasElement.contains(popup)).toBe(false);
     },
 };
 
@@ -251,8 +254,8 @@ export const JoinExistingTraeger: Story = {
     args: { client: createStubTenantAdminOnboardingClient({ latencyMs: 0, invite: JOIN_EXISTING }) },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/Träger beitreten|Join a tenant/)).toBeInTheDocument();
-        await expect(canvas.getByText(/Schritt 1 von 2|Step 1 of 2/)).toBeInTheDocument();
+        await expect(await canvas.findByText(/Träger beitreten|Join a provider/)).toBeInTheDocument();
+        await expect(canvas.getByRole('status', { name: /Schritt 1 von 2|Step 1 of 2/ })).toBeInTheDocument();
         await expect(canvas.getByText('paula.zweite@example.org')).toBeInTheDocument();
         await expect(canvas.queryByTestId('organisation-master-data-title')).toBeNull();
         await expect(canvas.queryByRole('button', { name: /Zurück|Back/ })).toBeNull();
@@ -272,8 +275,8 @@ export const JoinExistingTraegerDone: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const password = await canvas.findByLabelText(/^(Passwort|Password)$/);
-        await userEvent.type(password, 'SecurePass1!');
-        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePass1!');
+        await userEvent.type(password, 'SecurePassword1!');
+        await userEvent.type(canvas.getByLabelText(/Passwort wiederholen|Repeat password/), 'SecurePassword1!');
         await userEvent.click(canvas.getByRole('button', { name: /Konto erstellen|Create account/ }));
         await userEvent.click(await canvas.findByRole('button', { name: /Code per E-Mail senden|Send code by email/ }));
         await userEvent.type(await canvas.findByLabelText(/Einmalcode|One-time code/), '123456');
@@ -355,6 +358,32 @@ export const AccountStepStory: StoryObj = {
             onSubmit={() => {}}
         />
     ),
+};
+
+/** Admin#1207: the server refused the one-time password — the reason sits under the password field. */
+export const AccountStepPasswordUnchanged: StoryObj = {
+    render: () => (
+        <AccountStep
+            invite={STUB_INVITE_PROPS}
+            busy={false}
+            showRegistrationError={false}
+            passwordRejection="UNCHANGED"
+            existingAccountSetup
+            onSubmit={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        // A permanent validation reason: plain text under the field, not a pop-up.
+        await expect(
+            within(canvasElement).getByText(/vom Einmalpasswort unterscheidet|differs from the one-time password/),
+        ).toBeVisible();
+    },
+};
+
+/** The same hint on a phone — the text wraps and stays fully visible. */
+export const AccountStepPasswordUnchangedMobile: StoryObj = {
+    ...AccountStepPasswordUnchanged,
+    ...PHONE_390,
 };
 
 /**

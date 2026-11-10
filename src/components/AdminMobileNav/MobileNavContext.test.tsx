@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { useRef } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { MobileNavProvider, useMobileNav, useRegisterMobileNav } from './MobileNavContext';
 
 /**

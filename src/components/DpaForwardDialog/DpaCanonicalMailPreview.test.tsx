@@ -1,5 +1,6 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { DpaCanonicalMailPreview } from './DpaCanonicalMailPreview';
 import type { DpaMailPreview } from '../../api/tenantOnboarding/dpaMailPreview';
 
@@ -93,6 +94,26 @@ describe('DpaCanonicalMailPreview', () => {
         await act(async () => retry.reject(new Error('preview failed')));
         expect(await screen.findByTestId('dpa-forward-preview-error')).toBeInTheDocument();
         expect(screen.getByTitle('Mail preview')).toHaveAttribute('srcdoc', preview('tenant 42').html);
+    });
+
+    it('keeps a retry in the preview after the error pop-up is closed', async () => {
+        mocks.getPublicDpaMailPreview
+            .mockRejectedValueOnce(new Error('preview failed'))
+            .mockResolvedValueOnce(preview('token a'));
+        const user = userEvent.setup();
+
+        render(<DpaCanonicalMailPreview previewLabel="Mail preview" surface="public" inviteToken="token-a" />);
+        const popup = await screen.findByTestId('dpa-forward-preview-error');
+        await user.click(within(popup).getByRole('button', { name: 'snackbar.close' }));
+        await waitFor(() => expect(screen.queryByTestId('dpa-forward-preview-error')).not.toBeInTheDocument());
+
+        // The tile still says it could not be loaded and still offers the retry.
+        const section = within(screen.getByTestId('dpa-forward-canonical-preview'));
+        expect(section.getByText('notify.tile.notLoaded')).toBeInTheDocument();
+        await user.click(section.getByRole('button', { name: 'placeholderTemplate.preview.retry' }));
+
+        expect(await screen.findByTitle('Mail preview')).toHaveAttribute('srcdoc', preview('token a').html);
+        expect(screen.queryByText('notify.tile.notLoaded')).not.toBeInTheDocument();
     });
 
     it.each([

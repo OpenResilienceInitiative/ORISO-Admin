@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import { SelfConsultantIdentity } from './index';
 
@@ -50,9 +50,10 @@ describe('SelfConsultantIdentity', () => {
 
     it('offers a Beratungsstellen-Admin the grant for their own account', () => {
         mocks.roles = ['agency-admin', 'user-admin'];
-        render(<SelfConsultantIdentity />);
+        const { container } = render(<SelfConsultantIdentity />);
 
         expect(screen.getByRole('button', { name: 'grant' })).toBeEnabled();
+        expect(container.querySelector('[data-admin-card-grid-item]')).not.toBeNull();
         expect(mocks.modalProps).toHaveBeenCalledWith(expect.objectContaining({ adminId: 'kc-admin-1' }));
     });
 
@@ -85,5 +86,6 @@ describe('SelfConsultantIdentity', () => {
         const { container } = render(<SelfConsultantIdentity />);
 
         expect(container).toBeEmptyDOMElement();
+        expect(container.querySelector('[data-admin-card-grid-item]')).toBeNull();
     });
 });

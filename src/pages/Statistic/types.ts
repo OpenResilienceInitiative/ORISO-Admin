@@ -1,4 +1,5 @@
 import type { ComponentType, SVGProps } from 'react';
+import type { SvgIconComponent } from '@mui/icons-material';
 
 export type ScopeKey = 'platform' | 'tenant' | 'agency';
 export type TrendTone = 'blue' | 'red' | 'dark';
@@ -6,7 +7,8 @@ export type TrendDirection = 'up' | 'down' | 'upRight' | 'downRight';
 export type TrendScoreTone = 'critical' | 'bad' | 'good' | 'great';
 export type CardSize = 'large' | 'medium' | 'small';
 export type IconTone = 'plain' | 'muted' | 'coral' | 'danger';
-export type CasePeriodKey = 'thisWeek' | 'lastWeek' | 'twoWeeksAgo' | 'threeWeeksAgo' | 'fourWeeksAgo';
+/** One week of the requests chart (0 = this week), or one bar per week for the whole window. */
+export type CasePeriodKey = `weeksAgo${number}` | 'weekOverview';
 export type ConversationPeriodKey = 'today' | 'yesterday' | 'thisWeek' | 'total' | 'thisYear' | 'lastYear';
 export type CardMenuKey =
     | 'all'
@@ -25,6 +27,8 @@ export type CardMenuKey =
     | 'activeConversations'
     | 'phoneShare'
     | 'previousMonth'
+    /** Top topic n months back, beyond the four named month keys (topic window > 4 months). */
+    | `topicMonthsAgo${number}`
     | 'textMessagesTotal'
     | 'topTopic'
     | 'twoMonthsAgo'
@@ -33,7 +37,14 @@ export type CardMenuKey =
     | 'videoShare'
     | 'voiceShare';
 
-export type SvgIcon = ComponentType<SVGProps<SVGSVGElement>>;
+/**
+ * Why a card has no figure: `protected` = withheld by the small-cell rule (too few active
+ * counsellors), `notTracked` = no data source yet, `pending` = nothing happened yet.
+ */
+export type StatisticEmptyKind = 'protected' | 'notTracked' | 'pending';
+
+/** Card glyph: an SVG component or an MUI outlined icon (monochrome, ORISO-Admin#1374). */
+export type SvgIcon = ComponentType<SVGProps<SVGSVGElement>> | SvgIconComponent;
 
 export interface ScopeDefinition {
     key: ScopeKey;
@@ -63,6 +74,8 @@ export interface CardMenuOption {
      * screen readers keep the explicit "Keine Daten" wording.
      */
     emptyHint?: string;
+    /** How the empty card presents itself; see StatisticEmptyKind. Defaults to `pending`. */
+    emptyKind?: StatisticEmptyKind;
 }
 
 export interface StatisticCardDefinition {
@@ -80,6 +93,8 @@ export interface StatisticCardDefinition {
     size: CardSize;
     /** See CardMenuOption.emptyHint — calm empty presentation instead of the raw value. */
     emptyHint?: string;
+    /** See CardMenuOption.emptyKind. */
+    emptyKind?: StatisticEmptyKind;
 }
 
 export interface CaseChartBar {

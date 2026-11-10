@@ -1,6 +1,8 @@
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
-import { Form, message } from 'antd';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -38,15 +40,12 @@ export const OneTopicPerAgencySettingsCard = ({ enabled = false, isLoading, onSa
             allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
+            note={{ icon: <InfoOutlinedIcon />, text: t('globalSettings.oneTopicPerAgency.help') }}
             onSave={(values: { oneTopicPerAgencyEnabled?: boolean }, options) =>
                 onSave(values.oneTopicPerAgencyEnabled === true, options)
             }
         >
-            <MuiSwitchField
-                name="oneTopicPerAgencyEnabled"
-                label={t('globalSettings.oneTopicPerAgency.switch')}
-                helpText={t('globalSettings.oneTopicPerAgency.help')}
-            />
+            <MuiSwitchField name="oneTopicPerAgencyEnabled" label={t('globalSettings.oneTopicPerAgency.switch')} />
         </CardEditable>
     );
 };
@@ -67,9 +66,8 @@ export const OneTopicPerAgencySettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({
+                            snackbar.error({
                                 content: t('globalSettings.oneTopicPerAgency.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },

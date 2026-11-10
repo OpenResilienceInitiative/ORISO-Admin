@@ -1,7 +1,8 @@
 import { FocusEvent, useId, useState } from 'react';
-import { ConfigProvider, Form, Select } from 'antd';
+import { ConfigProvider, Form } from 'antd';
 import type { BaseOptionType, DefaultOptionType, SelectProps } from 'antd/es/select';
 import classNames from 'classnames';
+import { M3Select } from '../M3Select';
 import styles from './floatingLabelSelect.module.scss';
 
 export interface FloatingLabelSelectProps<
@@ -27,7 +28,7 @@ export interface FloatingLabelSelectProps<
  * `FloatingLabelInput` (Figma 1165:17005): shares its outline/label shell so
  * a `SelectFormField` renders identically to a `FormInputField` in a form.
  */
-export const FloatingLabelSelect = <
+const FloatingLabelSelectControl = <
     ValueType = any,
     OptionType extends BaseOptionType | DefaultOptionType = DefaultOptionType,
 >({
@@ -105,7 +106,7 @@ export const FloatingLabelSelect = <
                         {leadingIcon}
                     </span>
                 )}
-                <Select<ValueType, OptionType>
+                <M3Select<ValueType, OptionType>
                     {...selectProps}
                     id={fieldId}
                     className={styles.select}
@@ -133,5 +134,18 @@ export const FloatingLabelSelect = <
         </div>
     );
 };
+
+// noStyle inherits outer validation without adding a DOM wrapper, and gives
+// standalone selects the same valid status context as FloatingLabelInput.
+export const FloatingLabelSelect = <
+    ValueType = any,
+    OptionType extends BaseOptionType | DefaultOptionType = DefaultOptionType,
+>(
+    props: FloatingLabelSelectProps<ValueType, OptionType>,
+) => (
+    <Form.Item noStyle>
+        <FloatingLabelSelectControl {...props} />
+    </Form.Item>
+);
 
 export default FloatingLabelSelect;

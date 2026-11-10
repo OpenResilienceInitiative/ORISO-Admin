@@ -1,9 +1,3 @@
-.createCardDeck {
-    --card-deck-item-min-width: 420px;
-    --card-deck-item-width: 420px;
-    --card-deck-gap: 32px;
-}
-
 // #605 / JOB1: the M3 document editor is an 800px panel card on desktop
 // (Figma 1261-48667), the same width the platform admin sees on its
 // "Rechtliches" deck. All three legal cards — DPA, imprint and privacy —
@@ -18,20 +12,4 @@
 //
 // Also do not combine with Page `.cardDeckItem` — that stretched editors and
 // left them at the default ~392px compact width (#862).
-@media (min-width: 768px) {
-    .documentEditorItem {
-        --card-deck-item-width: var(--admin-panel-card-width, 800px);
-        --card-deck-item-max-width: min(
-            var(--admin-panel-card-width, 800px),
-            calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px))
-        );
-    }
-}
-
 // #1070: a template forwarded by the Träger sits beside the own draft; same page-raster cap.
-@media (min-width: 768px) {
-    .documentEditorItem:has([data-legal-compare-open='true']) {
-        --card-deck-item-width: 1440px;
-        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
-    }
-}

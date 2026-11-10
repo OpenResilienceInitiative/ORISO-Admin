@@ -1,17 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { snackbar } from '../../../Snackbar';
 import { useLegalDraft } from './useLegalDraft';
 import { legalDraftKey, readLegalDraft, writeLegalDraft } from '../utils/legalDraftStorage';
 
 const successNotification = vi.fn();
 const errorNotification = vi.fn();
-
-vi.mock('antd', () => ({
-    notification: {
-        success: (...args: unknown[]) => successNotification(...args),
-        error: (...args: unknown[]) => errorNotification(...args),
-    },
-}));
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -178,4 +172,9 @@ describe('useLegalDraft', () => {
         const { result } = renderHook(() => useLegalDraft('imprint', '1:user-abc'));
         expect(result.current.isStale).toBe(false);
     });
+});
+
+beforeEach(() => {
+    vi.spyOn(snackbar, 'success').mockImplementation(successNotification as never);
+    vi.spyOn(snackbar, 'error').mockImplementation(errorNotification as never);
 });

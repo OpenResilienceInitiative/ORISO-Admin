@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fetchData } from '../fetchData';
 import { editCounselorData } from './editCounselorData';
 import { CounselorData } from '../../types/counselor';
@@ -48,6 +48,18 @@ describe('editCounselorData', () => {
             title: 'M.A.',
             adminRemarks: '',
         });
+    });
+
+    it('sends topicIds: null to keep the stored topics, and no per-centre list', async () => {
+        await editCounselorData('consultant-1', {
+            ...baseFormData,
+            topicIds: null,
+            topics: [{ id: 11, name: 'Sucht' }],
+        } as unknown as CounselorData);
+
+        const body = JSON.parse(vi.mocked(fetchData).mock.calls[0][0].bodyData as string);
+        expect(body.topicIds).toBeNull();
+        expect(body).not.toHaveProperty('topicsByAgency');
     });
 
     it('sends the standing supervisor, and an empty string when the admin cleared it', async () => {

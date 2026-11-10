@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
+import { useAdminFeedback } from './useAdminFeedback';
 import { updateDpiaMasterData } from '../api/tenant/updateDpiaMasterData';
 import { DpiaMasterData } from '../types/dpiaMasterData';
 import { DPIA_MASTER_DATA_KEY } from './useDpiaMasterData.hook';
@@ -18,6 +18,7 @@ export const useDpiaMasterDataMutation = ({
     successMessageKey = 'tenants.message.settingsUpdate',
     ...options
 }: DpiaMasterDataMutationOptions = {}) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const queryClient = useQueryClient();
 

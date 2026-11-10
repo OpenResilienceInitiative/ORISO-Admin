@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { ConfigProvider } from 'antd';
 import TiptapEditor from './TiptapEditor';

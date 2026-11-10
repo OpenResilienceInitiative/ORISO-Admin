@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import userEvent from '@testing-library/user-event';
 import { render, renderHook, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserScopeFilters, useScopeFilterAvailability } from './UserScopeFilters';
 

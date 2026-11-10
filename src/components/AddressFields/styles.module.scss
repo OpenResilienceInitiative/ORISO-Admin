@@ -1,0 +1,80 @@
+.group {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    container-type: inline-size;
+}
+
+.group .legend {
+    display: flex;
+    align-items: center;
+    width: auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+    gap: 8px;
+
+    svg {
+        color: var(--m3-primary, #a5000a);
+    }
+}
+
+.grid {
+    display: grid;
+    margin-top: 12px;
+    row-gap: 8px;
+    column-gap: 16px;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+/* Short pairs stay side by side even in a narrow panel: number beside street, postcode beside city. */
+.street {
+    grid-column: span 6;
+}
+
+.number {
+    grid-column: span 6;
+}
+
+.postcode {
+    grid-column: span 6;
+}
+
+.city {
+    grid-column: span 6;
+}
+
+.half {
+    grid-column: span 12;
+}
+
+@container (min-width: 520px) {
+    .street {
+        grid-column: span 9;
+    }
+
+    .number {
+        grid-column: span 3;
+    }
+
+    .postcode {
+        grid-column: span 3;
+    }
+
+    .city {
+        grid-column: span 9;
+    }
+
+    .half {
+        grid-column: span 6;
+    }
+}
+
+.icon {
+    color: var(--m3-on-surface-variant, #444748);
+}

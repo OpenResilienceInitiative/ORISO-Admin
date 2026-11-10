@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PhaseStepper, PhaseStepperPhase } from './PhaseStepper';
@@ -146,6 +146,28 @@ describe('PhaseStepper', () => {
         expect(await screen.findByRole('tooltip')).toHaveTextContent('24.09.2026, 11:01:00');
         // Screen readers hear the date with the step.
         expect(screen.getByText(/^Eingeladen – abgeschlossen/)).toHaveTextContent('24.09.2026, 11:01:00');
+    });
+
+    it('renders the step tooltip outside the sideways-scrolling dated track, so it is not clipped', async () => {
+        const user = userEvent.setup();
+        render(
+            <PhaseStepper
+                phases={[
+                    {
+                        key: 'invited',
+                        label: 'Eingeladen',
+                        state: 'done',
+                        at: { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' },
+                    },
+                ]}
+            />,
+        );
+
+        await user.hover(screen.getByText(/^Eingeladen – abgeschlossen/));
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Eingeladen');
+        expect(tooltip.closest('ol')).toBeNull();
+        expect(tooltip.parentElement).toBe(document.body);
     });
 
     it('wraps a dated track after maxPerLine steps, still as one ordered list', () => {

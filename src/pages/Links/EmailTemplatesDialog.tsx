@@ -1,10 +1,11 @@
-import { Alert, Button, Input, message, Select, Tooltip } from 'antd';
+import { Alert, Button, Input, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     createInviteEmailTemplate,
     deleteInviteEmailTemplate,
@@ -21,6 +22,7 @@ import {
     type InviteEmailTemplateValues,
     type PlaceholderTemplateDefinition,
 } from '../../components/PlaceholderTemplate';
+import { M3Select } from '../../components/M3Select';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { canEditSharedTemplates, resolveVisibleTemplateKinds } from '../../constants/linksAccess';
 import { LANGUAGE_OPTIONS } from '../../utils/language';
@@ -28,6 +30,7 @@ import { ListingTable, listingTableStyles } from '../../components/ListingTable'
 import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
+import { Notify } from '../../components/Notify';
 
 interface EmailTemplatesDialogProps {
     /** The template kind of the invite tab the dialog was opened from — used to preset new templates. */
@@ -100,10 +103,12 @@ export const EmailTemplatesDialog = ({
     onSelect,
     selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const fieldId = useId();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
     /** Set once the first template request settled — success, empty or failure alike. */
     const [loadCompleted, setLoadCompleted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -185,11 +190,13 @@ export const EmailTemplatesDialog = ({
     // required kind, and the merged list is grouped with the current kind first.
     const loadTemplates = useCallback(async () => {
         setLoading(true);
+        setLoadFailed(false);
         try {
             const results = await Promise.all(visibleKinds.map((kind) => listInviteEmailTemplates(kind)));
             setTemplates(results.flat());
         } catch {
-            message.error(t('links.templates.loadFailed', 'Could not load templates'));
+            // Shown as a pop-up with "Erneut versuchen" (see the list view); the list keeps quiet text.
+            setLoadFailed(true);
         } finally {
             setLoading(false);
             // "The request finished", independent of what (or whether) it returned:
@@ -197,7 +204,7 @@ export const EmailTemplatesDialog = ({
             // one, and the create deep link must open in both cases.
             setLoadCompleted(true);
         }
-    }, [t, visibleKinds]);
+    }, [visibleKinds]);
 
     useEffect(() => {
         loadTemplates();
@@ -697,6 +704,20 @@ export const EmailTemplatesDialog = ({
             </DialogButton>
         </div>
     );
+    // One notice for both views: a failed load must not vanish when the admin opens the form.
+    const loadFailedNotice = (jump?: string) =>
+        loadFailed && (
+            <Notify
+                severity="error"
+                title={t('notify.title.links')}
+                quietText={t('notify.tile.notLoaded')}
+                causeKey="links:email-templates"
+                jump={jump}
+                actions={[{ label: t('notify.retry'), onClick: () => loadTemplates() }]}
+            >
+                {t('links.templates.loadFailed', 'Could not load templates')}
+            </Notify>
+        );
 
     if (view === 'form') {
         const formTitleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
@@ -738,6 +759,7 @@ export const EmailTemplatesDialog = ({
                 onDismiss={() => closeForm(onClose)}
                 onSave={onSave}
             >
+                {loadFailedNotice()}
                 {overwritePrompt && <p className={styles.discardBody}>{editingTemplate?.name}</p>}
                 {discardPrompt && (
                     <p className={styles.discardBody} role="status">
@@ -759,7 +781,7 @@ export const EmailTemplatesDialog = ({
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-kind`}>
                                 {t('links.templates.field.kind', 'Template for')}
                             </label>
-                            <Select
+                            <M3Select
                                 id={`${fieldId}-kind`}
                                 disabled={submitting || editingTemplate?.systemDefault === true}
                                 options={visibleKinds.map((kind) => ({ value: kind, label: kindLabel(kind) }))}
@@ -880,6 +902,7 @@ export const EmailTemplatesDialog = ({
             }
             width={1180}
         >
+            {loadFailedNotice('email-templates-list')}
             {deletePrompt && (
                 <div role="status">
                     <p>{deletePrompt.name}</p>
@@ -894,7 +917,11 @@ export const EmailTemplatesDialog = ({
                     )}
                 </div>
             )}
-            <div className={deletePrompt ? styles.formHidden : undefined} inert={deletePrompt != null}>
+            <div
+                id="email-templates-list"
+                className={deletePrompt ? styles.formHidden : undefined}
+                inert={deletePrompt != null}
+            >
                 <ListingTable
                     rowKey="id"
                     loading={loading}

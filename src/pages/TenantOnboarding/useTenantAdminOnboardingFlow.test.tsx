@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
     InviteLinkError,
@@ -50,13 +50,13 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('account');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
             organisation: ORGANISATION,
             dpa: DPA,
-            account: { password: 'SecurePass1!' },
+            account: { password: 'SecurePassword1!' },
             reservedTenantId: 21,
             tenantIdReservationToken: 'reservation-token-21',
         });
@@ -100,7 +100,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         await act(async () => {
             await result.current.submitTwoFactorCode('123456');
@@ -140,7 +140,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('link-error');
@@ -148,7 +148,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         // The flow is terminal now: further submits must not reach the client again.
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1);
     });
@@ -165,14 +165,14 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('account');
         expect(result.current.submitError).toBe('registration');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         expect(result.current.submitError).toBeNull();
@@ -189,7 +189,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         await act(async () => {
@@ -247,11 +247,11 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         let first!: Promise<void>;
         act(() => {
-            first = result.current.submitAccount('SecurePass1!');
+            first = result.current.submitAccount('SecurePassword1!');
         });
         // Second click while the first request is still running: must be a no-op.
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(registerTenantAdmin).toHaveBeenCalledTimes(1);
 
@@ -275,7 +275,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         let first!: Promise<void>;
@@ -340,7 +340,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('loading');
@@ -364,7 +364,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('account');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         // Unchanged request shape: the forwarded case just sends accepted:false
@@ -417,7 +417,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(client.registerTenantAdmin).toHaveBeenCalledWith(
             'raw-token',
@@ -440,7 +440,7 @@ describe('useTenantAdminOnboardingFlow', () => {
             act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
             expect(result.current.state.phase).toBe('account');
             await act(async () => {
-                await result.current.submitAccount('SecurePass1!');
+                await result.current.submitAccount('SecurePassword1!');
             });
             expect(client.registerTenantAdmin).toHaveBeenCalledWith(
                 'raw-token',
@@ -466,7 +466,7 @@ describe('useTenantAdminOnboardingFlow', () => {
             act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
             expect(result.current.state.phase).toBe('account');
             await act(async () => {
-                await result.current.submitAccount('SecurePass1!');
+                await result.current.submitAccount('SecurePassword1!');
             });
             expect(result.current.state.phase).toBe('two-factor');
             expect(client.registerTenantAdmin).toHaveBeenCalledWith(

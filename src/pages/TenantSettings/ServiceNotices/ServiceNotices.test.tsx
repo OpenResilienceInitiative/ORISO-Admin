@@ -2,7 +2,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type {
     ServiceNoticeDraft,
     ServiceNoticePreview,
@@ -20,6 +20,25 @@ vi.mock('../../../api/fetchData', async (importOriginal) => ({
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => mocks.roles }));
 import { ServiceNoticesPage } from './index';
 import { SERVICE_NOTICE_VARIANTS } from '../../../api/serviceNotices/serviceNotices';
+
+// Notifications are pop-ups with a lead line before the text, so match the text inside.
+const inNotice = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+// Pop-ups share one channel and stack. Only the host is searched, so a notice rendered as tile text instead
+// of a pop-up cannot satisfy these assertions. An earlier pop-up (for example "saved") may still be up; it
+// is left alone.
+const findNotice = async (text: string, severity: 'error' | 'success' = 'error') => {
+    const host = () => within(screen.getByTestId('snackbar-host'));
+    const popup = await waitFor(() => {
+        const match = host()
+            .getAllByTestId('snackbar')
+            .find((candidate) => inNotice(text).test(candidate.textContent ?? ''));
+        if (!match) throw new Error(`notice not shown yet: ${text}`);
+        return match;
+    });
+    expect(popup).toHaveAttribute('data-severity', severity);
+    return popup;
+};
 
 const draft: ServiceNoticeDraft = {
     campaignKey: 'planned-window',
@@ -78,10 +97,12 @@ describe('service-notice saved drafts', () => {
         renderPage();
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue('');
         expect(screen.queryByTestId('service-notice-preview-frame')).not.toBeInTheDocument();
-        expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
-            'serviceNotices.save',
-            'serviceNotices.open',
-        ]);
+        expect(
+            screen
+                .getAllByRole('button')
+                .map((button) => button.textContent)
+                .filter(Boolean),
+        ).toEqual(['serviceNotices.save', 'serviceNotices.open']);
         expect(mocks.fetchData).not.toHaveBeenCalled();
     });
 
@@ -90,6 +111,7 @@ describe('service-notice saved drafts', () => {
         fillDraft();
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.save' }));
         await screen.findByText('Actual subject de-sie');
+        await findNotice('serviceNotices.saved', 'success');
         const put = mocks.fetchData.mock.calls.find(([request]) => request.method === 'PUT')?.[0];
         expect(JSON.parse(put.bodyData)).toEqual({
             maintenanceDate: draft.maintenanceDate,
@@ -114,6 +136,14 @@ describe('service-notice saved drafts', () => {
         expect(mocks.fetchData.mock.calls[0][0].method).toBe('GET');
     });
 
+    it('does not announce a saved draft when an existing one was only opened', async () => {
+        renderPage();
+        await openDraft();
+        const host = screen.queryByTestId('snackbar-host');
+        const popups = host ? within(host).queryAllByTestId('snackbar') : [];
+        expect(popups.some((popup) => /serviceNotices\.saved/.test(popup.textContent ?? ''))).toBe(false);
+    });
+
     it('retains every changed input and the last saved preview on a 409 conflict', async () => {
         renderPage();
         await openDraft();
@@ -124,7 +154,7 @@ describe('service-notice saved drafts', () => {
                 : Promise.resolve(url.includes('/preview?') ? previewFor('de-sie') : draft),
         );
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.save' }));
-        expect(await screen.findByText('serviceNotices.errors.conflict')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.errors.conflict')).toBeInTheDocument();
         expect(screen.getByLabelText('serviceNotices.start')).toHaveValue('11:00');
         expect(screen.getByLabelText('serviceNotices.reference')).toHaveValue(draft.campaignKey);
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
@@ -156,7 +186,7 @@ describe('service-notice saved drafts', () => {
         renderPage();
         setField('serviceNotices.reference', draft.campaignKey);
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.open' }));
-        expect(await screen.findByText('serviceNotices.errors.variantUnavailable')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.errors.variantUnavailable')).toBeInTheDocument();
         expect(screen.queryByTestId('service-notice-preview-frame')).not.toBeInTheDocument();
         expect(screen.queryByText('Actual subject de-du')).not.toBeInTheDocument();
     });
@@ -166,7 +196,7 @@ describe('service-notice saved drafts', () => {
         renderPage();
         fillDraft();
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.open' }));
-        await screen.findByText('serviceNotices.errors.unavailable');
+        await findNotice('serviceNotices.errors.unavailable');
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
         expect(screen.queryByText('remote-sensitive-marker')).not.toBeInTheDocument();
     });
@@ -174,7 +204,7 @@ describe('service-notice saved drafts', () => {
     it('self-guards a technical account even if it also carries platform roles', async () => {
         mocks.roles.isTechnicalAccount = true;
         renderPage();
-        expect(screen.getByRole('alert')).toHaveTextContent('serviceNotices.errors.forbidden');
+        expect(await screen.findByRole('alert')).toHaveTextContent('serviceNotices.errors.forbidden');
         await waitFor(() => expect(mocks.fetchData).not.toHaveBeenCalled());
     });
 });
@@ -242,7 +272,7 @@ describe('service-notice send decision', () => {
         expect(calls('/confirm')).toHaveLength(0);
         await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
 
-        expect(await screen.findByText('serviceNotices.send.done')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.send.done', 'success')).toBeInTheDocument();
         expect(calls('/confirm')).toHaveLength(1);
         expect(calls('/confirm')[0].method).toBe('POST');
         expect(JSON.parse(calls('/confirm')[0].bodyData)).toEqual({ expectedRecipients: 12 });
@@ -269,7 +299,7 @@ describe('service-notice send decision', () => {
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.send.open' }));
         await userEvent.click(await screen.findByRole('button', { name: 'serviceNotices.send.confirm' }));
 
-        expect(await screen.findByText('serviceNotices.send.errors.conflict')).toBeInTheDocument();
+        expect(await findNotice('serviceNotices.send.errors.conflict')).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'serviceNotices.send.open' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'serviceNotices.send.count' })).toBeInTheDocument();
         expect(calls('/confirm')).toHaveLength(1);

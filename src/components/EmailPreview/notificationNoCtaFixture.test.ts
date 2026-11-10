@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import html from './fixtures/notification-no-cta-de.html?raw';
 import text from './fixtures/notification-no-cta-de.txt?raw';
 

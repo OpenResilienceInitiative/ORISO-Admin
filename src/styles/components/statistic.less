@@ -2,7 +2,13 @@
     width: 100%;
     box-sizing: border-box;
     padding-bottom: clamp(32px, 6vw, 72px);
-    color: #000000;
+
+    --statistic-series-mail: var(--m3-primary);
+    --statistic-series-live: color-mix(in srgb, var(--m3-primary) 35%, var(--m3-surface-container-lowest));
+    --statistic-series-groups: var(--m3-tertiary-container);
+    --statistic-series-internal: var(--m3-error-container);
+
+    color: var(--m3-on-surface);
     font-family: @body-font-family;
     -webkit-overflow-scrolling: touch;
     overflow: visible;
@@ -16,7 +22,7 @@
 }
 
 .statisticDashboard {
-    width: min(100%, 1236px);
+    width: 100%;
     margin-top: 16px;
 }
 
@@ -29,7 +35,7 @@
     margin-bottom: 16px;
     padding: 0 0 12px;
     gap: 10px 12px;
-    grid-template-columns: minmax(0, 499px);
+    grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
 }
 
 .statisticDashboard__filterSearchWrap {
@@ -41,7 +47,7 @@
 
 .statisticDashboard__filterSearch {
     width: 100%;
-    max-width: 499px;
+    max-width: var(--statistic-filter-width, 400px);
 }
 
 .statisticDashboard__filterSuggestions {
@@ -50,14 +56,14 @@
     top: calc(100% + 8px);
     left: 0;
     display: grid;
-    width: min(100%, 499px);
+    width: min(100%, var(--statistic-filter-width, 400px));
     box-sizing: border-box;
     max-height: min(320px, calc(100vh - 220px));
     padding: 8px;
-    border: 1px solid #d8e0e9;
-    background: #ffffff;
+    border: 1px solid var(--m3-outline-variant);
+    background: var(--m3-surface-container-lowest);
     border-radius: 12px;
-    box-shadow: 0 18px 44px rgb(20 28 37 / 16%);
+    box-shadow: var(--admin-card-elevation);
     gap: 4px;
     overflow-y: auto;
 }
@@ -72,7 +78,7 @@
     border: 0;
     background: transparent;
     border-radius: 8px;
-    color: #141c25;
+    color: var(--m3-on-surface);
     cursor: pointer;
     font: inherit;
     gap: 12px;
@@ -99,7 +105,7 @@
     }
 
     small {
-        color: #687180;
+        color: var(--m3-on-surface-variant);
         font-size: 12px;
         font-weight: 700;
         line-height: 17px;
@@ -108,9 +114,9 @@
     em {
         flex: 0 0 auto;
         padding: 3px 7px;
-        background: #eef3f8;
+        background: var(--m3-surface-container);
         border-radius: 999px;
-        color: #4c5967;
+        color: var(--m3-on-surface-variant);
         font-size: 11px;
         font-style: normal;
         font-weight: 800;
@@ -118,12 +124,12 @@
     }
 
     &:hover {
-        background: #eef2f7;
+        background: var(--m3-surface-container);
     }
 
     &:focus-visible {
-        background: #eef2f7;
-        outline: 2px solid #6ba6ff;
+        background: var(--m3-surface-container);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 2px;
     }
 }
@@ -143,10 +149,10 @@
     box-sizing: border-box;
     align-items: center;
     padding: 5px 7px 5px 12px;
-    border: 1px solid #d8e0e9;
-    background: #ffffff;
+    border: 1px solid var(--m3-outline-variant);
+    background: var(--m3-surface-container-lowest);
     border-radius: 999px;
-    color: #141c25;
+    color: var(--m3-on-surface);
     font-size: 13px;
     font-weight: 800;
     gap: 7px;
@@ -161,7 +167,7 @@
     }
 
     small {
-        color: #687180;
+        color: var(--m3-on-surface-variant);
         font-size: 11px;
         font-weight: 800;
         line-height: 16px;
@@ -175,9 +181,9 @@
         justify-content: center;
         padding: 0;
         border: 0;
-        background: #edf2f7;
+        background: var(--m3-surface-container);
         border-radius: 50%;
-        color: #46515f;
+        color: var(--m3-on-surface-variant);
         cursor: pointer;
 
         svg {
@@ -186,11 +192,11 @@
         }
 
         &:hover {
-            background: #dce6f0;
+            background: var(--m3-surface-container-high);
         }
 
         &:focus-visible {
-            outline: 2px solid #6ba6ff;
+            outline: 2px solid var(--admin-focus-ring-color);
             outline-offset: 2px;
         }
     }
@@ -198,45 +204,91 @@
 
 .statisticDashboard__filterChip--muted {
     padding-right: 12px;
-    color: #687180;
+    color: var(--m3-on-surface-variant);
 }
 
 .statisticDashboard__scopeTabs {
-    width: 100%;
-    max-width: 100%;
-
-    /* Scope icons must inherit AdminSegmentedTabs colors (same as Users header pills). */
+    // Scope icons must inherit AdminSegmentedTabs colors (monochrome, ORISO-Admin#1374).
     svg {
         color: inherit;
     }
 }
 
 .statisticDashboard__animatedContent {
-    animation: statisticScopeIn 180ms ease-out both;
+    animation: statisticScopeIn 160ms ease-out both;
     transform-origin: top center;
 }
 
-.statisticDashboard__notice {
-    padding: 10px 14px;
+/* Permanent explanations above the tiles: plain text, no fill and no border (never a box in the page). */
+.statisticDashboardPage .statisticDashboard__caption {
     margin: 0 0 16px;
-    border-radius: 12px;
+    color: var(--m3-on-surface-variant);
     font-size: 14px;
     line-height: 20px;
 }
 
-.statisticDashboard__notice--error {
-    background: #fdecea;
-    color: #8a1c12;
+// One quiet line above the cards (Admin#1374): stand + optional "protected" hint,
+// the long privacy reason behind a disclosure. Replaces stacked full-width notice bars.
+.statisticDashboard__infoRow {
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin: 0 0 16px;
+    background: var(--m3-surface-container-low);
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
 }
 
-.statisticDashboard__notice--info {
-    background: #eef3f8;
-    color: #33475b;
+.statisticDashboard__infoItems {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
 }
 
-.statisticDashboard__notice--warning {
-    background: #fdf3e3;
-    color: #7a4d05;
+.statisticDashboard__infoItem {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.statisticDashboard__infoWhy {
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    color: var(--m3-on-surface);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.statisticDashboard__infoReasons {
+    display: grid;
+    max-width: 90ch;
+    padding-left: 26px;
+    margin-top: 8px;
+    gap: 4px;
+
+    // `display: grid` would otherwise beat the UA rule for [hidden].
+    &[hidden] {
+        display: none;
+    }
 }
 
 .statisticDashboard__loading {
@@ -246,7 +298,7 @@
     justify-content: center;
     gap: 12px;
     padding: 80px 0;
-    color: #687180;
+    color: var(--m3-on-surface-variant);
 
     .spinner {
         position: static;
@@ -263,7 +315,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #141c25;
+    color: var(--m3-on-surface);
     font-size: 14px;
     line-height: 20px;
     text-decoration: none;
@@ -281,44 +333,24 @@
 @keyframes statisticScopeIn {
     from {
         opacity: 0;
-        transform: translateY(8px) scale(0.985);
+        transform: none;
     }
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: none;
     }
 }
 
-.statisticDashboard__summaryGrid,
 .statisticDashboard__communicationGrid,
 .statisticDashboard__chartGrid {
-    display: grid;
-    gap: 12px;
-}
-
-.statisticDashboard__summaryGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.statisticDashboard__communicationGrid {
-    margin-top: 12px;
-    grid-template-columns: 1.35fr repeat(4, minmax(0, 1fr));
-}
-
-.statisticDashboard__chartGrid {
-    align-items: stretch;
-    margin-top: 12px;
-    grid-template-columns: minmax(0, 2.08fr) minmax(360px, 1fr);
-}
-
-.statisticDashboard__metricCard,
-.statisticDashboard__chartCard {
-    background: #ffffff;
-    border-radius: 27px;
+    margin-top: 24px;
 }
 
 .statisticDashboard__metricCard {
+    // White tiles (ORISO-Admin#1374); the notTracked variant overrides this.
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     position: relative;
     display: flex;
     min-width: 0;
@@ -345,10 +377,11 @@
     grid-template-columns: 48px minmax(0, 1fr) 32px;
 
     h2 {
-        font-size: 18px;
-        font-weight: 800;
-        line-height: 25px;
-        overflow-wrap: anywhere;
+        font-size: 16px;
+        font-weight: 600;
+        hyphens: auto;
+        line-height: 24px;
+        overflow-wrap: break-word;
     }
 }
 
@@ -386,19 +419,19 @@
 .statisticDashboard__metricIcon--muted {
     --statistic-dashboard-icon-glyph-size: 30px;
 
-    background: #e3e4ea;
+    background: var(--m3-surface-container-high);
 }
 
 .statisticDashboard__metricIcon--coral {
     --statistic-dashboard-icon-glyph-size: 25px;
 
-    background: #ffd8d5;
+    background: var(--m3-tertiary-container);
 }
 
 .statisticDashboard__metricIcon--danger {
     --statistic-dashboard-icon-glyph-size: 25px;
 
-    background: #dc3030;
+    background: var(--m3-primary);
 }
 
 .statisticDashboard__cardMenuWrap {
@@ -429,7 +462,7 @@
     svg {
         width: 22px;
         height: 22px;
-        color: #141c25;
+        color: var(--m3-on-surface);
     }
 }
 
@@ -442,36 +475,21 @@
     max-width: calc(100vw - 48px);
     max-height: min(520px, calc(100vh - 180px));
     padding: 8px;
-    border: 1px solid #d8e0e9;
-    background: #ffffff;
+    background: var(--m3-surface-container-lowest);
     border-radius: 12px;
-    box-shadow: 0 18px 44px rgb(20 28 37 / 16%);
+    box-shadow: var(--admin-card-elevation);
     gap: 4px;
     overflow-y: auto;
     overscroll-behavior: contain;
 }
 
-.statisticDashboard__cardMenuPanel:before {
-    position: absolute;
-    top: -6px;
-    right: 10px;
-    width: 12px;
-    height: 12px;
-    border-top: 1px solid #d8e0e9;
-    border-left: 1px solid #d8e0e9;
-    background: #ffffff;
-    content: '';
-    transform: rotate(45deg);
-}
-
 .statisticDashboard__cardMenuEyebrow {
     padding: 6px 8px 4px;
-    color: #737b86;
+    color: var(--m3-on-surface-variant);
     font-size: 12px;
-    font-weight: 800;
+    font-weight: 500;
     letter-spacing: 0;
     line-height: 16px;
-    text-transform: uppercase;
 }
 
 .statisticDashboard__cardMenuItem {
@@ -485,7 +503,7 @@
     border: 0;
     background: transparent;
     border-radius: 8px;
-    color: #4c555f;
+    color: var(--m3-on-surface-variant);
     cursor: pointer;
     font: inherit;
     grid-template-columns: 28px minmax(0, 1fr);
@@ -494,19 +512,19 @@
     text-transform: none;
 
     &:hover {
-        background: #eef2f7;
-        color: #141c25;
+        background: var(--m3-surface-container);
+        color: var(--m3-on-surface);
     }
 
     &:focus-visible {
-        background: #eef2f7;
-        outline: 2px solid #6ba6ff;
+        background: var(--m3-surface-container);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 2px;
     }
 
     strong {
         flex: 0 0 auto;
-        color: #5c6672;
+        color: var(--m3-on-surface-variant);
         font-size: 14px;
         font-weight: 800;
         line-height: 22px;
@@ -564,7 +582,7 @@
 
 .statisticDashboard__cardMenuItemDescription {
     display: block;
-    color: #757575;
+    color: var(--m3-on-surface-variant);
     font-size: 14px;
     font-weight: 400;
     letter-spacing: 0.25px;
@@ -573,26 +591,26 @@
 
 .statisticDashboard__cardMenuItem--active,
 .statisticDashboard__cardMenuItem--active:hover {
-    background: #dbe7f5;
-    color: #8b0008;
+    background: var(--m3-surface-container);
+    color: var(--m3-on-surface);
 
     .statisticDashboard__cardMenuItemTitle,
     .statisticDashboard__cardMenuItemIcon,
     strong {
-        color: #8b0008;
+        color: var(--m3-on-surface);
     }
 
     .statisticDashboard__cardMenuItemDescription {
-        color: #5a0000;
+        color: var(--m3-on-surface-variant);
     }
 }
 
 .statisticDashboard__cardMenuItem--active:focus-visible {
-    background: #dbe7f5;
+    background: var(--m3-surface-container);
 }
 
 .statisticDashboard__cardMenuWrap:focus-within .statisticDashboard__cardMenu {
-    outline: 2px solid #6ba6ff;
+    outline: 2px solid var(--admin-focus-ring-color);
     outline-offset: 3px;
 }
 
@@ -608,7 +626,7 @@
     strong {
         overflow: hidden;
         min-width: 0;
-        color: #000000;
+        color: var(--m3-on-surface);
         font-size: 36px;
         font-weight: 400;
         line-height: 44px;
@@ -623,20 +641,50 @@
     grid-template-columns: minmax(0, 1fr);
 
     strong {
-        color: #9d9da4;
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.statisticDashboard__cardEmptyState {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+    }
+}
+
+// Not tracked yet: no surface, no elevation, a dashed outline — a slot that exists,
+// not a card that broke. Two classes, so the dashed style wins over the shared card.
+.statisticDashboard__metricCard.statisticDashboard__metricCard--notTracked {
+    --admin-form-card-surface: transparent;
+    --admin-card-outline: var(--m3-outline-variant);
+    --admin-card-elevation: none;
+
+    border-style: dashed;
+
+    .statisticDashboard__metricIcon {
+        opacity: 0.6;
     }
 }
 
 .statisticDashboard__cardEmptyHint {
     overflow: hidden;
-    color: #9d9da4;
+    color: var(--m3-on-surface-variant);
     font-size: 14px;
     line-height: 20px;
     text-overflow: ellipsis;
 }
 
 .statisticDashboard__emptyHero {
-    margin-bottom: 12px;
+    margin: 24px 0 0;
 }
 
 // While the whole dashboard is empty the metric grids step back behind the
@@ -668,28 +716,28 @@
 }
 
 .statisticDashboard__trend--critical {
-    background: #bd000d;
-    color: #ffffff;
+    background: var(--m3-primary);
+    color: var(--m3-on-primary);
 }
 
 .statisticDashboard__trend--bad {
-    background: #ffe6e4;
-    color: #8b0008;
+    background: var(--m3-primary-container);
+    color: var(--m3-on-primary-container);
 }
 
 .statisticDashboard__trend--good {
-    background: #e7effc;
-    color: #26313d;
+    background: var(--m3-surface-container);
+    color: var(--m3-on-surface);
 }
 
 .statisticDashboard__trend--great {
-    background: #4d5965;
-    color: #ffffff;
+    background: var(--m3-secondary);
+    color: var(--m3-on-secondary);
 }
 
 .statisticDashboard__cardDetail {
     overflow: hidden;
-    color: #737b86;
+    color: var(--m3-on-surface-variant);
     font-size: 17px;
     font-weight: 700;
     grid-column: 1 / -1;
@@ -699,6 +747,8 @@
 }
 
 .statisticDashboard__chartCard {
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     min-height: 322px;
     padding: 25px 24px 24px;
 }
@@ -730,10 +780,10 @@
     align-items: center;
     justify-content: center;
     padding: 9px 12px;
-    border: 1px solid #d8e0e9;
-    background: #ffffff;
+    border: 1px solid var(--m3-outline-variant);
+    background: var(--m3-surface-container-lowest);
     border-radius: 8px;
-    color: #555555;
+    color: var(--m3-on-surface-variant);
     cursor: pointer;
     font: inherit;
     font-size: 16px;
@@ -761,23 +811,23 @@
 
     span {
         min-width: 98px;
-        color: #141c25;
+        color: var(--m3-on-surface);
         text-align: left;
     }
 
     &:hover {
-        border-color: #b8c4d1;
-        background: #f8fafc;
+        border-color: var(--m3-outline);
+        background: var(--m3-surface-container-low);
     }
 
     &:focus-visible {
-        outline: 2px solid #6ba6ff;
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 3px;
     }
 }
 
 .statisticDashboard__dateSelect[aria-expanded='true'] {
-    border-color: #b8c4d1;
+    border-color: var(--m3-outline);
 
     svg:last-child {
         transform: rotate(180deg);
@@ -790,25 +840,13 @@
     right: 0;
     display: grid;
     width: 164px;
+    max-height: min(520px, calc(100vh - 180px));
+    overflow-y: auto;
     padding: 8px;
-    border: 1px solid #d8e0e9;
-    background: #ffffff;
+    background: var(--m3-surface-container-lowest);
     border-radius: 12px;
-    box-shadow: 0 18px 44px rgb(20 28 37 / 16%);
+    box-shadow: var(--admin-card-elevation);
     gap: 4px;
-}
-
-.statisticDashboard__dateSelectPanel:before {
-    position: absolute;
-    top: -6px;
-    right: 14px;
-    width: 12px;
-    height: 12px;
-    border-top: 1px solid #d8e0e9;
-    border-left: 1px solid #d8e0e9;
-    background: #ffffff;
-    content: '';
-    transform: rotate(45deg);
 }
 
 .statisticDashboard__dateSelectOption {
@@ -817,22 +855,23 @@
     border: 0;
     background: transparent;
     border-radius: 8px;
-    color: #141c25;
+    color: var(--m3-on-surface);
     cursor: pointer;
     font: inherit;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 400;
     line-height: 20px;
     text-align: left;
 
     &:hover {
-        background: #f2f5f8;
+        background: var(--m3-surface-container);
     }
 }
 
 .statisticDashboard__dateSelectOption--active {
-    background: #141c25;
-    color: #ffffff;
+    background: var(--m3-surface-container);
+    color: var(--m3-on-surface);
+    font-weight: 600;
 }
 
 .statisticDashboard__barChart {
@@ -845,7 +884,7 @@
     display: grid;
     height: 205px;
     padding-top: 1px;
-    color: #666666;
+    color: var(--m3-on-surface-variant);
     font-size: 18px;
     font-weight: 400;
     grid-template-rows: repeat(4, 1fr);
@@ -872,7 +911,7 @@
     right: 0;
     left: 0;
     height: 0;
-    border-top: 1px dashed #d3d3d3;
+    border-top: 1px dashed var(--m3-outline-variant);
 }
 
 .statisticDashboard__bars {
@@ -899,26 +938,26 @@
     text-align: center;
 
     &:hover .statisticDashboard__bar:not(.statisticDashboard__bar--highlight) {
-        background: #c7d4e4;
+        background: var(--m3-outline-variant);
     }
 
     &:focus-visible {
         border-radius: 10px;
-        outline: 2px solid #6ba6ff;
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 4px;
     }
 }
 
 .statisticDashboard__barDayLabel {
     align-self: end;
-    color: #666666;
+    color: var(--m3-on-surface-variant);
     font-size: 17px;
     font-weight: 400;
     line-height: 25px;
 }
 
 .statisticDashboard__barSlot--selected .statisticDashboard__barDayLabel {
-    color: #bd000d;
+    color: var(--m3-on-surface);
     font-weight: 800;
 }
 
@@ -926,12 +965,12 @@
     width: min(100%, 56px);
     min-height: 8px;
     align-self: end;
-    animation: statistic-dashboard-bar-rise 2400ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
-    animation-delay: calc(var(--bar-index, 0) * 120ms);
-    background: #d5dfec;
+    animation: statistic-dashboard-bar-rise 320ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation-delay: calc(var(--bar-index, 0) * 12ms);
+    background: var(--m3-surface-variant);
     border-radius: 8px;
     transform-origin: bottom;
-    transition: height 1200ms cubic-bezier(0.2, 0.78, 0.26, 1), background 180ms ease;
+    transition: height 240ms cubic-bezier(0.2, 0, 0, 1), background 120ms ease;
 }
 
 .statisticDashboard__bar--empty {
@@ -940,29 +979,22 @@
 }
 
 .statisticDashboard__bar--highlight {
-    background-color: #bd000d;
-    background-image: repeating-linear-gradient(
-        135deg,
-        rgb(255 255 255 / 28%) 0,
-        rgb(255 255 255 / 28%) 2px,
-        transparent 2px,
-        transparent 18px
-    );
+    background-color: var(--m3-primary);
 }
 
 .statisticDashboard__barTooltip {
     position: absolute;
     z-index: 3;
-    bottom: var(--statistic-dashboard-tooltip-bottom, 0);
+    bottom: min(var(--statistic-dashboard-tooltip-bottom, 0), calc(100% - 90px));
     left: 50%;
     display: grid;
     width: 118px;
     min-height: 76px;
     padding: 17px 18px 14px;
-    background: #bec8d7;
+    background: var(--m3-on-surface);
     border-radius: 8px;
-    box-shadow: 0 12px 22px rgb(20 28 37 / 14%);
-    color: #4c5967;
+    box-shadow: var(--admin-card-elevation);
+    color: var(--m3-surface);
     gap: 8px;
     transform: translateX(-50%);
 
@@ -979,12 +1011,12 @@
         display: inline-flex;
         width: 12px;
         height: 12px;
-        background: #bd000d;
+        background: var(--m3-primary-fixed);
         border-radius: 50%;
     }
 
     small {
-        color: #4c5967;
+        color: var(--m3-surface);
         font-size: 13px;
         font-weight: 400;
         line-height: 17px;
@@ -1019,13 +1051,13 @@
         width: 92px;
         height: 92px;
         padding: 14px 10px;
-        background: #ffffff;
+        background: var(--m3-surface-container-lowest);
         border-radius: 50%;
         text-align: center;
     }
 
     strong {
-        color: #373737;
+        color: var(--m3-on-surface);
         font-size: 27px;
         font-weight: 800;
         line-height: 31px;
@@ -1036,7 +1068,7 @@
         justify-items: center;
         max-width: 76px;
         min-width: 0;
-        color: #687180;
+        color: var(--m3-on-surface-variant);
         font-size: 10px;
         font-weight: 700;
         line-height: 12px;
@@ -1078,12 +1110,12 @@
 }
 
 .statisticDashboard__donutTrack {
-    stroke: #eef3f8;
+    stroke: var(--m3-surface-container);
 }
 
 .statisticDashboard__donutSegment {
-    animation: statistic-dashboard-donut-draw 2800ms cubic-bezier(0.2, 0.78, 0.26, 1) both;
-    animation-delay: calc(var(--segment-index, 0) * 220ms);
+    animation: statistic-dashboard-donut-draw 400ms cubic-bezier(0.2, 0, 0, 1) both;
+    animation-delay: calc(var(--segment-index, 0) * 24ms);
     cursor: pointer;
     stroke-dasharray: var(--segment-size) 100;
     stroke-dashoffset: var(--segment-offset);
@@ -1130,7 +1162,7 @@
     }
 
     p {
-        color: #687180;
+        color: var(--m3-on-surface-variant);
         font-size: 14px;
         font-weight: 400;
         line-height: 20px;
@@ -1143,14 +1175,14 @@
 
         strong,
         small {
-            color: #687180;
+            color: var(--m3-on-surface-variant);
             font-size: 13px;
             font-weight: 800;
             line-height: 17px;
         }
 
         small {
-            color: #8b94a1;
+            color: var(--m3-on-surface-variant);
             font-size: 12px;
         }
     }
@@ -1158,56 +1190,60 @@
 
 .statisticDashboard__legendItem:hover,
 .statisticDashboard__legendItem:focus-visible {
-    background: #f2f6fb;
-    outline: none;
+    background: var(--m3-surface-container);
 
     p {
-        color: #111923;
+        color: var(--m3-on-surface);
     }
 
     .statisticDashboard__legendMeta {
         strong {
-            color: #111923;
+            color: var(--m3-on-surface);
         }
 
         small {
-            color: #46515f;
+            color: var(--m3-on-surface-variant);
         }
     }
 }
 
+.statisticDashboard__legendItem:focus-visible {
+    outline: 2px solid var(--admin-focus-ring-color);
+    outline-offset: 2px;
+}
+
 .statisticDashboard__legendItem--active {
-    background: #111923;
+    background: var(--m3-secondary);
 
     p,
     .statisticDashboard__legendMeta strong {
-        color: #ffffff;
+        color: var(--m3-on-secondary);
     }
 
     .statisticDashboard__legendMeta small {
-        color: #d9e4ef;
+        color: var(--m3-on-secondary);
     }
 }
 
 .statisticDashboard__legendItem--active:hover,
 .statisticDashboard__legendItem--active:focus-visible {
-    background: #111923;
-    box-shadow: 0 0 0 2px rgb(17 25 35 / 22%);
+    background: var(--m3-secondary);
+    box-shadow: none;
 
     p,
     .statisticDashboard__legendMeta strong {
-        color: #ffffff;
+        color: var(--m3-on-secondary);
     }
 
     .statisticDashboard__legendMeta small {
-        color: #d9e4ef;
+        color: var(--m3-on-secondary);
     }
 }
 
 @keyframes statistic-dashboard-bar-rise {
     from {
-        opacity: 0.65;
-        transform: scaleY(0.06);
+        opacity: 0;
+        transform: scaleY(0.7);
     }
 
     to {
@@ -1218,8 +1254,8 @@
 
 @keyframes statistic-dashboard-donut-draw {
     from {
-        opacity: 0.72;
-        stroke-dasharray: 0 100;
+        opacity: 0;
+        stroke-dasharray: var(--segment-size) 100;
     }
 
     to {
@@ -1248,16 +1284,7 @@
 
 @media screen and (max-width: 1200px) {
     .statisticDashboard__filterBar {
-        grid-template-columns: minmax(0, 499px);
-    }
-
-    .statisticDashboard__summaryGrid,
-    .statisticDashboard__chartGrid {
-        grid-template-columns: 1fr;
-    }
-
-    .statisticDashboard__communicationGrid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
     }
 }
 
@@ -1285,12 +1312,6 @@
 
     .statisticDashboard__filterChips {
         justify-content: flex-start;
-    }
-
-    .statisticDashboard__summaryGrid,
-    .statisticDashboard__communicationGrid,
-    .statisticDashboard__chartGrid {
-        grid-template-columns: 1fr;
     }
 
     .statisticDashboard__metricCard {
@@ -1488,4 +1509,82 @@
     .statisticDashboard__barTooltip {
         bottom: min(var(--statistic-dashboard-tooltip-bottom, 0), calc(100% - 78px));
     }
+}
+
+// Week overview of the requests chart: one bar per configured week (5 to 26, UserService#1544),
+// so the column count comes from the data instead of the fixed seven weekdays.
+.statisticDashboard__bars.statisticDashboard__bars--weeks {
+    gap: clamp(2px, 0.8vw, 16px);
+    grid-template-columns: repeat(var(--bar-count, 7), minmax(0, 1fr));
+
+    .statisticDashboard__barDayLabel {
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+// ORISO-Admin#1374 — statistics as designed: levels and filter in one header row,
+// white key-figure tiles, a dashed trend placeholder for protected figures.
+.statisticDashboard__headerRow {
+    display: flex;
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-inline-start: var(--admin-subnav-inset, 0%);
+    box-shadow: inset 0 -1px 0 0 var(--m3-outline-variant);
+    gap: 8px 16px;
+
+    // The divider belongs to the whole row, not to the tab bar alone.
+    .statisticDashboard__scopeTabs {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        flex: 1 1 auto;
+        margin-inline-start: 0;
+        box-shadow: none;
+    }
+
+    .statisticDashboard__filterBar {
+        min-width: 0;
+        flex: 0 1 var(--statistic-filter-width, 400px);
+        padding: 0 0 8px;
+        margin: 0;
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
+    }
+}
+
+.statisticDashboard__cardSparkline {
+    display: block;
+    width: 100%;
+    height: 36px;
+
+    path {
+        fill: none;
+        stroke: var(--m3-outline-variant);
+        stroke-dasharray: 4 5;
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+    }
+}
+
+@media screen and (max-width: 840px) {
+    .statisticDashboard__headerRow .statisticDashboard__filterBar {
+        flex: 1 1 100%;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+// One calm icon style for every figure: a monochrome outlined glyph in the same
+// neutral circle, whatever tone the card definition asks for (ORISO-Admin#1374).
+.statisticDashboard .statisticDashboard__metricIcon,
+.statisticDashboard .statisticDashboard__metricIcon--muted,
+.statisticDashboard .statisticDashboard__metricIcon--coral,
+.statisticDashboard .statisticDashboard__metricIcon--danger {
+    --statistic-dashboard-icon-glyph-size: 22px;
+    --statistic-dashboard-icon-size: 40px;
+
+    flex-basis: 40px;
+    background: var(--m3-surface-container-high);
+    color: var(--m3-on-surface);
 }

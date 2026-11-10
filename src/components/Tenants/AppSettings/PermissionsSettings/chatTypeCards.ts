@@ -2,13 +2,19 @@ import { ReactComponent as OneOnOneIcon } from '../../../../resources/img/svg/pe
 import { ReactComponent as LiveChatIcon } from '../../../../resources/img/svg/permissions/live_chat.svg';
 import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permissions/group.svg';
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
-import type { ChatTypeCardDef } from './types';
+import type { ChatTypeCardDef, ChatTypeParticipantToggle } from './types';
+
+const askerNamePolicy = (setting: string): ChatTypeParticipantToggle => ({
+    setting,
+    labelKey: 'tenants.permissions.asker.displayName.conversationLabel',
+    requiresAskerNameEditing: true,
+});
 
 export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
     {
         key: 'oneOnOne',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableAgencyCounsellingEnabled'),
         titleKey: 'tenants.permissions.card.oneOnOne.title',
-        descriptionKey: 'tenants.permissions.card.oneOnOne.description',
         Icon: OneOnOneIcon,
         masterField: ['settings', 'featureCallsEnabled'],
         toggles: [
@@ -46,11 +52,33 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 requiresCapability: 'mediaAiScan',
             },
         ],
+        notifications: {
+            audience: 'asker',
+            toggles: [
+                {
+                    labelKey: 'tenants.permissions.card.notifications.askForEmail',
+                    setting: 'featureAskerEmailCollectionAgencyCounsellingEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.collection.agencyCounselling',
+                    requiresAskerEmail: true,
+                    worksWithDelivery: 'featureAskerEmailAgencyCounsellingEnabled',
+                },
+                {
+                    labelKey: 'tenants.permissions.card.notifications.email',
+                    setting: 'featureAskerEmailAgencyCounsellingEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.channels.emailAgencyCounselling',
+                },
+                {
+                    labelKey: 'tenants.permissions.card.notifications.browser',
+                    setting: 'featureAskerBrowserAgencyCounsellingEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.channels.browserAgencyCounselling',
+                },
+            ],
+        },
     },
     {
         key: 'liveChat',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableLiveChatEnabled'),
         titleKey: 'tenants.permissions.card.liveChat.title',
-        descriptionKey: 'tenants.permissions.card.liveChat.description',
         Icon: LiveChatIcon,
         masterField: ['settings', 'featureAnonymousChatEnabled'],
         toggles: [
@@ -88,11 +116,23 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 requiresCapability: 'mediaAiScan',
             },
         ],
+        // Frank 2026-11-03: live chat stays temporary and anonymous for now, so it has no address to
+        // ask for or to mail to. E-mail switches return here once a permanent account path exists.
+        notifications: {
+            audience: 'asker',
+            toggles: [
+                {
+                    labelKey: 'tenants.permissions.card.notifications.browser',
+                    setting: 'featureAskerBrowserLiveChatEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.channels.browserLiveChat',
+                },
+            ],
+        },
     },
     {
         key: 'group',
+        askerNamePolicy: askerNamePolicy('featureDisplayNameEditableSelfHelpEnabled'),
         titleKey: 'tenants.permissions.card.group.title',
-        descriptionKey: 'tenants.permissions.card.group.description',
         Icon: GroupIcon,
         // ORISO-Admin#988 / Frank 2026-09-16: this card is the conversation-circle format
         // ("Gesprächskreis", advice seekers + counsellors) — its own switch, not the old
@@ -130,22 +170,60 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
                 requiresCapability: 'mediaAiScan',
             },
         ],
+        notifications: {
+            audience: 'asker',
+            toggles: [
+                {
+                    labelKey: 'tenants.permissions.card.notifications.askForEmail',
+                    setting: 'featureAskerEmailCollectionSelfHelpEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.collection.selfHelp',
+                    requiresAskerEmail: true,
+                    worksWithDelivery: 'featureAskerEmailSelfHelpEnabled',
+                },
+                {
+                    labelKey: 'tenants.permissions.card.notifications.email',
+                    setting: 'featureAskerEmailSelfHelpEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.channels.emailSelfHelp',
+                },
+                {
+                    labelKey: 'tenants.permissions.card.notifications.browser',
+                    setting: 'featureAskerBrowserSelfHelpEnabled',
+                    fallbackLabelKey: 'tenants.permissions.asker.channels.browserSelfHelp',
+                },
+            ],
+        },
     },
     {
         key: 'groupInternal',
         titleKey: 'tenants.permissions.card.groupInternal.title',
-        descriptionKey: 'tenants.permissions.card.groupInternal.description',
         Icon: GroupInternalIcon,
         // ORISO-Admin#988 / Frank 2026-09-16: internal group chats (counsellors only) are their
         // own conversation type, switched independently of the conversation-circle `group` card.
         masterField: ['settings', 'featureInternalGroupChatEnabled'],
-        // No sub-toggles yet: internal group chats have no own feature-field family (no
+        // No feature sub-toggles yet: internal group chats have no own feature-field family (no
         // featureXInternalGroupChatEnabled fields exist in the backend today), so there is nothing
         // to render here. In particular this card must NOT carry a supervision toggle — supervision
         // is a feature inside conversation types, not a conversation type of its own; its master
         // and feature toggles now live in OtherFunctionsSettings (see chatTypeCards.ts history /
         // ORISO-Admin#991 for the previous, incorrect wiring to featureSupervisionEnabled).
         toggles: [],
+        // FE#1725 stories 39/40: counsellor-side channels for internal group chats (ADR-024
+        // addendum 2026-10-07). TenantService PermissionFeature + Settings, default true.
+        notifications: {
+            audience: 'consultant',
+            toggles: [
+                {
+                    labelKey: 'tenants.permissions.card.notifications.email',
+                    setting: 'featureConsultantEmailInternalGroupEnabled',
+                },
+                {
+                    labelKey: 'tenants.permissions.card.notifications.browser',
+                    setting: 'featureConsultantBrowserInternalGroupEnabled',
+                    // No browser-event producer for group members yet (T7): open product question.
+                    notYetEffective: true,
+                },
+            ],
+        },
     },
 ];
 

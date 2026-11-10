@@ -1,0 +1,43 @@
+@use '../../../styles/muiSpacing' as mui;
+
+.card {
+    width: 100%;
+    min-width: 0;
+}
+
+.availability {
+    display: grid;
+    margin: 0;
+    gap: mui.$mui-unit;
+
+    > div {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: mui.$mui-unit mui.$mui-unit * 2;
+    }
+
+    dt,
+    dd {
+        margin: 0;
+    }
+
+    dd {
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.notice {
+    margin: 0 0 mui.$mui-unit;
+    color: var(--m3-on-surface-variant);
+    font-weight: 500;
+}
+
+.controls {
+    display: grid;
+    gap: mui.$mui-unit * 2;
+}
+
+.toursControl {
+    margin-top: mui.$mui-unit * 2;
+}
