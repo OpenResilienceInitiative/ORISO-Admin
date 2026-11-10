@@ -1,10 +1,10 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
-import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { snackbar as message } from '../../../components/Snackbar';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -339,6 +339,12 @@ const chooseOption = async (
     await user.click(screen.getByLabelText(fieldLabel));
     await user.click(await screen.findByRole('option', { name: optionLabel }));
 };
+
+// The tests spy on the module-level snackbar channel (and on QueryClient): put the originals back so
+// a pass-through spy never leaks into the next test.
+afterEach(() => {
+    vi.restoreAllMocks();
+});
 
 beforeEach(() => {
     mocks.mutate.mockReset();

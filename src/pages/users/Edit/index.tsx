@@ -529,7 +529,6 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -537,11 +536,11 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
             onAccountCreatedWithoutMail: (content) => {
-                message.warning({ content, duration: 10 });
+                message.warning({ content });
                 navigate(`/admin/users/${typeOfUsers}`);
             },
         }),
@@ -745,7 +744,6 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             };
             message.error({
                 content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
-                duration: 8,
             });
             return;
         } finally {
@@ -760,7 +758,6 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
             message.warning({
                 content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
-                duration: 8,
             }),
         );
         setPendingMove(null);
@@ -872,7 +869,11 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}

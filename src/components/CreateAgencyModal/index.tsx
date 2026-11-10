@@ -1,8 +1,9 @@
-import { Alert, Button, Form, message, Tooltip } from 'antd';
+import { Alert, Button, Form, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { FormInputField } from '../FormInputField';
 import { Modal, DialogButton } from '../Modal';
@@ -57,13 +58,13 @@ export const CreateAgencyModal = ({ tenantId, disabled, onSuccess }: CreateAgenc
             },
             {
                 onSuccess: (agency) => {
-                    message.success({ content: t('message.agency.add'), duration: 3 });
+                    snackbar.success({ content: t('message.agency.add'), duration: 3 });
                     closeModal();
                     onSuccess(agency as Partial<AgencyData>);
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    message.error({ content, duration: 8 });
+                    snackbar.error({ content });
                 },
             },
         );

@@ -1,6 +1,7 @@
 import { Col, Form, FormInstance, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
 import Paragraph from 'antd/lib/typography/Paragraph';
+import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined';
 import { useMemo } from 'react';
 import { Card } from '../../../../../components/Card';
 import { FormInputField } from '../../../../../components/FormInputField';
@@ -66,7 +67,7 @@ const ContactSettingsFields = ({
 
             <MuiRadioGroupField
                 required
-                className={styles.radioGroup}
+                className={`${styles.radioGroup} ${ownStyles.radioGroupSpaced}`}
                 vertical
                 name={['dataProtection', 'dataProtectionResponsibleEntity']}
                 labelKey="agency.edit.settings.legal.contact.type.title"
@@ -143,6 +144,7 @@ export const ContactSettings = ({ initialValues, onSave, type, traegerDpo }: Con
                 allowUnsavedChanges
                 initialValues={initialValues}
                 titleKey="agency.edit.settings.legal.contact.title"
+                headerIcon={<PrivacyTipOutlinedIcon />}
                 variant="dialog"
                 editButtonPlacement="footer"
                 onSave={onSave}
@@ -160,7 +162,11 @@ export const ContactSettings = ({ initialValues, onSave, type, traegerDpo }: Con
     }
 
     return (
-        <Card titleKey="agency.edit.settings.legal.contact.title" variant="dialog">
+        <Card
+            titleKey="agency.edit.settings.legal.contact.title"
+            headerIcon={<PrivacyTipOutlinedIcon />}
+            variant="dialog"
+        >
             <ContactSettingsFields type={type} initialDataProtection={initialDataProtection} traegerDpo={traegerDpo} />
         </Card>
     );
