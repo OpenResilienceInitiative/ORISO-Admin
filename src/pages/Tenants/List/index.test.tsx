@@ -209,7 +209,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(screen.queryByRole('button', { name: /^Created/ })).not.toBeInTheDocument();
     });
 
-    it('shows the subdomain in the details only when Träger have their own domain', () => {
+    it('keeps the subdomain out of the details (not technically finished), also with own domains', () => {
         withTenants([tenant()]);
         const { unmount } = render(<TenantsList />);
         fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
@@ -224,7 +224,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         };
         render(<TenantsList />);
         fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
-        expect(screen.getByText('Subdomain')).toBeInTheDocument();
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
         expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
     });
 

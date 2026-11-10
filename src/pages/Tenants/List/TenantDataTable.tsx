@@ -58,6 +58,11 @@ export interface TenantDataTableProps {
 // and the maximum of counsellors are in the details. The tablet row fits down to 400px; below 600px
 // cards read better (same band as the accounts list).
 const PHONE_BELOW = 600;
+/**
+ * The subdomain is hidden in the list (expanded row and phone card): subdomains are not technically
+ * finished. Set to `true` to show it again, in the details, for installations with their own domains.
+ */
+const SHOW_SUBDOMAIN_IN_LIST = false;
 const WIDE_FROM = 875;
 
 const adminsOf = (row: TenantRow) => (row.adminEmails ?? []).filter(Boolean);
@@ -195,7 +200,8 @@ export const TenantDataTable = ({
     const rowIds = rows.map((row) => row.id).join(',');
     useEffect(() => setOpenRows([]), [rowIds]);
 
-    // Subdomain and the maximum of allowed counsellors live in the details (expanded row, phone card).
+    // The maximum of allowed counsellors lives in the details (expanded row, phone card); the subdomain
+    // would too, but is hidden for now (SHOW_SUBDOMAIN_IN_LIST).
     const columns: DataTableColumn[] = [
         { key: 'name', label: t('tenants.list.name'), sortable: true, width: tablet ? undefined : '28%' },
         { key: 'status', label: t('entityStatus.title'), width: 110 },
@@ -232,7 +238,7 @@ export const TenantDataTable = ({
                       [t('tenants.list.tenantId'), row.id],
                   ] as [string, ReactNode][])
                 : []),
-            [t('tenants.list.subdomain'), showSubdomain ? subdomainLink(row) : null],
+            [t('tenants.list.subdomain'), SHOW_SUBDOMAIN_IN_LIST && showSubdomain ? subdomainLink(row) : null],
             [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
             [
                 t('tenants.list.adminEmails'),
