@@ -1,6 +1,7 @@
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
+import { buildInternalSubdomain } from '../utils/buildInternalSubdomain';
 import { TenantAdminData } from '../types/TenantAdminData';
 import { useSingleTenantData } from './useSingleTenantData';
 import { TENANTS_QUERY_KEY } from './useTenantsData';
@@ -56,16 +57,6 @@ export const buildTenantRequestBody = (
 export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOptions) => {
     const queryClient = useQueryClient();
     const { data } = useSingleTenantData({ id, enabled: !!id });
-
-    const buildInternalSubdomain = (name?: string) => {
-        const base =
-            (name || 'tenant')
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .slice(0, 24) || 'tenant';
-        return `${base}-${Date.now().toString().slice(-6)}`;
-    };
 
     return useMutation({
         mutationFn: (formData) => {

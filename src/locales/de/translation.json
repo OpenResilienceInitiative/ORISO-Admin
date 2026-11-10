@@ -86,6 +86,7 @@
     "tenantOnboarding.organisation.masterDataTitle": "Stammdaten Organisation",
     "tenantOnboarding.organisation.name": "Name der Organisation",
     "tenantOnboarding.organisation.subdomain": "Subdomain",
+    "tenantOnboarding.organisation.subdomainHint": "Subdomains sind noch nicht verfügbar. Ein technischer Name wird automatisch aus dem Namen erzeugt.",
     "tenantOnboarding.organisation.address": "Adresse",
     "tenantOnboarding.dpa.title": "Vertragsunterlagen",
     "tenantOnboarding.dpa.description": "Bitte prüfen Sie die Vertragsunterlagen und bestätigen Sie sie für Ihre Organisation.",

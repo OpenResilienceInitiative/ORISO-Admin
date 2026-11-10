@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     createTenant: vi.fn(),
     createTenantAdmin: vi.fn(),
     tenantOptions: undefined as MutationOptions | undefined,
+    settings: { multitenancyWithSingleDomainEnabled: true },
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -17,7 +18,7 @@ vi.mock('react-router-dom', () => ({
     useParams: () => ({ id: 'add' }),
 }));
 vi.mock('../../../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: true } }),
+    useAppConfigContext: () => ({ settings: mocks.settings }),
 }));
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({ data: undefined, isLoading: false }),
@@ -48,6 +49,16 @@ describe('Neuen Träger anlegen — Save (Admin#1206)', () => {
         mocks.createTenant.mockReset();
         mocks.createTenantAdmin.mockReset();
         mocks.navigate.mockReset();
+        mocks.settings = { multitenancyWithSingleDomainEnabled: true };
+    });
+
+    it('has no subdomain field, also on a multi-domain installation (subdomains are not finished)', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+
+        render(<GeneralTenantSettings />);
+
+        expect(screen.getByLabelText(/tenants\.add\.form\.name\.placeholder/)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/tenants\.add\.form\.subdomain\.placeholder/)).not.toBeInTheDocument();
     });
 
     it('sends one create request for a double click and shows Save as busy while it runs', async () => {

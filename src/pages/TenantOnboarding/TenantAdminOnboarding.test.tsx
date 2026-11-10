@@ -83,7 +83,6 @@ const createForwardClient = (mailNotSent = false): DpaForwardClient => ({
 const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>) => {
     await screen.findByLabelText('tenantOnboarding.organisation.name');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-    await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
@@ -324,7 +323,11 @@ describe('TenantAdminOnboarding', () => {
                 expect.objectContaining({
                     reservedTenantId: 21,
                     tenantIdReservationToken: 'reservation-token-21',
-                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                    organisation: {
+                        name: 'Beispiel e.V.',
+                        subdomain: expect.stringMatching(/^beispiel-e-v-\d{6}$/),
+                        address: 'Musterstraße 1',
+                    },
                     dpa: expect.objectContaining({ accepted: true, signerName: 'Erika Beispiel' }),
                 }),
             ),
@@ -349,7 +352,6 @@ describe('TenantAdminOnboarding', () => {
 
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
@@ -492,7 +494,6 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
     const fillEverythingBut = async (user: ReturnType<typeof userEvent.setup>, skip: 'address' | 'nothing') => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         if (skip !== 'address') {
             await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         }
@@ -558,7 +559,6 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
     const fillOrganisation = async (user: ReturnType<typeof userEvent.setup>) => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     };
 
@@ -595,7 +595,6 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // Fill only the organisation data — no signer fields, no consent.
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
 
         // The second path is available without completing the signature form.
@@ -851,7 +850,7 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
 
         expect(organisation).toEqual({
             name: 'Beispiel e.V.',
-            subdomain: 'beispiel',
+            subdomain: expect.stringMatching(/^beispiel-e-v-\d{6}$/),
             address: 'Musterstraße 1',
             legalName: 'Beispiel Verband e.V.',
             contactEmail: 'kontakt@beispiel.example',
@@ -866,7 +865,7 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
 
         expect(organisation).toEqual({
             name: 'Beispiel e.V.',
-            subdomain: 'beispiel',
+            subdomain: expect.stringMatching(/^beispiel-e-v-\d{6}$/),
             address: 'Musterstraße 1',
             contactPhone: '+49 30 123456',
         });
@@ -877,7 +876,6 @@ describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)
     const fillOrganisationOnly = async (user: ReturnType<typeof userEvent.setup>) => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     };
 
@@ -940,7 +938,11 @@ describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)
             expect(client.registerTenantAdmin).toHaveBeenCalledWith(
                 'raw-token',
                 expect.objectContaining({
-                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                    organisation: {
+                        name: 'Beispiel e.V.',
+                        subdomain: expect.stringMatching(/^beispiel-e-v-\d{6}$/),
+                        address: 'Musterstraße 1',
+                    },
                     dpa: expect.objectContaining({ accepted: false }),
                 }),
             ),

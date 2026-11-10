@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Form } from 'antd';
 import classNames from 'classnames';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
@@ -15,6 +15,8 @@ import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
 import { TraegerSenderFields } from '../../components/Tenants/TraegerSenderFields';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
+import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../config/subdomainFeature';
+import { buildInternalSubdomain, newInternalSubdomainSuffix } from '../../utils/buildInternalSubdomain';
 import { pickLegalContentLanguage } from '../../components/Tenants/LegalSettings/utils/legalContentLanguages';
 import {
     DpaAcceptanceData,
@@ -123,6 +125,14 @@ export const OrganisationDpaStep = ({
     const [submitBlocker, setSubmitBlocker] = useState<SubmitBlocker | null>(null);
     const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
     const submitActionsId = useId();
+    // Subdomains are not finished: the field is greyed out and holds a technical name built from the
+    // organisation name. TenantService still needs a subdomain to create the Träger.
+    const [subdomainSuffix] = useState(newInternalSubdomainSuffix);
+    const organisationName = Form.useWatch('name', form);
+    useEffect(() => {
+        if (SUBDOMAINS_TECHNICALLY_FINISHED) return;
+        form.setFieldValue('subdomain', buildInternalSubdomain(organisationName, subdomainSuffix));
+    }, [form, organisationName, subdomainSuffix]);
 
     const dpaHtml = useMemo(
         () => DOMPurify.sanitize(pickLegalContentLanguage(invite.dpaContent, i18n.language)),
@@ -150,7 +160,9 @@ export const OrganisationDpaStep = ({
     const onFinish = (values: OrganisationDpaFormValues) => {
         const organisation: OrganisationData = {
             name: values.name.trim(),
-            subdomain: values.subdomain.trim(),
+            subdomain: SUBDOMAINS_TECHNICALLY_FINISHED
+                ? values.subdomain.trim()
+                : buildInternalSubdomain(values.name, subdomainSuffix),
             address: values.address.trim(),
             ...enteredSenderFields(values),
         };
@@ -224,6 +236,10 @@ export const OrganisationDpaStep = ({
                 <MuiFormField
                     name="subdomain"
                     label={t('tenantOnboarding.organisation.subdomain')}
+                    disabled={!SUBDOMAINS_TECHNICALLY_FINISHED}
+                    helpText={
+                        SUBDOMAINS_TECHNICALLY_FINISHED ? undefined : t('tenantOnboarding.organisation.subdomainHint')
+                    }
                     rules={[
                         { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
                         {

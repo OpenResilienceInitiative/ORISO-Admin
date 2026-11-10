@@ -97,6 +97,7 @@
     "tenantOnboarding.organisation.masterDataTitle": "Organisation master data",
     "tenantOnboarding.organisation.name": "Organisation name",
     "tenantOnboarding.organisation.subdomain": "Subdomain",
+    "tenantOnboarding.organisation.subdomainHint": "Subdomains are not available yet. A technical name is created from the name automatically.",
     "tenantOnboarding.organisation.address": "Address",
     "tenantOnboarding.dpa.title": "Contract documents",
     "tenantOnboarding.dpa.description": "Please review the contract documents and confirm them on behalf of your organisation.",
