@@ -23,6 +23,8 @@ export interface SnackbarAction {
     /** Already translated, e.g. `t('snackbar.retry')`. */
     label: string;
     onClick: () => void;
+    /** Not clickable while true (for example while the operation it starts is still running). */
+    disabled?: boolean;
 }
 
 /** What a jump action scrolls to: an element id, a CSS selector, an element or a ref to one. */
@@ -31,8 +33,7 @@ export type SnackbarJumpTarget = string | HTMLElement | { current: HTMLElement |
 /**
  * The "Ansehen" action of a pop-up whose event belongs to a tile or a field. Click: `onJump` runs
  * first (open or enlarge the editor, expand the tile), then the page scrolls to the target and
- * focuses it (or its first button, field or link). The pop-up is dismissed afterwards: the person
- * has been taken to the owner, the pop-up did its job.
+ * focuses its heading or field. The pop-up stays: an error that is still true is not hidden by looking at it.
  */
 export interface SnackbarJump {
     target: SnackbarJumpTarget;
@@ -49,8 +50,13 @@ interface SnackbarOptionsBase {
     action?: SnackbarAction;
     /** A second text action next to `action`, for a choice between two outcomes (e.g. two drafts). */
     secondaryAction?: SnackbarAction;
-    /** Takes the person to the tile or field the event belongs to. Counts as an action: it stays. */
+    /** Takes the person to the tile or field the event belongs to. A link, not an action: success and info still time out. */
     jump?: SnackbarJump | SnackbarJumpTarget;
+    /**
+     * A generic transport failure ("something went wrong") with no news of its own. It is dropped when a
+     * specific error pop-up is, or has just been, raised for the same moment (see GENERIC_MERGE_WINDOW_MS).
+     */
+    generic?: boolean;
     /** Accepted for older call sites; every pop-up is closable, so it changes nothing. */
     dismissible?: boolean;
     /** Stays until closed even when it is a success or info. Errors and warnings always do. */
@@ -102,6 +108,8 @@ export const SNACKBAR_DEDUPE_WINDOW_MS = 4000;
 /** Pop-ups on screen at once; the rest wait in the queue. */
 export const SNACKBAR_MAX_VISIBLE = 4;
 const MAX_QUEUE = 10;
+/** A generic error and a specific one within this window are one failure: only the specific one shows. */
+export const GENERIC_MERGE_WINDOW_MS = 3000;
 
 /** Success and info are the only ones that time out. */
 export const SNACKBAR_MIN_DURATION_MS = 4000;
@@ -129,7 +137,6 @@ export const resolveDuration = (options: SnackbarOptions): number | null => {
         options.persistent ||
         options.action ||
         options.secondaryAction ||
-        options.jump ||
         severity === 'error' ||
         severity === 'warning'
     ) {
@@ -193,6 +200,7 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
     const lastRaised = new Map<string, number>();
     const lastCause = new Map<string, number>();
     const listeners = new Set<Listener>();
+    let lastSpecificError = -Infinity;
 
     const setState = (visible: readonly SnackbarItem[], queued: readonly SnackbarItem[]) => {
         state = visible.length === 0 && queued.length === 0 ? EMPTY : { current: visible[0], visible, queued };
@@ -242,12 +250,34 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
         };
         prune(at);
 
+        // A generic transport error is no news next to a specific error for the same failure. Both orders:
+        // the toast fires first (the request fails) or after (a component already raised its own).
+        if (item.severity === 'error' && !options.generic) {
+            lastSpecificError = at;
+            const isGeneric = (other: SnackbarItem) => !!other.generic && other.severity === 'error';
+            const dropped = [...state.visible, ...state.queued].filter(isGeneric);
+            if (dropped.length) {
+                const waiting = state.queued.filter((other) => !isGeneric(other));
+                const visible = state.visible.filter((other) => !isGeneric(other));
+                const room = SNACKBAR_MAX_VISIBLE - visible.length;
+                setState([...visible, ...waiting.slice(0, room)], waiting.slice(room));
+                dropped.forEach((other) => {
+                    forget(other);
+                    finish(other, 'replaced');
+                });
+            }
+        } else if (options.generic && at - lastSpecificError < GENERIC_MERGE_WINDOW_MS) {
+            return key;
+        }
+
         // One cause, one pop-up: while it is visible, queued or just gone.
         if (options.causeKey) {
             const existing = [...state.visible, ...state.queued].find((other) => other.causeKey === options.causeKey);
-            if (existing) return existing.key;
+            // One cause, one pop-up: the first wins. Only the same pop-up raised again under its own explicit key
+            // is an update, handled below: it takes the newer text.
+            if (existing && (existing.key !== key || !options.key)) return existing.key;
             const lastSeen = lastCause.get(options.causeKey);
-            if (lastSeen !== undefined && at - lastSeen < SNACKBAR_DEDUPE_WINDOW_MS) return key;
+            if (!existing && lastSeen !== undefined && at - lastSeen < SNACKBAR_DEDUPE_WINDOW_MS) return key;
             lastCause.set(options.causeKey, at);
         }
 
@@ -288,7 +318,10 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
             // first, and an error only makes room for a newer error.
             while (queued.length > MAX_QUEUE) {
                 const drop = queued.findIndex((waiting) => waiting.severity !== 'error');
-                finish(queued.splice(drop < 0 ? 0 : drop, 1)[0], 'replaced');
+                const [gone] = queued.splice(drop < 0 ? 0 : drop, 1);
+                // Never shown: a repeat of it must not be swallowed as "already on screen".
+                forget(gone);
+                finish(gone, 'replaced');
             }
             setState(state.visible, queued);
         }
@@ -332,6 +365,7 @@ export const createSnackbarStore = (now: () => number = Date.now) => {
         const pending = [...state.visible, ...state.queued];
         lastRaised.clear();
         lastCause.clear();
+        lastSpecificError = -Infinity;
         setState([], []);
         pending.forEach((item) => finish(item, 'dismiss'));
     };

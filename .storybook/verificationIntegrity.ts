@@ -94,4 +94,10 @@ export const createVerificationRecorder = (expected: ExpectedVerificationFailure
     };
 };
 
-export const isProductRequest = (url: string) => /\/(service|api|auth)(\/|$)/.test(new URL(url).pathname);
+/** Vite serves source modules under /src (e.g. /src/api/...); those are assets, never product requests. */
+const isDevModuleRequest = (pathname: string) => /^\/(src|node_modules|@[a-z-]+)\//.test(pathname);
+
+export const isProductRequest = (url: string) => {
+    const { pathname } = new URL(url);
+    return !isDevModuleRequest(pathname) && /\/(service|api|auth)(\/|$)/.test(pathname);
+};
