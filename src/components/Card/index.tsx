@@ -67,6 +67,7 @@ export const Card = ({
     return (
         <Box
             data-testid={dataTestId}
+            data-search-tile={titleKey}
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
