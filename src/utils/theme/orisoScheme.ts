@@ -162,6 +162,10 @@ export const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
+    // Pictures stay as drawn: tiles and dialogs keep their light surface in the inverted
+    // scheme (see the surface tokens), and the drawings are dark ink. A dark workspace sets
+    // PICTURE_FILTER_ON_DARK here together with its dark card surfaces, not before.
+    '--admin-picture-filter': 'none',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -183,6 +187,13 @@ const ADMIN_TABLE_TOKENS = {
     '--admin-form-card-surface': '#eae7e8',
     '--admin-form-label-text': '#444748',
 };
+
+/**
+ * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
+ * surface, this filter flips the strokes light (and turns the red accent back to red), so
+ * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` above.
+ */
+export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
 
 /**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than

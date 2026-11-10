@@ -140,6 +140,17 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).not.toBe('#fcf9f9');
     });
 
+    it('keeps tile pictures as drawn in both schemes, because tiles and dialogs stay light', () => {
+        const root = document.createElement('div');
+
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+        expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
+
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+    });
+
     it('uses the same stored seeds without writing a separate admin palette', () => {
         const root = document.createElement('div');
         applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: '#646d78' }, root);
