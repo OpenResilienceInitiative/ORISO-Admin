@@ -1,7 +1,7 @@
-import { notification } from 'antd';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
+import { snackbar } from '../components/Snackbar';
 import { FETCH_ERRORS } from '../api/fetchData';
 import { useTenantAdminControls } from './useTenantAdminControls.hook';
 import { useTenantAdminControlsMutation } from './useTenantAdminControlsMutation.hook';
@@ -31,7 +31,7 @@ export const useAppearanceEditingRights = (tenantId: string) => {
         // The request helper already toasted an HTTP error; a second message would only repeat it.
         onError: (error) => {
             if (error instanceof Error && error.message === FETCH_ERRORS.CATCH_ALL) return;
-            notification.error({ message: t('settings.masterData.editable.saveError') });
+            snackbar.error({ message: t('settings.masterData.editable.saveError') });
         },
         // Organisations read their own copy: do not let it show the old value until the next refetch.
         onSuccess: () => queryClient.invalidateQueries({ queryKey: tenantPermissionPoliciesKey(tenantId) }),
@@ -59,7 +59,7 @@ export const useAppearanceEditingRights = (tenantId: string) => {
             const stored = controls.data;
             if (!stored) {
                 // Without the stored controls a PUT would overwrite every other platform setting.
-                notification.error({ message: t('settings.masterData.editable.saveError') });
+                snackbar.error({ message: t('settings.masterData.editable.saveError') });
                 options?.onError?.();
                 return;
             }

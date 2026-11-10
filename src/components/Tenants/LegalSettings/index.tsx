@@ -15,9 +15,14 @@ interface LegalSettingsProps {
     tenantId?: string | number;
     /** Owner of the server-side drafts, when it differs from the published text's tenant. */
     draftTenantId?: string | number;
+    /**
+     * Shows the data processing agreement, the imprint and the privacy statement as tiles that fold up to a
+     * header with icon, title and state; the agreement starts unfolded. Without it each is a card, as before.
+     */
+    collapsible?: boolean;
 }
 
-export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) => {
+export const LegalSettings = ({ tenantId, draftTenantId, collapsible = false }: LegalSettingsProps) => {
     const { data } = useTenantData();
     const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const finalTenantId = resolveTenantId(tenantId, data.id);
@@ -37,6 +42,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
             tileHelp={privacyHelp}
             legalType="privacy"
             placeHolderKey="settings.privacy.placeholder"
+            collapsible={collapsible}
             showConfirmationModal={{
                 titleKey: 'privacy.confirmation.title',
                 contentKey: 'privacy.confirmation.content',
@@ -63,7 +69,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                 </CardGrid.Item>
             )}
             <CardGrid.Item span={3}>
-                <DataProcessingAgreementContainer tenantId={finalTenantId} />
+                <DataProcessingAgreementContainer tenantId={finalTenantId} collapsible={collapsible} defaultOpen />
             </CardGrid.Item>
             <CardGrid.Item span={3}>
                 <LegalTextCard
@@ -75,6 +81,7 @@ export const LegalSettings = ({ tenantId, draftTenantId }: LegalSettingsProps) =
                     legalType="imprint"
                     icon={ImprintIcon}
                     placeHolderKey="settings.imprint.placeholder"
+                    collapsible={collapsible}
                 />
             </CardGrid.Item>
             {/* <LegalText

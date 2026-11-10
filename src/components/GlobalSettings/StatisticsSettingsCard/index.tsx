@@ -3,7 +3,6 @@ import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
-import Alert from '@mui/material/Alert';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import { Form } from 'antd';
@@ -30,6 +29,7 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { statisticsHelp } from './help';
 import { downloadStatisticsSettingsProtocol, statisticsSettingValueLabel } from './statisticsSettingsProtocolCsv';
 import styles from './styles.module.scss';
+import { Notify } from '../../Notify';
 
 interface Props {
     data?: StatisticsSettings;
@@ -154,7 +154,17 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
             {({ editing }) => (
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
-                    {Boolean(error) && <Alert severity="error">{t('globalSettings.statistics.error.load')}</Alert>}
+                    {Boolean(error) && (
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.statistics.error.load')}
+                        </Notify>
+                    )}
                     <p className={styles.note}>{t('globalSettings.statistics.defaultNotice')}</p>
                     {data && (
                         <TileSections className={styles.sections}>
@@ -251,9 +261,9 @@ export const StatisticsSettingsCard = ({ data, isLoading, isSaving, error, onSav
                                                     {t('globalSettings.statistics.protocol.download')}
                                                 </M3Button>
                                                 {protocolError && (
-                                                    <Alert severity="error">
+                                                    <Notify title={t('notify.title.globalSettings')} severity="error">
                                                         {t('globalSettings.statistics.protocol.error')}
-                                                    </Alert>
+                                                    </Notify>
                                                 )}
                                             </div>
                                         </TileSections.Section>

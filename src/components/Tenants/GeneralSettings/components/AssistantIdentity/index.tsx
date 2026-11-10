@@ -1,4 +1,5 @@
-import { Alert, ConfigProvider, Form, Radio } from 'antd';
+import { ConfigProvider, Form, Radio } from 'antd';
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DefaultRobot } from '../../../../../resources/img/assistant/default.svg';
@@ -17,6 +18,7 @@ import { ReactComponent as Robot3 } from '../../../../../resources/img/assistant
 import { ReactComponent as Robot4 } from '../../../../../resources/img/assistant/robot-5475944-400.svg';
 import { assistantIconUploadPolicy } from '../../../../../utils/assistantIconUploadPolicy';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 const presets = [
     ['default', DefaultRobot],
@@ -32,10 +34,26 @@ const presets = [
  */
 const RADIO_GROUP_ROLE = { role: 'radiogroup' } as const;
 
+/** What "Übernehmen" would show: the icon of the level above, once the read for this tenant has answered. */
+const InheritedIcon = ({ icon }: { icon?: string }) => {
+    const { t } = useTranslation();
+    if (icon === undefined) return <AccountTreeOutlinedIcon aria-hidden="true" />;
+    if (assistantIconUploadPolicy.canPreview(icon)) {
+        return <img src={icon} alt={t('settings.assistant.inheritedIcon')} />;
+    }
+    const Preset = presets.find(([id]) => id === icon)?.[1] ?? DefaultRobot;
+    return <Preset aria-label={t('settings.assistant.inheritedIcon')} role="img" />;
+};
+
+/**
+ * The icon choices as tiles (#1374): "Übernehmen" first, then the presets. Still one radio group, so
+ * arrow keys, labels and the saved value stay as they were; an own upload selects no tile.
+ */
 const IconPicker = ({
     value,
     onChange,
     disabled,
+    inheritedIcon,
     label,
 }: {
     value?: string;
@@ -43,6 +61,8 @@ const IconPicker = ({
     disabled?: boolean;
     /** Names the group for screen readers; the section title above it says the same in words. */
     label?: string;
+    /** `undefined` while the level above is not known. */
+    inheritedIcon?: string;
 }) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
@@ -55,9 +75,14 @@ const IconPicker = ({
             {...RADIO_GROUP_ROLE}
             aria-label={label}
         >
-            <Radio value="">{t('settings.assistant.inherit')}</Radio>
+            <Radio value="" className={styles.presetTile}>
+                <span className={styles.preset}>
+                    <InheritedIcon icon={inheritedIcon} />
+                    <span>{t('settings.assistant.inheritShort')}</span>
+                </span>
+            </Radio>
             {presets.map(([id, Asset], index) => (
-                <Radio key={id} value={id}>
+                <Radio key={id} value={id} className={styles.presetTile}>
                     <span className={styles.preset}>
                         <Asset aria-hidden="true" />
                         <span>
@@ -83,8 +108,10 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
     const ownIcon = data?.theming?.assistantIcon;
     const hasOwnName = !!ownName?.trim();
     const hasOwnIcon = !!ownIcon?.trim();
-    const inheritedIcon = inherited?.theming?.assistantIcon || 'default';
-    const InheritedPreset = presets.find(([id]) => id === inheritedIcon)?.[1] ?? DefaultRobot;
+    // The effective read already contains this tenant's own override, so it only tells the
+    // inherited value while there is no override; otherwise the hint stays neutral.
+    const inheritedIcon = inherited && !hasOwnIcon ? inherited.theming?.assistantIcon || 'default' : undefined;
+    const inheritedName = inherited && !hasOwnName ? inherited.theming?.assistantName || 'Carimat' : undefined;
     const locked =
         readOnly ||
         isError ||
@@ -110,6 +137,7 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             initialValues={initialValues}
             isLoading={isLoading}
             allowEdit={!locked}
+            readOnlyAccess={readOnly}
             onSave={(submitted, options) => {
                 const values = submitted as { theming: { assistantName?: string; assistantIcon?: string } };
                 const theming: { assistantName?: string | null; assistantIcon?: string | null } = {};
@@ -124,7 +152,17 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             headerIcon={<SmartToyOutlinedIcon />}
             help={assistantHelp}
         >
-            {isError && <Alert type="error" message={t('settings.assistant.loadError')} showIcon />}
+            {isError && (
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.assistant')}
+                    severity="error"
+                    causeKey={`assistant:load:${tenantId}`}
+                    retry
+                >
+                    {t('settings.assistant.loadError')}
+                </Notify>
+            )}
             <TileSections>
                 <TileSections.Section id="assistant-name" title={t('settings.assistant.section.name')}>
                     <FormInputField
@@ -135,35 +173,34 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
                     />
                     {!hasOwnName && (
                         <p className={styles.sectionText}>
-                            {t('settings.assistant.inherit')}
-                            {inherited && `: ${inherited.theming?.assistantName || 'Carimat'}`}
+                            {inheritedName
+                                ? t('settings.assistant.inheritedName', {
+                                      name: inheritedName,
+                                  })
+                                : t('settings.assistant.inheritedNameUnknown')}
                         </p>
                     )}
                 </TileSections.Section>
                 <TileSections.Section id="assistant-icon" title={t('settings.assistant.section.icon')}>
                     <Form.Item name={['theming', 'assistantIcon']} className={styles.iconPicker}>
-                        <IconPicker disabled={locked} label={t('settings.assistant.icon')} />
+                        <IconPicker
+                            disabled={locked}
+                            inheritedIcon={inheritedIcon}
+                            label={t('settings.assistant.icon')}
+                        />
                     </Form.Item>
                 </TileSections.Section>
                 <TileSections.Section id="assistant-upload" title={t('settings.assistant.section.upload')}>
                     <FormFileUploaderField
                         name={['theming', 'assistantIcon']}
-                        labelKey="settings.assistant.upload"
                         uploadPolicy={assistantIconUploadPolicy}
                         disabled={locked}
-                        tooltip={t('settings.assistant.formats')}
+                        row={{
+                            title: t('settings.assistant.section.upload'),
+                            description: t('settings.assistant.formats'),
+                            inSection: true,
+                        }}
                     />
-                    <p className={styles.sectionText}>{t('settings.assistant.formats')}</p>
-                    {!hasOwnIcon && inherited && (
-                        <div className={styles.preset}>
-                            {assistantIconUploadPolicy.canPreview(inheritedIcon) ? (
-                                <img src={inheritedIcon} alt={t('settings.assistant.inheritedIcon')} />
-                            ) : (
-                                <InheritedPreset aria-label={t('settings.assistant.inheritedIcon')} role="img" />
-                            )}
-                            <span>{t('settings.assistant.inherit')}</span>
-                        </div>
-                    )}
                 </TileSections.Section>
             </TileSections>
         </CardEditable>

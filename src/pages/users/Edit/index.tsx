@@ -1,4 +1,4 @@
-import { Alert, Button, Space, Col, Row, Form } from 'antd';
+import { Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -54,6 +54,7 @@ import {
 } from '../../../api/counselor/changeConsultantTenant';
 import { AGENCY_CONSULTANTS_KEY } from '../../../hooks/useAgencyConsultants';
 import { useAppConfigContext } from '../../../context/useAppConfig';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { CentreTopicPickers } from './CentreTopicPickers';
 import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
@@ -73,6 +74,7 @@ import {
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
+import { HintText } from '../../../components/HintText';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -139,12 +141,17 @@ interface TenantMove {
     result?: ChangeConsultantTenantResult;
 }
 
-export const UserEditOrAdd = () => {
+type UserEditFormProps = {
+    id: string;
+    typeOfUsers: TypeOfUser.Consultants | TypeOfUser.AgencyAdmins;
+    can: ReturnType<typeof useUserPermissions>['can'];
+};
+
+const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
     const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
-    const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
@@ -152,7 +159,6 @@ export const UserEditOrAdd = () => {
     // question — see `ADMIN_REMARKS_ROLES`.
     const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
-    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
     const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
@@ -524,7 +530,6 @@ export const UserEditOrAdd = () => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -532,11 +537,11 @@ export const UserEditOrAdd = () => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
             onAccountCreatedWithoutMail: (content) => {
-                message.warning({ content, duration: 10 });
+                message.warning({ content });
                 navigate(`/admin/users/${typeOfUsers}`);
             },
         }),
@@ -740,7 +745,6 @@ export const UserEditOrAdd = () => {
             };
             message.error({
                 content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
-                duration: 8,
             });
             return;
         } finally {
@@ -755,7 +759,6 @@ export const UserEditOrAdd = () => {
         persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
             message.warning({
                 content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
-                duration: 8,
             }),
         );
         setPendingMove(null);
@@ -820,16 +823,13 @@ export const UserEditOrAdd = () => {
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
-    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
     let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
 
     if (pendingSlug) {
-        publicSlugAlertType = 'warning';
         publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
     } else if (slugStatus === 'REJECTED') {
         publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
     } else if (activePublicSlug) {
-        publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
 
@@ -867,7 +867,11 @@ export const UserEditOrAdd = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
@@ -1077,12 +1081,9 @@ export const UserEditOrAdd = () => {
                                             <input />
                                         </Form.Item>
                                         {isEditing && (
-                                            <Alert
-                                                type={publicSlugAlertType}
-                                                showIcon
-                                                message={t('counselor.publicSlug.status.title')}
-                                                description={publicSlugAlertDescription}
-                                            />
+                                            <HintText title={t('counselor.publicSlug.status.title')}>
+                                                {publicSlugAlertDescription}
+                                            </HintText>
                                         )}
                                         {pendingSlug && (
                                             <Space>
@@ -1137,4 +1138,26 @@ export const UserEditOrAdd = () => {
             )}
         </Page>
     );
+};
+
+export const UserEditOrAdd = () => {
+    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const { can } = useUserPermissions();
+
+    if (!id || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        return <AccessDenied />;
+    }
+
+    if (typeOfUsers === TypeOfUser.AgencyAdmins) {
+        const canOpenEditor =
+            id === 'add'
+                ? can(PermissionAction.Create, Resource.AgencyAdminUser)
+                : can(PermissionAction.Read, Resource.AgencyAdminUser) &&
+                  can(PermissionAction.Update, Resource.AgencyAdminUser);
+        if (!canOpenEditor) {
+            return <AccessDenied />;
+        }
+    }
+
+    return <UserEditForm id={id} typeOfUsers={typeOfUsers} can={can} />;
 };

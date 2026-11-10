@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vite-plus/test';
 
@@ -28,12 +28,13 @@ describe('shared focus ring', () => {
         expect(appCss).toMatch(/\.MuiRadio-root, \.MuiCheckbox-root\)\.Mui-focusVisible/);
     });
 
-    it.each(['../components/EditButton/styles.module.scss', '../components/M3Switch/styles.module.scss'])(
-        '%s draws no ring of its own colour',
-        (path) => {
-            expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
-        },
-    );
+    it.each([
+        '../components/EditButton/styles.module.scss',
+        '../components/M3Switch/styles.module.scss',
+        '../components/TopicCatalogue/styles.module.scss',
+    ])('%s draws no ring of its own colour', (path) => {
+        expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
+    });
 
     it('lets a component move the ring by setting the offset token, because the shared rule is more specific', () => {
         // The shared rule (0,4,0) beats a component's own `outline-offset`; only the token survives it.
@@ -45,9 +46,34 @@ describe('shared focus ring', () => {
     });
 
     it('lets surfaces that follow the colour scheme or stay dark set their own ring colour', () => {
-        expect(read('../components/Card/styles.module.scss')).toMatch(/--admin-focus-ring-color:\s*var\(--m3-primary/);
-        expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
-            /--admin-focus-ring-color:\s*#ffb4aa/,
+        // The dialog card follows the scheme through the contrast-checked runtime token (#1168).
+        expect(read('../components/Card/styles.module.scss')).toMatch(
+            /--admin-focus-ring-color:\s*var\(--admin-focus-ring-on-surface,\s*var\(--m3-primary/,
         );
+        // The editor's text surface is white in every scheme: its ring is the fixed brand accent.
+        expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
+            /--admin-focus-ring-color:\s*var\(--oriso-app-accent-dark,\s*#a5000a\)/,
+        );
+        // The editor hints are the shared pop-up now: it stays dark in every scheme and takes its ring from the
+        // text colour of its own tone, a pair built to be readable on the container.
+        expect(read('../components/Snackbar/Snackbar.module.scss')).toMatch(
+            /--snackbar-focus:\s*var\(--snackbar-on-container\)/,
+        );
+    });
+
+    // #1168: --m3-primary is the Träger seed at runtime, so a ring drawn in it fades for pale brand colours.
+    it('draws no outline in the raw Träger colour anywhere in the styles', () => {
+        const src = resolve(__dirname, '..');
+        const offenders = (readdirSync(src, { recursive: true }) as string[])
+            .filter((file) => /\.(s?css|less)$/.test(file))
+            .flatMap((file) =>
+                readFileSync(resolve(src, file), 'utf8')
+                    .split('\n')
+                    .map((line, index) => ({ line: line.trim(), at: `${file}:${index + 1}` }))
+                    .filter(({ line }) => /^outline(-color)?\s*:.*var\(--m3-primary\b/.test(line))
+                    .map(({ at }) => at),
+            );
+
+        expect(offenders).toEqual([]);
     });
 });

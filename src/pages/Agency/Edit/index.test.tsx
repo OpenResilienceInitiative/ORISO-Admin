@@ -1,9 +1,13 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Form, notification } from 'antd';
+import { Form } from 'antd';
+import { snackbar as notification } from '../../../components/Snackbar';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
+import { UserRole } from '../../../enums/UserRole';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -26,12 +30,13 @@ const mocks = vi.hoisted(() => ({
     isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    canCreateAgency: true,
     userRoles: {
         hasRole: () => true,
         isSuperAdmin: true,
         isTechnicalAccount: false,
         isTenantScopedAdmin: false,
-        roles: [],
+        roles: [] as UserRole[],
         tenantId: 0,
     },
     dpaGate: { dpaPublished: true, dpaSigned: true },
@@ -64,6 +69,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 beforeEach(() => {
+    mocks.canCreateAgency = true;
     mocks.consultantSearchFilters = [];
     mocks.consultantSearchCalls = [];
     mocks.consultantSearchFailed = false;
@@ -113,6 +119,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
     'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -307,6 +314,13 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => mocks.userRoles,
 }));
 
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: PermissionAction, resource: Resource) =>
+            action === PermissionAction.Create && resource === Resource.Agency && mocks.canCreateAgency,
+    }),
+}));
+
 vi.mock('../../../hooks/useDpaGate.hook', () => ({
     useDpaGate: () => ({ data: mocks.dpaGate, isLoading: false, isError: false }),
 }));
@@ -372,6 +386,33 @@ describe('AgencyPageEdit create flow', () => {
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
+    it('denies the direct add route without the agency creation permission', () => {
+        mocks.canCreateAgency = false;
+        mocks.userRoles = {
+            ...mocks.userRoles,
+            isSuperAdmin: false,
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            tenantId: 2,
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing agency readable without the agency creation permission', async () => {
+        mocks.canCreateAgency = false;
+        mocks.routeId = '2';
+        mocks.agencyData = { id: 2, name: 'Springfield QA Dev Beratungsstelle', tenantId: 2 };
+
+        await act(async () => renderWithClient(<AgencyPageEdit />));
+
+        expect(screen.getByRole('heading', { name: 'Springfield QA Dev Beratungsstelle' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Schade!' })).not.toBeInTheDocument();
+    });
+
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
@@ -406,7 +447,6 @@ describe('AgencyPageEdit create flow', () => {
                     message:
                         'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
                     description: 'Trägerzuordnung',
-                    duration: 8,
                 }),
             { timeout: 5000 },
         );
@@ -540,7 +580,7 @@ describe('AgencyPageEdit create flow', () => {
         await expect(
             mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
         ).rejects.toBe(rejection);
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 
@@ -594,7 +634,7 @@ describe('AgencyPageEdit create flow', () => {
             }),
         );
 
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 });
@@ -730,6 +770,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
             postcode: '86161',
             city: 'Augsburg',
             offline: false,
@@ -760,6 +801,9 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics,
             tenantId: 7,
@@ -768,7 +812,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
     };
 
     const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
     };
 
     it('shows the confirm dialog when an existing offline agency goes live without a topic', async () => {
@@ -796,7 +840,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         expect(mocks.mutate).not.toHaveBeenCalled();
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        expect(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Allgemeine Informationen save' })).toBeInTheDocument();
     });
 
     it('saves the registration card online when the no-topic dialog is confirmed', async () => {
@@ -831,7 +875,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.';
 
     const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
     };
 
     const renderAgencyWithoutAssignedConsultants = () => {
@@ -842,6 +886,9 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics: [TOPIC],
             tenantId: 7,
@@ -891,11 +938,19 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.tenantTopics = [TOPIC];
         mocks.consultants = [CONSULTANT];
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
 
         expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
@@ -908,11 +963,19 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         // The HAS_CONSULTANTS request failed, so react-query leaves the flag undefined. The
         // agency is online and staffed; a postcode-only edit must not be rejected for it.
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: false, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         expect(await screen.findByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
 
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
@@ -1057,6 +1120,9 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics: [TOPIC],
             tenantId: 7,
@@ -1090,7 +1156,15 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         // The platform admin's consultant search spans tenants; the agency belongs to tenant 7.
         mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
         mocks.hasConsultants = false;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
@@ -1162,6 +1236,9 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: false,
             topics: [TOPIC],
             tenantId: 7,
@@ -1185,9 +1262,9 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
         expect(toggle).toBeChecked();
         await user.click(toggle);
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
 
-        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED, duration: 8 }));
+        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED }));
         expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         notificationSpy.mockRestore();

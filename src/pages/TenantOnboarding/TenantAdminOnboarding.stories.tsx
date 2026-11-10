@@ -105,11 +105,14 @@ export const OrganisationAndDpaLongText: Story = {
 export const OrganisationAndDpaIncompleteSubmit: Story = {
     args: { client: longDpaClient() },
     play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
         // Language-agnostic: the step has exactly one submit control.
         await waitFor(() => expect(canvasElement.querySelector('button[type="submit"]')).not.toBeNull());
         await userEvent.click(canvasElement.querySelector<HTMLButtonElement>('button[type="submit"]')!);
-        await expect(await canvas.findByTestId('onboarding-submit-error')).toBeVisible();
+        // The reason is a pop-up on the shared channel (screen corner, outside the form), not a box.
+        const popup = await within(canvasElement.ownerDocument.body).findByTestId('onboarding-submit-error');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await waitFor(() => expect(popup).toBeVisible());
+        await expect(canvasElement.contains(popup)).toBe(false);
     },
 };
 
@@ -370,9 +373,10 @@ export const AccountStepPasswordUnchanged: StoryObj = {
         />
     ),
     play: async ({ canvasElement }) => {
-        await expect(within(canvasElement).getByRole('alert')).toHaveTextContent(
-            /vom Einmalpasswort unterscheidet|differs from the one-time password/,
-        );
+        // A permanent validation reason: plain text under the field, not a pop-up.
+        await expect(
+            within(canvasElement).getByText(/vom Einmalpasswort unterscheidet|differs from the one-time password/),
+        ).toBeVisible();
     },
 };
 

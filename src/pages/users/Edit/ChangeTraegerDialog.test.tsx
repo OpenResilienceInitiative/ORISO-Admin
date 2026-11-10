@@ -125,7 +125,8 @@ describe('ChangeTraegerDialog', () => {
         it('keeps the edit: shows the reason and offers to go back', async () => {
             const props = renderDialog({ error: CHANGE_TENANT_ERRORS.LAST_COUNSELLOR_OF_CENTRE });
 
-            expect(within(dialog()).getByRole('alert')).toHaveTextContent(/letzte Beratungsperson/);
+            // The refusal is an error pop-up on the shared snackbar channel, outside the dialog.
+            expect(await screen.findByTestId('snackbar')).toHaveTextContent(/letzte Beratungsperson/);
             await userEvent.click(within(dialog()).getByRole('button', { name: 'Zurück zum Bearbeiten' }));
             expect(props.onCancel).toHaveBeenCalledTimes(1);
         });
@@ -166,7 +167,7 @@ describe('ChangeTraegerDialog', () => {
             await i18n.changeLanguage(language);
             render(<ChangeTraegerDialog {...baseProps()} error={error} />);
 
-            const text = within(screen.getByRole('alert')).getByText(/\S/).textContent ?? '';
+            const text = (await screen.findByTestId('snackbar')).textContent ?? '';
             expect(text).not.toContain('counselor.changeTenant');
             expect(text.length).toBeGreaterThan(20);
         });

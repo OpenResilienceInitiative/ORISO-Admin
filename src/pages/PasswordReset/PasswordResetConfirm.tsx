@@ -12,6 +12,7 @@ import { OnboardingPageHeader } from '../../components/OnboardingDesign/Onboardi
 import { confirmAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import { validatePasswordCriteria } from '../../utils/validateInputValue';
 import routePathNames from '../../appConfig';
+import { Notify } from '../../components/Notify';
 
 export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: string }) => {
     const { t } = useTranslation();
@@ -113,9 +114,9 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                 </Form.Item>
                 {failed && (
                     <>
-                        <Typography role="alert" color="error" sx={{ mt: 2 }}>
+                        <Notify title={t('notify.title.passwordReset')} severity="error">
                             {t('passwordReset.confirmError')}
-                        </Typography>
+                        </Notify>
                         {requestNewLink}
                     </>
                 )}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../Snackbar';
 import type { TopicInviteLinkDTO } from '../../api/invitelinks/topicInviteLinks';
 import { LiveChatLinks } from './LiveChatLinks';
 import en from '../../locales/en/translation.json';
@@ -32,11 +33,6 @@ vi.mock('../../api/invitelinks/topicInviteLinks', async () => {
 vi.mock('../../hooks/useTenantTopics', () => ({
     useTenantTopics: () => ({ data: [{ id: 5, name: 'Sozialberatung' }], isLoading: false }),
 }));
-
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return { ...actual, message: { error: mocks.messageError, success: mocks.messageSuccess } };
-});
 
 // Real English wording, so the test reads what an admin reads.
 const translations = en as Record<string, string>;
@@ -92,6 +88,8 @@ describe('LiveChatLinks — manage (platform admin)', () => {
     afterEach(cleanup);
 
     beforeEach(() => {
+        vi.spyOn(snackbar, 'error').mockImplementation(mocks.messageError);
+        vi.spyOn(snackbar, 'success').mockImplementation(mocks.messageSuccess);
         Object.values(mocks).forEach((m) => m.mockReset());
     });
 

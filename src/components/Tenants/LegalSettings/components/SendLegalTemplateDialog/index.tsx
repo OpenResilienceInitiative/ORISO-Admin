@@ -18,6 +18,7 @@ import { Modal } from '../../../../Modal';
 import { RadioButton } from '../../../../radioButton/RadioButton';
 import { formatLegalDateTime } from '../../utils/legalDateTime';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 /**
  * Who a template goes to. The platform offers its drafts to Träger; a Träger offers its
@@ -142,7 +143,7 @@ export const SendLegalTemplateDialog = ({
             else if (code === 'BAD_REQUEST' && level === 'agencies')
                 messageKey = 'legal.template.send.agencies.noAgencies';
             else if (code === 'FORBIDDEN' && level === 'agencies') messageKey = 'legal.template.send.forbidden';
-            notification.error({ message: t(messageKey), duration: 8 });
+            notification.error({ message: t(messageKey) });
         } finally {
             setSending(false);
         }
@@ -189,9 +190,14 @@ export const SendLegalTemplateDialog = ({
                 {audience === 'SELECTED' && (
                     <div className={styles.picker}>
                         {recipients.isError ? (
-                            <p role="alert" className={styles.error}>
+                            <Notify
+                                retry
+                                quietText={t('notify.tile.notLoaded')}
+                                title={t('notify.title.legal')}
+                                severity="error"
+                            >
                                 {t(`legal.template.send.${level}.loadError`)}
-                            </p>
+                            </Notify>
                         ) : (
                             <ConsultantPicker
                                 consultants={recipients.data ?? []}

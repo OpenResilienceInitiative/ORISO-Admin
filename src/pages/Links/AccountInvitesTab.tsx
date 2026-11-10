@@ -421,7 +421,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 const updated = await updateAccountInviteTopicPermission(invite.id, topicPermission);
                 setRowPermission(topicPermission, updated);
-                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'), 2);
+                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'));
             } catch (error) {
                 setRowPermission(previous);
                 message.error((await explain(error, 'topicPermission', invite.targetRole)).message);
@@ -456,6 +456,10 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         },
         [activeTemplates, explain, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
+
+    // The role-change pop-up outlives this render: its "Erneut senden" must use the template picked later.
+    const onResendRef = useRef(onResend);
+    onResendRef.current = onResend;
 
     const onRevoke = useCallback(
         async (invite: AccountInviteDTO) => {
@@ -493,33 +497,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     }
                     // The link stays valid, but the mail already sent named the old role: offer, never force, a resend.
                     const key = `role-changed-${invite.id}`;
-                    message.success({
+                    message.notify({
                         key,
-                        duration: 8,
-                        content: (
-                            <span className={styles.snackbar}>
-                                {t(
-                                    'links.accountInvites.roleChangedMailOutdated',
-                                    'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
-                                )}
-                                <button
-                                    type="button"
-                                    className={styles.snackbarAction}
-                                    onClick={() => {
-                                        message.destroy(key);
-                                        onResend(updated ?? invite);
-                                    }}
-                                >
-                                    {t('links.accountInvites.resendAfterRoleChange', 'Erneut senden')}
-                                </button>
-                            </span>
+                        severity: 'success',
+                        message: t(
+                            'links.accountInvites.roleChangedMailOutdated',
+                            'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
                         ),
+                        action: {
+                            label: t('links.accountInvites.resendAfterRoleChange', 'Erneut senden'),
+                            onClick: () => onResendRef.current(updated ?? invite),
+                        },
                     });
                 } catch (error) {
                     message.error((await explain(error, 'roleChange', role)).message);
                 }
             }),
-        [explain, loadInvites, onResend, t, withRoleSaving],
+        [explain, loadInvites, t, withRoleSaving],
     );
 
     const onRoleAdd = useCallback(
@@ -673,7 +667,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
                         onRevoke={onRevoke}
-                        onInviteCta={focusComposer}
+                        onInviteCta={isTenantInvite && isAgencyViewer ? undefined : focusComposer}
                         onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                         topicPermissionSavingIds={topicSavingIds}
                         viewerScope={viewerScope}

@@ -24,6 +24,7 @@ import type {
     ToggleAfterChangeHandler,
 } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
+import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
 
 /**
@@ -209,7 +210,11 @@ export const PermissionsSettingsView = ({
         }
         if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'error') {
             return (
-                <p className={styles.cardDescriptionSecondary} role="status">
+                <p
+                    className={styles.cardDescriptionSecondary}
+                    role="status"
+                    {...{ [TRAEGER_UNAVAILABLE_ATTRIBUTE]: '' }}
+                >
                     {t('tenants.permissions.card.notifications.traegerUnavailable')}
                 </p>
             );
