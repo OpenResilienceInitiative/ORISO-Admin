@@ -103,7 +103,8 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
             </CardGrid.Item>
         ),
         // The platform admin's Träger page brings its own editable card; a Träger admin on their own
-        // settings page gets the same information read-only (ORISO-Admin#1466).
+        // settings page gets the same information, editable with the tenant update permission
+        // (ORISO-Admin#1466).
         leadingTiles:
             leadingTiles ??
             (!isSuperAdmin && (

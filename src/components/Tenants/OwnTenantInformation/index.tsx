@@ -1,4 +1,5 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
+import type { FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
@@ -12,6 +13,7 @@ import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TenantAdminData } from '../../../types/TenantAdminData';
+import { TenantData } from '../../../types/tenant';
 import styles from './styles.module.scss';
 
 const wrapInFieldGroup = (field: ReactNode, name: string) => (
@@ -42,6 +44,27 @@ const CARD_FIELDS = [
     'dataProtectionOfficer',
 ] as const;
 
+const SHOWN_FIELDS = ['name', ...CARD_FIELDS] as const;
+
+/**
+ * CardEditable seeds its form from `initialValues` once, so late-arriving or refetched tenant data is
+ * pushed in here, and only the fields this card shows. A refetch that lands while the card is open is
+ * skipped so it cannot overwrite what the user is typing; Cancel resets the form to the latest data.
+ * Closing the card alone never re-seeds, so a failed save still reopens with the entered values.
+ */
+const SyncFormWithData = ({ data, form, editing }: { data?: TenantData; form: FormInstance; editing: boolean }) => {
+    const editingRef = useRef(editing);
+    editingRef.current = editing;
+    useEffect(() => {
+        if (data && !editingRef.current) {
+            form.setFieldsValue(
+                Object.fromEntries(SHOWN_FIELDS.filter((field) => field in data).map((field) => [field, data[field]])),
+            );
+        }
+    }, [data, form]);
+    return null;
+};
+
 export const OwnTenantInformation = () => {
     const { data, isLoading } = useTenantData();
     const [form] = useForm();
@@ -49,13 +72,6 @@ export const OwnTenantInformation = () => {
     const tenantId = data?.id != null ? String(data.id) : '';
     // The save reads the Träger fresh itself; no need to fetch it again when the card opens.
     const { mutate } = useTenantAdminDataMutation({ id: tenantId, prefetchTenantAdminData: false });
-
-    // CardEditable seeds its form from `initialValues` once; push late-arriving tenant data in.
-    useEffect(() => {
-        if (data) {
-            form.setFieldsValue(data);
-        }
-    }, [data, form]);
 
     const { t } = useTranslation();
     const allowEdit = tenantId !== '' && can(PermissionAction.Update, Resource.Tenant);
@@ -81,25 +97,28 @@ export const OwnTenantInformation = () => {
             onSave={handleSave as never}
             className={styles.card}
         >
-            <div className={styles.fieldGroup}>
-                <MuiFormField name="name" label={t('tenants.add.form.name.placeholder')} disabled />
-            </div>
-            <div className={styles.fieldGroup}>
-                <MuiFormField
-                    name="address"
-                    label={t('tenants.add.form.address.label')}
-                    placeholder={t('tenants.add.form.address.placeholder')}
-                />
-            </div>
-            <TraegerSenderFields wrapField={wrapInFieldGroup} />
-            <div className={styles.fieldGroup}>
-                <MuiMultilineFormField
-                    name="description"
-                    label={t('tenants.add.form.description.label')}
-                    placeholder={t('tenants.add.form.description.placeholder')}
-                />
-            </div>
-            <TraegerDpoFields wrapField={wrapInFieldGroup} />
+            {({ editing }) => [
+                <SyncFormWithData key="sync" data={data} form={form} editing={editing} />,
+                <div key="name" className={styles.fieldGroup}>
+                    <MuiFormField name="name" label={t('tenants.add.form.name.placeholder')} disabled />
+                </div>,
+                <div key="address" className={styles.fieldGroup}>
+                    <MuiFormField
+                        name="address"
+                        label={t('tenants.add.form.address.label')}
+                        placeholder={t('tenants.add.form.address.placeholder')}
+                    />
+                </div>,
+                <TraegerSenderFields key="sender" wrapField={wrapInFieldGroup} />,
+                <div key="description" className={styles.fieldGroup}>
+                    <MuiMultilineFormField
+                        name="description"
+                        label={t('tenants.add.form.description.label')}
+                        placeholder={t('tenants.add.form.description.placeholder')}
+                    />
+                </div>,
+                <TraegerDpoFields key="dpo" wrapField={wrapInFieldGroup} />,
+            ]}
         </CardEditable>
     );
 };

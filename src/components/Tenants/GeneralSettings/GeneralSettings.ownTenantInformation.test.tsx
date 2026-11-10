@@ -40,6 +40,13 @@ describe('GeneralSettings: the Träger admin sees their own Träger information 
         expect(screen.queryByTestId('own-tenant-information')).toBeNull();
     });
 
+    it('shows the tiles the embedding page brings instead of its own card', () => {
+        render(<GeneralSettings section="masterData" leadingTiles={<i data-testid="page-tile" />} />);
+
+        expect(screen.getByTestId('page-tile')).toBeInTheDocument();
+        expect(screen.queryByTestId('own-tenant-information')).toBeNull();
+    });
+
     it('keeps the appearance tab free of it', () => {
         render(<GeneralSettings section="appearance" />);
 

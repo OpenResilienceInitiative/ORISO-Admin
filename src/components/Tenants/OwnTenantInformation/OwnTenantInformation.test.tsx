@@ -1,9 +1,25 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { OwnTenantInformation } from './index';
 
-const mocks = vi.hoisted(() => ({ canUpdateTenant: true, mutate: vi.fn() }));
+const mocks = vi.hoisted(() => ({ canUpdateTenant: true, mutate: vi.fn(), refetched: false }));
+
+const { tenant, refetchedTenant } = vi.hoisted(() => {
+    const stored = {
+        id: 7,
+        name: 'Caritas Springfield',
+        subdomain: 'springfield',
+        licensing: { allowedNumberOfUsers: 5 },
+        address: 'Evergreen Terrace 742, 12345 Springfield',
+        legalName: 'Caritas Springfield e. V.',
+        contactEmail: 'kontakt@springfield.example',
+        contactPhone: '+49 30 123456',
+        description: 'Beratung für die ganze Familie',
+        dataProtectionOfficer: { nameAndLegalForm: 'Datenschutz GmbH', city: 'Springfield' },
+    };
+    return { tenant: stored, refetchedTenant: { ...stored, address: 'Refetched 9, 99999 Elsewhere' } };
+});
 
 vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: () => mocks.canUpdateTenant }),
@@ -14,18 +30,7 @@ vi.mock('../../../hooks/useTenantAdminDataMutation.hook', () => ({
 vi.mock('../../../hooks/useTenantData.hook', () => ({
     useTenantData: () => ({
         isLoading: false,
-        data: {
-            id: 7,
-            name: 'Caritas Springfield',
-            subdomain: 'springfield',
-            licensing: { allowedNumberOfUsers: 5 },
-            address: 'Evergreen Terrace 742, 12345 Springfield',
-            legalName: 'Caritas Springfield e. V.',
-            contactEmail: 'kontakt@springfield.example',
-            contactPhone: '+49 30 123456',
-            description: 'Beratung für die ganze Familie',
-            dataProtectionOfficer: { nameAndLegalForm: 'Datenschutz GmbH', city: 'Springfield' },
-        },
+        data: mocks.refetched ? refetchedTenant : tenant,
     }),
 }));
 
@@ -33,6 +38,7 @@ describe('OwnTenantInformation', () => {
     beforeEach(() => {
         mocks.canUpdateTenant = true;
         mocks.mutate.mockReset();
+        mocks.refetched = false;
     });
 
     it('shows what is stored for the Träger', () => {
@@ -74,6 +80,46 @@ describe('OwnTenantInformation', () => {
         expect(sent).not.toHaveProperty('name');
         expect(sent).not.toHaveProperty('licensing');
         expect(sent).not.toHaveProperty('subdomain');
+    });
+
+    it('reopens the card with the entered address when saving fails', async () => {
+        const user = userEvent.setup();
+        render(<OwnTenantInformation />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const address = screen.getByDisplayValue('Evergreen Terrace 742, 12345 Springfield');
+        await user.clear(address);
+        await user.type(address, 'Ahornweg 1, 10115 Berlin');
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        const [, options] = mocks.mutate.mock.calls[0];
+        expect(options).toEqual({ onError: expect.any(Function) });
+        expect(address).toBeDisabled();
+        act(() => options.onError());
+        expect(address).toBeEnabled();
+        expect(address).toHaveValue('Ahornweg 1, 10115 Berlin');
+    });
+
+    it('keeps what the user is typing when the Träger is refetched while the card is open', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(<OwnTenantInformation />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const address = screen.getByDisplayValue('Evergreen Terrace 742, 12345 Springfield');
+        await user.clear(address);
+        await user.type(address, 'Ahornweg 1, 10115 Berlin');
+        mocks.refetched = true;
+        rerender(<OwnTenantInformation />);
+
+        expect(address).toHaveValue('Ahornweg 1, 10115 Berlin');
+    });
+
+    it('shows refetched Träger data while the card is closed', () => {
+        const { rerender } = render(<OwnTenantInformation />);
+        mocks.refetched = true;
+        rerender(<OwnTenantInformation />);
+
+        expect(screen.getByDisplayValue('Refetched 9, 99999 Elsewhere')).toBeInTheDocument();
     });
 
     it('offers no edit button to a user who may not update the Träger', () => {

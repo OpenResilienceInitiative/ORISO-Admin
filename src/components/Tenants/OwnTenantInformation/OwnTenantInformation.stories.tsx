@@ -25,6 +25,9 @@ const meta = {
 export default meta;
 type Story = StoryObj;
 
+/** The Träger the story signs in to; the seeded tenant cache key must use the same id. */
+const STORY_TENANT_ID = 2;
+
 const tabs = [
     { to: '/admin/theme-settings/master-data', titleKey: 'Stammdaten & Mehr', iconName: 'master_data' },
     { to: '/admin/theme-settings/general', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
@@ -32,7 +35,7 @@ const tabs = [
 
 const seeded = (tenant: Record<string, unknown>) => {
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
-    client.setQueryData([TENANT_DATA_KEY, 2], tenant);
+    client.setQueryData([TENANT_DATA_KEY, STORY_TENANT_ID], tenant);
     return client;
 };
 
@@ -59,12 +62,12 @@ const pageContent = (tenant: Record<string, unknown>) => (
 
 const page = (tenant: Record<string, unknown>) => {
     // The edit pencil needs the Träger admin's update permission, read from the token.
-    setStoryAuth([UserRole.TenantAdmin], 2);
+    setStoryAuth([UserRole.TenantAdmin], STORY_TENANT_ID);
     return pageContent(tenant);
 };
 
 const filledTenant = {
-    id: 2,
+    id: STORY_TENANT_ID,
     name: 'Caritas Springfield',
     address: 'Evergreen Terrace 742, 12345 Springfield',
     legalName: 'Caritas Springfield e. V.',
@@ -97,5 +100,5 @@ export const Editing: Story = {
 
 /** The Dev tenant "Springfield QA Dev" has only a name: the card still shows, with empty fields. */
 export const OnlyAName: Story = {
-    render: () => page({ id: 2, name: 'Springfield QA Dev' }),
+    render: () => page({ id: STORY_TENANT_ID, name: 'Springfield QA Dev' }),
 };
