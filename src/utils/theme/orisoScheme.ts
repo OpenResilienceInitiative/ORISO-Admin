@@ -4,8 +4,12 @@ import { contrastRatio } from '../contrastRatio';
 
 export type OrisoSchemeName = 'light' | 'inverted';
 
-/** Angular hue distance (degrees) below which error and brand read as the same family. */
-export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 30;
+/**
+ * Angular hue distance (degrees) below which error and brand read as the same family.
+ * Calibrated so the shipped pair — Caritas-Rot #a5000a and the system error #b1005e,
+ * about 28° apart — does not warn: with 30 the editor warned on untouched defaults (#1374).
+ */
+export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 25;
 
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
@@ -102,10 +106,23 @@ export const hueDistance = (hexA: string, hexB: string): number => {
     return Math.min(delta, 360 - delta);
 };
 
+/** Spread between the strongest and weakest RGB channel below which a colour reads as grey. */
+const ACHROMATIC_SPREAD = 26;
+
+/** Greys have no meaningful hue (`hueDegrees` returns 0, i.e. red). */
+const isAchromatic = (hex: string): boolean => {
+    const { r, g, b } = hexToRgb(hex);
+    return Math.max(r, g, b) - Math.min(r, g, b) < ACHROMATIC_SPREAD;
+};
+
 export const signalTooCloseToBrand = (seeds: TenantSeeds): boolean => {
     const brand = normalizeHex(getAccentDark(seeds));
     const signal = normalizeHex(getSignal(seeds));
     if (!brand || !signal) {
+        return false;
+    }
+    // A grey reads as hue 0 and would "match" every red brand; it is not the same colour family.
+    if (isAchromatic(brand) !== isAchromatic(signal)) {
         return false;
     }
     return hueDistance(brand, signal) < SIGNAL_BRAND_HUE_MIN_DISTANCE;
@@ -141,7 +158,7 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  * src/app.css before renaming or re-valuing this.
  */
 const STAGE_SURFACE = '#281715';
-const DARK_TEXT = '#141c25';
+export const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
@@ -209,7 +226,8 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
     };
 };
 
-const readableOn = (background: string) =>
+/** Text colour the theme draws on `background`: the better of white and {@link DARK_TEXT}. */
+export const readableOn = (background: string) =>
     contrastRatio(DARK_TEXT, background) >= contrastRatio('#ffffff', background) ? DARK_TEXT : '#ffffff';
 
 /**

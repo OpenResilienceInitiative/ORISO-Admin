@@ -49,7 +49,7 @@ export const EditingRightsCard = ({
                 }
                 name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
                 inline
-                disableLabels
+                showStateLabel
                 className={styles.masterDataToggle}
                 switchLabel={t('settings.masterData.editable.toggle')}
             />
