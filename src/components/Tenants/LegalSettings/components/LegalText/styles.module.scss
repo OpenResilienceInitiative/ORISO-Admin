@@ -20,6 +20,11 @@
     margin-bottom: 8px;
 }
 
+// The preset green of the tag (#389e0d on #f6ffed) reads 3.37:1; its darker neighbour reads 5.4:1.
+.publicationStatus .publishedTag {
+    color: #237804;
+}
+
 /* #1070: the left/right compare needs more than the single-editor reading width. */
 .card:has([data-legal-compare-open='true']) {
     max-width: none;

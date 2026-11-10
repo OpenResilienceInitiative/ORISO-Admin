@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { CardGrid } from '../../CardGrid';
 import { OneTopicPerAgencySettingsCard } from '.';
 
 /** ORISO-UserService#1264 (ADR-014 amendment 2026-09-25): global switch, default off. */
@@ -10,9 +11,9 @@ const meta = {
     title: 'Organisms/GlobalSettings/OneTopicPerAgencySettingsCard',
     component: OneTopicPerAgencySettingsCard,
     decorators: [
-        (Story) => (
+        (Story, { parameters }) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ maxWidth: 400 }}>
+                <div style={{ maxWidth: parameters.tileWidth ?? 400 }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -46,7 +47,7 @@ export const DisabledForNonSuperadmins: Story = {
         const canvas = within(canvasElement);
         const oneTopicSwitch = canvas.getByRole('switch', { name: /genau einen Fachbereich/ });
         await expect(oneTopicSwitch).toBeChecked();
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };
@@ -59,4 +60,19 @@ export const SwitchOn: Story = {
         await userEvent.click(canvas.getByRole('button', { name: /save|speichern/i }));
         await expect(args.onSave).toHaveBeenCalledWith(true, expect.anything());
     },
+};
+
+/** As it sits on the page, beside a taller tile, so the free space shows. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item>
+                <OneTopicPerAgencySettingsCard {...args} />
+            </CardGrid.Item>
+            <CardGrid.Item>
+                <div style={{ height: 640 }} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
 };

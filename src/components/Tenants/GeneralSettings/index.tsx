@@ -1,22 +1,21 @@
-import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
-import { CardDeck } from '../../CardDeck';
-import { CardEditable } from '../../CardEditable';
-import { FormSwitchField } from '../../FormSwitchField';
-import { useAppConfigContext } from '../../../context/useAppConfig';
-import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
+import { CardGrid } from '../../CardGrid';
+import { ReadOnlyHintContext } from '../../CardEditable/ReadOnlyHintContext';
+import { useAppearanceEditingRights } from '../../../hooks/useAppearanceEditingRights.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { EditingRightsCard } from './components/EditingRightsCard';
 import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
+import { OwnTenantInformation } from '../OwnTenantInformation';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
-import { AppConfigInterface } from '../../../types/AppConfigInterface';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
 import styles from './styles.module.scss';
 
@@ -27,31 +26,48 @@ import styles from './styles.module.scss';
  */
 export type GeneralSettingsSection = 'all' | 'appearance' | 'masterData';
 
+type GeneralSettingsTile =
+    | 'logoAndFavicon'
+    | 'assistantIdentity'
+    | 'languages'
+    | 'themeBuilder'
+    | 'leadingTiles'
+    | 'nameAndSlogan'
+    | 'typeOfLanguage'
+    | 'editingRights';
+
+/** The tiles of the appearance tab, top to bottom, left to right. Moving a tile is moving its name. */
+export const APPEARANCE_TILE_ORDER: GeneralSettingsTile[] = [
+    'logoAndFavicon',
+    'assistantIdentity',
+    'languages',
+    'themeBuilder',
+];
+
+/** The tiles of the master data tab; `leadingTiles` are the ones the embedding page brings along. */
+export const MASTER_DATA_TILE_ORDER: GeneralSettingsTile[] = [
+    'leadingTiles',
+    'nameAndSlogan',
+    'typeOfLanguage',
+    'editingRights',
+];
+
+interface AppearanceSwitchFormData {
+    tenantAdminControls?: { allowedPermissionToggles?: { appearance?: boolean } };
+}
+
 interface GeneralSettingsProps {
     tenantId?: string;
     section?: GeneralSettingsSection;
+    /**
+     * Tiles the embedding page puts first in the master data raster (`CardGrid.Item`s). The
+     * platform admin's Träger edit page adds its Trägerinformationen card this way, so it sits in
+     * the same raster as the tiles next to it instead of in a grid of its own.
+     */
+    leadingTiles?: ReactNode;
 }
 
-const APPEARANCE_ALLOWED_STORAGE_KEY = 'oriso:tenantAdminControls.allowedPermissionToggles.appearance';
-
-const getStoredAppearanceAllowed = () => {
-    try {
-        const value = window.localStorage.getItem(APPEARANCE_ALLOWED_STORAGE_KEY);
-        return value === null ? undefined : value === 'true';
-    } catch {
-        return undefined;
-    }
-};
-
-const setStoredAppearanceAllowed = (value: boolean) => {
-    try {
-        window.localStorage.setItem(APPEARANCE_ALLOWED_STORAGE_KEY, `${value}`);
-    } catch {
-        // Local fallback is best-effort while the backend key is not deployed.
-    }
-};
-
-export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsProps) => {
+export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: GeneralSettingsProps) => {
     const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = resolveTenantId(tenantId, data?.id);
@@ -59,103 +75,82 @@ export const GeneralSettings = ({ tenantId, section = 'all' }: GeneralSettingsPr
     const { isSuperAdmin } = useUserRoles();
     const showAppearance = section === 'all' || section === 'appearance';
     const showMasterData = section === 'all' || section === 'masterData';
-    const { settings, setManualSettings } = useAppConfigContext();
-    const { mutate: updateSettings } = useSettingsAdminMutation();
-    const appearanceAllowed =
-        settings.tenantAdminControls?.allowedPermissionToggles?.appearance ??
-        data?.settings?.tenantAdminControls?.allowedPermissionToggles?.appearance ??
-        getStoredAppearanceAllowed();
-    const appearanceEditable = appearanceAllowed !== false;
-    const tenantAdminControlsInitialValues = {
-        tenantAdminControls: {
-            allowedPermissionToggles: {
-                appearance: appearanceEditable,
-            },
-        },
-    };
+    const { editable, isLoading: rightsLoading, save } = useAppearanceEditingRights(finalTenantId);
+    // An organisation admin edits only once the tenant service has said so: unknown counts as locked.
+    const readOnly = !isSuperAdmin && editable !== true;
     const onSaveTenantAdminControls = (
-        formData: Partial<AppConfigInterface>,
-        options?: Parameters<typeof updateSettings>[1],
+        formData: Partial<AppearanceSwitchFormData>,
+        options?: { onError?: () => void },
     ) => {
-        const nextAppearance = formData.tenantAdminControls?.allowedPermissionToggles?.appearance !== false;
-        setStoredAppearanceAllowed(nextAppearance);
-        setManualSettings(formData);
-        updateSettings(formData, options);
+        save(formData.tenantAdminControls?.allowedPermissionToggles?.appearance !== false, options);
     };
+    const tiles: Record<GeneralSettingsTile, ReactNode> = {
+        logoAndFavicon: (
+            <CardGrid.Item span={3}>
+                <LogoAndFavicon tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        assistantIdentity: (
+            <CardGrid.Item span={3}>
+                <AssistantIdentity tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        languages: can(PermissionAction.Update, Resource.Language) && (
+            <CardGrid.Item>
+                <Languages tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        themeBuilder: (
+            <CardGrid.Item span={2}>
+                <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        // The platform admin's Träger page brings its own editable card; a Träger admin on their own
+        // settings page gets the same information, editable with the tenant update permission
+        // (ORISO-Admin#1466).
+        leadingTiles:
+            leadingTiles ??
+            (!isSuperAdmin && (
+                <CardGrid.Item>
+                    <OwnTenantInformation />
+                </CardGrid.Item>
+            )),
+        nameAndSlogan: (
+            <CardGrid.Item>
+                <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        typeOfLanguage: can(PermissionAction.Update, Resource.Language) && (
+            <CardGrid.Item>
+                <TypeOfLanguage tenantId={finalTenantId} readOnly={readOnly} />
+            </CardGrid.Item>
+        ),
+        editingRights: (
+            <CardGrid.Item>
+                <EditingRightsCard
+                    allowEdit={isSuperAdmin && editable !== undefined}
+                    readOnlyAccess={!isSuperAdmin}
+                    editable={editable}
+                    isLoading={rightsLoading}
+                    onSave={onSaveTenantAdminControls}
+                />
+            </CardGrid.Item>
+        ),
+    };
+    const order = [...(showAppearance ? APPEARANCE_TILE_ORDER : []), ...(showMasterData ? MASTER_DATA_TILE_ORDER : [])];
+
+    // A locked tile names who can release it: the platform admins' switch on the master data tab.
+    const readOnlyHint = readOnly ? t('settings.masterData.editable.readOnlyHint') : undefined;
+
     return (
         <div className={styles.appearancePage}>
-            <CardDeck
-                className={styles.cardDeck}
-                ariaLabel={t('tenant.settings.cardDeck.ariaLabel')}
-                previousLabel={t('tenant.settings.cardDeck.previous')}
-                nextLabel={t('tenant.settings.cardDeck.next')}
-            >
-                {showAppearance && (
-                    <CardDeck.Item className={styles.cardSlotImages}>
-                        <LogoAndFavicon tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showAppearance && (
-                    <CardDeck.Item>
-                        <AssistantIdentity tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showAppearance && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
-                        <Languages tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showAppearance && (
-                    <CardDeck.Item className={styles.cardSlotTheme}>
-                        <ThemeBuilder tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showMasterData && (
-                    <CardDeck.Item>
-                        <NameAndSlogan tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showMasterData && can(PermissionAction.Update, Resource.Language) && (
-                    <CardDeck.Item>
-                        <TypeOfLanguage tenantId={finalTenantId} readOnly={!isSuperAdmin && !appearanceEditable} />
-                    </CardDeck.Item>
-                )}
-                {showMasterData && (
-                    <CardDeck.Item>
-                        <CardEditable
-                            key={`tenant-master-data-editable-${appearanceEditable}`}
-                            allowEdit={isSuperAdmin}
-                            initialValues={tenantAdminControlsInitialValues}
-                            titleKey="settings.masterData.editable.title"
-                            subTitle={t<string>('settings.masterData.editable.subtitle')}
-                            onSave={onSaveTenantAdminControls}
-                            variant="dialog"
-                            editButtonPlacement="footer"
-                            headerIcon={<ManageAccountsOutlinedIcon />}
-                        >
-                            <FormSwitchField
-                                label={
-                                    <span className={styles.masterDataToggleCopy}>
-                                        <span className={styles.masterDataToggleTitle}>
-                                            {t('settings.masterData.editable.toggle')}
-                                        </span>
-                                        <span className={styles.masterDataToggleDescription}>
-                                            {t('settings.masterData.editable.toggle.description')}
-                                        </span>
-                                    </span>
-                                }
-                                name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
-                                inline
-                                disableLabels
-                                disabled={!isSuperAdmin}
-                                className={styles.masterDataToggle}
-                                switchLabel={t('settings.masterData.editable.toggle')}
-                                switchVariant="m3"
-                            />
-                        </CardEditable>
-                    </CardDeck.Item>
-                )}
-            </CardDeck>
+            <ReadOnlyHintContext.Provider value={readOnlyHint}>
+                <CardGrid raster>
+                    {order.map((tile) => (
+                        <Fragment key={tile}>{tiles[tile]}</Fragment>
+                    ))}
+                </CardGrid>
+            </ReadOnlyHintContext.Provider>
         </div>
     );
 };

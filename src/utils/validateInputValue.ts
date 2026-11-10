@@ -1,4 +1,4 @@
-const PASSWORD_MIN_LENGTH = 8;
+import { PASSWORD_MIN_LENGTH } from './consultantCredentialRules';
 
 const hasNumber = (value: string) => {
     return /[0-9]/.test(value);
@@ -23,7 +23,7 @@ export const validatePasswordCriteria = (value: string) => {
     if (hasMixedLetters(value)) passwordValidationParams.hasUpperLowerCase = true;
     if (hasNumber(value)) passwordValidationParams.hasNumber = true;
     if (hasSpecialChar(value)) passwordValidationParams.hasSpecialChar = true;
-    if (value.length > PASSWORD_MIN_LENGTH) passwordValidationParams.hasMinLength = true;
+    if (value.length >= PASSWORD_MIN_LENGTH) passwordValidationParams.hasMinLength = true;
 
     return Object.values(passwordValidationParams).filter((v) => !v).length === 0;
 };

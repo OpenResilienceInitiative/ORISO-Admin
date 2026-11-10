@@ -192,8 +192,11 @@ const actualOutcomeStory = (wordmark: boolean): StoryObj<typeof BrandedEmailPrev
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Fresh organisation')).toBeVisible();
         await expect(await canvas.findByTestId('branded-email-preview-frame')).toHaveAttribute('srcdoc', TENANT.html);
-        if (wordmark) await expect(await canvas.findByRole('alert')).toBeVisible();
-        else await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+        // A standing explanation: plain text in the tile, never a pop-up.
+        const wordmarkNote = /In dieser E-Mail wird kein Logo angezeigt/;
+        if (wordmark) await expect(await canvas.findByText(wordmarkNote)).toBeVisible();
+        else await expect(canvas.queryByText(wordmarkNote)).not.toBeInTheDocument();
+        await expect(within(canvasElement.ownerDocument.body).queryByTestId('snackbar')).not.toBeInTheDocument();
     },
 });
 
@@ -205,6 +208,6 @@ export const ConnectedLegacyUnknown: StoryObj<typeof BrandedEmailPreview> = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByTestId('branded-email-preview-frame')).toHaveAttribute('srcdoc', TENANT.html);
-        await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+        await expect(within(canvasElement.ownerDocument.body).queryByTestId('snackbar')).not.toBeInTheDocument();
     },
 };

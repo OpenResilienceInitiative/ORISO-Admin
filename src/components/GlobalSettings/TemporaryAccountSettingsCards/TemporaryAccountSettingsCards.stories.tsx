@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { CardGrid } from '../../CardGrid';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { TemporaryGuestAccountsSettingsCard, TemporaryMessagesSettingsCard } from '.';
 import type { TemporaryAccountSettings } from '../../../types/TemporaryAccountSettings';
 
@@ -19,9 +21,9 @@ const meta = {
     title: 'Organisms/GlobalSettings/TemporaryAccountSettingsCards',
     component: TemporaryGuestAccountsSettingsCard,
     decorators: [
-        (Story) => (
+        (Story, { parameters }) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ maxWidth: 400 }}>
+                <div style={{ maxWidth: parameters.tileWidth ?? 400 }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -82,4 +84,31 @@ export const MessagesSave: Story = {
             expect.anything(),
         );
     },
+};
+
+/** Both tiles as they sit on the page: the wide one with its panels, the short one with its picture. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item span={2}>
+                <TemporaryGuestAccountsSettingsCard {...args} />
+            </CardGrid.Item>
+            <CardGrid.Item>
+                <TemporaryMessagesSettingsCard {...args} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
+};
+
+/** The explanation behind the info button of the guest accounts tile. */
+export const GuestAccountsHelpSlideshow: Story = {
+    render: (args) => <TemporaryGuestAccountsSettingsCard {...args} />,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
+/** The explanation behind the info button of the messages tile. */
+export const MessagesHelpSlideshow: Story = {
+    render: (args) => <TemporaryMessagesSettingsCard {...args} />,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

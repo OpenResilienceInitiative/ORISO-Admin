@@ -1,4 +1,3 @@
-import { message } from 'antd';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,6 +6,7 @@ import {
     type InviteProgressPhase,
 } from '../../api/accountInvites/accountInvites';
 import type { DataTableSort } from '../../components/DataTable';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import type { InviteViewerScope } from './inviteModel';
 import { listedOnTab, type InviteTab } from './inviteRules';
 import { tileCountsFromServer, type LifecycleCounts, type LifecyclePhase } from './inviteProgress/derivePhases';
@@ -36,6 +36,7 @@ export const useInviteList = (
     viewer: InviteViewerScope,
     request: InviteListQuery = INITIAL_INVITE_QUERY,
 ) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [invites, setInvites] = useState<AccountInviteDTO[]>([]);
     const [tileCounts, setTileCounts] = useState<LifecycleCounts | undefined>();
@@ -79,7 +80,7 @@ export const useInviteList = (
             // A superseded run leaves `loading` to the run that overtook it.
             if (isLatest()) setLoading(false);
         }
-    }, [tab, viewer, t, page, pageSize, query, phase, sortKey, sortDirection]);
+    }, [tab, viewer, t, page, pageSize, query, phase, sortKey, sortDirection, message]);
 
     useEffect(() => {
         reload();

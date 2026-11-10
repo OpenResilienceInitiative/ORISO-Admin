@@ -2,8 +2,8 @@ import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { message } from 'antd';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar as message } from '../Snackbar';
 import { CreateConsultantModal } from './index';
 import { UserRole } from '../../enums/UserRole';
 

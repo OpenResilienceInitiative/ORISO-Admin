@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { deriveDpaGateDecision, canStartNewCounselling } from './dpaBlockerGate';
 
 describe('AVV renewal accessibility', () => {

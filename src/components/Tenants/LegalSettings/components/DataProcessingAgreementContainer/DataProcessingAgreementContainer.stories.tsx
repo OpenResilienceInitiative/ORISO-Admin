@@ -19,7 +19,7 @@ const meta = {
                 http.get('*/service/tenant/public/*', () =>
                     HttpResponse.json({ id: 1, subdomain: 'app', settings: { activeLanguages: ['de', 'en'] } }),
                 ),
-                http.get('*/service/tenant', () =>
+                http.get('*/service/tenant/1', () =>
                     HttpResponse.json({ id: 1, name: 'ORISO', settings: { activeLanguages: ['de', 'en'] } }),
                 ),
                 http.get('*/service/tenantadmin/:id/dpa/versions', () =>

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -30,6 +30,13 @@ vi.mock('../../api/fetchData', async () => {
         fetchData: mocks.fetchData,
     };
 });
+
+// A failed mail preview raises its own persistent pop-up, which would hold the one-at-a-time
+// snackbar channel and queue the forward pop-ups under test behind it.
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+    getPublicDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+}));
 
 const INVITE: TenantAdminOnboardingInviteDTO = {
     recipientEmail: 'admin@tenant.example',
@@ -103,8 +110,8 @@ describe('TenantAdminOnboarding', () => {
         const user = userEvent.setup();
         renderFlow(client);
 
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         expect(screen.queryByLabelText('tenantOnboarding.organisation.name')).not.toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
 
@@ -113,7 +120,7 @@ describe('TenantAdminOnboarding', () => {
             expect.objectContaining({
                 url: expect.stringContaining('/raw-token/setup'),
                 skipAuth: true,
-                bodyData: JSON.stringify({ password: 'SecurePass1!' }),
+                bodyData: JSON.stringify({ password: 'SecurePassword1!' }),
             }),
         );
         expect(client.registerTenantAdmin).not.toHaveBeenCalled();
@@ -136,11 +143,11 @@ describe('TenantAdminOnboarding', () => {
         const user = userEvent.setup();
         renderFlow(client);
 
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(description);
+        expect(await screen.findByTestId(`link-error-${reason.toLowerCase()}`)).toHaveTextContent(description);
         expect(screen.queryByRole('button', { name: 'accountSetup.submit' })).not.toBeInTheDocument();
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
         expect(mocks.fetchData.mock.calls.length - before).toBe(1);
@@ -182,8 +189,8 @@ describe('TenantAdminOnboarding', () => {
                 </Routes>
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         await user.click(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
         expect(await screen.findByText('ordinary-login-security-gate')).toBeInTheDocument();
@@ -212,8 +219,8 @@ describe('TenantAdminOnboarding', () => {
                 <TenantAdminOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         view.rerender(
             <MemoryRouter>
@@ -227,6 +234,32 @@ describe('TenantAdminOnboarding', () => {
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toBeInTheDocument();
         expect(client.registerTenantAdmin).not.toHaveBeenCalled();
+    });
+
+    it('shows why the server refused a password equal to the one-time password (Admin#1207)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockRejectedValueOnce(
+            new Response(JSON.stringify({ message: 'Choose a password different from the initial password' }), {
+                status: 400,
+            }),
+        );
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+
+        // A rejected password is field-level hint text under the password, not a pop-up.
+        expect(await screen.findByText('accountSetup.passwordUnchanged')).toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
+        expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
+
+        // The link stays usable: a different password on the same page completes the setup.
+        mocks.fetchData.mockResolvedValueOnce({ phase: 'COMPLETED' });
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' })).toBeInTheDocument();
     });
 
     it('clears the previous setup password and error when another account link is opened', async () => {
@@ -244,10 +277,13 @@ describe('TenantAdminOnboarding', () => {
                 <TenantAdminOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByRole('alert');
+        // The 502 raises the service-error pop-up, not some other notification.
+        const serviceError = await screen.findByTestId('snackbar');
+        expect(serviceError).toHaveAttribute('data-severity', 'error');
+        expect(serviceError).toHaveTextContent('accountSetup.serviceError');
         view.rerender(
             <MemoryRouter>
                 <TenantAdminOnboarding inviteToken="second" client={client} />
@@ -256,7 +292,7 @@ describe('TenantAdminOnboarding', () => {
         await screen.findByText('second@example.org');
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
         expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
@@ -277,8 +313,8 @@ describe('TenantAdminOnboarding', () => {
 
         // Step 2: account creation for the invited address.
         expect(await screen.findByText('admin@tenant.example')).toBeInTheDocument();
-        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         // Registration echoes the reservation pair (atomic consumption contract).
@@ -321,7 +357,9 @@ describe('TenantAdminOnboarding', () => {
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('tenantOnboarding.dpa.acceptRequired');
+        expect(await screen.findByTestId('onboarding-submit-error')).toHaveTextContent(
+            'tenantOnboarding.dpa.acceptRequired',
+        );
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
     });
 
@@ -375,8 +413,8 @@ describe('TenantAdminOnboarding', () => {
         renderFlow(client);
 
         await completeOrganisationStep(user);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         expect(await screen.findByTestId('link-error-consumed')).toBeInTheDocument();
@@ -403,8 +441,8 @@ describe('TenantAdminOnboarding', () => {
         renderFlow(client);
 
         await completeOrganisationStep(user);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         expect(await screen.findByTestId('link-error-superseded')).toBeInTheDocument();
@@ -464,7 +502,7 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerNote'), 'Beispiel e.V.');
     };
 
-    it('reports a missing field next to the submit button, not only far above it', async () => {
+    it('reports a missing field in a pop-up, not only far above the button', async () => {
         const user = userEvent.setup();
         renderFlow(createClient());
 
@@ -474,12 +512,8 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
 
         const summary = await screen.findByTestId('onboarding-submit-error');
         expect(summary).toHaveTextContent('tenantOnboarding.validation.incomplete');
-        // Announced, not just visible — a silent div leaves SR users stranded.
-        expect(summary).toHaveAttribute('role', 'alert');
-        // ... and it sits between the form and the button the user just pressed.
-        const button = screen.getByRole('button', { name: 'tenantOnboarding.continue' });
-        // eslint-disable-next-line no-bitwise
-        expect(summary.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Announced, not just visible: an error pop-up lives in the assertive alert region.
+        expect(screen.getByRole('alert')).toContainElement(summary);
         // The offending field keeps its own inline message as well.
         expect(screen.getAllByText('tenantOnboarding.validation.required').length).toBeGreaterThan(0);
     });
@@ -545,7 +579,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
 
         const summary = await screen.findByTestId('onboarding-submit-error');
-        expect(summary).toHaveAttribute('role', 'alert');
+        expect(screen.getByRole('alert')).toContainElement(summary);
         expect(summary).toHaveTextContent('tenantOnboarding.dpa.unavailableBlocked');
         // Still on step 1 — the account step never opens.
         expect(screen.queryByLabelText('tenantOnboarding.account.password')).not.toBeInTheDocument();
@@ -590,8 +624,8 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
 
         // Continue to account + 2FA without a signature.
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.continue' }));
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         await waitFor(() =>
@@ -707,13 +741,13 @@ describe('TenantAdminOnboarding — joining an existing Träger', () => {
         // Nothing to go back to.
         expect(screen.queryByRole('button', { name: 'tenantOnboarding.back' })).not.toBeInTheDocument();
 
-        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
 
         await waitFor(() => expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1));
         expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
-            account: { password: 'SecurePass1!' },
+            account: { password: 'SecurePassword1!' },
         });
 
         await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
@@ -752,8 +786,8 @@ describe('TenantAdminOnboarding — joining an existing Träger', () => {
         const user = userEvent.setup();
         renderFlow(client);
 
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
         await user.click(await screen.findByRole('button', { name: 'twoFactorSetup.email.send' }));
         await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
@@ -801,8 +835,8 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
         );
         await completeOrganisationStep(user);
         expect(await screen.findByText('admin@tenant.example')).toBeInTheDocument();
-        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
         await waitFor(() => expect(client.registerTenantAdmin).toHaveBeenCalled());
         return (client.registerTenantAdmin as ReturnType<typeof vi.fn>).mock.calls[0][1].organisation;
@@ -848,8 +882,8 @@ describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)
     };
 
     const registerWithPassword = async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePass1!');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePass1!');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
         await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
     };
 

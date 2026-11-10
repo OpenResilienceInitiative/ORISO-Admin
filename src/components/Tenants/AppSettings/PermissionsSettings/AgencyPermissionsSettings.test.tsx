@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import '../../../../i18n';
 
 const render = (ui: ReactElement) =>
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({ useAgencyData: vi.fn(), mutate: vi.fn() }));
 
 vi.mock('../../../../hooks/useAgencyData', () => ({ useAgencyData: mocks.useAgencyData }));
 vi.mock('../../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.mutate }),
+    useAgencyUpdate: () => ({ mutateAsync: mocks.mutate }),
 }));
 
 import { AgencyPermissionsSettings } from './AgencyPermissionsSettings';
@@ -28,25 +28,37 @@ const agency = (settings: Record<string, unknown>) => ({
 
 const policy = (field: string) => document.querySelector(`[data-feature-policy="${field}"]`) as HTMLElement;
 
+// The suite runs against the real i18n, in German or English: round button names are
+// "<label>: <state> – <action>" while editable and "<label>: <state>" while locked.
+const SWITCH_OFF = /: (Aktiviert – Deaktivieren|Active – Deactivate)$/;
+const SWITCH_ON = /: (Deaktiviert – Aktivieren|Inactive – Activate)$/;
+const LOCKED_ON = /: (Aktiviert|Active)$/;
+const LOCKED_OFF = /: (Deaktiviert|Inactive)$/;
+const LOCK_BUTTON = /Als Vorgabe festlegen|Make it a requirement|Anpassbar machen|Make it adjustable/;
+
 describe('AgencyPermissionsSettings per-feature policies', () => {
     beforeEach(() => {
         mocks.useAgencyData.mockReset();
         mocks.mutate.mockReset();
+        mocks.mutate.mockImplementation(async (patch) => ({
+            ...mocks.useAgencyData().data,
+            settings: { ...mocks.useAgencyData().data.settings, ...patch.settings },
+        }));
     });
 
-    it('derives an independent deactivate suggestion from the stored agency value', async () => {
-        const user = userEvent.setup();
+    it('derives an independent off state from the stored agency value', () => {
         mocks.useAgencyData.mockReturnValue(agency({ featureAnonymousChatEnabled: false }));
         render(<AgencyPermissionsSettings agencyId="55" />);
 
         const control = policy('featureAnonymousChatEnabled');
-        await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
-        expect(
-            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
-        ).toHaveAttribute('aria-current', 'page');
+        const round = within(control).getByRole('button', { name: SWITCH_ON });
+        expect(round).toHaveAttribute('aria-pressed', 'false');
+        expect(round).toBeEnabled();
+        // A Beratungsstelle only switches; it has no requirement lock.
+        expect(within(control).queryByRole('button', { name: LOCK_BUTTON })).toBeNull();
     });
 
-    it('keeps tenant-enforced-off features visible and opens information instead of an edit menu', async () => {
+    it('keeps tenant-enforced-off features visible as a disabled button, with no edit path', async () => {
         const user = userEvent.setup();
         mocks.useAgencyData.mockReturnValue(
             agency({ agencyAdminControls: { allowedPermissionToggles: { videoCalls: false } } }),
@@ -54,14 +66,15 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
 
         const control = policy('featureVideoCallsOneOnOneChatsEnabled');
-        await user.click(within(control).getByRole('button', { name: /Weitere Informationen|more information/i }));
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-        expect(
-            within(control).queryByText(/Aktivierung \(anpassbar\)|activation \(adjustable\)/i),
-        ).not.toBeInTheDocument();
+        const round = within(control).getByRole('button', { name: LOCKED_OFF });
+        expect(round).toBeDisabled();
+        await user.click(round);
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(within(control).queryByRole('button', { name: LOCK_BUTTON })).toBeNull();
+        expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('saves an agency suggestion and reapplies tenant constraints to the payload', async () => {
+    it('saves only the changed agency feature without replaying sibling values', async () => {
         const user = userEvent.setup();
         mocks.useAgencyData.mockReturnValue(
             agency({
@@ -72,20 +85,16 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
 
         const control = policy('featureThreadsOneOnOneEnabled');
-        await user.click(within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
-        await user.click(
-            within(control).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
-        );
+        await user.click(within(control).getByRole('button', { name: SWITCH_OFF }));
 
-        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
         const payload = mocks.mutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings.featureThreadsOneOnOneEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsEnabled).toBe(false);
-        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBe(false);
+        expect(payload.settings.featureVideoCallsEnabled).toBeUndefined();
+        expect(payload.settings.featureVideoCallsOneOnOneChatsEnabled).toBeUndefined();
         expect(payload.settings.agencyAdminControls).toBeUndefined();
-        expect(
-            within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }),
-        ).toBeDisabled();
+        // The write is done: the round button is usable again.
+        await waitFor(() => expect(within(control).getByRole('button', { name: /: \S/ })).toBeEnabled());
     });
 
     it('projects tenant-enforced-on values as locked active controls', () => {
@@ -100,7 +109,8 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         const control = policy('featureVoiceMessagesOneOnOneChatsEnabled');
         expect(within(control).getByTestId('LockIcon')).toBeInTheDocument();
         expect(within(control).getByTestId('CheckIcon')).toBeInTheDocument();
-        expect(within(control).getByRole('button', { name: /Weitere Informationen|more information/i })).toBeTruthy();
+        expect(within(control).getByRole('button', { name: LOCKED_ON })).toBeDisabled();
+        expect(within(control).queryByRole('button', { name: LOCK_BUTTON })).toBeNull();
     });
 });
 
@@ -161,7 +171,7 @@ describe('AgencyPermissionsSettings notification channels', () => {
             new URL(request.url).pathname.endsWith('/tenantadmin/2/permission-policies')
                 ? Response.json({
                       tenantId: 2,
-                      policies: { featureAskerEmailLiveChatEnabled: { value: true, mode: 'ENFORCED' } },
+                      policies: { featureAskerEmailAgencyCounsellingEnabled: { value: true, mode: 'ENFORCED' } },
                   })
                 : Response.json([]),
         );
@@ -172,13 +182,15 @@ describe('AgencyPermissionsSettings notification channels', () => {
 
             // The switch appears only once the Träger's value is loaded, never with a default first.
             const control = await waitFor(() => {
-                const found = policy('featureAskerEmailLiveChatEnabled');
+                const found = policy('featureAskerEmailAgencyCounsellingEnabled');
                 expect(found).not.toBeNull();
                 return found;
             });
-            const trigger = within(control).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i });
+            const trigger = within(control).getByRole('button', { name: /: \S/ });
             expect(trigger).toBeDisabled();
-            await waitFor(() => expect(trigger).toHaveAccessibleName(/Aktivierung erzwungen|Activation enforced/i));
+            await waitFor(() => expect(trigger).toHaveAccessibleName(LOCKED_ON));
+            expect(within(control).getByTestId('LockIcon')).toBeInTheDocument();
+            expect(within(control).queryByRole('button', { name: LOCK_BUTTON })).toBeNull();
         } finally {
             vi.unstubAllGlobals();
         }
@@ -198,7 +210,7 @@ describe('AgencyPermissionsSettings notification channels', () => {
             expect((await screen.findAllByText(/Träger.*(nicht geladen|could not be loaded)/i)).length).toBeGreaterThan(
                 0,
             );
-            expect(policy('featureAskerEmailLiveChatEnabled')).toBeNull();
+            expect(policy('featureAskerEmailAgencyCounsellingEnabled')).toBeNull();
         } finally {
             vi.unstubAllGlobals();
         }
@@ -227,20 +239,15 @@ describe('AgencyPermissionsSettings direct invitations', () => {
 
             await waitFor(() =>
                 expect(
-                    within(policy('featureDirectInviteVideoEnabled')).getByRole('button', {
-                        name: /Weitere Informationen|more information/i,
-                    }),
-                ).toBeTruthy(),
+                    within(policy('featureDirectInviteVideoEnabled')).getByRole('button', { name: LOCKED_OFF }),
+                ).toBeDisabled(),
             );
             expect(
                 screen.getByText(/Ihr Träger hat das ausgeschaltet|Your Träger has switched this off/i),
             ).toBeTruthy();
 
             const chat = policy('featureDirectInviteChatEnabled');
-            await user.click(within(chat).getByRole('button', { name: /Policy-Auswahl öffnen|Open policy choices/i }));
-            await user.click(
-                within(chat).getByRole('button', { name: /Deaktivierung \(anpassbar\)|deactivation \(adjustable\)/i }),
-            );
+            await user.click(within(chat).getByRole('button', { name: SWITCH_OFF }));
             const payload = mocks.mutate.mock.calls.at(-1)?.[0] as { settings: Record<string, unknown> };
             expect(payload.settings.featureDirectInviteChatEnabled).toBe(false);
         } finally {

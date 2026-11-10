@@ -1,12 +1,14 @@
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiRadioGroupField } from '../../mui/MuiRadioGroupField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TOPIC_DUPLICATE_MODES, TopicDuplicateMode } from '../../../types/AppConfigInterface';
+import { topicDuplicateHelp } from './help';
 import styles from './styles.module.scss';
 
 /** Only this mode is implemented; the others are reserved for ORISO-Frontend#1878. */
@@ -35,6 +37,7 @@ export const TopicDuplicateSettingsCard = ({
             className={styles.card}
             variant="dialog"
             headerIcon={<ContentCopyOutlinedIcon />}
+            help={topicDuplicateHelp}
             titleKey="globalSettings.topicDuplicate.title"
             initialValues={{ topicDuplicateMode: mode }}
             isLoading={isLoading}
@@ -77,9 +80,8 @@ export const TopicDuplicateSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({
+                            snackbar.error({
                                 content: t('globalSettings.topicDuplicate.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     findStoredCsvInvite,
     toCreateInviteRequest,
+    toSuggestionFields,
     type InviteDraft,
     type InviteRequestContext,
 } from './inviteRequest';
@@ -201,5 +202,50 @@ describe('CSV failed-operation recovery', () => {
     it('propagates an unavailable owner instead of returning an unsafe absence', async () => {
         listAccountInvites.mockRejectedValue(new Error('owner offline'));
         await expect(findStoredCsvInvite(row)).rejects.toThrow('owner offline');
+    });
+});
+
+describe('invite suggestion (#1274)', () => {
+    it('sends the suggested icon and display name with a counsellor invite', () => {
+        const request = toCreateInviteRequest(
+            draft({ suggestion: { avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' } }),
+            counsellorTab,
+        );
+        expect(request).toMatchObject({ avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' });
+    });
+
+    it('sends nothing when there is no suggestion, as before', () => {
+        const request = toCreateInviteRequest(
+            draft({ suggestion: toSuggestionFields({ avatar: {}, displayName: '  ' }) }),
+            counsellorTab,
+        );
+        expect(request).not.toHaveProperty('avatarKind');
+        expect(request).not.toHaveProperty('avatarId');
+        expect(request).not.toHaveProperty('displayName');
+    });
+
+    it('never sends it with a Träger admin invite', () => {
+        const request = toCreateInviteRequest(
+            draft({ role: 'TENANT_ADMIN', suggestion: { displayName: 'Maria B.' } }),
+            tenantTab,
+        );
+        expect(request).not.toHaveProperty('displayName');
+    });
+
+    it('turns an icon kind without a motif into initials and trims the name', () => {
+        expect(toSuggestionFields({ avatar: { avatarKind: 'ICON', avatarId: ' ' }, displayName: ' Maria ' })).toEqual({
+            avatarKind: 'INITIALS',
+            displayName: 'Maria',
+        });
+    });
+
+    it('keeps the motif only for the icon kind and caps the name at 100 characters', () => {
+        expect(
+            toSuggestionFields({ avatar: { avatarKind: 'ICON', avatarId: 'owl' }, displayName: 'x'.repeat(120) }),
+        ).toEqual({
+            avatarKind: 'ICON',
+            avatarId: 'owl',
+            displayName: 'x'.repeat(100),
+        });
     });
 });

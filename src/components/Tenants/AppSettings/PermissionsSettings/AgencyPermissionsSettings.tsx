@@ -1,22 +1,29 @@
-import { notification } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
+import { Notify } from '../../../Notify';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
 import { stripAgencyAdminControls } from '../../../../api/agency/stripAgencyAdminControls';
-import { buildTogglePayload } from './permissionsToggleLogic';
+import { useQueuedPermissionPolicies } from '../../../../hooks/useQueuedPermissionPolicies';
+import type { PolicyValue } from '../../../../types/permissionPolicy';
+import { agencyPermissionPolicies } from './agencyPermissionPolicies';
 import {
     applyPermissionConstraintsToSettings,
     getRestrictedFields,
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 
 type AgencyPermissionsSettingsProps = {
     agencyId: string;
     excludeCardKeys?: Array<ChatTypeCardKey>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
 };
 
 /**
@@ -25,29 +32,36 @@ type AgencyPermissionsSettingsProps = {
  * response) only constrain the form — forced-off and enforced-on fields render disabled, never
  * hidden — and are stripped from every save payload at the API layer.
  */
-export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyPermissionsSettingsProps) => {
+export const AgencyPermissionsSettings = ({
+    agencyId,
+    excludeCardKeys,
+    liveChatLinks,
+}: AgencyPermissionsSettingsProps) => {
     const { t } = useTranslation();
     const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
-    const { mutate: updateAgency } = useAgencyUpdate(agencyId);
+    const { mutateAsync: updateAgency } = useAgencyUpdate(agencyId);
     // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
     // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
     const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
-    const { data: traegerPolicies, status: traegerPoliciesQueryStatus } = useTenantPermissionPolicies(
-        traegerId,
-        Boolean(traegerId),
-        { silent: true },
-    );
+    const {
+        data: traegerPolicies,
+        status: traegerPoliciesQueryStatus,
+        refetch: refetchTraegerPolicies,
+    } = useTenantPermissionPolicies(traegerId, Boolean(traegerId), { silent: true });
     let traegerPoliciesStatus = traegerPoliciesQueryStatus;
     if (isPending) traegerPoliciesStatus = 'pending';
     else if (!traegerId) traegerPoliciesStatus = 'error';
-    const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = agencyData?.settings?.agencyAdminControls?.enforcedPermissionToggles;
-    const restrictedFields = useMemo(
-        () => getRestrictedFields(allowedPermissionToggles, enforcedPermissionToggles),
-        [allowedPermissionToggles, enforcedPermissionToggles],
-    );
+    const restrictedFields = useMemo(() => {
+        const fields = getRestrictedFields(allowedPermissionToggles, enforcedPermissionToggles);
+        Object.entries(agencyData?.settings?.permissionPolicies ?? {}).forEach(([field, policy]) => {
+            if (policy.mode === 'ENFORCED') fields.add(field);
+            else fields.delete(field);
+        });
+        return fields;
+    }, [agencyData?.settings?.permissionPolicies, allowedPermissionToggles, enforcedPermissionToggles]);
 
     const initialValues = useMemo(
         () => ({
@@ -65,66 +79,71 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     );
 
     const formStateKey = useMemo(() => Array.from(restrictedFields).sort().join('|'), [restrictedFields]);
-    const saveSettings = useCallback(
-        (settings: Record<string, unknown> | undefined, policyField?: string) => {
-            if (policyField) setPendingPolicyFields(new Set([policyField]));
-            updateAgency(
-                {
-                    settings: applyPermissionConstraintsToSettings(
-                        settings,
-                        allowedPermissionToggles,
-                        enforcedPermissionToggles,
-                    ),
-                },
-                {
-                    onSuccess: () => {
-                        notification.success({ message: t('message.agency.updated'), duration: 3 });
-                    },
-                    onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
-                    onSettled: () => {
-                        if (policyField) setPendingPolicyFields(new Set());
-                    },
-                },
-            );
-        },
-        [updateAgency, allowedPermissionToggles, enforcedPermissionToggles, t],
+    const confirmedPolicies = useMemo(
+        () => (agencyData ? agencyPermissionPolicies(agencyData.settings) : undefined),
+        [agencyData],
     );
-
-    const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
-        (fieldPath, value, currentFormData) => {
-            if (!agencyData) return;
-
-            const fieldKey = Array.isArray(fieldPath) ? fieldPath.at(-1) : fieldPath;
-            const toggleUpdate = buildTogglePayload(fieldPath, value) as { settings?: Record<string, boolean> };
-            saveSettings(
-                {
-                    ...stripAgencyAdminControls(agencyData.settings ?? {}),
-                    ...(currentFormData?.settings ?? {}),
-                    ...toggleUpdate.settings,
-                },
-                fieldKey,
-            );
+    const savePolicy = useCallback(
+        async (field: string, policy: PolicyValue<boolean>) => {
+            try {
+                // A field patch lets the agency mutation queue merge into its latest confirmed response.
+                const saved = await updateAgency({ settings: { [field]: policy.value } });
+                snackbar.success({ message: t('message.agency.updated'), duration: 3 });
+                return agencyPermissionPolicies(saved.settings);
+            } catch (error) {
+                snackbar.error({ message: t('tenants.permissions.policy.saveError') });
+                throw error;
+            }
         },
-        [agencyData, saveSettings],
+        [t, updateAgency],
+    );
+    const { policies, pendingFields, changePolicy } = useQueuedPermissionPolicies(
+        agencyId,
+        confirmedPolicies,
+        savePolicy,
+    );
+    const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
+        (fieldPath, value) => {
+            const field = Array.isArray(fieldPath) ? fieldPath.at(-1) : fieldPath;
+            if (field) changePolicy(field, { value, mode: 'SUGGESTED', inherited: false });
+        },
+        [changePolicy],
     );
 
     return (
-        <PermissionsSettingsView
-            tenantId={`agency-${agencyId}`}
-            caseHandoverTenantId={agencyData?.tenantId}
-            caseHandoverTenantPending={isPending}
-            channelsSetOnTraeger
-            traegerChannelPolicies={traegerPolicies?.policies}
-            traegerChannelPoliciesStatus={traegerPoliciesStatus}
-            traegerDirectInvitePolicies={traegerPolicies?.policies}
-            excludeCardKeys={excludeCardKeys}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            formStateKey={formStateKey}
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            policyLevel="agency"
-            pendingPolicyFields={pendingPolicyFields}
-        />
+        <>
+            {/* One outage, one pop-up: the tiles that depend on the Träger's values each say so in quiet text. */}
+            {traegerId && traegerPoliciesQueryStatus === 'error' && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.permissions')}
+                    causeKey={`agency:${agencyId}:traeger-policies`}
+                    jump={`[${TRAEGER_UNAVAILABLE_ATTRIBUTE}]`}
+                    actions={[{ label: t('notify.retry'), onClick: () => refetchTraegerPolicies() }]}
+                >
+                    {t('tenants.permissions.traegerUnavailable')}
+                </Notify>
+            )}
+            <PermissionsSettingsView
+                tenantId={`agency-${agencyId}`}
+                caseHandoverTenantId={agencyData?.tenantId}
+                caseHandoverTenantPending={isPending}
+                channelsSetOnTraeger
+                traegerChannelPolicies={traegerPolicies?.policies}
+                traegerChannelPoliciesStatus={traegerPoliciesStatus}
+                traegerDirectInvitePolicies={traegerPolicies?.policies}
+                excludeCardKeys={excludeCardKeys}
+                liveChatLinks={liveChatLinks}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                formStateKey={formStateKey}
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                policyLevel="agency"
+                permissionPolicies={policies}
+                onPolicyChange={changePolicy}
+                pendingPolicyFields={pendingFields}
+            />
+        </>
     );
 };

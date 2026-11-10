@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook } from '@testing-library/react';
 
 const mocks = vi.hoisted(() => ({ report: vi.fn(), getSessionAccessToken: vi.fn() }));

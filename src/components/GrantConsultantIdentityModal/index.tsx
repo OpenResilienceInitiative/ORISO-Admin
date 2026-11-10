@@ -1,8 +1,9 @@
-import { Button, Form, message } from 'antd';
+import { Button, Form } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LabeledValue } from 'antd/lib/select';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiSelectField } from '../mui/MuiSelectField';
 import { Modal, DialogButton } from '../Modal';
 import { useAgenciesData } from '../../hooks/useAgencysData';
@@ -11,6 +12,7 @@ import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIde
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -36,6 +38,7 @@ export const GrantConsultantIdentityModal = ({
     buttonLabelKey = 'grantConsultantIdentity.button',
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [form] = Form.useForm<GrantConsultantIdentityFormValues>();
     const [open, setOpen] = useState(false);
@@ -107,7 +110,7 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            message.error({ content: t('message.grantConsultantIdentity.error'), duration: 8 });
+            message.error({ content: t('message.grantConsultantIdentity.error') });
         } finally {
             setIsSubmitting(false);
         }
@@ -159,9 +162,10 @@ export const GrantConsultantIdentityModal = ({
                             />
                         )}
                         {hasNoTopics && (
-                            <p role="alert" className={styles.noTopics}>
+                            // Appears after an agency is chosen and disables the confirm button: announce it.
+                            <HintText tone="error" role="alert">
                                 {t('grantConsultantIdentity.modal.noTopics')}
-                            </p>
+                            </HintText>
                         )}
                     </Form>
                 </Modal>

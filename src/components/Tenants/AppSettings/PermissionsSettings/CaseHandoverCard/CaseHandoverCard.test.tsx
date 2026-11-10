@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseHandoverCard } from './index';
+import { CaseHandoverCardView, type CaseHandoverCardViewProps } from './CaseHandoverCardView';
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
@@ -45,7 +46,8 @@ const mocks = vi.hoisted(() => ({
             policyAuthority: 'platform-admin-default-case-handover-policy',
         },
     ],
-    dataState: { isError: false },
+    dataState: { isError: false, isLoading: false },
+    refetch: vi.fn(),
     mutationState: { isPending: false },
 }));
 
@@ -64,8 +66,9 @@ vi.mock('../../../../../hooks/useCaseHandoverReasonPolicies', async (importOrigi
     ...(await importOriginal<typeof import('../../../../../hooks/useCaseHandoverReasonPolicies')>()),
     useCaseHandoverReasonPoliciesData: () => ({
         data: mocks.policies,
-        isLoading: false,
+        isLoading: mocks.dataState.isLoading,
         isError: mocks.dataState.isError,
+        refetch: mocks.refetch,
     }),
     useCaseHandoverReasonPoliciesMutation: () => ({
         isPending: mocks.mutationState.isPending,
@@ -90,33 +93,54 @@ describe('CaseHandoverCard', () => {
         mocks.mutate.mockReset();
         mocks.policies = mocks.defaultPolicies;
         mocks.dataState.isError = false;
+        mocks.dataState.isLoading = false;
         mocks.mutationState.isPending = false;
     });
 
-    it('master policy selection writes enabled on every reason and normalizes empty policyAuthority to null', async () => {
+    it('keeps the agency master read-only even when the parent only suggests it', async () => {
         const user = userEvent.setup();
-        render(<CaseHandoverCard tenantId={7} />);
+        const onFeaturePolicyChange = vi.fn();
+        render(
+            <CaseHandoverCard
+                tenantId={7}
+                policyLevel="agency"
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: true } }}
+                onFeaturePolicyChange={onFeaturePolicyChange}
+            />,
+        );
+
+        const master = screen.getByRole('button', {
+            name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.activated',
+        });
+        expect(master).toBeDisabled();
+        expect(screen.getByText('tenants.permissions.card.caseHandover.readOnlyNote')).toBeVisible();
+        // A Beratungsstelle never sets a requirement, and the parent's suggestion is read-only here.
+        expect(
+            screen.queryByRole('button', { name: /tenants\.permissions\.policy\.(makeRequired|makeAdjustable)/ }),
+        ).toBeNull();
+        await user.click(master);
+        expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('master selection writes only the canonical policy and preserves individual reasons', async () => {
+        const user = userEvent.setup();
+        const onFeaturePolicyChange = vi.fn();
+        mocks.policies = [mocks.defaultPolicies[0], { ...mocks.defaultPolicies[1], enabled: false }];
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={onFeaturePolicyChange} />);
 
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.activated – tenants.permissions.policy.deactivate',
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
 
-        await waitFor(() => {
-            expect(mocks.mutate).toHaveBeenCalledWith(
-                [
-                    expect.objectContaining({
-                        code: 'COUNSELLOR_ASKED_FOR_ADVICE',
-                        enabled: false,
-                        policyAuthority: null,
-                    }),
-                    expect.objectContaining({ code: 'COUNSELLOR_IS_ILL', enabled: false }),
-                ],
-                expect.anything(),
-            );
+        expect(onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
         });
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.policies.map(({ enabled }) => enabled)).toEqual([true, false]);
     });
 
     it('client-consent policy updates only the active reason', async () => {
@@ -137,6 +161,7 @@ describe('CaseHandoverCard', () => {
                     expect.objectContaining({
                         code: 'COUNSELLOR_ASKED_FOR_ADVICE',
                         clientConsentRequired: false,
+                        policyAuthority: null,
                         clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
                     }),
                     expect.objectContaining({
@@ -214,11 +239,11 @@ describe('CaseHandoverCard', () => {
     it('keeps advisor consent disabled without adding a standalone team-access policy', () => {
         render(<CaseHandoverCard tenantId={7} />);
 
-        expect(
-            screen.getByRole('button', {
-                name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
-            }),
-        ).toBeEnabled();
+        const advisor = screen.getByRole('button', {
+            name: 'tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.consent.optInEnforced',
+        });
+        expect(advisor).toBeDisabled();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         expect(
             screen.queryByRole('button', {
                 name: /tenants.permissions.card.caseHandover.teamAccessOptOut/,
@@ -234,46 +259,56 @@ describe('CaseHandoverCard', () => {
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('places the card description before the specifically named master policy', () => {
+    it('keeps the card explanation behind the info button, not above the master policy', () => {
         render(<CaseHandoverCard tenantId={7} />);
 
-        const description = screen.getByText('tenants.permissions.card.caseHandover.description');
-        const masterPolicy = screen.getByText('tenants.permissions.card.caseHandover.enabled');
-
-        expect(description.compareDocumentPosition(masterPolicy)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(screen.queryByText('tenants.permissions.card.caseHandover.description')).toBeNull();
+        expect(screen.getByRole('button', { name: /tileHelp\.open/ })).toBeTruthy();
     });
 
-    it('opens all four policy choices plus information from the master policy button', async () => {
+    it('offers the master as an on/off button plus a requirement lock, and no menu', async () => {
         const user = userEvent.setup();
-        render(<CaseHandoverCard tenantId={7} />);
+        const onFeaturePolicyChange = vi.fn();
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={onFeaturePolicyChange} />);
 
-        await user.click(
-            screen.getByRole('button', {
-                name: /tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu/,
-            }),
-        );
+        const round = screen.getByRole('button', {
+            name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.activated – tenants.permissions.policy.deactivate',
+        });
+        const lock = screen.getByRole('button', {
+            name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.suggestion – tenants.permissions.policy.makeRequired',
+        });
+        expect(round).toHaveAttribute('aria-pressed', 'true');
+        expect(lock).toHaveAttribute('aria-pressed', 'false');
 
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationEnforced' })).toBeVisible();
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationEnforced' })).toBeVisible();
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.activationSuggested' })).toBeVisible();
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' })).toBeVisible();
-        expect(screen.getByRole('button', { name: 'tenants.permissions.policy.moreInformation' })).toBeVisible();
+        await user.click(lock);
+        expect(onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: true,
+            mode: 'ENFORCED',
+        });
+        await user.click(round);
+        expect(onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        expect(screen.queryByRole('button', { name: /moreInformation/ })).toBeNull();
+        expect(screen.queryByRole('dialog')).toBeNull();
     });
 
     it('locks the master policy while a reason-policy save is pending', () => {
         mocks.mutationState.isPending = true;
 
-        render(<CaseHandoverCard tenantId={7} />);
+        render(<CaseHandoverCard tenantId={7} onFeaturePolicyChange={vi.fn()} />);
 
         expect(
             screen.getByRole('button', {
-                name: /tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu/,
+                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.activated',
             }),
         ).toBeDisabled();
+        expect(screen.queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
     });
 
     // FE#1725: no silent rollback; the edit stays and an error says it was not saved.
-    it('keeps the edit and shows an error when the save fails', async () => {
+    it('keeps the reason edit and shows an error when its save fails', async () => {
         mocks.mutate.mockImplementation((_payload, options) => {
             options?.onError?.(new Error('save failed'));
         });
@@ -282,22 +317,19 @@ describe('CaseHandoverCard', () => {
 
         await user.click(
             screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.activationSuggested',
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }));
+        await user.click(screen.getByRole('button', { name: 'tenants.permissions.consent.noneSuggested' }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'tenants.permissions.card.caseHandover.saveFailed.other',
         );
-        await user.click(
-            screen.getByRole('button', {
-                name: 'tenants.permissions.card.caseHandover.enabled: tenants.permissions.policy.openMenu – tenants.permissions.policy.deactivationSuggested',
-            }),
-        );
         expect(
-            screen.getByRole('button', { name: 'tenants.permissions.policy.deactivationSuggested' }),
-        ).toHaveAttribute('aria-current', 'page');
+            screen.getByRole('button', {
+                name: /tenants.permissions.card.caseHandover.consentClient: tenants.permissions.policy.openMenu/,
+            }),
+        ).toHaveAccessibleName(/tenants.permissions.consent.noneSuggested/);
     });
 
     it('steps Advice Needed duration by 15 minutes from the three-hour default without a maximum', async () => {
@@ -318,7 +350,8 @@ describe('CaseHandoverCard', () => {
         render(<CaseHandoverCard tenantId={7} />);
 
         expect(screen.getByTestId('case-handover-card-error')).toBeInTheDocument();
-        expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
+        expect(screen.getByTestId('case-handover-card')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
     });
 
     // After US#1245 the endpoint answers the neutral codes only.
@@ -347,7 +380,7 @@ describe('CaseHandoverCard', () => {
 
         const advisorConsentButton = () =>
             screen.getByRole('button', {
-                name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+                name: /tenants.permissions.card.caseHandover.consentAdvisor: /,
             });
 
         beforeEach(() => {
@@ -386,9 +419,90 @@ describe('CaseHandoverCard', () => {
         expect(
             screen
                 .getByRole('button', {
-                    name: /tenants.permissions.card.caseHandover.consentAdvisor: tenants.permissions.policy.moreInformation/,
+                    name: /tenants.permissions.card.caseHandover.consentAdvisor: /,
                 })
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
     });
+});
+
+describe('reason state is independent from the canonical master view', () => {
+    const viewProps = (): CaseHandoverCardViewProps => ({
+        policies: mocks.defaultPolicies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onClientConsentPolicyChange: vi.fn(),
+        onNotificationTemplateChange: vi.fn(),
+        onMaxAccessDurationChange: vi.fn(),
+        onFeaturePolicyChange: vi.fn(),
+    });
+    it('keeps a loaded canonical master available while only reasons are loading', () => {
+        render(
+            <CaseHandoverCardView
+                {...viewProps()}
+                isLoading
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } }}
+            />,
+        );
+        expect(screen.getByRole('button', { name: /caseHandover.enabled: .*policy.activated/ })).toBeEnabled();
+        expect(screen.getByTestId('case-handover-card-loading')).toBeVisible();
+    });
+    it('shows a reason error without stale reason controls and retains canonical master pending semantics', () => {
+        render(
+            <CaseHandoverCardView
+                {...viewProps()}
+                loadError="Reasons unavailable"
+                permissionPolicies={{ caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } }}
+                pendingPolicyFields={new Set(['caseHandoverEnabled'])}
+            />,
+        );
+        expect(screen.getByRole('button', { name: /caseHandover.enabled: .*policy.activated/ })).toBeDisabled();
+        expect(screen.getByTestId('case-handover-card-error')).toHaveTextContent('Reasons unavailable');
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    });
+    it.each([undefined, JSON.parse('{"caseHandoverEnabled":{"value":true,"mode":"UNKNOWN"}}')])(
+        'does not invent a master from reason preferences without valid canonical authority on reason error',
+        (permissionPolicies) => {
+            render(
+                <CaseHandoverCardView
+                    {...viewProps()}
+                    loadError="Reasons unavailable"
+                    permissionPolicies={permissionPolicies}
+                />,
+            );
+            expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+            expect(screen.getByTestId('case-handover-card-error')).toBeVisible();
+        },
+    );
+});
+
+it('withholds stale canonical master authority until the owning Träger is resolved', async () => {
+    mocks.policies = mocks.defaultPolicies;
+    mocks.dataState.isError = false;
+    mocks.dataState.isLoading = false;
+    const onFeaturePolicyChange = vi.fn();
+    const permissionPolicies = { caseHandoverEnabled: { value: true, mode: 'SUGGESTED' as const, inherited: false } };
+    const view = render(
+        <CaseHandoverCard
+            tenantPending
+            permissionPolicies={permissionPolicies}
+            onFeaturePolicyChange={onFeaturePolicyChange}
+        />,
+    );
+    expect(screen.getByTestId('case-handover-card-loading')).toBeVisible();
+    expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+    expect(onFeaturePolicyChange).not.toHaveBeenCalled();
+    view.rerender(
+        <CaseHandoverCard
+            tenantId={7}
+            tenantPending={false}
+            permissionPolicies={permissionPolicies}
+            onFeaturePolicyChange={onFeaturePolicyChange}
+        />,
+    );
+    const master = screen.getByRole('button', { name: /caseHandover.enabled: .*policy.activated/ });
+    expect(master).toBeEnabled();
+    await userEvent.setup().click(master);
+    expect(onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', { value: false, mode: 'SUGGESTED' });
 });

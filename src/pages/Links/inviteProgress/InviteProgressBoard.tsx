@@ -708,12 +708,17 @@ export const InviteProgressBoard = ({
             </>
         );
 
+        // Icon-only actions: the hover tooltip spells out the same name screen readers get.
+        const resendLabel = t('links.inviteProgress.action.resend', 'Erinnerung erneut senden');
+        const copyLinkLabel = t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren');
+        const revokeLabel = t('links.inviteProgress.action.revoke', 'Einladung widerrufen');
         const actions = (
             <div className={styles.actions}>
                 {isWaitingForUnit(invite) ? (
                     // Disable, don't hide: a manual send answers 409
                     // UNIT_NOT_CREATED until the unit exists.
                     <M3Tooltip
+                        portal
                         text={t(
                             'links.inviteProgress.action.resendWaiting',
                             'Noch nicht möglich: Die Einladung geht automatisch raus, sobald die Beratungsstelle bzw. der Träger angelegt ist.',
@@ -723,19 +728,21 @@ export const InviteProgressBoard = ({
                         <span tabIndex={0} className={styles.disabledActionSlot}>
                             <IconButton
                                 icon={<ForwardToInboxOutlinedIcon />}
-                                ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
+                                ariaLabel={resendLabel}
                                 disabled
                                 onClick={() => onResend(invite)}
                             />
                         </span>
                     </M3Tooltip>
                 ) : (
-                    <IconButton
-                        icon={<ForwardToInboxOutlinedIcon />}
-                        ariaLabel={t('links.inviteProgress.action.resend', 'Erinnerung erneut senden')}
-                        disabled={!actionable}
-                        onClick={() => onResend(invite)}
-                    />
+                    <M3Tooltip nameOnly portal text={resendLabel}>
+                        <IconButton
+                            icon={<ForwardToInboxOutlinedIcon />}
+                            ariaLabel={resendLabel}
+                            disabled={!actionable}
+                            onClick={() => onResend(invite)}
+                        />
+                    </M3Tooltip>
                 )}
                 {/* C5: the copy icon used to stay live between
                     two disabled neighbours, and pressing it in a
@@ -743,19 +750,23 @@ export const InviteProgressBoard = ({
                     visible after send" refusal. An action whose
                     single outcome is a refusal is a disabled
                     action, so it follows the same rule. */}
-                <IconButton
-                    icon={<ContentCopyOutlinedIcon />}
-                    ariaLabel={t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren')}
-                    disabled={!actionable}
-                    onClick={() => onCopyLink(invite)}
-                />
-                <IconButton
-                    icon={<BlockOutlinedIcon />}
-                    ariaLabel={t('links.inviteProgress.action.revoke', 'Einladung widerrufen')}
-                    disabled={!isRevocable(invite)}
-                    className={styles.revokeAction}
-                    onClick={() => onRevoke(invite)}
-                />
+                <M3Tooltip nameOnly portal text={copyLinkLabel}>
+                    <IconButton
+                        icon={<ContentCopyOutlinedIcon />}
+                        ariaLabel={copyLinkLabel}
+                        disabled={!actionable}
+                        onClick={() => onCopyLink(invite)}
+                    />
+                </M3Tooltip>
+                <M3Tooltip nameOnly portal text={revokeLabel}>
+                    <IconButton
+                        icon={<BlockOutlinedIcon />}
+                        ariaLabel={revokeLabel}
+                        disabled={!isRevocable(invite)}
+                        className={styles.revokeAction}
+                        onClick={() => onRevoke(invite)}
+                    />
+                </M3Tooltip>
             </div>
         );
 

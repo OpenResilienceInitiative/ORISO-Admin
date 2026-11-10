@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import i18n from '../../../../../i18n';
+import { findPopup } from '../../../../../test/storyPopups';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import type { RecipientScopePolicy } from '../../../../../types/permissionPolicy';
@@ -97,7 +98,9 @@ export const TraegerSaveRejected: Story = {
         const scope = await control(canvasElement);
         await userEvent.click(scope.getByRole('radio', { name: /Plattformweit/ }));
         await userEvent.click(scope.getByRole('button', { name: 'Speichern' }));
-        await expect(await scope.findByRole('alert')).toHaveTextContent(/^Nicht gespeichert\./);
+        await expect(await findPopup(canvasElement, /Nicht gespeichert\./, 'error')).toHaveTextContent(
+            'Berechtigungen',
+        );
         await expect(scope.getByRole('radio', { name: /Plattformweit/ })).toBeChecked();
     },
 };
@@ -110,7 +113,7 @@ export const PlatformWithoutBackendField: Story = {
         const scope = await control(canvasElement);
         await expect(scope.getByRole('radio', { name: /Auf die Beratungsstelle begrenzt/ })).toBeChecked();
         scope.getAllByRole('radio').forEach((radio) => expect(radio).toBeDisabled());
-        await expect(scope.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeVisible();
+        await expect(scope.getByText('Diese Einstellung ist noch nicht verfügbar.')).toBeVisible();
         await expect(scope.queryByRole('button', { name: 'Speichern' })).toBeNull();
     },
 };

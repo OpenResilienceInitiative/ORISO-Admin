@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { addTopicsToAgency, ADD_TOPICS_ERRORS } from './addTopicsToAgency';
 import { FETCH_ERRORS, fetchData } from '../fetchData';
 import getAgencyDataById, { AgencyAccessError } from './getAgencyById';

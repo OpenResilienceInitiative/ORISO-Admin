@@ -2,9 +2,10 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost } from '../../components/Snackbar';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 // Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
 // below is hoisted above this line, so the mocks still apply, while a dynamic
@@ -150,6 +151,11 @@ const rowCheckbox = async (email: string) => {
     const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
     return within(row).getByRole('checkbox');
 };
+
+// Feedback is a snackbar: mount the host the app mounts once, for every describe below.
+beforeEach(() => {
+    render(<SnackbarHost />);
+});
 
 describe('AccountInvitesTab bulk selection (#316)', () => {
     beforeEach(() => {

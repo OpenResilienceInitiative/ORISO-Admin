@@ -1,10 +1,11 @@
-import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
+import { Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { Card } from '../../../components/Card';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import {
@@ -40,11 +41,24 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
-import routePathNames from '../../../appConfig';
+import routePathNames, { appURL } from '../../../appConfig';
+import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
+import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from '../../../utils/publicContactLink';
 import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
+import {
+    CHANGE_TENANT_ERRORS,
+    ChangeConsultantTenantError,
+    changeConsultantTenant,
+    type ChangeConsultantTenantResult,
+    type ChangeTenantErrorCode,
+} from '../../../api/counselor/changeConsultantTenant';
+import { AGENCY_CONSULTANTS_KEY } from '../../../hooks/useAgencyConsultants';
 import { useAppConfigContext } from '../../../context/useAppConfig';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { CentreTopicPickers } from './CentreTopicPickers';
+import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
+import { useSupervisionPrivacyConfirm } from '../../../components/SupervisionPrivacyConfirm';
 import {
     buildTopicsPayload,
     centreLabel,
@@ -60,6 +74,7 @@ import {
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
+import { HintText } from '../../../components/HintText';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -107,11 +122,36 @@ const CONSULTANT_ONLY_PROFILE_FIELDS: ConsultantFieldName[] = [
  */
 const PAGE_SETTINGS_EXCLUSIONS: ConsultantFieldName[] = ['absent', 'isGroupchatConsultant'];
 
-export const UserEditOrAdd = () => {
+/** The agency picker's label, also what the dialog calls each centre. */
+const AGENCY_LABEL_FIELDS: Array<'postcode' | 'name' | 'city'> = ['postcode', 'name', 'city'];
+
+/** A Träger move waiting for, or past, the admin's confirmation (Admin#1216). */
+interface TenantMove {
+    step: 'confirm' | 'saving' | 'done';
+    tenantId: string;
+    centreIds: string[];
+    /** Undefined when the admin was shown no topic picker. */
+    topicIds?: string[];
+    /** Names as they were when the admin pressed Save; the refetch after the move must not change them. */
+    consultantName: string;
+    fromTraeger: string;
+    toTraeger: string;
+    centres: string[];
+    error?: ChangeTenantErrorCode;
+    result?: ChangeConsultantTenantResult;
+}
+
+type UserEditFormProps = {
+    id: string;
+    typeOfUsers: TypeOfUser.Consultants | TypeOfUser.AgencyAdmins;
+    can: ReturnType<typeof useUserPermissions>['can'];
+};
+
+const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
+    const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
-    const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
@@ -119,7 +159,6 @@ export const UserEditOrAdd = () => {
     // question — see `ADMIN_REMARKS_ROLES`.
     const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
-    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
     const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
@@ -171,6 +210,7 @@ export const UserEditOrAdd = () => {
     const heldByPickerRef = useRef<Record<string, Set<string>>>({});
     const [pendingMove, setPendingMove] = useState<{ data: any; lost: TopicsLostByMove } | null>(null);
     const [addingTopics, setAddingTopics] = useState(false);
+    const [tenantMove, setTenantMove] = useState<TenantMove | null>(null);
     /**
      * Whether the ADMIN changed the standing supervisor, as opposed to us syncing it from a
      * refetch. antd's `isFieldTouched` cannot tell the two apart — `setFieldsValue` marks the
@@ -179,6 +219,7 @@ export const UserEditOrAdd = () => {
      * honest signal.
      */
     const supervisorPickedByAdminRef = useRef(false);
+    const confirmSupervision = useSupervisionPrivacyConfirm();
     /**
      * Read the standing supervisor from the single-consultant record, not from the list row.
      * The form's list comes from `/service/users/consultants/search`, which leaves
@@ -188,6 +229,16 @@ export const UserEditOrAdd = () => {
      */
     const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
     const editedTenantId = consultantById?.tenantId ?? singleData?.tenantId;
+    /**
+     * Admin#1216: only a platform admin may move a counsellor to another Träger. Everyone else
+     * (Träger admins, and the admin forms) sees the field read-only once it is set.
+     */
+    const canChangeTraeger = isSuperAdmin && isEditing && isConsultantForm;
+    const traegerChosen =
+        canChangeTraeger &&
+        !!selectedTenant &&
+        editedTenantId != null &&
+        String(selectedTenant) !== String(editedTenantId);
     /**
      * Only the single-consultant record carries the current assignment, so without it we do not
      * know what is stored. Writing the field then would send '' on any unrelated edit and silently
@@ -257,9 +308,17 @@ export const UserEditOrAdd = () => {
         if (supervisorCandidatesTruncated) {
             return 'counselor.assignedSupervisor.truncated';
         }
-        return supervisorOptions.length === 0
-            ? 'counselor.assignedSupervisor.noCandidates'
-            : 'counselor.assignedSupervisor.hint';
+        if (supervisorOptions.length > 0) {
+            return 'counselor.assignedSupervisor.hint';
+        }
+        // A counsellor cannot supervise themselves. When they are the only one with the capability,
+        // say so: "nobody has been enabled" reads as if saving the capability had failed.
+        const editedIsOnlySupervisor = (supervisorCandidatesResponse?.data || []).some(
+            (candidate) => candidate.id === id && candidate.isSupervisor,
+        );
+        return editedIsOnlySupervisor
+            ? 'counselor.assignedSupervisor.onlySelf'
+            : 'counselor.assignedSupervisor.noCandidates';
     })();
 
     const hasSelectedAgencies = selectedAgencies.length > 0;
@@ -291,12 +350,13 @@ export const UserEditOrAdd = () => {
      * centre offering a topic. Refuses a selection that would come back different, and says where.
      */
     const refuseFlatListMismatch = useCallback(
-        (centreIds: string[], byCentre: TopicsByCentre) => {
+        (centreIds: string[], byCentre: TopicsByCentre, alwaysSentFlat = false) => {
             const initial = initialCentresRef.current;
             if (
                 !isConsultantForm ||
-                serverStoresTopicsPerCentre ||
-                (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))
+                (!alwaysSentFlat &&
+                    (serverStoresTopicsPerCentre ||
+                        (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))))
             ) {
                 return false;
             }
@@ -470,7 +530,6 @@ export const UserEditOrAdd = () => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -478,11 +537,11 @@ export const UserEditOrAdd = () => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
             onAccountCreatedWithoutMail: (content) => {
-                message.warning({ content, duration: 10 });
+                message.warning({ content });
                 navigate(`/admin/users/${typeOfUsers}`);
             },
         }),
@@ -536,8 +595,70 @@ export const UserEditOrAdd = () => {
         ],
     );
 
+    /** Admin#1216: what the admin picked, put into the dialog that asks before the counsellor moves. */
+    const reviewTenantMove = useCallback(
+        (data) => {
+            const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // The move only takes a flat topic list, whatever the server stores for an ordinary save.
+            if (showTopicPickers && refuseFlatListMismatch(centreIds, byCentre, true)) {
+                return;
+            }
+            const nameOf = (tenantId: string | number) =>
+                tenantsData.find((tenant) => String(tenant.id) === String(tenantId))?.name ?? `#${tenantId}`;
+            setTenantMove({
+                step: 'confirm',
+                tenantId: String(data.tenantId),
+                centreIds,
+                // Without a picker the admin chose no topics, and the move starts without any.
+                topicIds: showTopicPickers ? buildTopicsPayload(centreIds, byCentre).topicIds : undefined,
+                consultantName: [data.firstname, data.lastname].filter(Boolean).join(' '),
+                fromTraeger: nameOf(editedTenantId),
+                toTraeger: nameOf(data.tenantId),
+                centres: centreIds.map((centreId) => {
+                    const centre = findCentre(filteredAgencies, centreId);
+                    return centre ? centreLabel(centre) : centreId;
+                }),
+            });
+        },
+        [form, tenantsData, showTopicPickers, editedTenantId, filteredAgencies, refuseFlatListMismatch],
+    );
+
+    const confirmTenantMove = async () => {
+        if (!tenantMove || tenantMove.step === 'saving') {
+            return;
+        }
+        const { tenantId, centreIds, topicIds } = tenantMove;
+        setTenantMove({ ...tenantMove, step: 'saving', error: undefined });
+        try {
+            const result = await changeConsultantTenant(id, { tenantId, centreIds, topicIds });
+            setTenantMove((current) => current && { ...current, step: 'done', result });
+        } catch (error) {
+            const code = error instanceof ChangeConsultantTenantError ? error.code : CHANGE_TENANT_ERRORS.UNKNOWN;
+            // The form stays as it was: nothing is lost, the admin can correct and try again.
+            setTenantMove((current) => current && { ...current, step: 'confirm', error: code });
+        }
+    };
+
+    const finishTenantMove = () => {
+        // The lists and the detail record still show the old Träger until they are read again.
+        [
+            ['HAS_CONSULTANTS'],
+            [AGENCY_CONSULTANTS_KEY],
+            [typeOfUsers.toUpperCase()],
+            ['CONSULTANT'],
+            ['AGENCIES'],
+        ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+        setTenantMove(null);
+        navigate(`/admin/users/${typeOfUsers}`);
+    };
+
     const onSave = useCallback(
         (data) => {
+            if (traegerChosen) {
+                reviewTenantMove(data);
+                return;
+            }
             const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
             // A topic change is saved as a whole, and the server refuses a topic the centre no
@@ -576,7 +697,17 @@ export const UserEditOrAdd = () => {
             }
             persist(data, byCentre);
         },
-        [isConsultantForm, filteredAgencies, form, persist, centresWithDroppedTopics, refuseFlatListMismatch, t],
+        [
+            traegerChosen,
+            reviewTenantMove,
+            isConsultantForm,
+            filteredAgencies,
+            form,
+            persist,
+            centresWithDroppedTopics,
+            refuseFlatListMismatch,
+            t,
+        ],
     );
 
     const dropLostTopics = () => {
@@ -614,7 +745,6 @@ export const UserEditOrAdd = () => {
             };
             message.error({
                 content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
-                duration: 8,
             });
             return;
         } finally {
@@ -629,10 +759,26 @@ export const UserEditOrAdd = () => {
         persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
             message.warning({
                 content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
-                duration: 8,
             }),
         );
         setPendingMove(null);
+    };
+
+    /**
+     * The centres, and the topics picked at them, belong to one Träger. Choosing another one drops
+     * them, and so does the memory of what the old centres held: a move takes no topic along
+     * (UserService#1421). Choosing the counsellor's own Träger again brings the loaded state back.
+     */
+    const resetCentresForTraeger = (tenantId: string) => {
+        heldByPickerRef.current = {};
+        // `setFieldValue`, not `setFieldsValue`: that one merges into the old object instead of replacing it.
+        if (String(tenantId) === String(editedTenantId)) {
+            form.setFieldValue('agencies', convertToOptions(singleData?.agencies || [], AGENCY_LABEL_FIELDS, 'id'));
+            form.setFieldValue('topicsByAgency', initialCentresRef.current?.byCentre ?? {});
+            return;
+        }
+        form.setFieldValue('agencies', []);
+        form.setFieldValue('topicsByAgency', {});
     };
 
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
@@ -661,21 +807,34 @@ export const UserEditOrAdd = () => {
 
         return [...excluded];
     }, [isConsultantForm, canManageAdminRemarks, isEditing, typeOfUsers]);
+    // Once the detail record has loaded it is the only source, even when it cleared the name; the
+    // search-list row is a fallback until then and may be stale.
+    const storedPublicSlug = consultantById
+        ? {
+              publicSlug: consultantById.publicSlug || '',
+              pendingPublicSlug: consultantById.pendingPublicSlug || '',
+              publicSlugStatus: consultantById.publicSlugStatus || '',
+          }
+        : {
+              publicSlug: singleData?.publicSlug || '',
+              pendingPublicSlug: singleData?.pendingPublicSlug || '',
+              publicSlugStatus: singleData?.publicSlugStatus || '',
+          };
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
-    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
     let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
 
     if (pendingSlug) {
-        publicSlugAlertType = 'warning';
         publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
     } else if (slugStatus === 'REJECTED') {
         publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
     } else if (activePublicSlug) {
-        publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
+
+    // The saved, live name only: a name still being typed (or awaiting approval) does not open yet.
+    const publicContactLinkUrl = buildPublicContactLinkUrl(storedPublicSlug.publicSlug, appURL);
 
     const approvePendingPublicSlug = () => {
         form.setFieldsValue({
@@ -708,7 +867,11 @@ export const UserEditOrAdd = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
@@ -756,6 +919,9 @@ export const UserEditOrAdd = () => {
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }
+                        if (canChangeTraeger && 'tenantId' in changedValues) {
+                            resetCentresForTraeger(changedValues.tenantId);
+                        }
                         // The "remove the marked topics first" error has no rule to clear it.
                         Object.keys(changedValues.topicsByAgency ?? {}).forEach((centreId) =>
                             form.setFields([{ name: ['topicsByAgency', centreId], errors: [] }]),
@@ -769,9 +935,7 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         assignedSupervisorId: storedSupervisorId || undefined,
-                        publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
-                        pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
-                        publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
+                        ...storedPublicSlug,
                         rejectPendingPublicSlug: false,
                         tenantId:
                             singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
@@ -796,7 +960,10 @@ export const UserEditOrAdd = () => {
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
-                                        disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                        // Only a platform admin moves a counsellor to another Träger (#1216);
+                                        // an existing admin's Träger stays fixed.
+                                        disabled={isReadOnly || !isSuperAdmin || (isEditing && !canChangeTraeger)}
+                                        help={traegerChosen ? 'counselor.changeTenant.saveHint' : undefined}
                                         className={styles.select}
                                         label="tenantAdmins.form.tenantAssignment"
                                         options={convertToOptions(tenantsData || [], 'name', 'id')}
@@ -808,7 +975,23 @@ export const UserEditOrAdd = () => {
                                         labelInValue
                                         isMulti
                                         placeholder="plsSelect"
-                                        options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
+                                        options={convertToOptions(filteredAgencies, AGENCY_LABEL_FIELDS, 'id')}
+                                        rules={
+                                            traegerChosen
+                                                ? [
+                                                      {
+                                                          validator: (_rule, value) =>
+                                                              (value?.length ?? 0) > 0
+                                                                  ? Promise.resolve()
+                                                                  : Promise.reject(
+                                                                        new Error(
+                                                                            t('counselor.changeTenant.centreRequired'),
+                                                                        ),
+                                                                    ),
+                                                      },
+                                                  ]
+                                                : []
+                                        }
                                     />
 
                                     <div className={styles.createAgency}>
@@ -843,10 +1026,13 @@ export const UserEditOrAdd = () => {
                                                     // vanishing.
                                                     disabled={!canWriteStandingSupervisor || supervisorCandidatesFailed}
                                                     allowClear
+                                                    confirmEnable={confirmSupervision.confirmEnable}
                                                 />
                                             )}
                                         </ConsultantSettingsFields>
                                     )}
+                                    {/* OBP 2.1 #107: the first standing supervisor asks about the privacy policy. */}
+                                    {confirmSupervision.dialog}
                                 </Card>
 
                                 {isConsultantForm && (
@@ -855,13 +1041,36 @@ export const UserEditOrAdd = () => {
                                             name="publicSlug"
                                             label={t('counselor.publicSlug')}
                                             placeholder={t('placeholder.publicSlug')}
+                                            helpText={t('counselor.publicSlug.hint', { max: PUBLIC_SLUG_MAX_LENGTH })}
                                             rules={[
                                                 {
-                                                    pattern: /^[a-z]+(-[a-z]+)*$/,
-                                                    message: t('message.error.publicSlug.format'),
+                                                    // Same rule as the UserService, including the
+                                                    // id-shaped names it rejects (ORISO-UserService#1534).
+                                                    validator: (_, value?: string) => {
+                                                        if (!value || isValidPublicSlug(value)) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        // Pasting bypasses maxLength; say why it is refused.
+                                                        const reason =
+                                                            value.length > PUBLIC_SLUG_MAX_LENGTH
+                                                                ? t('message.error.publicSlug.maxLength', {
+                                                                      max: PUBLIC_SLUG_MAX_LENGTH,
+                                                                  })
+                                                                : t('message.error.publicSlug.format');
+                                                        return Promise.reject(new Error(reason));
+                                                    },
                                                 },
                                             ]}
+                                            inputProps={{ maxLength: PUBLIC_SLUG_MAX_LENGTH }}
                                         />
+                                        {isEditing && publicContactLinkUrl && (
+                                            <CopyLinkRow
+                                                value={publicContactLinkUrl}
+                                                labelKey="counselor.publicSlug.url"
+                                                copyKey="counselor.publicSlug.copy"
+                                                copiedKey="counselor.publicSlug.copied"
+                                            />
+                                        )}
                                         <Form.Item name="pendingPublicSlug" hidden>
                                             <input />
                                         </Form.Item>
@@ -872,12 +1081,9 @@ export const UserEditOrAdd = () => {
                                             <input />
                                         </Form.Item>
                                         {isEditing && (
-                                            <Alert
-                                                type={publicSlugAlertType}
-                                                showIcon
-                                                message={t('counselor.publicSlug.status.title')}
-                                                description={publicSlugAlertDescription}
-                                            />
+                                            <HintText title={t('counselor.publicSlug.status.title')}>
+                                                {publicSlugAlertDescription}
+                                            </HintText>
                                         )}
                                         {pendingSlug && (
                                             <Space>
@@ -900,6 +1106,22 @@ export const UserEditOrAdd = () => {
                     </Row>
                 </Form>
             </ThemeProvider>
+            {tenantMove && (
+                <ChangeTraegerDialog
+                    consultantName={tenantMove.consultantName}
+                    fromTraeger={tenantMove.fromTraeger}
+                    toTraeger={tenantMove.toTraeger}
+                    centres={tenantMove.centres}
+                    // The server counts the open cases only while it moves the counsellor.
+                    handoverLogHref={routePathNames.caseHandoverLogs}
+                    step={tenantMove.step}
+                    error={tenantMove.error}
+                    result={tenantMove.result}
+                    onConfirm={confirmTenantMove}
+                    onCancel={() => setTenantMove(null)}
+                    onDone={finishTenantMove}
+                />
+            )}
             {pendingMove && (
                 <TopicsLostByMoveDialog
                     lost={pendingMove.lost}
@@ -916,4 +1138,26 @@ export const UserEditOrAdd = () => {
             )}
         </Page>
     );
+};
+
+export const UserEditOrAdd = () => {
+    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const { can } = useUserPermissions();
+
+    if (!id || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        return <AccessDenied />;
+    }
+
+    if (typeOfUsers === TypeOfUser.AgencyAdmins) {
+        const canOpenEditor =
+            id === 'add'
+                ? can(PermissionAction.Create, Resource.AgencyAdminUser)
+                : can(PermissionAction.Read, Resource.AgencyAdminUser) &&
+                  can(PermissionAction.Update, Resource.AgencyAdminUser);
+        if (!canOpenEditor) {
+            return <AccessDenied />;
+        }
+    }
+
+    return <UserEditForm id={id} typeOfUsers={typeOfUsers} can={can} />;
 };

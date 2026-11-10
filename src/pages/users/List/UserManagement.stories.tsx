@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import i18n from 'i18next';
 import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
@@ -10,7 +11,10 @@ import { UserRole } from '../../../enums/UserRole';
 import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
+import { findPopup, popupsOf } from '../../../test/storyPopups';
 import { UsersList } from './index';
+import { SAVE_SORT_DELAY_MS } from '../../../hooks/useAdminListPreferences';
+import { beginUserDiagnostic, observeUserDiagnosticRoute } from '../../../../scripts/story-user-diagnostic';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
 const CONSULTANTS_ENDPOINT = '*/service/users/consultants/search';
@@ -80,14 +84,23 @@ const halList = (list: object[]) => HttpResponse.json({ total: list.length, _emb
 // Every story also answers the saved-sort and filter-list calls; its own handlers come first and win.
 const DEFAULT_HANDLERS = [
     http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
+    http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 204 })),
     http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
     http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
 ];
 const withDefaults = (handlers: RequestHandler[]) => [...handlers, ...DEFAULT_HANDLERS];
 
+const DiagnosticRoute = ({ children }: { children: ReactNode }) => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return children;
+};
+
 const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
+    beforeEach: (context) => beginUserDiagnostic(context.name),
     parameters: { layout: 'fullscreen' },
     // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
@@ -95,7 +108,16 @@ const meta = {
         (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            return withSeededAdminProviders(Story, parameters.seedQueries);
+            return withSeededAdminProviders(
+                import.meta.env.VITE_ORISO_USER_SEQUENCE
+                    ? () => (
+                          <DiagnosticRoute>
+                              <Story />
+                          </DiagnosticRoute>
+                      )
+                    : Story,
+                parameters.seedQueries,
+            );
         },
     ],
 } satisfies Meta<typeof UsersList>;
@@ -182,12 +204,37 @@ export const Loading: Story = {
     },
 };
 
-/** Backend failure (500): the search helper degrades gracefully to an empty table. */
+let listRequests = 0;
+let listRecovered = false;
+/**
+ * Backend failure (500): one error pop-up with a title and "Erneut versuchen"; the table keeps quiet text.
+ * The retry asks again (a second request) and the people appear.
+ */
 export const Error: Story = {
     parameters: {
         msw: {
-            handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))]),
+            handlers: withDefaults([
+                http.get(CONSULTANTS_ENDPOINT, () => {
+                    listRequests += 1;
+                    return listRecovered ? consultantsResponse(CONSULTANTS) : new HttpResponse(null, { status: 500 });
+                }),
+            ]),
         },
+    },
+    beforeEach: () => {
+        listRequests = 0;
+        listRecovered = false;
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Fehler beim Laden der Daten.', 'error');
+        await expect(popup).toHaveTextContent('Benutzer');
+        await expect(within(canvasElement).getByText('Dieser Bereich konnte nicht geladen werden.')).toBeVisible();
+        const before = listRequests;
+        listRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(listRequests).toBeGreaterThan(before));
+        await expect(await within(canvasElement).findByText(/Anna/)).toBeVisible();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
     },
 };
 
@@ -206,9 +253,19 @@ const TENANT_ADMINS: CounselorData[] = [
     { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
 ];
 
+const DiagnosticUsersList = () => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return <UsersList />;
+};
+
 const onTenantAdminsTab = () => (
     <Routes location="/admin/users/tenant-admins">
-        <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+        <Route
+            path="/admin/users/:typeOfUsers"
+            element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+        />
     </Routes>
 );
 
@@ -272,7 +329,10 @@ export const SortRejectedByServer: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('status')).toHaveTextContent('Vorname');
+        // The rejected sort is an event: one warning pop-up titled "Benutzer", nothing that shifts the table.
+        const popup = await findPopup(canvasElement, 'Diese Sortierung ist hier nicht möglich', 'warning');
+        await expect(popup).toHaveTextContent('Vorname');
+        await expect(popup).toHaveTextContent('Benutzer');
         await expect(canvas.getByRole('columnheader', { name: /Vorname/ })).toHaveAttribute('aria-sort', 'ascending');
         await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).not.toHaveAttribute(
             'aria-sort',
@@ -296,7 +356,10 @@ const onTab = (tab: string) => () =>
     (
         <Routes>
             <Route path="/" element={<Navigate to={`/admin/users/${tab}`} replace />} />
-            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+            <Route
+                path="/admin/users/:typeOfUsers"
+                element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+            />
             <Route path="*" element={<EditTarget />} />
         </Routes>
     );
@@ -435,8 +498,8 @@ export const PlatformAdminsTab: Story = {
             const row = await rowOf(canvasElement, 'Muster');
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
-        await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        await step('delete confirmation identifies the platform admin', () =>
+            expectDeleteDialog(canvasElement, /Plattform-Admin Anna Muster löschen\?/),
         );
     },
 };
@@ -670,6 +733,16 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
+/** Keeps the table as narrow as these stories test it, whatever else the window has room for. */
+const withContentWidth =
+    (width: number): Decorator =>
+    (Story) =>
+        (
+            <div style={{ width, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        );
+
 export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
@@ -677,7 +750,7 @@ export const ConsultantsTabAt960: Story = {
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'tablet960', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -692,12 +765,26 @@ export const ConsultantsTabAt960: Story = {
             await noSideScroll(canvasElement);
         });
 
-        await step('tab arrows scroll the account types; Beratende starts in view', async () => {
-            const left = canvas.getByRole('button', { name: 'Tabs nach links' });
-            const right = canvas.getByRole('button', { name: 'Tabs nach rechts' });
-            await waitFor(() => expect(right).toBeDisabled());
-            await user.click(left);
-            await waitFor(() => expect(right).toBeEnabled());
+        await step('account types never scroll: the active tab is in the bar, the rest behind „Mehr“', async () => {
+            // #1374: tabs that do not fit move behind „Mehr (n)“ instead of scrolling.
+            const active = canvas.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true');
+            await expect(active).toBeDefined();
+            const tablist = active!.closest('[role="tablist"]') as HTMLElement;
+            const bar = tablist.closest('[data-admin-subnav]') as HTMLElement;
+            await waitFor(() => {
+                const barRect = bar.getBoundingClientRect();
+                const tabRect = active!.getBoundingClientRect();
+                expect(tablist.scrollWidth).toBeLessThanOrEqual(tablist.clientWidth + 1);
+                expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
+                expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
+            });
+            // 664px of bar: Beratende, the selected last tab, takes the place of Beratungsstellen Admins.
+            await expect(active).toHaveTextContent('Beratende');
+            await expect(canvas.queryByRole('tab', { name: 'Beratungsstellen Admins' })).toBeNull();
+            const more = within(bar).getByRole('button', { name: 'Mehr (1)' });
+            await expect(tablist).not.toContainElement(more);
+            await expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(bar.getBoundingClientRect().right + 1);
+            await noSideScroll(canvasElement);
         });
 
         await step('⋯ opens the row menu; Bearbeiten goes where it always did', async () => {
@@ -780,6 +867,7 @@ export const PlatformAdminsTabAt1280: Story = {
 export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
     globals: { viewport: { value: 'tablet960', isRotated: false } },
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -1188,10 +1276,17 @@ export const QuickSortChangesSaveOnce: Story = {
         await sortName();
         await sortName();
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
+        // Wait for the debounced save itself instead of a fixed 900 ms: on a loaded runner the two
+        // clicks, the 500 ms debounce and the request together took longer, and the check ran on [].
+        await waitFor(
+            () => expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]),
+            { timeout: 3000 },
+        );
+        // Then one more debounce window: a second save would have arrived by now.
         await new Promise((resolve) => {
-            setTimeout(resolve, 900);
+            setTimeout(resolve, SAVE_SORT_DELAY_MS + 200);
         });
-        await expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]);
+        await expect(savedBodies).toHaveLength(1);
     },
 };
 
@@ -1225,7 +1320,9 @@ export const SortSaveFails: Story = {
         await new Promise((resolve) => {
             setTimeout(resolve, 300);
         });
-        await expect(canvasElement.ownerDocument.querySelector('.ant-message-error')).toBeNull();
+        await expect(
+            canvasElement.ownerDocument.querySelector('[data-testid="snackbar"][data-severity="error"]'),
+        ).toBeNull();
     },
 };
 
@@ -1265,7 +1362,7 @@ export const AccountsInNarrowDesktopContainer: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => (
-            <div style={{ width: 767, maxWidth: '100%' }}>
+            <div style={{ width: 647, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1287,7 +1384,7 @@ export const AccountsAtCardBoundary: Story = {
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: 768, maxWidth: '100%' }}>
+            <div style={{ width: 648, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1307,14 +1404,14 @@ export const AccountsOnTablet834: Story = {
     ...AccountsInNarrowDesktopContainer,
     parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
     globals: { viewport: { value: 'tablet834', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(586), withSidebarRail],
 };
 
 const accountsBoundary = (width: number, columns: number): Story => ({
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: width + 168, maxWidth: '100%' }}>
+            <div style={{ width: width + 48, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),

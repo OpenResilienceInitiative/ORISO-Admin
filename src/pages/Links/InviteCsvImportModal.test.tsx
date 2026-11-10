@@ -1,9 +1,9 @@
 // antd's static message API is a silent no-op under React 19 without this patch.
 import '@ant-design/v5-patch-for-react-19';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor, within } from '@testing-library/react';
-import { message } from 'antd';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost, snackbar as message } from '../../components/Snackbar';
 import { InviteCsvImportModal } from './InviteCsvImportModal';
 import { findStoredCsvInvite } from './inviteRequest';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
@@ -67,13 +67,18 @@ describe('InviteCsvImportModal', () => {
         // "window is not defined" (unhandled error -> vitest exit 1; CI runs 29667445994,
         // 29694138250). React's scheduler can chain several follow-up ticks depending on
         // how much work was in flight, so drain generously rather than a fixed small count.
-        message.destroy();
+        message.clear();
         for (let i = 0; i < 20; i += 1) {
             // eslint-disable-next-line no-await-in-loop -- sequential drain, not parallelizable
             await new Promise((resolve) => {
                 setImmediate(resolve);
             });
         }
+    });
+
+    // The import summary is a snackbar: mount the host next to the modal under test.
+    beforeEach(() => {
+        render(<SnackbarHost />);
     });
 
     const renderModal = (parseResult: ParseInviteCsvResult, props: Record<string, unknown> = {}) =>
@@ -427,7 +432,10 @@ describe('InviteCsvImportModal', () => {
 
         await userEvent.click(screen.getByRole('button', { name: '3 Empfänger anlegen' }));
 
-        expect(await screen.findByText('1 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(await screen.findByText(/1 Empfänger angelegt, 2 fehlgeschlagen/)).toBeInTheDocument();
+        // One event, one snackbar: the batch-wide cause and the count are the same message.
+        expect(screen.getAllByTestId('snackbar')).toHaveLength(1);
+        expect(screen.getByTestId('snackbar')).toHaveTextContent(/SMTP/);
         expect(createInvite).toHaveBeenCalledTimes(2);
         expect(rowCells('c@example.org').getByText('Versand fehlgeschlagen')).toBeInTheDocument();
     });
@@ -454,7 +462,7 @@ describe('InviteCsvImportModal', () => {
         });
 
         await userEvent.click(screen.getByRole('button', { name: '2 Empfänger anlegen' }));
-        expect(await screen.findByText('0 Empfänger angelegt, 2 fehlgeschlagen')).toBeInTheDocument();
+        expect(await screen.findByText(/0 Empfänger angelegt, 2 fehlgeschlagen/)).toBeInTheDocument();
         // Nothing was confirmed as created, yet the list must reload to learn whether the invite exists.
         expect(onCreated).toHaveBeenCalledTimes(1);
 
@@ -485,7 +493,7 @@ describe('InviteCsvImportModal', () => {
         });
         const { rerender } = renderModal(parseResult, { recoverStoredInvite: vi.fn().mockResolvedValue(undefined) });
         await userEvent.click(screen.getByRole('button', { name: '1 Empfänger anlegen' }));
-        expect(await screen.findByText('0 Empfänger angelegt, 1 fehlgeschlagen')).toBeInTheDocument();
+        expect(await screen.findByText(/0 Empfänger angelegt, 1 fehlgeschlagen/)).toBeInTheDocument();
 
         // Re-inviting after an earlier invite expired is normal; that old invite is not this run's.
         rerender(
@@ -814,7 +822,7 @@ describe('InviteCsvImportModal', () => {
             renderModal(parseResultOf({ rows: [row(2, 'anna@x.de', { role: 'COUNSELLOR' })] as never }));
             expect(
                 rowCells('anna@x.de').getByText(
-                    'Die Rolle „Berater:in“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile 2).',
+                    'Die Rolle „Berater:in“ wird im Tab „Beratende-Einladungen“ eingeladen, nicht hier (Zeile 2).',
                 ),
             ).toBeInTheDocument();
         });

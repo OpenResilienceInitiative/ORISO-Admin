@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
@@ -430,6 +430,22 @@ describe('InviteProgressBoard', () => {
             'Der Versand konnte nicht bestätigt werden. Die Einladung bleibt erhalten und kann erneut gesendet werden.',
         );
         expect(row.getByRole('button', { name: 'Erinnerung erneut senden' })).toBeEnabled();
+    });
+
+    it('names each row action in a hover tooltip without repeating it as a description (#1374)', async () => {
+        const user = userEvent.setup();
+        render(<InviteProgressBoard {...baseProps()} invites={[invite(11, { inviteStatus: 'EMAIL_SENT' })]} />);
+
+        const row = within(screen.getByText('person11@example.org').closest('tr') as HTMLElement);
+        const names = ['Erinnerung erneut senden', 'Einladungslink kopieren', 'Einladung widerrufen'];
+        await names.reduce<Promise<void>>(async (previous, name) => {
+            await previous;
+            const action = row.getByRole('button', { name });
+            await user.hover(action);
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
+            expect(action).not.toHaveAttribute('aria-describedby');
+            await user.unhover(action);
+        }, Promise.resolve());
     });
 
     it('reports selection changes through row checkboxes', async () => {

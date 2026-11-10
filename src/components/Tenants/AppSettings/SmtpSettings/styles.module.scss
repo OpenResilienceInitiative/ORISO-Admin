@@ -1,16 +1,6 @@
 /* #903: same card layout as the platform SMTP card (pages/GlobalSettings/styles.module.scss),
    copied rather than imported so the two pages can evolve without reaching across routes. */
 
-.smtpPage {
-    --card-deck-gap: 24px;
-    --card-deck-item-width: 425px;
-    --card-deck-item-max-width: 425px;
-}
-
-.smtpCardSlot {
-    display: flex;
-}
-
 .smtpCard {
     width: 100%;
 
@@ -27,10 +17,12 @@
     margin-bottom: 18px;
 
     :global(.MuiFormControlLabel-root) {
+        min-width: 0;
         align-items: flex-start;
     }
 
     :global(.MuiFormControlLabel-label) {
+        min-width: 0;
         max-width: calc(100% - 76px);
     }
 
@@ -41,8 +33,14 @@
 
 .switchCopy {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 8px;
+
+    /* A long German compound ("Systembenachrichtigungen") must wrap inside its panel, not push the switch out. `anywhere`,
+       unlike `break-word`, also lowers the min-content width, so the grid track cannot be widened by the word. */
+    hyphens: auto;
+    overflow-wrap: anywhere;
     white-space: normal;
 }
 
@@ -114,17 +112,7 @@
     }
 }
 
-@media only screen and (max-width: 1000px) {
-    .smtpPage {
-        --card-deck-item-max-width: calc(100vw - var(--admin-sidebar-width, 128px) - 2 * var(--admin-page-edge, 84px));
-    }
-}
-
 @media only screen and (max-width: 640px) {
-    .smtpPage {
-        max-width: 100%;
-    }
-
     .smtpCard {
         --dialog-card-height: auto;
     }

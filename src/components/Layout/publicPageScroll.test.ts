@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const publicLayout = readFileSync(resolve(__dirname, '../../styles/components/publicLayout.less'), 'utf8');
 const stage = readFileSync(resolve(__dirname, '../../styles/components/stage.less'), 'utf8');

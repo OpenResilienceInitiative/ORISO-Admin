@@ -1,14 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import { Card } from '../Card';
-import { CardDeck } from '../CardDeck';
+import { CardGrid } from '../CardGrid';
 import { Page } from './index';
 
-/**
- * In the app the page sits right of the 128px admin sidebar, and the header's
- * arrow rail reaches into that gutter. Without the stand-in the backward arrow
- * would fall off the left edge of the Storybook canvas and the rail could not be
- * reviewed at all.
- */
+/** In the app the page sits right of the 128px admin sidebar. */
 const SidebarStandIn = ({ children }: { children: React.ReactNode }) => (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
         <div
@@ -63,41 +60,6 @@ export const WithBackHeader: Story = {
     ),
 };
 
-/**
- * The card-deck navigation in its final home: the arrows sit in the page header
- * flanking the tab row (Figma 1285-80496), not in a sticky footer under the
- * cards where they used to collide with the cards' own footer actions.
- * The deck registers itself through `CardDeckNavContext` — scroll the deck and
- * the header arrows flip between enabled and disabled.
- */
-export const WithCardDeck: Story = {
-    render: () => (
-        <Page>
-            <Page.Title
-                tabs={[
-                    { to: '/admin/settings/global', titleKey: 'Globale Konfigurationen', iconName: 'global_config' },
-                    { to: '/admin/settings/appearance', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
-                    { to: '/admin/settings/legal', titleKey: 'Rechtliches', iconName: 'legal' },
-                    { to: '/admin/settings/email', titleKey: 'Email Server', iconName: 'email_server' },
-                ]}
-            />
-            <CardDeck
-                ariaLabel="Rechtliches"
-                previousLabel="Vorherige Karte anzeigen"
-                nextLabel="Weitere Karte anzeigen"
-            >
-                {['Trägerspezifische Datenschutzerklärung', 'Vertragsunterlagen', 'Datenschutzerklärung'].map(
-                    (title) => (
-                        <CardDeck.Item key={title}>
-                            <Card titleKey={title}>Karteninhalt mit eigenen Footer-Aktionen.</Card>
-                        </CardDeck.Item>
-                    ),
-                )}
-            </CardDeck>
-        </Page>
-    ),
-};
-
 /** A back header with a tab bar (`Page.Back` + tabs) — tabs only show when there is more than one. */
 export const WithTabs: Story = {
     render: () => (
@@ -115,25 +77,81 @@ export const WithTabs: Story = {
     ),
 };
 
-/** Issue #193: the header must reveal the final tab even without a card deck. */
-export const OverflowingSettingsTabs: Story = {
+const TENANT_TABS = [
+    { to: '/admin/tenants/1/general', titleKey: 'Stammdaten', iconName: 'master_data' },
+    { to: '/admin/tenants/1/theme-settings', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
+    { to: '/admin/tenants/1/legal-settings', titleKey: 'Rechtliches', iconName: 'legal' },
+    { to: '/admin/tenants/1/erstantwort', titleKey: 'Einführung Ratsuchende', iconName: 'erstantwort' },
+    { to: '/admin/tenants/1/smtp', titleKey: 'E-Mail-Server', iconName: 'email_server' },
+    { to: '/admin/tenants/1/global-settings', titleKey: 'Funktionszugriff', iconName: 'functionality_access' },
+    { to: '/admin/tenants/1/functionalities', titleKey: 'Funktionalitäten', iconName: 'functionalities' },
+];
+
+/**
+ * Compact record header (ORISO-Admin#1374): small back button, the list as breadcrumb, the
+ * record's name and a few facts — the header no longer spends an 88px pill on the way back.
+ */
+export const RecordHeaderWithFacts: Story = {
     render: () => (
         <Page>
-            <Page.Title
-                tabs={[
-                    {
-                        to: '/admin/theme-settings/global-config',
-                        titleKey: 'Global Configs',
-                        iconName: 'global_config',
-                    },
-                    { to: '/admin/theme-settings/master-data', titleKey: 'Master Data', iconName: 'master_data' },
-                    { to: '/admin/theme-settings/general', titleKey: 'Appearance', iconName: 'appearance' },
-                    { to: '/admin/theme-settings/legal', titleKey: 'Legal', iconName: 'legal' },
-                    { to: '/admin/theme-settings/smtp', titleKey: 'Email Server', iconName: 'email_server' },
-                    { to: '/admin/theme-settings/notices', titleKey: 'System notices' },
-                ]}
+            <Page.BackWithActions
+                path="/admin/tenants"
+                parentKey="sidebar.tenants"
+                title="Caritas Süd"
+                meta={['caritas-sued', '12 Beratende']}
+                tabs={TENANT_TABS}
             />
             <SampleContent />
         </Page>
     ),
+    play: async ({ canvasElement }) => {
+        const back = canvasElement.querySelector<HTMLElement>('a[aria-label^="Zurück"], a[aria-label^="Back"]');
+        await expect(back).not.toBeNull();
+        // The back button stays a compact 40px control.
+        await expect(back!.getBoundingClientRect().height).toBeLessThanOrEqual(40);
+        await expect(canvasElement.querySelector('nav a')?.textContent).toMatch(/Träger|Organisations|Tenants/);
+        await expect(canvasElement.textContent).toContain('caritas-sued');
+    },
+};
+
+/** Issue #193: the header must reveal the final tab even without a card deck. */
+const SETTINGS_TABS = [
+    { to: '/admin/theme-settings/global-config', titleKey: 'Konfiguration', iconName: 'global_config' },
+    { to: '/admin/theme-settings/master-data', titleKey: 'Stammdaten', iconName: 'master_data' },
+    { to: '/admin/theme-settings/general', titleKey: 'Erscheinungsbild', iconName: 'appearance' },
+    { to: '/admin/theme-settings/legal', titleKey: 'Rechtliches', iconName: 'legal' },
+    { to: '/admin/theme-settings/smtp', titleKey: 'E-Mail-Server', iconName: 'email_server' },
+    { to: '/admin/theme-settings/notices', titleKey: 'Systemhinweise' },
+    { to: '/admin/theme-settings/function-access', titleKey: 'Funktionszugriff', iconName: 'functionality_access' },
+];
+
+/**
+ * Seven tabs, the most a settings page has, in the shared underline tab bar (ORISO-Admin#1374).
+ * When the bar is narrower than its tabs, the trailing ones move behind „Mehr (n)“; nothing scrolls sideways.
+ */
+export const SevenSettingsTabs: Story = {
+    render: () => (
+        <Page>
+            <Page.Title tabs={SETTINGS_TABS} />
+            <CardGrid raster>
+                {['Impressum', 'Datenschutzerklärung', 'Vertragsunterlagen', 'Einwilligung'].map((title) => (
+                    <CardGrid.Item key={title}>
+                        <Card titleKey={title} variant="dialog">
+                            Karteninhalt.
+                        </Card>
+                    </CardGrid.Item>
+                ))}
+            </CardGrid>
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const tabs = canvasElement.querySelector<HTMLElement>('[data-admin-page-tabs]');
+        await expect(tabs).not.toBeNull();
+        // Overflow goes behind „Mehr“: the bar never scrolls and never widens the page.
+        await expect(tabs!.scrollWidth).toBeLessThanOrEqual(tabs!.clientWidth);
+        await expect(canvasElement.ownerDocument.documentElement.scrollWidth).toBeLessThanOrEqual(
+            canvasElement.ownerDocument.documentElement.clientWidth,
+        );
+        await expect(canvasElement.querySelector('[data-admin-page-deck-nav]')).toBeNull();
+    },
 };

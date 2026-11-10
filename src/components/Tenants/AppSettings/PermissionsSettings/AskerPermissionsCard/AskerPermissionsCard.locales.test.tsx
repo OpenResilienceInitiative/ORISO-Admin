@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import i18n from '../../../../../i18n';
 import { AskerPermissionsCard } from './index';
 
@@ -87,7 +87,8 @@ describe('conversation notification policy labels', () => {
         );
         expect(screen.getByRole('heading', { name: labels[0] })).toBeTruthy();
         labels.slice(1).forEach((label) => {
-            expect(screen.getByRole('button', { name: new RegExp(`^${label}:`) })).toBeTruthy();
+            // Every setting has two buttons: the round on/off button and the requirement lock.
+            expect(screen.getAllByRole('button', { name: new RegExp(`^${label}:`) })).toHaveLength(2);
         });
     });
 });

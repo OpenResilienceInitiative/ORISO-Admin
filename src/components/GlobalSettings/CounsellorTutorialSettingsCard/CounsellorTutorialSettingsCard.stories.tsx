@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
+import { useState } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard } from '.';
@@ -29,8 +32,9 @@ const meta = {
         const canvas = within(canvasElement);
         const controls = canvas.getAllByRole('switch');
         await expect(controls).toHaveLength(4);
-        controls.forEach((control) => expect(control).toBeDisabled());
-        await expect(canvas.queryByRole('button')).toBeNull();
+        await expect(controls[0]).toHaveAttribute('aria-disabled', 'true');
+        controls.slice(1).forEach((control) => expect(control).toBeDisabled());
+        await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
         await expect(canvas.getByText(/^(Kommt bald|Coming soon)$/)).toBeVisible();
     },
 } satisfies Meta<typeof CounsellorTutorialSettingsCard>;
@@ -44,18 +48,85 @@ export const On: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
-        await expect(tours).toBeDisabled();
+        await expect(tours).toHaveAttribute('aria-disabled', 'true');
         await expect(tours).toBeChecked();
         await userEvent.click(tours.closest('label')!);
         tours.focus();
         await userEvent.keyboard(' {Enter}');
-        await expect(tours).not.toHaveFocus();
+        await expect(tours).toHaveFocus();
         await expect(tours).toBeChecked();
-        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeChecked();
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
         await expect(
             canvas.getByRole('switch', { name: 'Einführung bei neuen Beraterkonten automatisch starten' }),
         ).not.toBeChecked();
-        await expect(canvas.queryByRole('button')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
+    },
+};
+
+/** Admin#1205: the platform admin switches tours centrally; the other controls stay a preview. */
+export const PlatformAdmin: Story = {
+    args: { toursEnabled: false, practiceEnabled: true, onToursChange: fn() },
+    render: function PlatformAdminStory(args) {
+        const [toursEnabled, setToursEnabled] = useState(args.toursEnabled);
+        return (
+            <CounsellorTutorialSettingsCard
+                {...args}
+                toursEnabled={toursEnabled}
+                onToursChange={(enabled) => {
+                    args.onToursChange?.(enabled);
+                    setToursEnabled(enabled);
+                }}
+            />
+        );
+    },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        await expect(tours).toBeEnabled();
+        await expect(tours).not.toBeChecked();
+        await userEvent.click(tours);
+        await expect(args.onToursChange).toHaveBeenCalledWith(true);
+        await expect(tours).toBeChecked();
+        await expect(canvas.getAllByText('Verfügbar')).toHaveLength(2);
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeDisabled();
+    },
+};
+
+export const Saving: Story = {
+    args: { toursEnabled: false, practiceEnabled: false, onToursChange: fn(), toursSaving: true },
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' })).toBeDisabled();
+    },
+};
+
+/** The save fails: the error message appears and the switch returns to the stored value. */
+export const SaveFailed: Story = {
+    args: { toursEnabled: true, practiceEnabled: true },
+    render: function SaveFailedStory(args) {
+        const { message } = useAdminFeedback();
+        const [, setAttempts] = useState(0);
+        return (
+            <CounsellorTutorialSettingsCard
+                {...args}
+                onToursChange={() => {
+                    message.error({ content: String(i18n.t('globalSettings.tutorials.error.generic')) });
+                    setAttempts((attempts) => attempts + 1);
+                }}
+            />
+        );
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const tours = canvas.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
+        await userEvent.click(tours);
+        await waitFor(() =>
+            expect(
+                within(canvasElement.ownerDocument.body).getByText(
+                    'Die Einstellung für Rundgänge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.',
+                ),
+            ).toBeVisible(),
+        );
+        await waitFor(() => expect(tours).toBeChecked());
     },
 };
 
@@ -71,10 +142,10 @@ export const PracticeRequiresTours: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getAllByText('Ausgeschaltet')).toHaveLength(2);
-        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeChecked();
+        await expect(canvas.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
         await expect(
             canvas.getByText(
-                'Zeigt die aktuelle Freigabe für Übungen. Übungen benötigen zusätzlich die Freigabe der Rundgänge.',
+                'Noch nicht einstellbar. Die aktuelle Freigabe sehen Sie oben. Übungen brauchen zusätzlich die Freigabe der Rundgänge.',
             ),
         ).toBeVisible();
     },
@@ -119,4 +190,8 @@ export const English: Story = {
         ).toBeDisabled();
         await expect(canvas.getByText(/Existing preferences are retained/)).toBeVisible();
     },
+};
+
+export const HelpSlideshow: Story = {
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

@@ -1,7 +1,7 @@
 import { Form } from 'antd';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { MuiSelectField } from './index';
 
 // t() is identity so labels/messages are predictable and no i18n init is needed.
@@ -39,7 +39,30 @@ const Harness = ({
     </Form>
 );
 
+describe('select loading accessibility', () => {
+    it('names the real loading indicator', () => {
+        render(
+            <Form>
+                <MuiSelectField name="pending" label="Pending field" loading options={[]} />
+            </Form>,
+        );
+        expect(screen.getByRole('progressbar', { name: 'loading' })).toBeInTheDocument();
+    });
+});
+
 describe('MuiSelectField data parity', () => {
+    it('uses the shared chevron as its popup icon', () => {
+        render(
+            <Form>
+                <MuiSelectField name="field" label="Feld" options={OPTIONS} />
+            </Form>,
+        );
+
+        const popup = screen.getByRole('button', { name: /open/i });
+        expect(popup.querySelector('[data-testid="ArrowDropDownIcon"]')).not.toBeInTheDocument();
+        expect(popup.querySelector('svg path')?.getAttribute('d') ?? '').not.toBe('M7 10l5 5 5-5z');
+    });
+
     it('reads: initialValue is displayed', () => {
         render(<Harness onValues={() => undefined} initialValues={{ topic: 'a' }} />);
         expect(screen.getByRole('combobox')).toHaveValue('Alpha');

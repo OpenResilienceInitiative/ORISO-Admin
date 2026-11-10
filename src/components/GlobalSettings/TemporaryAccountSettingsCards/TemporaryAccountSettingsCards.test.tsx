@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
+import { SnackbarHost } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import type { TemporaryAccountSettings } from '../../../types/TemporaryAccountSettings';
@@ -34,6 +35,8 @@ const signInAs = (tenantId: number) =>
         null,
     );
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     signInAs(0);
     await i18n.changeLanguage('de');
 });
@@ -44,11 +47,15 @@ const showCards = () =>
         </QueryClientProvider>,
     );
 const guestCard = async () =>
-    within((await screen.findByText('Temporäre Gastkonten')).closest('.ant-card, section, article') as HTMLElement);
+    within(
+        (await screen.findByText('Temporäre Gastkonten')).closest(
+            '.ant-card, section, article, [data-admin-card-grid-item]',
+        ) as HTMLElement,
+    );
 const messagesCard = async () =>
     within(
         (await screen.findByText('Nachrichten von temporären Konten')).closest(
-            '.ant-card, section, article',
+            '.ant-card, section, article, [data-admin-card-grid-item]',
         ) as HTMLElement,
     );
 
@@ -56,7 +63,7 @@ it('shows both cards with the defaults and says changes apply to people who join
     showCards();
     expect(await screen.findByLabelText(/Löschen nach dem Auflegen \(Minuten\)/)).toHaveValue(15);
     expect(screen.getByLabelText(/Spätestens löschen nach \(Stunden\)/)).toHaveValue(24);
-    expect(screen.getByLabelText(/Spätestens nach Tagen ohne Aktivität/)).toHaveValue(30);
+    expect(screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/)).toHaveValue(30);
     expect(screen.getByRole('switch', { name: /Passwortfeld für temporäre Konten ausblenden/ })).not.toBeChecked();
     expect(screen.getByRole('radio', { name: 'Warnen und die Person entscheiden lassen' })).toBeChecked();
     expect(screen.getAllByText('Änderungen gelten für Personen, die nach dem Speichern beitreten.')).toHaveLength(2);
@@ -77,13 +84,13 @@ it('saves the lifetimes with the confirmed revision and keeps the retention mode
     showCards();
     const card = await guestCard();
     await userEvent.click(await card.findByRole('button', { name: 'Bearbeiten' }));
-    await userEvent.clear(screen.getByLabelText(/Spätestens nach Tagen ohne Aktivität/));
-    await userEvent.type(screen.getByLabelText(/Spätestens nach Tagen ohne Aktivität/), '1');
+    await userEvent.clear(screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/));
+    await userEvent.type(screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/), '1');
     await userEvent.click(screen.getByRole('switch', { name: /Passwortfeld für temporäre Konten ausblenden/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
     await waitFor(() => expect(payloads).toHaveLength(1));
     expect(payloads[0]).toEqual({ ...defaults, chatInactivityDays: 1, hidePasswordField: true, revision: 0 });
-    await waitFor(() => expect(screen.getByLabelText(/Spätestens nach Tagen ohne Aktivität/)).toHaveValue(1));
+    await waitFor(() => expect(screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/)).toHaveValue(1));
 });
 
 it('saves the retention mode with the lifetimes the server confirmed', async () => {
@@ -112,10 +119,25 @@ it('saves the retention mode with the lifetimes the server confirmed', async () 
     });
 });
 
+it('marks the three lifetime fields as required, visibly and for assistive technology', async () => {
+    showCards();
+    const card = await guestCard();
+    await userEvent.click(await card.findByRole('button', { name: 'Bearbeiten' }));
+    const fields = [
+        screen.getByLabelText(/Löschen nach dem Auflegen/),
+        screen.getByLabelText(/Spätestens löschen nach \(Stunden/),
+        screen.getByLabelText(/Spätestens löschen nach \(Tage ohne Aktivität/),
+    ];
+    fields.forEach((field) => {
+        expect(field).toHaveAttribute('aria-required', 'true');
+        expect(document.querySelector(`label[for="${field.id}"]`)).toHaveTextContent('*');
+    });
+});
+
 it.each([
     ['Löschen nach dem Auflegen', '0', 'Geben Sie eine ganze Zahl von 1 bis 1440 ein.'],
-    ['Spätestens löschen nach', '25', 'Geben Sie eine ganze Zahl von 1 bis 24 ein.'],
-    ['Spätestens nach Tagen ohne Aktivität', '366', 'Geben Sie eine ganze Zahl von 1 bis 365 ein.'],
+    [String.raw`Spätestens löschen nach \(Stunden`, '25', 'Geben Sie eine ganze Zahl von 1 bis 24 ein.'],
+    [String.raw`Spätestens löschen nach \(Tage ohne Aktivität`, '366', 'Geben Sie eine ganze Zahl von 1 bis 365 ein.'],
 ])('rejects %s = %s without sending it', async (label, value, errorMessage) => {
     let saved = false;
     server.use(
@@ -152,12 +174,12 @@ it('is not shown to a Träger admin and asks the server nothing', async () => {
     expect(requests).toEqual([]);
 });
 
-it('shows a load failure in both cards without making defaults editable', async () => {
+it('reports a load failure as a pop-up (one shared channel, one at a time) without making defaults editable', async () => {
     server.use(http.get(ENDPOINT, () => new HttpResponse(null, { status: 503 })));
     showCards();
-    expect(
-        await screen.findAllByText('Die Einstellungen für temporäre Konten konnten nicht geladen werden.'),
-    ).toHaveLength(2);
+    const popup = await screen.findByTestId('snackbar');
+    expect(popup).toHaveTextContent('Die Einstellungen für temporäre Konten konnten nicht geladen werden.');
+    expect(screen.getByRole('alert')).toContainElement(popup);
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
 });
 

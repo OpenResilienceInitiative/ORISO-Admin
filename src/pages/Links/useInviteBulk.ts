@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     acceptBaseUrlForRole,
     resendAccountInvite,
@@ -33,6 +33,7 @@ export const useInviteBulk = ({
     explain,
     rememberGeneratedLink,
 }: UseInviteBulkOptions) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false);

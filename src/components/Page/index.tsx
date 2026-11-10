@@ -3,6 +3,7 @@ import {
     AppsOutlined,
     BalanceOutlined,
     CategoryOutlined,
+    ChatOutlined,
     ChevronLeft,
     EmailOutlined,
     ManageAccountsOutlined,
@@ -12,14 +13,13 @@ import {
 import type { SvgIconComponent } from '@mui/icons-material';
 import { Spin } from 'antd';
 import classNames from 'classnames';
-import React, { cloneElement, forwardRef, Ref, useEffect, useMemo, useRef, useState, useId, type JSX } from 'react';
+import React, { forwardRef, Ref, useMemo, type JSX } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, useLocation } from 'react-router-dom';
 import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissions/tab_star.svg';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
-import { CardDeckNavProvider, useCardDeckNav, type CardDeckNavRegistration } from '../CardDeck/CardDeckNavContext';
 import { useRegisterMobileNav } from '../AdminMobileNav/MobileNavContext';
-import { SideScrollerButton } from '../SideScrollerFooter';
+import { AdminSegmentedTabs, type AdminSegmentedTabItem } from '../AdminSegmentedTabs/AdminSegmentedTabs';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -29,8 +29,7 @@ interface PageProps {
 }
 
 interface PageTitleProps {
-    // Kept for API compatibility; new design hides all page titles.
-    // eslint-disable-next-line react/no-unused-prop-types
+    // The visible title is hidden in the new design; it still names the tab list.
     titleKey?: string;
     // eslint-disable-next-line react/no-unused-prop-types
     subTitleKey?: string;
@@ -45,53 +44,23 @@ interface PageBackProps {
     titleKey?: string;
     titleMaxLength?: number;
     path: string;
+    /** i18n key of the list the back button returns to ("Träger"); shown as a breadcrumb above the name. */
+    parentKey?: string;
+    /** Short facts about the record (subdomain, counts), shown as chips next to the name. */
+    meta?: React.ReactNode[];
     children?: React.ReactNode;
     tabs?: Array<{ to: string; titleKey: string; iconName?: string; icon?: JSX.Element }>;
 }
 
 export const Page = ({ children, stickyHeader = true, isLoading }: PageProps) => {
     return (
-        <CardDeckNavProvider>
-            <div
-                className={classNames(styles.page, {
-                    [styles.loading]: isLoading,
-                    [styles.stickyHeaderPage]: stickyHeader,
-                })}
-            >
-                {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
-            </div>
-        </CardDeckNavProvider>
-    );
-};
-
-/**
- * Overflowing tabs own both header arrows; otherwise retain card navigation.
- * Keep the same target at both ends so reversing direction never moves cards.
- * With nothing to scroll the arrows stay visible and disabled.
- */
-const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) => {
-    const { t } = useTranslation();
-    const deckNav = useCardDeckNav();
-    const nav = tabsNav ?? deckNav;
-
-    return (
-        <div className={styles.deckNavRail} data-admin-page-deck-nav>
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="backward"
-                edgeAnchored
-                enabled={nav?.canScrollBackward ?? false}
-                label={nav?.previousLabel ?? t('cardDeck.nav.previous')}
-                onClick={() => nav?.scroll(-1)}
-            />
-            <SideScrollerButton
-                controlsId={nav?.controlsId}
-                direction="forward"
-                edgeAnchored
-                enabled={nav?.canScrollForward ?? false}
-                label={nav?.nextLabel ?? t('cardDeck.nav.next')}
-                onClick={() => nav?.scroll(1)}
-            />
+        <div
+            className={classNames(styles.page, {
+                [styles.loading]: isLoading,
+                [styles.stickyHeaderPage]: stickyHeader,
+            })}
+        >
+            {isLoading ? <Spin /> : <div className={styles.content}>{children}</div>}
         </div>
     );
 };
@@ -99,6 +68,7 @@ const PageDeckNav = ({ tabsNav }: { tabsNav: CardDeckNavRegistration | null }) =
 export const tabIcons: Record<string, SvgIconComponent> = {
     appearance: CategoryOutlined,
     email_server: EmailOutlined,
+    erstantwort: ChatOutlined,
     functionalities: AppsOutlined,
     functionality_access: AdminPanelSettingsOutlined,
     global_config: SettingsOutlined,
@@ -107,51 +77,16 @@ export const tabIcons: Record<string, SvgIconComponent> = {
     master_data: ManageAccountsOutlined,
 };
 
-const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: string; icon?: JSX.Element }> }) => {
+type PageTab = { to: string; titleKey; iconName?: string; icon?: JSX.Element };
+
+/**
+ * Desktop sub-navigation of a page header. Renders the shared
+ * AdminSegmentedTabs bar, so Settings, entity edit pages, Logs, Statistics and
+ * Invites all show the same underline tabs (ORISO-Admin#1374).
+ */
+const PageTabs = ({ tabs, ariaLabel }: { tabs: PageTab[]; ariaLabel?: string }) => {
     const { t } = useTranslation();
-    const tabsContainerRef = useRef<HTMLDivElement>(null);
     const isDesktopLayout = useIsDesktopLayout();
-    const { pathname } = useLocation();
-    const tabsId = useId();
-    const [tabScroll, setTabScroll] = useState({ overflow: false, backward: false, forward: false });
-
-    useEffect(() => {
-        const container = tabsContainerRef.current;
-        if (!container) return undefined;
-        const update = () => {
-            const max = container.scrollWidth - container.clientWidth;
-            const next = {
-                overflow: max > 1,
-                backward: container.scrollLeft > 1,
-                forward: container.scrollLeft < max - 1,
-            };
-            setTabScroll((current) =>
-                current.overflow === next.overflow &&
-                current.backward === next.backward &&
-                current.forward === next.forward
-                    ? current
-                    : next,
-            );
-        };
-        const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : undefined;
-        observer?.observe(container);
-        Array.from(container.children).forEach((child) => observer?.observe(child));
-        container.addEventListener('scroll', update, { passive: true });
-        window.addEventListener('resize', update);
-        update();
-        return () => {
-            observer?.disconnect();
-            container.removeEventListener('scroll', update);
-            window.removeEventListener('resize', update);
-        };
-    }, [tabs, isDesktopLayout]);
-
-    useEffect(() => {
-        tabsContainerRef.current?.querySelector('a.active')?.scrollIntoView({
-            block: 'nearest',
-            inline: 'nearest',
-        });
-    }, [tabs, pathname, isDesktopLayout]);
 
     /*
      * Mobile renders no tab row at all: the subsections moved into the bottom
@@ -162,58 +97,23 @@ const PageTabs = ({ tabs }: { tabs: Array<{ to: string; titleKey; iconName?: str
         return null;
     }
 
+    const items: AdminSegmentedTabItem[] = tabs
+        .filter((tab) => tab && tab.to)
+        .map(({ icon, iconName, to, titleKey }) => {
+            const Icon = (iconName && tabIcons[iconName]) || TabStarIcon;
+
+            return {
+                id: to,
+                to,
+                label: String(t(titleKey)),
+                icon: <Icon data-admin-tab-icon={iconName || 'fallback'} />,
+                badge: icon ?? undefined,
+            };
+        });
+
     return (
-        <div className={styles.tabsRow}>
-            <PageDeckNav
-                tabsNav={
-                    tabScroll.overflow
-                        ? {
-                              controlsId: tabsId,
-                              canScrollBackward: tabScroll.backward,
-                              canScrollForward: tabScroll.forward,
-                              previousLabel: t('page.tabs.previous'),
-                              nextLabel: t('page.tabs.next'),
-                              scroll: (direction) => {
-                                  const container = tabsContainerRef.current;
-                                  container?.scrollBy({
-                                      left: direction * container.clientWidth * 0.8,
-                                      behavior: 'smooth',
-                                  });
-                              },
-                          }
-                        : null
-                }
-            />
-            <div id={tabsId} className={styles.tabsContainer} ref={tabsContainerRef} data-admin-page-tabs>
-                {tabs
-                    ?.filter((tab) => tab && tab.to)
-                    .map(({ icon, iconName, ...tab }) => {
-                        const Icon = iconName ? tabIcons[iconName] : undefined;
-
-                        return (
-                            <NavLink
-                                className={({ isActive }) => classNames(styles.tab, { active: isActive })}
-                                to={tab.to}
-                                key={tab.titleKey}
-                            >
-                                {() => {
-                                    const TabIcon = Icon || TabStarIcon;
-
-                                    return (
-                                        <>
-                                            <TabIcon
-                                                className={styles.tabStar}
-                                                data-admin-tab-icon={iconName || 'fallback'}
-                                            />
-                                            <span className={styles.tabLabel}>{t(tab.titleKey)}</span>
-                                            {icon && cloneElement(icon, { className: styles.tabIcon })}
-                                        </>
-                                    );
-                                }}
-                            </NavLink>
-                        );
-                    })}
-            </div>
+        <div className={styles.tabsRow} data-admin-page-tabs>
+            <AdminSegmentedTabs ariaLabel={ariaLabel || String(t('page.tabs.label'))} items={items} />
         </div>
     );
 };
@@ -262,14 +162,17 @@ const PageMobileNavRegistration = ({
     return null;
 };
 
-export const PageTitle = forwardRef(({ tabs, children }: PageTitleProps, ref) => {
+export const PageTitle = forwardRef(({ tabs, titleKey, children }: PageTitleProps, ref) => {
+    const { t } = useTranslation();
     const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
 
     return (
         <div className={styles.pageTitleContainer} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
             <PageMobileNavRegistration id="page-title" tabs={finalTabs} />
             {children}
-            {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
+            {!!finalTabs?.length && finalTabs.length > 1 && (
+                <PageTabs tabs={finalTabs} ariaLabel={titleKey ? String(t(titleKey)) : undefined} />
+            )}
         </div>
     );
 });
@@ -282,37 +185,70 @@ const getTruncatedTitle = (title: React.ReactNode, titleMaxLength?: number) => {
     return `${title.slice(0, titleMaxLength)}...`;
 };
 
-export const PageBack = forwardRef(({ path, title, titleKey, titleMaxLength, tabs, children }: PageBackProps, ref) => {
-    const { t } = useTranslation();
-    const isDesktopLayout = useIsDesktopLayout();
-    const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
-    const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
+export const PageBack = forwardRef(
+    ({ path, title, titleKey, titleMaxLength, parentKey, meta, tabs, children }: PageBackProps, ref) => {
+        const { t } = useTranslation();
+        const isDesktopLayout = useIsDesktopLayout();
+        const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
+        const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
+        const parentLabel = parentKey ? t<string>(parentKey) : undefined;
+        const visibleMeta = (meta ?? []).filter(
+            (item) => item !== null && item !== undefined && item !== false && item !== '',
+        );
 
-    return (
-        <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
-            <PageMobileNavRegistration
-                id="page-back"
-                tabs={finalTabs}
-                backPath={path}
-                backLabel={typeof headline === 'string' ? headline : undefined}
-            />
-            {/* On mobile the back button lives in the bottom bar, icon only and
+        return (
+            <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
+                <PageMobileNavRegistration
+                    id="page-back"
+                    tabs={finalTabs}
+                    backPath={path}
+                    backLabel={typeof headline === 'string' ? headline : undefined}
+                />
+                {/* On mobile the back button lives in the bottom bar, icon only and
                 without the entity name (Figma 1683:40339) — repeating it here
                 would be a second control for the same thing. */}
-            {isDesktopLayout && (
-                <NavLink
-                    to={path}
-                    className={classNames(styles.backLink, { [styles.backWithTabs]: !!finalTabs?.length })}
-                >
-                    <ChevronLeft />
-                    <h3 className={styles.backHeadline}>{headline}</h3>
-                </NavLink>
-            )}
-            {!!finalTabs?.length && finalTabs.length > 1 && <PageTabs tabs={finalTabs} />}
-            {children}
-        </div>
-    );
-});
+                {/* Compact header (#1374): a small tonal back button, the list it returns to as a
+                breadcrumb, the record's name and a few facts about it — instead of an 88px
+                back pill that carried nothing but the name. */}
+                {isDesktopLayout && (
+                    <div className={classNames(styles.backBar, { [styles.backWithTabs]: !!finalTabs?.length })}>
+                        <NavLink
+                            to={path}
+                            className={styles.backButton}
+                            aria-label={String(
+                                parentLabel ? t('page.back.to', { parent: parentLabel }) : t('page.back.label'),
+                            )}
+                        >
+                            <ChevronLeft />
+                        </NavLink>
+                        <div className={styles.backText}>
+                            {parentLabel && (
+                                <nav aria-label={String(t('page.breadcrumb'))}>
+                                    <NavLink to={path} className={styles.breadcrumb}>
+                                        {parentLabel}
+                                    </NavLink>
+                                </nav>
+                            )}
+                            <h3 className={styles.backHeadline}>{headline}</h3>
+                        </div>
+                        {!!visibleMeta.length && (
+                            <ul className={styles.backMeta}>
+                                {visibleMeta.map((item, index) => (
+                                    // eslint-disable-next-line react/no-array-index-key -- static, order-stable facts
+                                    <li key={index}>{item}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
+                {!!finalTabs?.length && finalTabs.length > 1 && (
+                    <PageTabs tabs={finalTabs} ariaLabel={typeof headline === 'string' ? headline : undefined} />
+                )}
+                {children}
+            </div>
+        );
+    },
+);
 
 export const PageBackWithActions = forwardRef((props: PageBackProps, ref) => (
     <PageBack {...props} ref={ref}>

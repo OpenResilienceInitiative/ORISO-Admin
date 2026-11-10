@@ -26,7 +26,7 @@ const AdvisorAccountExample = () => {
                     justifyContent: 'center',
                     padding: 40,
                     minHeight: '100vh',
-                    background: 'var(--admin-workspace-background, #e4e2e2)',
+                    background: 'var(--admin-workspace-background, #fcf9f9)',
                 }}
             >
                 <AdvisorAccountCard
