@@ -180,10 +180,11 @@ describe('Träger admin', () => {
         await user.click(control.getByRole('radio', { name: /Platform-wide/ }));
         await user.click(control.getByRole('button', { name: 'Save' }));
 
-        expect(await control.findByRole('alert')).toHaveTextContent(/^Not saved\./);
+        // The failure is a pop-up on the shared snackbar channel (outside the tile).
+        expect(await screen.findByRole('alert')).toHaveTextContent(/Not saved\./);
         // Rolling back the cache must not move the choice or clear the error a moment later.
         await wait(150);
-        expect(control.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent(/Not saved\./);
         expect(control.getByRole('radio', { name: /Platform-wide/ })).toBeChecked();
         expect(control.getByRole('button', { name: 'Save' })).toBeEnabled();
         expect(notification.success).not.toHaveBeenCalled();
@@ -247,9 +248,10 @@ describe('platform admin', () => {
         await user.click(control.getByRole('button', { name: 'Requirement' }));
         await user.click(control.getByRole('button', { name: 'Save' }));
 
-        expect(await control.findByRole('alert')).toHaveTextContent(/^Not saved\./);
+        // The failure is a pop-up on the shared snackbar channel (outside the tile).
+        expect(await screen.findByRole('alert')).toHaveTextContent(/Not saved\./);
         await wait(150);
-        expect(control.getByRole('alert')).toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent(/Not saved\./);
         expect(control.getByRole('radio', { name: /Platform-wide/ })).toBeChecked();
         expect(control.getByRole('button', { name: 'Requirement' })).toHaveAttribute('aria-pressed', 'true');
     });

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Form } from 'antd';
-import Alert from '@mui/material/Alert';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
 import LinkRounded from '@mui/icons-material/LinkRounded';
-import Refresh from '@mui/icons-material/Refresh';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
@@ -18,6 +16,7 @@ import {
 import { CopyLinkRow } from './CopyLinkRow';
 import { DpaCanonicalMailPreview } from './DpaCanonicalMailPreview';
 import styles from './styles.module.scss';
+import { Notify } from '../Notify';
 
 export interface DpaForwardResult {
     link: DpaForwardLink;
@@ -253,25 +252,24 @@ export const DpaForwardDialog = ({
                             </FieldGrid>
 
                             {sendState === 'sent' && sentTo && (
-                                <Alert severity="success" data-testid="dpa-forward-sent" sx={{ mb: 2 }}>
+                                <Notify title={t('notify.title.dpa')} testId="dpa-forward-sent" severity="success">
                                     {t('dpaForward.dialog.sent', { email: sentTo })}
-                                </Alert>
+                                </Notify>
                             )}
                             {/* 502: the link exists — a warning, never an error. */}
                             {sendState === 'mail-failed' && (
-                                <Alert severity="warning" data-testid="dpa-forward-mail-failed" sx={{ mb: 2 }}>
+                                <Notify
+                                    title={t('notify.title.dpa')}
+                                    testId="dpa-forward-mail-failed"
+                                    severity="warning"
+                                >
                                     {t('dpaForward.dialog.mailFailedLinkReady')}
-                                </Alert>
+                                </Notify>
                             )}
                             {sendState === 'failed' && (
-                                <Alert
-                                    severity="error"
-                                    role="alert"
-                                    data-testid="dpa-forward-send-failed"
-                                    sx={{ mb: 2 }}
-                                >
+                                <Notify title={t('notify.title.dpa')} testId="dpa-forward-send-failed" severity="error">
                                     {t(sendErrorKey)}
-                                </Alert>
+                                </Notify>
                             )}
 
                             {/* The section's own primary action: filled, and on the
@@ -321,18 +319,14 @@ export const DpaForwardDialog = ({
                         )}
 
                         {linkState.kind === 'error' && (
-                            <Alert
+                            <Notify
+                                title={t('notify.title.dpa')}
+                                testId="dpa-forward-link-error"
                                 severity="error"
-                                role="alert"
-                                data-testid="dpa-forward-link-error"
-                                action={
-                                    <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={requestLink}>
-                                        {t('dpaForward.dialog.linkRetry')}
-                                    </M3Button>
-                                }
+                                actions={[{ label: t('dpaForward.dialog.linkRetry'), onClick: requestLink }]}
                             >
                                 {t(linkState.why)}
-                            </Alert>
+                            </Notify>
                         )}
 
                         {link && (

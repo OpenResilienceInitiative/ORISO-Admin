@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Button, Skeleton, Tooltip } from 'antd';
+import { Skeleton, Tooltip } from 'antd';
 import { ReactComponent as CaseHandoverIcon } from '../../../../../resources/img/svg/permissions/case_handover.svg';
 import { Card } from '../../../../Card';
 import { M3DurationField } from '../../../../M3NumberField';
@@ -22,6 +22,7 @@ import {
 import cardStyles from '../styles.module.scss';
 import { CASE_HANDOVER_HELP } from '../tileHelpTopics';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 /*
  * This card previews not-yet-available controls as disabled with a "coming soon"
@@ -162,21 +163,25 @@ export const CaseHandoverCardView = ({
                 </p>
             )}
             {!noTenant && loadError && (
-                <Alert
-                    type="error"
-                    showIcon
-                    role="alert"
-                    className={styles.saveError}
-                    data-testid="case-handover-card-error"
-                    message={loadError}
-                    action={
-                        onRetryLoad && (
-                            <Button size="small" onClick={onRetryLoad} disabled={isLoading}>
-                                {t('tenants.permissions.card.caseHandover.saveFailed.retry')}
-                            </Button>
-                        )
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.permissions')}
+                    testId="case-handover-card-error"
+                    severity="error"
+                    actions={
+                        onRetryLoad
+                            ? [
+                                  {
+                                      label: t('tenants.permissions.card.caseHandover.saveFailed.retry'),
+                                      onClick: onRetryLoad,
+                                      disabled: isLoading,
+                                  },
+                              ]
+                            : undefined
                     }
-                />
+                >
+                    {loadError}
+                </Notify>
             )}
 
             {!noTenant && !loadError && isLoading && (
@@ -187,21 +192,24 @@ export const CaseHandoverCardView = ({
             {!noTenant && !loadError && !isLoading && (
                 <>
                     {saveError && (
-                        <Alert
-                            type="error"
-                            showIcon
-                            role="alert"
-                            className={styles.saveError}
-                            data-testid="case-handover-save-error"
-                            message={saveError}
-                            action={
-                                onRetrySave && (
-                                    <Button size="small" onClick={onRetrySave} disabled={isSaving}>
-                                        {t('tenants.permissions.card.caseHandover.saveFailed.retry')}
-                                    </Button>
-                                )
+                        <Notify
+                            title={t('notify.title.permissions')}
+                            testId="case-handover-save-error"
+                            severity="error"
+                            actions={
+                                onRetrySave
+                                    ? [
+                                          {
+                                              label: t('tenants.permissions.card.caseHandover.saveFailed.retry'),
+                                              onClick: onRetrySave,
+                                              disabled: isSaving,
+                                          },
+                                      ]
+                                    : undefined
                             }
-                        />
+                        >
+                            {saveError}
+                        </Notify>
                     )}
 
                     <div

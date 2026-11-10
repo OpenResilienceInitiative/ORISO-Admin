@@ -22,6 +22,7 @@ import type { CounsellorTopicPermission } from '../../../api/counsellorOnboardin
 import { topics } from './fixtures';
 import { resources } from './copy';
 import styles from './styles.module.scss';
+import { Notify } from '../../../components/Notify';
 
 export interface TopicSelectionProposalProps {
     initialLanguage?: SupportedLanguageCode;
@@ -193,12 +194,13 @@ const TopicSelection = ({
                             <div className={styles.results}>
                                 {status === 'loading' && <p role="status">{t('loading')}</p>}
                                 {status === 'error' && (
-                                    <div>
-                                        <p role="alert">{t('error')}</p>
-                                        <M3Button variant="outlined" onClick={() => setStatus('ready')}>
-                                            {t('retry')}
-                                        </M3Button>
-                                    </div>
+                                    <Notify
+                                        title={t('notify.title.onboarding')}
+                                        severity="error"
+                                        actions={[{ label: t('retry'), onClick: () => setStatus('ready') }]}
+                                    >
+                                        {t('error')}
+                                    </Notify>
                                 )}
                                 {status === 'empty' && <p role="status">{t('empty')}</p>}
                                 {status === 'ready' &&

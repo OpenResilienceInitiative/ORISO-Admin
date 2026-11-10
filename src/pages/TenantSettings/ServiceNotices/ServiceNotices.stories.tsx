@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { findPopup } from '../../../test/storyPopups';
 import { walkThroughTileHelp } from '../../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
@@ -220,9 +221,12 @@ export const ConflictKeepsInputs: Story = {
         await userEvent.clear(url);
         await userEvent.type(url, 'https://changed.example.org');
         await userEvent.click(canvas.getByRole('button', { name: 'Entwurf speichern' }));
-        await canvas.findByText(
+        const popup = await findPopup(
+            canvasElement,
             'Diese Referenz gehört zu einem anderen Entwurf. Ihre Eingaben bleiben erhalten. Verwenden Sie für einen neuen Entwurf eine andere Referenz.',
+            'error',
         );
+        await expect(popup).toHaveTextContent('Servicehinweise');
         await expect(url).toHaveValue('https://changed.example.org');
         await expect(canvas.getByText('Configured product · de-sie')).toBeInTheDocument();
         await expect(conflictFixture.requests.filter((request) => request.method === 'PUT')).toHaveLength(2);
@@ -238,9 +242,10 @@ export const TechnicalAccountDenied: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByRole('alert')).toHaveTextContent(
-            'Nur ein Plattform-Admin kann diese Entwürfe verwalten.',
-        );
+        const popup = await findPopup(canvasElement, 'Nur ein Plattform-Admin kann diese Entwürfe verwalten.', 'error');
+        await expect(popup).toHaveTextContent('Servicehinweise');
+        // The tile keeps the same reason as quiet text.
+        await expect(canvas.getByText('Nur ein Plattform-Admin kann diese Entwürfe verwalten.')).toBeInTheDocument();
         await expect(canvas.queryByLabelText('Entwurfsreferenz')).not.toBeInTheDocument();
     },
 };

@@ -219,22 +219,12 @@
     transform-origin: top center;
 }
 
-.statisticDashboardPage .statisticDashboard__notice {
-    padding: 10px 14px;
+/* Permanent explanations above the tiles: plain text, no fill and no border (never a box in the page). */
+.statisticDashboardPage .statisticDashboard__caption {
     margin: 0 0 16px;
-    border-radius: 12px;
+    color: var(--m3-on-surface-variant);
     font-size: 14px;
     line-height: 20px;
-}
-
-.statisticDashboard__notice--error {
-    background: var(--m3-tertiary-container);
-    color: var(--m3-on-tertiary-container);
-}
-
-.statisticDashboard__notice--warning {
-    background: var(--warning-light);
-    color: var(--m3-on-surface);
 }
 
 // One quiet line above the cards (Admin#1374): stand + optional "protected" hint,

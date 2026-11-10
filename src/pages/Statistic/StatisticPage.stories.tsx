@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { delay, http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
-import { expect, fireEvent, within, waitFor } from 'storybook/test';
+import { expect, fireEvent, userEvent, within, waitFor } from 'storybook/test';
 import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
@@ -17,6 +17,7 @@ import {
     topicAdminEndpoint,
     tutorialStatisticsEndpoint,
 } from '../../appConfig';
+import { findPopup, popupsOf } from '../../test/storyPopups';
 import { Statistic } from '../Statistic';
 
 const GENERATED_AT = '2026-11-06T05:00:00Z';
@@ -371,12 +372,44 @@ export const Loading: Story = {
 export const LoadError: Story = {
     parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 500 })) } },
     play: async ({ canvasElement }) => {
-        const canvas = within(canvasElement);
-        const notice = await canvas.findByText('Statistikdaten konnten nicht geladen werden.');
-        // The page fades in, so the notice is only visible once that has settled.
-        await waitFor(() => expect(notice).toBeVisible());
+        // The event is a pop-up with a title, a way back to the dashboard and a retry; the tile keeps quiet text.
+        const popup = await findPopup(canvasElement, 'Statistikdaten konnten nicht geladen werden.', 'error');
+        await expect(popup).toHaveTextContent('Statistik');
+        await expect(within(popup).getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
+        await expect(canvasElement.querySelector('#statistic-dashboard-state')).toHaveTextContent(
+            'Dieser Bereich konnte nicht geladen werden.',
+        );
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
-        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
+};
+
+let dashboardRequests = 0;
+let retried = false;
+// The first answer fails, the second works: "Erneut versuchen" must fire a second request and recover the page.
+export const LoadErrorRetryRecovers: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() => {
+                dashboardRequests += 1;
+                // Everything before the click fails (the page may ask more than once while it settles).
+                return !retried ? new HttpResponse(null, { status: 500 }) : HttpResponse.json(statistics('DAILY'));
+            }),
+        },
+    },
+    beforeEach: () => {
+        dashboardRequests = 0;
+        retried = false;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const popup = await findPopup(canvasElement, 'Statistikdaten konnten nicht geladen werden.', 'error');
+        const before = dashboardRequests;
+        retried = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(dashboardRequests).toBeGreaterThan(before));
+        await expect(await canvas.findByText('Anfragen gesamt')).toBeInTheDocument();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
     },
 };
 // The settings behind the statistics cannot be read (UserService#1568): no figures, not even old ones.
@@ -384,9 +417,11 @@ export const TemporarilyUnavailable: Story = {
     parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 503 })) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const notice = await canvas.findByText(/vorübergehend nicht verfügbar/);
-        // The page fades in, so the notice is only visible once that has settled.
-        await waitFor(() => expect(notice).toBeVisible());
+        // The event is a pop-up; the page keeps quiet text and shows no figures.
+        await findPopup(canvasElement, /vorübergehend nicht verfügbar/, 'error');
+        const quiet = await canvas.findByText('Dieser Bereich konnte nicht geladen werden.');
+        // The page fades in, so the text is only visible once that has settled.
+        await waitFor(() => expect(quiet).toBeVisible());
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
         await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
     },

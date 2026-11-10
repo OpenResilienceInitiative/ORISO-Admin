@@ -1,10 +1,12 @@
-import { Alert, Table } from 'antd';
+import { Table } from 'antd';
 import type { ColumnType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
 import { buildTutorialStatisticRows, TutorialStatisticRow } from './tutorialStatisticsData';
 import { useTutorialStatistics } from './useTutorialStatistics.hook';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 export interface TutorialStatisticsSectionProps {
     /** Injectable for tests/Storybook; defaults to the real admin statistics API. */
@@ -127,8 +129,17 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
             <h2 className="tutorialStatistics__title">{t('statistic.tutorials.title')}</h2>
             <p className="tutorialStatistics__subtitle">{t('statistic.tutorials.subtitle')}</p>
             {isLoading && <p className="tutorialStatistics__notice">{t('statistic.tutorials.loading')}</p>}
-            {isForbidden && <Alert type="info" showIcon message={t('statistic.tutorials.forbidden')} />}
-            {isError && <Alert type="error" showIcon role="alert" message={t('statistic.tutorials.loadError')} />}
+            {isForbidden && <HintText>{t('statistic.tutorials.forbidden')}</HintText>}
+            {isError && (
+                <Notify
+                    retry
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.statistics')}
+                    severity="error"
+                >
+                    {t('statistic.tutorials.loadError')}
+                </Notify>
+            )}
             {isLoaded && (
                 <>
                     {/* Focusable scroll region: keyboard users must be able to reach and
