@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom';
-import { afterEach, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, vi } from 'vite-plus/test';
 import { snackbarStore } from '../components/Snackbar/snackbarStore';
 import { installMemoryStorage, resetMemoryStorage } from './memoryStorage';
 
@@ -78,4 +78,48 @@ afterEach(() => {
 // Prevent fake-timer leakage between test files when a test forgets to restore.
 afterEach(() => {
     vi.useRealTimers();
+});
+
+// Notifications are pop-ups on the shared snackbar channel (`<Notify>`, `snackbar.*`), rendered by the
+// app-level `<SnackbarHost>`. A DOM test gets that host the moment something is notified, so a component
+// that raises a notification can be asserted with `screen`/`findByText`/`findByRole('alert')` as in the
+// app. Mounting on demand (not in beforeEach) lets a test finish its own `react-i18next` mock first.
+let teardownSnackbarHost: (() => void) | undefined;
+
+beforeEach(async () => {
+    if (typeof document === 'undefined') return;
+    const [{ createElement, act }, { createRoot }, { SnackbarHost, snackbar }] = await Promise.all([
+        import('react'),
+        import('react-dom/client'),
+        import('../components/Snackbar'),
+    ]);
+    snackbar.clear();
+    let mounted: { root: ReturnType<typeof createRoot>; element: HTMLElement } | undefined;
+    const mount = () => {
+        if (mounted) return;
+        // A test that renders its own <SnackbarHost> already shows the pop-ups; a second host would duplicate them.
+        if (document.querySelector('[data-testid="snackbar-host"]')) return;
+        const element = document.createElement('div');
+        document.body.appendChild(element);
+        const root = createRoot(element);
+        mounted = { root, element };
+        // Not wrapped in act(): the first notification often arrives while React is already rendering.
+        root.render(createElement(SnackbarHost));
+    };
+    const unsubscribe = snackbarStore.subscribe(() => {
+        if (snackbarStore.getState().current) mount();
+    });
+    teardownSnackbarHost = () => {
+        unsubscribe();
+        act(() => snackbar.clear());
+        if (mounted) {
+            act(() => mounted?.root.unmount());
+            mounted.element.remove();
+        }
+    };
+});
+
+afterEach(() => {
+    teardownSnackbarHost?.();
+    teardownSnackbarHost = undefined;
 });
