@@ -8,7 +8,7 @@ import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SnackbarHost } from '../../components/Snackbar';
 // Static import on purpose — see the note in AccountInvitesTab.test.tsx.
-import { CounsellorInvitesTab } from './AccountInvitesTab';
+import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 import { UserRole } from '../../enums/UserRole';
 
 // These tests drive the whole invite composer through user-event. Measured
@@ -278,6 +278,39 @@ describe.each([
         mocks.createAccountInvite.mockResolvedValue({ ...invite(99, 40, 'EMAIL_SENT'), targetRole: 'COUNSELLOR' });
         mocks.searchInviteAgencies.mockResolvedValue(agencyPage([OWN_AGENCY]));
     });
+
+    it('omits the first-invite action on the read-only tenant tab', async () => {
+        render(<TenantInvitesTab />);
+
+        expect(await screen.findByText('Noch keine Einladungen', {}, SLOW)).toBeInTheDocument();
+        expect(screen.getByText('Nur Träger- und Plattform-Admins können Träger-Admins einladen.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Erste Einladung senden' })).not.toBeInTheDocument();
+    });
+
+    it('keeps the first-invite action on the counsellor tab', async () => {
+        render(<CounsellorInvitesTab />);
+
+        expect(await screen.findByRole('button', { name: 'Erste Einladung senden' }, SLOW)).toBeEnabled();
+    });
+
+    it.each(['combined tenant and agency admin', 'platform admin'] as const)(
+        'keeps the tenant first-invite action for a %s',
+        async (role) => {
+            const isSuperAdmin = role === 'platform admin';
+            mocks.useUserRoles.mockReturnValue({
+                ...agencyAdminRoles(agencyRole, UserRole.TenantAdmin, UserRole.UserAdmin),
+                isSuperAdmin,
+                tenantId: isSuperAdmin ? 0 : 40,
+            });
+            mocks.parseUserAuthInfo.mockReturnValue({ tenantId: isSuperAdmin ? '0' : '40' });
+            mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+            mocks.findInviteTenant.mockResolvedValue({ id: 40, name: 'Caritas Freiburg' });
+
+            render(<TenantInvitesTab />);
+
+            expect(await screen.findByRole('button', { name: 'Erste Einladung senden' }, SLOW)).toBeEnabled();
+        },
+    );
 
     it('fixes the role on Berater:in and locks Träger and Beratungsstelle to the own unit', async () => {
         render(<CounsellorInvitesTab />);
