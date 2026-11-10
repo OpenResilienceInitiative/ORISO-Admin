@@ -6,7 +6,8 @@ import { http, HttpResponse } from 'msw';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { AssistantIdentity } from './index';
 import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
-import { inTheRaster } from '../appearanceStoryHarness.matrix';
+import { expectReadOnlyTile, PLATFORM_RELEASE_HINT } from '../../../../CardEditable/readOnlyTileStory.matrix';
+import { asLockedForOrganisationAdmin, atPhoneWidth, inTheRaster } from '../appearanceStoryHarness.matrix';
 import { TENANT_DATA_KEY } from '../../../../../hooks/useTenantData.hook';
 import { baseTenantPublicEndpoint, tenantAdminEndpoint } from '../../../../../appConfig';
 import { findPopup, popupsOf } from '../../../../../test/storyPopups';
@@ -29,6 +30,8 @@ const tenant = () => {
         return defaultTenant;
     }
 };
+/** The same organisation without an own name or icon: both come from the level above. */
+const inheritingTenant = { ...defaultTenant, theming: { primaryColor: '#a5000a' } };
 const Harness = ({ readOnly = false, seeded = true }: { readOnly?: boolean; seeded?: boolean }) => {
     const [client] = useState(() => {
         const query = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
@@ -45,7 +48,7 @@ const meta = {
     title: 'Organisms/Tenants/AssistantIdentity',
     component: Harness,
     // The tile spans the whole row of the raster, as on the Appearance tab.
-    decorators: [(Story) => inTheRaster(Story, 3)],
+    decorators: [(Story, { parameters }) => inTheRaster(Story, 3, parameters.rasterWidth)],
     beforeEach: () => {
         localStorage.removeItem(storageKey);
     },
@@ -79,7 +82,65 @@ export const SaveAndReload: Story = {
         await waitFor(() => expect(tenant().theming.assistantIcon).toBe('robot-1184077'));
     },
 };
-export const ReadOnly: Story = { args: { readOnly: true } };
+export const ReadOnly: Story = {
+    args: { readOnly: true },
+    decorators: [asLockedForOrganisationAdmin],
+    play: async ({ canvasElement }) => {
+        await expectReadOnlyTile(canvasElement, PLATFORM_RELEASE_HINT);
+        await expect(canvasElement.querySelector('input[type="file"]')).toBeNull();
+    },
+};
+
+/** Own name and icon: the "Carimat (Standard)" tile is chosen, no note about the level above. */
+export const Own: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const own = await canvas.findByRole('radio', { name: /Carimat/ }, { timeout: 8000 });
+        await waitFor(() => expect(own).toBeChecked());
+        await expect(canvas.queryByText(/übergeordneten Ebene|level above/)).toBeNull();
+        const tile = own.closest('label') as HTMLElement;
+        await expect(getComputedStyle(tile).borderTopWidth).toBe('2px');
+    },
+};
+
+/** Nothing of its own: "Übernehmen" is chosen and shows the inherited icon, the name note says which name applies. */
+export const Inherited: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(`${baseTenantPublicEndpoint}/id/1`, () => HttpResponse.json(defaultTenant)),
+                http.get(`${tenantAdminEndpoint}/1`, () => HttpResponse.json(inheritingTenant)),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText(/aktuell „Carimat“|currently “Carimat”/)).toBeVisible(), {
+            timeout: 8000,
+        });
+        await expect(canvas.getByRole('radio', { name: /Übernehmen|Inherit/ })).toBeChecked();
+        await expect(canvas.getByRole('img', { name: /Übernommenes Symbol|Inherited icon/ })).toBeVisible();
+    },
+};
+
+/** Editing: a tile is the target; choosing "Roboter 2" moves the 2 px frame there. */
+export const EditingTiles: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Edit|Bearbeiten/i }, { timeout: 8000 }));
+        await userEvent.click(canvas.getByText(/^(Robot 2|Roboter 2)$/));
+        const chosen = canvas.getByRole('radio', { name: /Robot 2|Roboter 2/ });
+        await expect(chosen).toBeChecked();
+        await expect(getComputedStyle(chosen.closest('label') as HTMLElement).borderTopWidth).toBe('2px');
+        await expect(canvas.getByRole('button', { name: /Eigenes Icon hinzufügen|Add Own icon/ })).toBeVisible();
+    },
+};
+
+export const PhoneInherited: Story = {
+    ...Inherited,
+    ...atPhoneWidth,
+    parameters: { ...Inherited.parameters, ...atPhoneWidth.parameters },
+};
 
 export const HelpSlideshow: Story = {
     play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),

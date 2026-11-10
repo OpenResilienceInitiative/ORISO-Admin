@@ -10,7 +10,8 @@ export const TenantGlobalSettings = () => {
     const { t } = useTranslation();
 
     return (
-        <Row gutter={[24, 24]}>
+        // No horizontal gutter: its negative side margins made the page 12px wider than its host (a sideways scroll).
+        <Row gutter={[0, 24]}>
             <Col span={24}>
                 {/* A permanent explanation: plain text, no fill and no border (never a box in the page). */}
                 <HintText title={t('tenants.globalSettings.superAdminWarning.title')}>

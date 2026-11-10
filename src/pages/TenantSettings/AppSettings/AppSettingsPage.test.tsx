@@ -58,7 +58,6 @@ describe('Träger admin Funktionalitäten page', () => {
             tenantId: '5',
             hideSmtp: true,
             hideCommunication: true,
-            hideTopicsCard: true,
             hideStatistics: true,
             hideGroupChatToggle: true,
         });

@@ -36,7 +36,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
     // Shared cards can be phone-width inside a desktop Storybook or split view.
     container-type: inline-size;
     width: 100%;
-    max-width: 800px;
+
+    // 800px is the Figma desktop card. A page that gives its document tile the whole row sets
+    // `--m3-editor-max-width` on that tile instead of squeezing the editor into a corner of it.
+    max-width: var(--m3-editor-max-width, 800px);
     min-width: 280px;
     overflow: hidden;
     background: $m3-surface;
@@ -1105,6 +1108,8 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     :global(.ProseMirror) {
         min-height: 248px;
+        // A wide tile sets `--m3-editor-text-max-width` so a line of text stays readable.
+        max-width: var(--m3-editor-text-max-width, none);
         outline: none;
 
         // German legal prose is full of 25+ character compounds. `hyphens: auto`
