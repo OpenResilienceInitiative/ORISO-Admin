@@ -2253,7 +2253,7 @@
     "legal.help.privacy.platform.published.text": "This is the latest template which all new providers can adapt as a template for further refinement.",
     "legal.help.privacy.platform.published.hint": "If your user account is authorised, you can edit the template at any time via “Edit”.",
     "legal.help.privacy.tenant.draft.text": "Adapt this template or replace it with your own policy. After publication, counselling centres are shown your privacy policy as a template. A saved draft is not yet published.",
-    "legal.help.privacy.tenant.draft.hint": "Please store a privacy policy. Without a stored policy, advice seekers see a warning before they agree. The counselling centre remains responsible for it. ORISO only checks that a text exists, not that it is legally correct.",
+    "legal.help.privacy.tenant.draft.hint": "Please publish a privacy policy. If none is published, advice seekers who register or start further counselling see a warning before they agree, provided the check can be completed. The counselling centre remains responsible for it. ORISO only checks that a text exists, not that it is legally correct.",
     "legal.help.privacy.tenant.published.text": "Your organisation-wide privacy policy is published and is shown to counselling centres as a template.",
     "legal.help.privacy.tenant.published.hint": "If you have editing permission, you can edit the current version directly in the editor and publish your changes. Historical versions are read-only. A saved draft is not yet published.",
     "legal.help.privacy.agency.inherited.text": "The standardised privacy policy of your provider has already been published and is active for you.",
