@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { notification } from 'antd';
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar as notification } from '../../../../Snackbar';
 import i18n from '../../../../../i18n';
 import { SuperAdminPermissionsSettings } from '../SuperAdminPermissionsSettings';
 import { TenantPermissionsSettings } from '../TenantPermissionsSettings';
