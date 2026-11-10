@@ -36,10 +36,6 @@ export const LegalDocumentTile = ({
     onOpenChange,
     children,
 }: LegalDocumentTileProps) => {
-    // The help dialog shows the tile's own icon once TileHelpButton takes `tileIcon` (open: #1376, #1408). Until then
-    // the button ignores it and keeps the info icon; handing it over now means this file needs no change later.
-    const helpIcon = { tileIcon: <Icon /> };
-
     return (
         <CollapsibleTile
             icon={<Icon />}
@@ -53,7 +49,7 @@ export const LegalDocumentTile = ({
                 {(intro || help) && (
                     <div className={styles.intro} data-legal-document-intro>
                         <div className={styles.introText}>{intro}</div>
-                        {help && <TileHelpButton topic={help} tileTitle={title} {...helpIcon} />}
+                        {help && <TileHelpButton topic={help} tileTitle={title} tileIcon={<Icon />} />}
                     </div>
                 )}
                 {children}

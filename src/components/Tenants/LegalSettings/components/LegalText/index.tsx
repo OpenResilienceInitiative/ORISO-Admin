@@ -1,4 +1,5 @@
 import set from 'lodash.set';
+import Fingerprint from '@mui/icons-material/Fingerprint';
 import { Spin, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -167,6 +168,8 @@ export const LegalText = ({
 }: LegalTextProps) => {
     const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
+    // The same default the editor header falls back to, so the explanation shows the tile's icon.
+    const TileIcon = icon ?? Fingerprint;
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
@@ -944,7 +947,9 @@ export const LegalText = ({
                     headerAction={
                         collapsible
                             ? undefined
-                            : tileHelp && <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} />
+                            : tileHelp && (
+                                  <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} tileIcon={<TileIcon />} />
+                              )
                     }
                     readOnly={!canEditLegalText}
                     publishing={isPending || draftActionPending}

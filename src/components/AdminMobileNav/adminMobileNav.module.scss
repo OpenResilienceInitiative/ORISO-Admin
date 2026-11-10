@@ -162,18 +162,13 @@
     }
 }
 
-.searchButtonActive {
-    background: var(--nav-selected);
-    color: var(--nav-selected-text);
-}
-
 @media (prefers-reduced-motion: reduce) {
     .tabIcon {
         transition: none;
     }
 }
 
-// ── Sheets: the menu card and the global search ───────────────────────────
+// ── The menu card ──────────────────────────────────────────────────────
 .sheet {
     overflow: auto;
     max-height: calc(100dvh - 200px - env(safe-area-inset-top, 0px));
@@ -195,8 +190,7 @@
     list-style: none;
 }
 
-.menuRow,
-.resultRow {
+.menuRow {
     display: flex;
     width: 100%;
     min-height: 60px;
@@ -228,15 +222,6 @@
 // An open category keeps a quiet background so its children read as a group.
 .menuRow[aria-expanded='true'] {
     background: var(--nav-hover);
-}
-
-.resultRow {
-    min-height: 56px;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    padding: 8px 14px;
-    gap: 2px;
 }
 
 .menuRowActive .title {
@@ -362,37 +347,6 @@
     border: 0;
     margin: 8px 12px;
     background: var(--nav-line);
-}
-
-.searchSheet {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.hint {
-    padding: 8px 14px;
-    margin: 0;
-    color: var(--nav-muted);
-    font-size: 14px;
-    line-height: 20px;
-}
-
-// Same field as the page search; it sits at the bottom of the sheet, next to
-// the thumb and the button that opened it.
-.globalSearchField {
-    position: sticky;
-    bottom: 0;
-    display: flex;
-    height: 52px;
-    flex: 0 0 auto;
-    align-items: center;
-    padding: 0 16px;
-    border-radius: 26px;
-    background: var(--admin-search-surface, #eae7e8);
-    box-shadow: inset 4px 4px 8px rgb(0 0 0 / 12%);
-    color: var(--admin-search-text, #444748);
-    gap: 8px;
 }
 
 // ── Page toolbar row (back, list search, filters, create) ─────────────────

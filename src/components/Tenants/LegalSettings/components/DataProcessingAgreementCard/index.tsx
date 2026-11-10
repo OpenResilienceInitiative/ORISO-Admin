@@ -278,7 +278,11 @@ export const DataProcessingAgreementCard = ({
                 title={title}
                 // In a tile the header, the explanation button and the help text belong to the tile.
                 hideHeader={collapsible}
-                headerAction={collapsible ? undefined : <TileHelpButton topic={contractHelp} tileTitle={title} />}
+                headerAction={
+                    collapsible ? undefined : (
+                        <TileHelpButton topic={contractHelp} tileTitle={title} tileIcon={<DpaIcon />} />
+                    )
+                }
                 icon={DpaIcon}
                 value={currentContent}
                 onChange={readOnly ? undefined : handleEditorChange}
