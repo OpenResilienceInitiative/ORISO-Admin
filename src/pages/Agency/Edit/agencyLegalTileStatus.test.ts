@@ -42,4 +42,13 @@ describe('agency legal tile status', () => {
             'tenants.legal.departmentDataProtection.status.inheritedFromTraeger',
         );
     });
+
+    it('treats empty HTML, whitespace and metadata-only maps as no imprint text', () => {
+        [{ de: '<p></p>' }, { de: '<p>&nbsp;</p>' }, { __meta: 'x' }, {}].forEach((impressum) => {
+            expect(imprintTileStatus(agency({ content: { impressum } })).key).toBe('legal.status.empty');
+        });
+        expect(imprintTileStatus(agency({ content: { impressum: { de: '<p>Text</p>' } } })).key).toBe(
+            'legal.status.published',
+        );
+    });
 });
