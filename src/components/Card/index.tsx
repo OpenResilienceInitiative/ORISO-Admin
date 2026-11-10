@@ -80,6 +80,7 @@ export const Card = ({
                     [styles.hasSubtitle]: subTitle || subTitleKey,
                     [styles.dialogCardTitle]: isDialog,
                 })}
+                data-admin-card-title
             >
                 <div className={classNames(styles.titleContainer, { [styles.dialogTitleContainer]: isDialog })}>
                     {headerIcon && <div className={styles.headerIcon}>{headerIcon}</div>}

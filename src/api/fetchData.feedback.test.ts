@@ -36,7 +36,7 @@ describe('transport feedback goes through the one snackbar channel', () => {
         vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('raw server text', { status: 500 })));
         await expect(request()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
         expect(shown()).toHaveLength(1);
-        expect(shown()[0]).toMatchObject({ severity: 'error', message: 'message.error.default', durationMs: null });
+        expect(shown()[0]).toMatchObject({ severity: 'error', description: 'message.error.default', durationMs: null });
     });
 
     it('shows ONE snackbar when several requests fail for the same reason (the doubled Legal-tab toast)', async () => {
@@ -62,7 +62,7 @@ describe('transport feedback goes through the one snackbar channel', () => {
         expect(settled.every((result) => result.status === 'rejected')).toBe(true);
         expect(logout).toHaveBeenCalledWith(true);
         expect(shown()).toHaveLength(1);
-        expect(shown()[0]).toMatchObject({ key: 'session-expired', message: 'message.error.sessionExpired' });
+        expect(shown()[0]).toMatchObject({ key: 'session-expired', description: 'message.error.sessionExpired' });
     });
 
     it('stays silent through a pending refresh and retry that succeeds', async () => {
