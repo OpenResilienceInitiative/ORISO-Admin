@@ -3,11 +3,10 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { snackbar } from '../../components/Snackbar';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SnackbarHost } from '../../components/Snackbar';
+import { SnackbarHost, snackbar } from '../../components/Snackbar';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
 // import inside the first test bills the whole transform + evaluation of this
