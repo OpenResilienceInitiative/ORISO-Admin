@@ -17,19 +17,156 @@
     }
 }
 
-/* Tall enough for the longest slide, so Next stays under the pointer while clicking through. */
+/* Same geometry on every step (fixed picture box, text area of fixed minimum height): Next stays put. */
 .slide {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
+}
 
-    &:has(.visual) {
-        min-height: min(60vh, 500px);
+.heading {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.headingIcon {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--m3-on-primary-container, #141c25);
+
+    svg {
+        width: 24px;
+        height: 24px;
     }
 }
 
-.visual {
-    height: clamp(180px, 34vh, 300px);
+.media {
+    position: relative;
+    display: flex;
+    height: 232px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    border-radius: 16px;
+    animation: media-in 200ms ease-out;
+    background: var(--m3-surface-container-low, #f6f3f3);
+
+    > * {
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    @media (max-height: 640px) {
+        height: 160px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
+/* The red band (Tutorial canvas): a thin primary line in the bottom padding of the picture
+   box that grows from the middle, pulls back a little and settles — one back-and-forth,
+   each pass under 480ms. It stays out of the picture: the drawings are raster images with
+   their own thread, and a line across them would cut through the figures. Reduced motion
+   shows it still, at full width. */
+
+.band {
+    position: absolute;
+    right: 24px;
+    bottom: 4px;
+    left: 24px;
+    height: 2px;
+    border-radius: 2px;
+    animation: tile-help-band 880ms ease-in-out both;
+    background: var(--m3-primary, #a5000a);
+    pointer-events: none;
+    transform-origin: center;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+}
+
+@keyframes tile-help-band {
+    /* 396ms: grow. */
+    0% {
+        transform: scaleX(0);
+    }
+
+    45% {
+        transform: scaleX(1);
+    }
+
+    /* 220ms: pull back by a third. */
+    70% {
+        transform: scaleX(0.65);
+    }
+
+    /* 264ms: settle at full width. */
+    100% {
+        transform: scaleX(1);
+    }
+}
+
+/* The stand-in for a step without a drawing: the tile's own icon, calm and large. */
+.placeholderIcon {
+    display: inline-flex;
+    width: 128px;
+    height: 128px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface-variant, #444748);
+
+    svg {
+        width: 64px;
+        height: 64px;
+    }
+
+    @media (max-height: 640px) {
+        width: 96px;
+        height: 96px;
+
+        svg {
+            width: 48px;
+            height: 48px;
+        }
+    }
+}
+
+/* Room for the longest step text (about five lines), so short steps don't pull the footer up. */
+.content {
+    display: flex;
+    min-height: 184px;
+    flex-direction: column;
+    gap: 12px;
+}
+
+@keyframes media-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 .example {
