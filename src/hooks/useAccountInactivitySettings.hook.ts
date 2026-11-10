@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../components/Snackbar';
 import { getAccountInactivitySettings, updateAccountInactivitySettings } from '../api/tenant/accountInactivitySettings';
 import { FETCH_ERRORS } from '../api/fetchData';
 
@@ -28,10 +28,10 @@ export const useAccountInactivitySettings = (enabled = true) => {
         mutationFn: updateAccountInactivitySettings,
         onSuccess: (confirmed) => {
             queryClient.setQueryData(ACCOUNT_INACTIVITY_SETTINGS_QUERY_KEY, confirmed);
-            message.success({ content: t('globalSettings.accountInactivity.saveSuccess'), duration: 3 });
+            snackbar.success({ content: t('globalSettings.accountInactivity.saveSuccess'), duration: 3 });
         },
         onError: async (error) => {
-            message.error({ content: t(errorKey(error)), duration: 5 });
+            snackbar.error({ content: t(errorKey(error)) });
             if (error instanceof Error && error.message === FETCH_ERRORS.CONFLICT) {
                 await queryClient.refetchQueries({ queryKey: ACCOUNT_INACTIVITY_SETTINGS_QUERY_KEY, exact: true });
             }

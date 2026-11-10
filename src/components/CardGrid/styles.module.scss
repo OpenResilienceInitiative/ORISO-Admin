@@ -44,6 +44,13 @@
     }
 }
 
+/* The raster's 24px gap is the only space between tiles. A card brings its own bottom margin (Box: 16px, 8px on
+   phones), which stacked on the gap: 40px between tiles at 1440 and 32px at 390 instead of 24px. */
+
+.raster > .item > * {
+    margin-bottom: 0;
+}
+
 .span2 {
     grid-column: span 2;
 }

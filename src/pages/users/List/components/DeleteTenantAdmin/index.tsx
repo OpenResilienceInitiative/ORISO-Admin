@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../../../components/Snackbar';
 import { useDeleteTenantAdmin } from '../../../../../hooks/useDeleteTenantAdmin';
 import { Modal } from '../../../../../components/Modal';
 import { CounselorData } from '../../../../../types/counselor';
@@ -16,7 +16,7 @@ export const DeleteTenantAdminModal = ({ user, onClose, isPlatformAdmin }: Delet
     const labelScope = isPlatformAdmin ? 'platformAdmins' : 'tenantAdmins';
     const { mutate: deleteAdmin } = useDeleteTenantAdmin({
         onSuccess: () => {
-            notification.success({
+            snackbar.success({
                 message: t(`${labelScope}.delete.success`),
             });
             onClose();

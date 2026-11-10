@@ -25,7 +25,7 @@ export const MandatoryTwoFactorSetup = () => {
                 registration the header does. */}
             <Page.Title />
             <Row gutter={[24, 24]}>
-                <Col xs={24} sm={24} md={16} lg={12} xl={8}>
+                <Col xs={24} sm={24} md={16} lg={12} xl={12} xxl={10}>
                     <Alert
                         type={setupAvailable ? 'warning' : 'error'}
                         showIcon

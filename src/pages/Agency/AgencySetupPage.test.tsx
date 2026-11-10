@@ -139,7 +139,7 @@ describe('the authenticated first-centre setup', () => {
         const phone = await screen.findByLabelText('agency.edit.general.address.phone');
         await user.type(phone, '03012345');
         await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.saveError');
+        expect(await screen.findByText('agency.setup.saveError')).toBeInTheDocument();
         expect(screen.getByLabelText('agency.edit.general.address.phone')).toHaveValue('03012345');
     });
 

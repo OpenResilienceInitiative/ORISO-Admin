@@ -5,6 +5,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { configure, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost } from '../../components/Snackbar';
 import splitButtonStyles from '../../components/GlobalSearch/splitButton.module.scss';
 // Imported statically, NOT with `await import(...)` inside a test: every `vi.mock`
 // below is hoisted above this line, so the mocks still apply, while a dynamic
@@ -143,6 +144,11 @@ const rowCheckbox = async (email: string) => {
     const row = (await screen.findByText(email)).closest('tr') as HTMLElement;
     return within(row).getByRole('checkbox');
 };
+
+// Feedback is a snackbar: mount the host the app mounts once, for every describe below.
+beforeEach(() => {
+    render(<SnackbarHost />);
+});
 
 describe('AccountInvitesTab bulk selection (#316)', () => {
     beforeEach(() => {
@@ -383,7 +389,7 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
     // nothing) turned out to be the search doing nothing at all — fixed above
     // for e-mail+name together. This is the end-to-end validation he asked
     // for on top: every field the search claims to cover, checked one at a
-    // time, on the actual Träger-Invites screen the finding was taken from
+    // time, on the actual Träger-Einladungen screen the finding was taken from
     // (not the counsellor tab), because Träger-ID only exists there.
     it('matches on every field the search claims to cover: e-mail, first name, last name and Träger-ID', async () => {
         mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
