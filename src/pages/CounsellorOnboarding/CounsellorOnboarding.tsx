@@ -144,7 +144,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                     {t('counsellorOnboarding.loadError.title')}
                 </Typography>
-                <HintText tone="error" style={{ marginBottom: 24 }}>
+                <HintText tone="error" role="alert" style={{ marginBottom: 24 }}>
                     {t('counsellorOnboarding.loadError.description')}
                 </HintText>
                 <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>

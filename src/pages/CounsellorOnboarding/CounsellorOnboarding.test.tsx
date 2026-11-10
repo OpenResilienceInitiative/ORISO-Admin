@@ -779,6 +779,10 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         expect(await screen.findByTestId('onboarding-load-error')).toBeInTheDocument();
+        // This view blocks the invitee after an async failure: it is announced, as in the tenant flow.
+        expect(within(screen.getByTestId('onboarding-load-error')).getByRole('alert')).toHaveTextContent(
+            'counsellorOnboarding.loadError.description',
+        );
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.loadError.retry' }));
 
         expect(await screen.findByTestId('counsellor-onboarding-form')).toBeInTheDocument();

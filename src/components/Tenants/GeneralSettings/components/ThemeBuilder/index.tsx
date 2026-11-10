@@ -191,7 +191,7 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                 ]}
             />
             {saveRejected && tooPale && (
-                <HintText tone="error" className={styles.tooPaleAlert}>
+                <HintText tone="error" role="alert" className={styles.tooPaleAlert}>
                     {unusableSeedMessage}
                 </HintText>
             )}
