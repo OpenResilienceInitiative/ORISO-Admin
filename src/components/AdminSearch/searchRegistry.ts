@@ -511,42 +511,28 @@ export const SEARCH_TILES: RegistryTile[] = [
     ),
 
     // ── Beratungsstelle in context ───────────────────────────────────────────
+    // One card: the three former cards "General information", "Visibility in registration" and "Counseling
+    // service settings" are the sections of the "General" card (`AgencyMasterDataTile`), and that card is
+    // the only scroll target. Its section titles and controls stay findable as fields.
     tile(
-        'agency:general-info',
-        'agency.edit.general.general_information',
+        'agency:master-data',
+        'agency.edit.settings.general.title',
         ['agency:general'],
-        'src/pages/Agency/Edit/index.tsx',
+        'src/pages/Agency/Edit/components/MasterDataTile/index.tsx',
         {
             fieldKeys: [
+                'agency.edit.general.general_information',
                 'agency.edit.general.address.postcode',
                 'agency.edit.general.address.city',
                 'agency.edit.general.address.street',
                 'agency.edit.general.address.phone',
                 'agency.edit.general.address.email',
                 'agency.edit.general.address.opening_hours',
-            ],
-        },
-    ),
-    tile(
-        'agency:registration',
-        'agency.form.registrationSettings.title',
-        ['agency:general'],
-        'src/pages/Agency/Edit/index.tsx',
-        {
-            fieldKeys: [
+                'agency.form.registrationSettings.title',
                 'agency.form.registrationSettings.consultants.label',
                 'agency.form.registrationSettings.onlineDescription',
                 'agency.form.registrationSettings.postCodeTitle',
-            ],
-        },
-    ),
-    tile(
-        'agency:service-settings',
-        'agency.edit.settings.title',
-        ['agency:general'],
-        'src/pages/Agency/Edit/index.tsx',
-        {
-            fieldKeys: [
+                'agency.edit.settings.title',
                 'teamFunctions.counselling.name',
                 'agency.edit.general.more_settings.tenant.title',
                 'agency.edit.settings.departments',

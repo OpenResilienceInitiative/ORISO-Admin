@@ -1,9 +1,11 @@
 import { Col, Row } from 'antd';
+import BusinessCenterOutlinedIcon from '@mui/icons-material/BusinessCenterOutlined';
 import { useTranslation } from 'react-i18next';
 import Paragraph from 'antd/lib/typography/Paragraph';
 import { Card } from '../../../../../components/Card';
 import { FormInputField } from '../../../../../components/FormInputField';
 import { CardEditable } from '../../../../../components/CardEditable';
+import styles from './styles.module.scss';
 
 interface ResponsibleSettingsProps {
     initialValues?: Record<string, unknown>;
@@ -15,7 +17,9 @@ const ResponsibleSettingsFields = () => {
 
     return (
         <>
-            <Paragraph className="text desc">{t('agency.edit.settings.legal.responsible.text')}</Paragraph>
+            <Paragraph className={`text desc ${styles.intro}`}>
+                {t('agency.edit.settings.legal.responsible.text')}
+            </Paragraph>
             <Row gutter={[20, 10]}>
                 <Col xs={24}>
                     <FormInputField
@@ -74,6 +78,7 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
                 allowUnsavedChanges
                 initialValues={initialValues}
                 titleKey="agency.edit.settings.legal.responsible.title"
+                headerIcon={<BusinessCenterOutlinedIcon />}
                 variant="dialog"
                 editButtonPlacement="footer"
                 onSave={onSave}
@@ -84,7 +89,11 @@ export const ResponsibleSettings = ({ initialValues, onSave }: ResponsibleSettin
     }
 
     return (
-        <Card titleKey="agency.edit.settings.legal.responsible.title" variant="dialog">
+        <Card
+            titleKey="agency.edit.settings.legal.responsible.title"
+            headerIcon={<BusinessCenterOutlinedIcon />}
+            variant="dialog"
+        >
             <ResponsibleSettingsFields />
         </Card>
     );
