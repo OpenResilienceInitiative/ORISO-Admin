@@ -585,6 +585,21 @@ export const EmailTemplatesDialog = ({
         </div>
     ) : undefined;
 
+    // One notice for both views: a failed load must not vanish when the admin opens the form.
+    const loadFailedNotice = (jump?: string) =>
+        loadFailed && (
+            <Notify
+                severity="error"
+                title={t('notify.title.links')}
+                quietText={t('notify.tile.notLoaded')}
+                causeKey="links:email-templates"
+                jump={jump}
+                actions={[{ label: t('notify.retry'), onClick: () => loadTemplates() }]}
+            >
+                {t('links.templates.loadFailed', 'Could not load templates')}
+            </Notify>
+        );
+
     if (view === 'form') {
         const formTitleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
         const formDescriptionKey = editingTemplate
@@ -608,6 +623,7 @@ export const EmailTemplatesDialog = ({
                 onDismiss={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(onClose))}
                 onSave={onSave}
             >
+                {loadFailedNotice()}
                 {discardPrompt && (
                     <p className={styles.discardBody} role="status">
                         {t('links.templates.discardBody', 'Diese Vorlage wurde geändert, aber noch nicht gespeichert.')}
@@ -760,18 +776,7 @@ export const EmailTemplatesDialog = ({
             footer={listFooter}
             width={1180}
         >
-            {loadFailed && (
-                <Notify
-                    severity="error"
-                    title={t('notify.title.links')}
-                    quietText={t('notify.tile.notLoaded')}
-                    causeKey="links:email-templates"
-                    jump="email-templates-list"
-                    actions={[{ label: t('notify.retry'), onClick: () => loadTemplates() }]}
-                >
-                    {t('links.templates.loadFailed', 'Could not load templates')}
-                </Notify>
-            )}
+            {loadFailedNotice('email-templates-list')}
             <div id="email-templates-list">
                 <ListingTable
                     rowKey="id"

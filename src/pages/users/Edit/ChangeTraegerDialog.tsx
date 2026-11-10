@@ -8,6 +8,7 @@ import {
 } from '../../../api/counselor/changeConsultantTenant';
 import styles from './styles.module.scss';
 import { Notify } from '../../../components/Notify';
+import { HintText } from '../../../components/HintText';
 
 /** A second try can succeed; for the others the admin has to change something first. */
 const RETRYABLE: ChangeTenantErrorCode[] = [
@@ -130,14 +131,16 @@ export const ChangeTraegerDialog = ({
             }
         >
             {error && (
-                <Notify
-                    title={t('notify.title.users')}
-                    severity="error"
-                    // The reason stays in the dialog after the pop-up is closed, until the error clears.
-                    quietText={t(`counselor.changeTenant.error.${error}`)}
-                >
-                    {t(`counselor.changeTenant.error.${error}`)}
-                </Notify>
+                <>
+                    <Notify title={t('notify.title.users')} severity="error">
+                        {t(`counselor.changeTenant.error.${error}`)}
+                    </Notify>
+                    {/* The pop-up lives outside this modal and can wait in a full stack: the reason is announced here,
+                        in the dialog, and stays until the error clears. */}
+                    <HintText tone="error" role="alert">
+                        {t(`counselor.changeTenant.error.${error}`)}
+                    </HintText>
+                </>
             )}
             <div className={styles.dialogConsequences}>
                 <p>{casesSentence(openCases)}</p>

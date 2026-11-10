@@ -249,8 +249,12 @@ describe('ThemeEditorModal', () => {
 
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
 
-        // Field error + dialog Alert both use the same key.
+        // Field error + dialog notice both use the same key.
         expect((await screen.findAllByText('theme.builder.seedUnusable')).length).toBeGreaterThan(0);
+        // The notice explains why the save was refused, so it is announced (the old Alert did).
+        expect(document.querySelector('[role="alert"][class*="tooPaleAlert"]')).toHaveTextContent(
+            'theme.builder.seedUnusable',
+        );
         expect(onSubmit).not.toHaveBeenCalled();
     });
 
