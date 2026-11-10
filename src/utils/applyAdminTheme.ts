@@ -77,6 +77,9 @@ const applyAdminSchemeTheme = (
             scheme,
         );
 
+        // Tokens only the other scheme defines (the inverted snackbar containers) must not stay on the root.
+        clearAdminInvertedThemeTokens(root);
+
         Object.entries(tokens)
             .filter(([name]) => isAdminRuntimeToken(name))
             .forEach(([name, value]) => {
