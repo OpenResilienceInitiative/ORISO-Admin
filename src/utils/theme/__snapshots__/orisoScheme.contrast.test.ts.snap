@@ -13,6 +13,7 @@ exports[`computeOrisoPalette — contrast on the light brand container > leaves 
   "--admin-form-label-text": "#444748",
   "--admin-nav-indicator-icon": "#ffffff",
   "--admin-nav-indicator-surface": "#410001",
+  "--admin-picture-filter": "none",
   "--admin-search-hover-surface": "#e4e2e2",
   "--admin-search-icon": "#444748",
   "--admin-search-placeholder": "#444748",
