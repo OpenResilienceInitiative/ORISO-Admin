@@ -32,6 +32,8 @@ export const ServiceNoticesPage = () => {
     const allowed = isSuperAdmin && !isTechnicalAccount && !tokenUnreadable;
     const [form] = Form.useForm<DraftForm>();
     const [draft, setDraft] = useState<ServiceNoticeDraft | null>(null);
+    // The reference that was just saved. Opening an existing draft loads it too, but nothing was saved then.
+    const [savedReference, setSavedReference] = useState<string | null>(null);
     const [variant, setVariant] = useState<ServiceNoticeVariant>('de-sie');
     const [operationError, setOperationError] = useState<string | null>(null);
     const { save, open, preview } = useServiceNoticeDraft(draft?.campaignKey ?? null, variant, allowed);
@@ -47,8 +49,11 @@ export const ServiceNoticesPage = () => {
     };
     const onSave = async ({ campaignKey, ...input }: DraftForm) => {
         setOperationError(null);
+        setSavedReference(null);
         try {
-            applyDraft(await save.mutateAsync({ campaignKey, input }));
+            const saved = await save.mutateAsync({ campaignKey, input });
+            applyDraft(saved);
+            setSavedReference(saved.campaignKey);
         } catch (error) {
             setOperationError(serviceNoticeErrorKey(error));
         }
@@ -57,6 +62,7 @@ export const ServiceNoticesPage = () => {
         try {
             const { campaignKey } = await form.validateFields(['campaignKey']);
             setOperationError(null);
+            setSavedReference(null);
             applyDraft(await open.mutateAsync(campaignKey));
         } catch (error) {
             if (typeof error !== 'object' || error === null || !('errorFields' in error)) {
@@ -168,7 +174,7 @@ export const ServiceNoticesPage = () => {
                             </M3Button>
                         </Stack>
                     </Form>
-                    {draft && (
+                    {draft && savedReference === draft.campaignKey && (
                         <Notify title={t('notify.title.serviceNotices')} severity="success">
                             {t('serviceNotices.saved', { reference: draft.campaignKey })}
                         </Notify>

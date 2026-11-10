@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, waitFor } from 'storybook/test';
+import { expect, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { TwoFactorSetup } from './TwoFactorSetup';
@@ -219,9 +219,12 @@ export const OnboardingEmailSendFailure: Story = {
             onVerify={() => {}}
         />
     ),
-    play: async ({ canvas, userEvent }) => {
+    play: async ({ canvas, canvasElement, userEvent }) => {
         await userEvent.click(canvas.getByRole('button', { name: 'Code per E-Mail senden' }));
-        await expect(await canvas.findByRole('alert')).toBeVisible();
+        // The failure is a pop-up in the screen-corner host, outside the story canvas.
+        await waitFor(async () =>
+            expect(await within(canvasElement.ownerDocument.body).findByTestId('snackbar')).toBeVisible(),
+        );
         await expect(canvas.queryByRole('textbox', { name: 'Einmalcode' })).not.toBeInTheDocument();
     },
 };

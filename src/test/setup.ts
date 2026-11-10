@@ -42,7 +42,7 @@ if (typeof window !== 'undefined') {
 
     // Emotion's dev build gives every rule its own <style> tag, and antd rescans all of <head>
     // on every component mount; one tag per sheet (as in production) keeps big forms in budget.
-    const [emotion, { createElement }, { flushSync }, { createRoot }] = await Promise.all([
+    const [emotion, { createElement, useContext }, { flushSync }, { createRoot }] = await Promise.all([
         import('@emotion/react'),
         import('react'),
         import('react-dom'),
@@ -60,6 +60,23 @@ if (typeof window !== 'undefined') {
     if (found.cache) {
         found.cache.sheet.isSpeedy = true;
     }
+
+    // antd's own style engine (@ant-design/cssinjs) writes every component's CSS into <head> as it
+    // first renders (433 rules for Button alone, 800+ per file). jsdom matches each rule against the
+    // element and all its ancestors on every computed-style lookup, which is what role queries do,
+    // so those rules cost ~10 s per file for nothing: no unit test asserts on antd's look.
+    // Its 'server' mock still builds the class names and keeps the cache, but injects nothing.
+    // Storybook/browser tests do not run this file and keep the real styles.
+    // eslint-disable-next-line import/no-extraneous-dependencies -- the copy antd renders with; reached through antd, not declared by us
+    const { StyleContext } = await import('@ant-design/cssinjs');
+    const StyleContextProbe = () => {
+        const defaultStyleContext = useContext(StyleContext);
+        defaultStyleContext.mock = 'server';
+        return null;
+    };
+    const styleContextRoot = createRoot(document.createElement('div'));
+    flushSync(() => styleContextRoot.render(createElement(StyleContextProbe)));
+    styleContextRoot.unmount();
 }
 
 // The snackbar channel is a module-level store, so a snackbar raised by one test would still be

@@ -13,6 +13,7 @@ import {
 } from '../../../../../api/auth/tokenSessionStore';
 import i18n from '../../../../../i18n';
 import { CardEditable } from '../../../../../components/CardEditable';
+import { findPopup } from '../../../../../test/storyPopups';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { RegistrationSettings } from '.';
 import { PostCodeRanges } from './PostCodeRanges';
@@ -179,9 +180,10 @@ export const CounsellorSearchFailed: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        const popup = await findPopup(canvasElement, 'Die Berater:innen konnten nicht geladen werden.', 'error');
+        await expect(canvas.getByText('Dieser Bereich konnte nicht geladen werden.')).toBeInTheDocument();
         await expect(canvas.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
-        await expect(canvas.getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
+        await expect(within(popup).getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
     },
 };
 

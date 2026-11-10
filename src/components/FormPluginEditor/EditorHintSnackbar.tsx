@@ -23,7 +23,7 @@ export type EditorHintSnackbarProps = {
     actionDisabled?: boolean;
     /** Optional second action, e.g. preview alongside "do not show again". */
     secondaryAction?: { label: string; onClick: () => void; disabled?: boolean };
-    /** Accessible name of the close button, when "close hint" is not the right word. */
+    /** Kept so existing call sites compile; the close control takes its name from the shared snackbar. */
     closeLabel?: string;
     /** Short line saying what the pop-up is about. Default: legal texts, where the editor lives. */
     title?: string;

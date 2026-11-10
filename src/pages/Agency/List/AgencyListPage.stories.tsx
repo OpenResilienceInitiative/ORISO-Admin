@@ -4,10 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { getSessionAccessToken, getSessionRefreshToken, setSessionTokens } from '../../../api/auth/tokenSessionStore';
 import i18n from '../../../i18n';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { findPopup, popupsOf } from '../../../test/storyPopups';
 import { AgencyList } from './index';
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
@@ -112,3 +113,41 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const TraegerAdmin: Story = {};
+
+let listRequests = 0;
+let listRecovered = false;
+/** N5: the list cannot be loaded - error pop-up with "Erneut versuchen"; the second request brings the list back. */
+export const ListLoadErrorRetry: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/agencyadmin/agencies', () => {
+                    listRequests += 1;
+                    return listRecovered
+                        ? HttpResponse.json({
+                              _embedded: CENTRES.map((centre) => ({
+                                  _embedded: { ...centre, tenantId: 21, deleteDate: null },
+                              })),
+                              total: CENTRES.length,
+                          })
+                        : new HttpResponse(null, { status: 500 });
+                }),
+                handlers[1],
+            ],
+        },
+    },
+    beforeEach: () => {
+        listRequests = 0;
+        listRecovered = false;
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Fehler beim Laden der Daten.', 'error');
+        await expect(popup).toHaveTextContent('Beratungsstelle');
+        const before = listRequests;
+        listRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(listRequests).toBeGreaterThan(before));
+        await expect(await within(canvasElement).findByText('Caritas Beratungsstelle Mitte')).toBeVisible();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+    },
+};
