@@ -28,12 +28,13 @@ describe('shared focus ring', () => {
         expect(appCss).toMatch(/\.MuiRadio-root, \.MuiCheckbox-root\)\.Mui-focusVisible/);
     });
 
-    it.each(['../components/EditButton/styles.module.scss', '../components/M3Switch/styles.module.scss'])(
-        '%s draws no ring of its own colour',
-        (path) => {
-            expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
-        },
-    );
+    it.each([
+        '../components/EditButton/styles.module.scss',
+        '../components/M3Switch/styles.module.scss',
+        '../components/TopicCatalogue/styles.module.scss',
+    ])('%s draws no ring of its own colour', (path) => {
+        expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
+    });
 
     it('lets a component move the ring by setting the offset token, because the shared rule is more specific', () => {
         // The shared rule (0,4,0) beats a component's own `outline-offset`; only the token survives it.
