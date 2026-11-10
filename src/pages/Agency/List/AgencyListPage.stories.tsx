@@ -25,6 +25,7 @@ const CENTRES = [
         email: 'mitte@caritas.example',
         teamAgency: false,
         offline: false,
+        active: true,
         topics: [
             { id: 1, name: 'Schuldnerberatung' },
             { id: 2, name: 'Schwangerschaftsberatung' },
@@ -42,6 +43,7 @@ const CENTRES = [
         city: 'Wismar',
         teamAgency: true,
         offline: false,
+        active: true,
         topics: [{ id: 4, name: 'Familienberatung' }],
         createDate: daysAgo(200),
         updateDate: daysAgo(40),
@@ -54,6 +56,7 @@ const CENTRES = [
         email: 'sued@caritas.example',
         teamAgency: false,
         offline: true,
+        active: false,
         topics: [],
         createDate: daysAgo(30),
         updateDate: daysAgo(1),

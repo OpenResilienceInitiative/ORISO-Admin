@@ -75,6 +75,22 @@ const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>, se
             await record(request);
             return HttpResponse.json({ _embedded: CENTRES.find((c) => String(c.id) === params.id) });
         }),
+        http.get(`*/service/useradmin/accounts/${CONSULTANT_ID}/status`, () =>
+            HttpResponse.json({
+                accountId: CONSULTANT_ID,
+                username: 'ada',
+                createDate: '2026-09-01T10:00:00',
+                updateDate: null,
+                active: true,
+                paused: false,
+                loginEnabled: true,
+                absent: false,
+                lifecycleRestricted: false,
+                tenantActive: true,
+                restrictions: [],
+                twoFactor: { required: true, configured: true, active: false },
+            }),
+        ),
         http.get(`*/service/useradmin/consultants/${CONSULTANT_ID}`, () =>
             HttpResponse.json({ _embedded: { ...consultant, ...stored } }),
         ),

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { FormInstance } from 'antd';
 import type { Rule } from 'antd/es/form';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
@@ -12,6 +13,8 @@ type Props = {
     shouldShowSubdomainField: boolean;
     requiredRule: Rule;
     onSave: (values: Record<string, any>) => void;
+    /** Tile sections shown above the fields (the status card). */
+    leading?: ReactNode;
 };
 
 /** Which parts the edit tile shows: with the data protection officer (the create dialog has the topic instead). */
@@ -25,6 +28,7 @@ export const TenantInformationCard = ({
     shouldShowSubdomainField,
     requiredRule,
     onSave,
+    leading,
 }: Props) => (
     <CardEditable
         isLoading={isLoading}
@@ -42,6 +46,7 @@ export const TenantInformationCard = ({
             subdomain={{ visible: shouldShowSubdomainField, editable: false }}
             requiredRule={requiredRule}
             sections={EDIT_SECTIONS}
+            leading={leading}
         />
     </CardEditable>
 );

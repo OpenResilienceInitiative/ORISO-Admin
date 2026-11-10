@@ -30,12 +30,20 @@ interface TraegerFieldSectionsProps {
     requiredRule: Rule;
     /** Which sections to show; the edit tile has the data protection officer, the create dialog the topic. */
     sections: readonly TraegerSectionKey[];
+    /** Sections before the Träger's own ones, e.g. the status of the existing Träger. */
+    leading?: ReactNode;
     /** Extra sections after the Träger's own ones, e.g. the first admin in the create dialog. */
     children?: ReactNode;
 }
 
 /** The fields of a Träger as white panels: the same look for the edit tile and the create dialog. */
-export const TraegerFieldSections = ({ subdomain, requiredRule, sections, children }: TraegerFieldSectionsProps) => {
+export const TraegerFieldSections = ({
+    subdomain,
+    requiredRule,
+    sections,
+    leading,
+    children,
+}: TraegerFieldSectionsProps) => {
     const { t } = useTranslation();
     const parts: Record<TraegerSectionKey, ReactNode> = {
         general: (
@@ -137,6 +145,7 @@ export const TraegerFieldSections = ({ subdomain, requiredRule, sections, childr
 
     return (
         <TileSections>
+            {leading}
             {shown.includes('general') && parts.general}
             {/* The short parts share one column, so a panel is not left with half of its height empty. */}
             <TileSections.Stack keepColumn>{stacked.map((key) => parts[key])}</TileSections.Stack>

@@ -36,6 +36,8 @@ export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
+export const accountStatusEndpoint = (accountId: string) =>
+    `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into

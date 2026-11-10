@@ -25,6 +25,7 @@ import { LoadMoreFooter } from '../../../components/UserTable/LoadMoreFooter';
 import { RelativeTime } from '../../../components/UserTable/RelativeTime';
 import { RowMenu, type RowMenuItem } from '../../../components/UserTable/RowMenu';
 import { ScopeChip } from '../../../components/UserTable/ScopeChip';
+import { entityStatusListAttributes, statusLabel } from '../../../components/EntityStatusCard/presentation';
 import { ToneBadge } from '../../../components/UserTable/StatusBadge';
 import { UserCard } from '../../../components/UserTable/UserCard';
 import { TEAM_FUNCTIONS } from '../../../components/TeamFunctions';
@@ -194,7 +195,8 @@ export const AgencyDataTable = ({
         { key: 'address', label: t('agency.list.address', 'Adresse'), sortable: true },
         ...(showTenant ? [{ key: 'tenant', label: t('tenantName') }] : []),
         ...(showTopics ? [{ key: 'topics', label: t('topics.title') }] : []),
-        { key: 'status', label: t('status'), sortable: true, width: 156 },
+        // Backend OFFLINE sorting orders by the own flag, whereas this column shows the effective status.
+        { key: 'status', label: t('status'), width: 156 },
         ...(tablet ? [] : [{ key: 'lastChange', label: t('users.table.lastUpdated'), width: 168 }]),
         {
             key: 'actions',
@@ -213,15 +215,18 @@ export const AgencyDataTable = ({
                 </ToneBadge>
             );
         }
-        return row.offline ? (
-            <ToneBadge tone="pending" Icon={VisibilityOffOutlinedIcon}>
-                {t('agency.status.offline')}
-            </ToneBadge>
-        ) : (
-            <ToneBadge tone="active" Icon={VisibilityOutlinedIcon}>
-                {t('agency.status.online')}
+        // Effective status (own flag and scope), not the raw `offline` visibility flag.
+        const { active } = row;
+        const known = typeof active === 'boolean';
+        const badge = (
+            <ToneBadge
+                tone={known && active ? 'active' : 'pending'}
+                Icon={known && active ? VisibilityOutlinedIcon : VisibilityOffOutlinedIcon}
+            >
+                {t(statusLabel(active))}
             </ToneBadge>
         );
+        return <span {...entityStatusListAttributes('agency', row.id, active)}>{badge}</span>;
     };
 
     const teamBadge = (row: AgencyData) =>
