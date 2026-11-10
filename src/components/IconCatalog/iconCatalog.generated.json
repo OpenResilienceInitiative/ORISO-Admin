@@ -2669,8 +2669,8 @@
         "fileName": "active-agencies.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/active-agencies.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:calendar:base",
@@ -2708,8 +2708,8 @@
         "fileName": "conversations.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/conversations.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/StatisticCard/StatisticCard.tsx", "src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:phone-calls:base",
@@ -2721,8 +2721,8 @@
         "fileName": "phone-calls.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/phone-calls.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:requests:base",
@@ -2734,8 +2734,8 @@
         "fileName": "requests.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/requests.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/StatisticCard/StatisticCard.tsx", "src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:scope-agency:base",
@@ -2786,8 +2786,8 @@
         "fileName": "text-messages.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/text-messages.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:topic:base",
@@ -2803,8 +2803,7 @@
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
-            "src/pages/Links/InvitePanel.tsx",
-            "src/pages/Statistic.tsx"
+            "src/pages/Links/InvitePanel.tsx"
         ],
         "usage": "app-used"
     },
@@ -2818,8 +2817,8 @@
         "fileName": "video-calls.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/video-calls.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:voice-messages:base",
@@ -2831,8 +2830,8 @@
         "fileName": "voice-messages.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/voice-messages.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:table-actions:delete-forever:400",
@@ -2991,8 +2990,7 @@
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
-            "src/pages/Links/InvitePanel.tsx",
-            "src/pages/Statistic.tsx"
+            "src/pages/Links/InvitePanel.tsx"
         ],
         "usage": "app-used"
     },
