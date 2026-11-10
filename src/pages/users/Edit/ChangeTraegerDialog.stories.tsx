@@ -196,9 +196,11 @@ export const English: Story = {
     args: { openCases: 12 },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('12 open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(
+            dialog.getByText('12 open cases stay with the previous provider “Caritas Augsburg”.'),
+        ).toBeVisible();
         await expect(dialog.getByText(/“Assignment ended”/)).toBeVisible();
-        await expect(dialog.getByRole('button', { name: 'Change Träger' })).toBeEnabled();
+        await expect(dialog.getByRole('button', { name: 'Change provider' })).toBeEnabled();
     },
 };
 
@@ -206,7 +208,7 @@ export const EnglishNotCountedYet: Story = {
     beforeEach: english,
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('Open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(dialog.getByText('Open cases stay with the previous provider “Caritas Augsburg”.')).toBeVisible();
     },
 };
 
@@ -227,7 +229,9 @@ export const EnglishDone: Story = {
     args: { step: 'done', result: { casesLeftWithPreviousTenant: 3, matrixAccessRevocationsQueued: 2 } },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('3 open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(
+            dialog.getByText('3 open cases stay with the previous provider “Caritas Augsburg”.'),
+        ).toBeVisible();
         await expect(dialog.getByRole('button', { name: 'Done' })).toBeVisible();
     },
 };

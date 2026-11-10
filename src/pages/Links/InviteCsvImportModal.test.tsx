@@ -696,6 +696,37 @@ describe('InviteCsvImportModal', () => {
             expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
         });
 
+        it.each([
+            [
+                'agency',
+                'Die ID-Spalte heißt Träger-ID, die Datei wird aber im Tab „Beratende-Einladungen“ importiert, der eine Beratungsstellen-ID erwartet. Bitte Organisation, ID und Tab prüfen (Zeile 2)',
+            ],
+            [
+                'tenant',
+                'Die ID-Spalte heißt Beratungsstellen-ID, die Datei wird aber im Tab „Träger-Einladungen“ importiert, der eine Träger-ID erwartet. Bitte Organisation, ID und Tab prüfen (Zeile 2)',
+            ],
+        ] as const)(
+            'names the header ID type and the tab when an ID labelled for the other tab is held back (%s tab)',
+            (idKind, text) => {
+                renderModal(
+                    parseResultOf({
+                        rejected: [
+                            {
+                                line: 2,
+                                cells: ['c@x.de'],
+                                reason: 'wrongIdType',
+                                email: 'c@x.de',
+                                firstName: '',
+                                lastName: '',
+                            },
+                        ],
+                    }),
+                    { idKind },
+                );
+                expect(screen.getByText(text)).toBeInTheDocument();
+            },
+        );
+
         it('spells out parse-level rejections next to the chip', () => {
             renderModal(
                 parseResultOf({

@@ -215,7 +215,7 @@ export const PlatformInspectsExistingTraeger: Story = {
             LOAD,
         );
         await expect(
-            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this tenant/),
+            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this provider/),
         ).toBeVisible();
         await expect(within(region).getByRole('button', { name: /Vorlage übernehmen|Adopt template/ })).toBeDisabled();
         await expect(within(region).getByRole('button', { name: /Verwerfen|Dismiss/ })).toBeDisabled();
