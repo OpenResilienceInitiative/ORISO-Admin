@@ -179,7 +179,7 @@ export const InviteCsvImportModal = ({
         if (!allowedRoles.includes(role)) {
             return t(
                 'links.csvImport.issue.roleOtherTab',
-                'Die Rolle „{{role}}“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile {{line}}).',
+                'Die Rolle „{{role}}“ wird im Tab „Beratende-Einladungen“ eingeladen, nicht hier (Zeile {{line}}).',
                 { role: roleLabel(role), ...line },
             );
         }
@@ -200,7 +200,7 @@ export const InviteCsvImportModal = ({
         if (!isTenantId && role === 'TENANT_ADMIN' && !ownTenantKnown) {
             return t(
                 'links.csvImport.issue.tenantAdminNeedsTenantTab',
-                'Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Invites“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).',
+                'Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Einladungen“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).',
                 line,
             );
         }

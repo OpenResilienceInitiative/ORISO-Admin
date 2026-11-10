@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { snackbar } from '../../../Snackbar';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
@@ -19,6 +18,7 @@ import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
+import { Notify } from '../../../Notify';
 
 export const TenantPermissionsSettings = ({
     tenantId,
@@ -228,7 +228,11 @@ export const TenantPermissionsSettings = ({
     );
 
     if (policiesError) {
-        return <Alert type="error" message={t('error.loading')} showIcon role="alert" />;
+        return (
+            <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
+                {t('error.loading')}
+            </Notify>
+        );
     }
 
     return (

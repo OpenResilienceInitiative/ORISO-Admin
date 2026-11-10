@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, within } from 'storybook/test';
 import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
@@ -263,8 +263,8 @@ export const SaveFailed: Story = {
             <CaseHandoverCardView {...args} saveError={t('tenants.permissions.card.caseHandover.saveFailed.other')} />
         );
     },
-    play: async ({ canvas, args }) => {
-        const alert = canvas.getByRole('alert');
+    play: async ({ args }) => {
+        const alert = await screen.findByTestId('case-handover-save-error');
         await expect(alert).toHaveTextContent(/Nicht gespeichert|Not saved/);
         await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
         await expect(args.onRetrySave).toHaveBeenCalled();
@@ -509,8 +509,8 @@ export const TenantReasonLoadFailed: Story = {
         });
         await expect(args.onClientConsentPolicyChange).not.toHaveBeenCalled();
         await expect(canvas.queryByRole('tablist')).toBeNull();
-        const alert = canvas.getByTestId('case-handover-card-error');
-        await expect(alert).toBeVisible();
+        const alert = await screen.findByTestId('case-handover-card-error');
+        await expect(alert).toHaveAttribute('data-severity', 'error');
         await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
         await expect(args.onRetryLoad).toHaveBeenCalled();
     },
@@ -537,7 +537,7 @@ export const AgencyReasonLoadFailed: Story = {
         await expect(canvas.queryByRole('tablist')).toBeNull();
         await expect(args.onFeaturePolicyChange).not.toHaveBeenCalled();
         await userEvent.click(
-            within(canvas.getByTestId('case-handover-card-error')).getByRole('button', {
+            within(await screen.findByTestId('case-handover-card-error')).getByRole('button', {
                 name: /Erneut versuchen|Try again/i,
             }),
         );

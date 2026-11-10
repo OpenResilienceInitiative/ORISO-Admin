@@ -11,5 +11,5 @@ export const LegalSettingsPage = () => {
     // for this domain, while TenantService owns the server-side platform DRAFT under tenant 0.
     const publishedTenantId = tenantId && Number(tenantId) > 0 ? tenantId : data?.id;
     const draftTenantId = resolveTenantId(tenantId, data?.id);
-    return <LegalSettings tenantId={publishedTenantId} draftTenantId={draftTenantId} />;
+    return <LegalSettings tenantId={publishedTenantId} draftTenantId={draftTenantId} collapsible />;
 };

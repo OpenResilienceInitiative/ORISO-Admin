@@ -50,8 +50,14 @@ describe('shared focus ring', () => {
         expect(read('../components/Card/styles.module.scss')).toMatch(
             /--admin-focus-ring-color:\s*var\(--admin-focus-ring-on-surface,\s*var\(--m3-primary/,
         );
+        // The editor's text surface is white in every scheme: its ring is the fixed brand accent.
         expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
-            /--admin-focus-ring-color:\s*#ffb4aa/,
+            /--admin-focus-ring-color:\s*var\(--oriso-app-accent-dark,\s*#a5000a\)/,
+        );
+        // The editor hints are the shared pop-up now: it stays dark in every scheme and takes its ring from the
+        // text colour of its own tone, a pair built to be readable on the container.
+        expect(read('../components/Snackbar/Snackbar.module.scss')).toMatch(
+            /--snackbar-focus:\s*var\(--snackbar-on-container\)/,
         );
     });
 

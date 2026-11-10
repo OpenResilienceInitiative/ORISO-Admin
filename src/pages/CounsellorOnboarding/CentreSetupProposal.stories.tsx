@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { findPopup } from '../../test/storyPopups';
 import { CentreSetupProposal } from './CentreSetupProposal/CentreSetupProposal';
 
 const meta = {
@@ -107,7 +108,7 @@ export const SaveError: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await expect(await canvas.findByRole('alert')).toHaveTextContent('Ihre Eingaben bleiben erhalten');
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten', 'error');
     },
 };
 export const SaveRetry: Story = {
@@ -115,7 +116,7 @@ export const SaveRetry: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
-        await expect(await canvas.findByRole('alert')).toBeVisible();
+        await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten', 'error');
         await userEvent.click(canvas.getByRole('button', { name: 'Beratungsstelle speichern' }));
         await expect(await canvas.findByRole('button', { name: 'Einrichtung abschließen' })).toBeVisible();
         await expect(canvas.getAllByRole('heading', { name: 'Beratung Mitte' })).toHaveLength(1);
@@ -160,9 +161,7 @@ export const PermissionDenied: Story = {
             canvas.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ }),
         ).not.toBeChecked();
         await expect(canvas.getByRole('button', { name: 'Beratungsstelle speichern' })).toBeDisabled();
-        await expect(canvas.getByRole('alert')).toHaveTextContent(
-            'Bereits gespeicherte Beratungsstellen bleiben erhalten',
-        );
+        await findPopup(canvasElement, 'Bereits gespeicherte Beratungsstellen bleiben erhalten');
     },
 };
 

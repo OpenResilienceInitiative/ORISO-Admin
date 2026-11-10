@@ -24,7 +24,7 @@ vi.mock('@mui/icons-material', () => {
     };
 });
 
-it.each(['title', 'back'])('shows every tab without arrows or a scrolling row (%s)', (header) => {
+it.each(['title', 'back'])('shows every tab in the shared sub-navigation bar, without arrows (%s)', (header) => {
     const tabs = [
         { to: '/global', titleKey: 'Global Configs' },
         { to: '/notices', titleKey: 'System notices' },
@@ -35,7 +35,10 @@ it.each(['title', 'back'])('shows every tab without arrows or a scrolling row (%
         </MemoryRouter>,
     );
 
-    expect(screen.getByRole('link', { name: 'System notices' })).toBeInTheDocument();
+    // ORISO-Admin#1374: one tab bar for every sub-navigation, with tab semantics.
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'System notices' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Global Configs' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByRole('button', { name: 'page.tabs.next' })).not.toBeInTheDocument();
     expect(container.querySelector('[data-admin-page-deck-nav]')).not.toBeInTheDocument();
 });

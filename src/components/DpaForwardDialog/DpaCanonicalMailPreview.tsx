@@ -7,6 +7,7 @@ import {
     type DpaMailPreview,
 } from '../../api/tenantOnboarding/dpaMailPreview';
 import styles from '../PlaceholderTemplate/EmailKitPreview.module.scss';
+import { Notify } from '../Notify';
 
 interface DpaCanonicalMailPreviewProps {
     previewLabel: string;
@@ -144,12 +145,15 @@ export const DpaCanonicalMailPreview = ({
                 </div>
             )}
             {status === 'failed' && (
-                <div className={styles.error} role="status" data-testid="dpa-forward-preview-error">
-                    <span>{t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}</span>
-                    <button className={styles.retry} type="button" onClick={reload}>
-                        {t('placeholderTemplate.preview.retry', 'Retry')}
-                    </button>
-                </div>
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.dpa')}
+                    testId="dpa-forward-preview-error"
+                    severity="error"
+                    actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: reload }]}
+                >
+                    {t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}
+                </Notify>
             )}
         </section>
     );

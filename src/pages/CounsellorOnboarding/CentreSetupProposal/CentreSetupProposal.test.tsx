@@ -47,7 +47,10 @@ it('denies another save when the simulated permission is revoked, keeping saved 
     fireEvent.click(screen.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ }));
     expect(screen.getByRole('button', { name: 'Beratungsstelle speichern' })).toBeDisabled();
     expect(screen.getByRole('alert')).toHaveTextContent('Bereits gespeicherte Beratungsstellen bleiben erhalten');
-    fireEvent.click(screen.getByRole('button', { name: 'Zur gespeicherten Beratungsstelle' }));
+    // The way back is offered twice: in the pop-up and in the form, so it survives a dismissed pop-up.
+    const returns = screen.getAllByRole('button', { name: 'Zur gespeicherten Beratungsstelle' });
+    expect(returns).toHaveLength(2);
+    fireEvent.click(returns[0]);
     expect(screen.getByRole('heading', { name: 'Beratung Mitte' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Weitere Beratungsstelle' })).not.toBeInTheDocument();
 });

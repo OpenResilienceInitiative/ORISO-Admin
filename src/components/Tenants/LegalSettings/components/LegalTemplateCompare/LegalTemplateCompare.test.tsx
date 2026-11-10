@@ -66,7 +66,7 @@ const renderCompare = (props: Partial<LegalTemplateCompareProps> = {}) => {
 };
 
 describe('LegalTemplateCompare', () => {
-    it('keeps the new-template notice inside the editor and opens one read-only reference', async () => {
+    it('raises the new-template notice as a pop-up and opens one read-only reference', async () => {
         renderCompare();
         expect(screen.getByTestId('own-draft-editor')).toBeInTheDocument();
         expect(screen.getByText(/25\.09\.2026, 16:31/)).toBeInTheDocument();
@@ -97,12 +97,12 @@ describe('LegalTemplateCompare', () => {
 
     it('X hides only this visit; dismiss calls the publication-specific handler', async () => {
         const { onDismiss, unmount } = renderCompare();
-        await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'snackbar.close' }));
         expect(screen.queryByRole('button', { name: 'legal.proposal.preview' })).toBeNull();
         expect(onDismiss).not.toHaveBeenCalled();
         unmount();
         const second = renderCompare();
-        expect(screen.getByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
         expect(second.onDismiss).toHaveBeenCalledTimes(1);
     });
@@ -180,7 +180,7 @@ describe('LegalTemplateCompare', () => {
 
     it('announces a new publication after the current one was temporarily closed', async () => {
         const { rerender } = renderCompare();
-        await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'snackbar.close' }));
         rerender(
             <LegalTemplateCompare
                 proposal={{ ...pending, id: 32, revision: '32:0' }}
@@ -194,7 +194,7 @@ describe('LegalTemplateCompare', () => {
                 <MockEditor />
             </LegalTemplateCompare>,
         );
-        expect(screen.getByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
     });
     it('names the fallback language when the requested language has no template', async () => {
         renderCompare({ language: 'en' });

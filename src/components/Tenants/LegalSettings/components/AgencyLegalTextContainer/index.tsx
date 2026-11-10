@@ -1,5 +1,5 @@
-import { Alert, Button, Skeleton } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Skeleton } from 'antd';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { useDepartmentDpp } from '../../../../../hooks/useDepartmentDpp.hook';
@@ -28,11 +28,13 @@ import { LegalTemplateCompare } from '../LegalTemplateCompare';
 import { DepartmentDataProtectionCard, DepartmentPublicationStatus } from '../DepartmentDataProtectionCard';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '../DepartmentSelect';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { TenantLegalDraftStatus, useDraftDecision } from '../TenantLegalDraftStatus';
 import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
 import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { getEditableLanguages, parseLegalContentMap } from '../../utils/legalContentLanguages';
 import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 type LegalField = 'privacy' | 'imprint';
 
@@ -272,6 +274,14 @@ export const AgencyLegalTextContainer = ({
     const hasServerDraft = !isDepartment && !!serverBase.draft;
     const draftCollision = hasLocalDraft && hasServerDraft;
     const sourceChosen = !draftCollision || draftSource !== undefined;
+    // The agency-wide draft decision is announced as a pop-up and kept as a quiet line in the tile, so
+    // closing the pop-up does not lose the open decision.
+    const cardId = useId();
+    const draftDecision = useDraftDecision({
+        unavailable: !isDepartment && canEditLegalText && serverDraft.isError,
+        conflict: !isDepartment && canEditLegalText && serverDraft.hasConflict,
+        collision: !isDepartment && canEditLegalText && draftCollision && !sourceChosen,
+    });
     let selectedDraft: { content: Record<string, string>; consentText?: Record<string, string> } | null | undefined =
         serverBase.draft;
     if (draftSource !== 'server' && hasLocalDraft && (!hasServerDraft || draftSource === 'local')) {
@@ -515,19 +525,21 @@ export const AgencyLegalTextContainer = ({
     if (isDepartment && (departmentQuery.isError || (!departmentQuery.isLoading && !departmentWasRead))) {
         return (
             <div className={styles.fallbackCard}>
-                <Alert
-                    type="error"
-                    showIcon
-                    message={t('agency.legal.department.loadError.title')}
-                    description={t('agency.legal.department.loadError.text', {
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    severity="error"
+                    title={t('agency.legal.department.loadError.title')}
+                    actions={[
+                        {
+                            label: t('agency.legal.department.loadError.retry'),
+                            onClick: () => departmentQuery.refetch(),
+                        },
+                    ]}
+                >
+                    {t('agency.legal.department.loadError.text', {
                         name: selectedDepartment?.name ?? '',
                     })}
-                    action={
-                        <Button size="small" onClick={() => departmentQuery.refetch()}>
-                            {t('agency.legal.department.loadError.retry')}
-                        </Button>
-                    }
-                />
+                </Notify>
                 <div className={styles.fallbackSwitcher}>
                     <DepartmentSelect departments={departments} value={selected} onChange={setSelected} />
                 </div>
@@ -667,6 +679,14 @@ export const AgencyLegalTextContainer = ({
 
     const card = (
         <DepartmentDataProtectionCard
+            anchorId={cardId}
+            statusSlot={
+                <TenantLegalDraftStatus
+                    kind={draftDecision.kind}
+                    dismissed={draftDecision.dismissed}
+                    onReopen={draftDecision.reopen}
+                />
+            }
             // Remount when the source changes, so the editor resets to it instead of keeping the
             // previous department's text in an uncontrolled TipTap instance.
             // The consent sentence is part of what the card holds, so it belongs in the identity
@@ -741,6 +761,9 @@ export const AgencyLegalTextContainer = ({
     return (
         <>
             <TenantLegalDraftNotice
+                jumpTarget={cardId}
+                dismissed={draftDecision.dismissed}
+                onDismiss={draftDecision.dismiss}
                 savedAt={serverBase.draft?.savedAt}
                 // After choosing the server copy the editor holds it; naming the browser copy's time
                 // would give the text the wrong provenance.

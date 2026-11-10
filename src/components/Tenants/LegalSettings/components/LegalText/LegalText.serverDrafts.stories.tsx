@@ -138,16 +138,21 @@ export const PersistedServerDraft: Story = {
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(
-            await canvas.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
-        ).toBeVisible();
-        // The saved-draft state is an editor snackbar now, not a box above the card: it
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(async () =>
+            expect(
+                await body.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
+            ).toBeVisible(),
+        );
+        // The saved-draft state is a pop-up on the shared channel, not a box above the card: it
         // says when the draft was saved and that the previous version stays live, is
         // announced politely, and offers exactly one action — Discard.
-        const notice = canvas.getByTestId('legal-draft-snackbar');
-        await expect(within(notice).getByRole('status')).toHaveTextContent(/Entwurf vom .+ noch nicht veröffentlicht/);
-        await expect(within(notice).getByRole('button', { name: 'Verwerfen' })).toBeVisible();
-        await expect(within(notice).getByRole('button', { name: 'Hinweis schließen' })).toBeVisible();
+        const notice = await body.findByTestId('snackbar');
+        // Announced politely: the pop-up sits in the host's polite live region.
+        await expect(notice.closest('[role="status"]')).not.toBeNull();
+        await expect(notice).toHaveTextContent(/Entwurf vom .+ noch nicht veröffentlicht/);
+        await waitFor(() => expect(within(notice).getByRole('button', { name: 'Verwerfen' })).toBeVisible());
+        await waitFor(() => expect(within(notice).getByRole('button', { name: 'Meldung schließen' })).toBeVisible());
         await expect(canvas.queryByText('Sie bearbeiten einen Server-Entwurf')).not.toBeInTheDocument();
 
         // 390px viewport minus Storybook's two 16px gutters. This caught the
@@ -156,9 +161,7 @@ export const PersistedServerDraft: Story = {
         const originalWidth = storyCanvas.style.width;
         storyCanvas.style.width = '358px';
         await waitFor(() => {
-            expect(notice.getBoundingClientRect().right).toBeLessThanOrEqual(
-                storyCanvas.getBoundingClientRect().right + 0.5,
-            );
+            expect(storyCanvas.scrollWidth).toBeLessThanOrEqual(storyCanvas.clientWidth + 0.5);
         });
         storyCanvas.style.width = originalWidth;
 
@@ -175,9 +178,10 @@ export const LocalAndServerCollision: Story = {
     parameters: { localDraft: true, msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Zwei Entwürfe gefunden')).toBeVisible();
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(async () => expect(await body.findByText('Zwei Entwürfe gefunden')).toBeVisible());
         await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
-        await userEvent.click(canvas.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
+        await userEvent.click(body.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
         await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
     },
@@ -188,46 +192,140 @@ export const ConflictRefresh: Story = {
     parameters: { msw: { handlers: conflictHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
         // "Speichern" appears once there is something to save.
         await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
         await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten|Speichern/ }));
         await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
         await userEvent.keyboard(' Geändert.');
         await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
-        await expect(await canvas.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible();
-        await expect(canvas.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
-        await waitFor(() => expect(canvas.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
+        await waitFor(async () =>
+            expect(await body.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible(),
+        );
+        await expect(body.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
+        await waitFor(() => expect(body.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
             timeout: 3000,
         });
-        await expect(canvas.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
+        await expect(body.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     },
 };
 
-/** Saved-draft status and help stay visible together; closing either preserves the other and the draft. */
-export const DraftAndHelpSnackbarsStack: Story = {
+/**
+ * The saved-draft state is a pop-up (the event); the permanent help is plain tile text with a
+ * "Nicht mehr anzeigen" link, never a second pop-up. Closing the draft pop-up keeps the state out of
+ * the way and does not touch the help text or the draft.
+ */
+export const DraftPopupWithHelpText: Story = {
+    // The story dismisses the tip for good, so a rerun in the same browser needs a clean slate.
+    beforeEach: () => {
+        Object.keys(window.localStorage)
+            .filter((key) => key.startsWith('oriso-admin.legal.'))
+            .forEach((key) => window.localStorage.removeItem(key));
+    },
     parameters: { msw: { handlers: persistedHandlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const draftSnackbar = await canvas.findByTestId('legal-draft-snackbar');
-        const stack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
-        const helpAction = within(stack).getByRole('button', { name: 'Nicht mehr anzeigen' });
-        await expect(within(stack).getAllByRole('status')).toHaveLength(2);
+        const body = within(canvasElement.ownerDocument.body);
+        const draftPopup = await body.findByTestId('snackbar');
+        // Exactly one pop-up for a normal load: the help is not raised on the channel.
+        await expect(body.getAllByTestId('snackbar')).toHaveLength(1);
+        const helpAction = canvas.getByRole('button', { name: 'Nicht mehr anzeigen' });
         await expect(helpAction).toBeVisible();
+        await expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument();
 
-        await userEvent.click(within(draftSnackbar).getByRole('button', { name: 'Hinweis schließen' }));
+        await userEvent.click(within(draftPopup).getByRole('button', { name: 'Meldung schließen' }));
 
-        await waitFor(() => expect(canvas.queryByTestId('legal-draft-snackbar')).not.toBeInTheDocument());
+        await waitFor(() => expect(body.queryAllByTestId('snackbar')).toHaveLength(0));
         await expect(helpAction).toBeVisible();
-        await expect(within(stack).getAllByRole('status')).toHaveLength(1);
         await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
         await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
         await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
 
-        await userEvent.click(within(stack).getByRole('button', { name: 'Hinweis ausblenden' }));
+        await userEvent.click(helpAction);
         await waitFor(() =>
-            expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument(),
+            expect(canvas.queryByRole('button', { name: 'Nicht mehr anzeigen' })).not.toBeInTheDocument(),
         );
         await expect(canvas.getByRole('textbox')).toHaveTextContent('Entwurf: Impressum');
+    },
+};
+
+/**
+ * Two drafts: the decision is a pop-up with two actions; closing it keeps the open decision as plain
+ * text in the tile, and its button raises the pop-up again. Nothing is lost by closing.
+ */
+export const CollisionPopupClosedKeepsQuietLine: Story = {
+    parameters: { localDraft: true, msw: { handlers: persistedHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const popup = await body.findByTestId('tenant-draft-source-choice');
+        // The quiet line is there from the start; the re-open button only once the pop-up was closed.
+        const quiet = await canvas.findByTestId('tenant-draft-status');
+        await expect(quiet).toHaveTextContent('Zwei Entwürfe gefunden, Entscheidung offen.');
+        await expect(canvas.queryByRole('button', { name: 'Entscheidung öffnen' })).not.toBeInTheDocument();
+
+        await userEvent.click(within(popup).getByRole('button', { name: 'Meldung schließen' }));
+        await waitFor(() => expect(body.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument());
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+
+        await userEvent.click(await canvas.findByRole('button', { name: 'Entscheidung öffnen' }));
+        const again = await body.findByTestId('tenant-draft-source-choice');
+        // The pop-up fades in; wait until it is fully there.
+        await waitFor(() =>
+            expect(within(again).getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' })).toBeVisible(),
+        );
+        await expect(canvas.queryByRole('button', { name: 'Entscheidung öffnen' })).not.toBeInTheDocument();
+
+        // Deciding ends the state: pop-up and quiet line go together.
+        await userEvent.click(within(again).getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
+        await waitFor(() => expect(canvas.queryByTestId('tenant-draft-status')).not.toBeInTheDocument());
+    },
+};
+
+// Outage flag: every read fails until the play flips it (a remount must not use up the failure).
+let draftStoreDown = true;
+let unavailableReads = 0;
+const unavailableHandlers = () => [
+    ...commonHandlers,
+    http.get(DRAFT_ENDPOINT, () => {
+        unavailableReads += 1;
+        if (draftStoreDown) return new HttpResponse(null, { status: 500 });
+        return HttpResponse.json(persistedDraft);
+    }),
+    http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 500 })),
+];
+
+/**
+ * The saved draft cannot be loaded (L3): an error pop-up with "Erneut laden" and a quiet line in the
+ * tile. Retry refetches the draft; once it arrives the error and its line are gone.
+ */
+export const ServerDraftUnavailable: Story = {
+    beforeEach: () => {
+        unavailableReads = 0;
+        draftStoreDown = true;
+    },
+    parameters: { msw: { handlers: unavailableHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const popup = await body.findByTestId('tenant-draft-unavailable');
+        await expect(popup).toHaveTextContent('Der gespeicherte Entwurf konnte nicht geladen werden');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(await canvas.findByTestId('tenant-draft-status')).toHaveTextContent(
+            'Der gespeicherte Entwurf konnte nicht geladen werden',
+        );
+        const readsBeforeRetry = unavailableReads;
+        await expect(readsBeforeRetry).toBeGreaterThan(0);
+        draftStoreDown = false;
+
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut laden' }));
+
+        await waitFor(() => expect(unavailableReads).toBeGreaterThan(readsBeforeRetry));
+        await waitFor(() => expect(body.queryByTestId('tenant-draft-unavailable')).not.toBeInTheDocument());
+        await waitFor(() => expect(canvas.queryByTestId('tenant-draft-status')).not.toBeInTheDocument());
+        await waitFor(async () =>
+            expect(await body.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin/)).toBeVisible(),
+        );
     },
 };

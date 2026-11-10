@@ -174,12 +174,12 @@ it('is not shown to a Träger admin and asks the server nothing', async () => {
     expect(requests).toEqual([]);
 });
 
-it('shows a load failure in both cards without making defaults editable', async () => {
+it('reports a load failure as a pop-up (one shared channel, one at a time) without making defaults editable', async () => {
     server.use(http.get(ENDPOINT, () => new HttpResponse(null, { status: 503 })));
     showCards();
-    expect(
-        await screen.findAllByText('Die Einstellungen für temporäre Konten konnten nicht geladen werden.'),
-    ).toHaveLength(2);
+    const popup = await screen.findByTestId('snackbar');
+    expect(popup).toHaveTextContent('Die Einstellungen für temporäre Konten konnten nicht geladen werden.');
+    expect(screen.getByRole('alert')).toContainElement(popup);
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
 });
 

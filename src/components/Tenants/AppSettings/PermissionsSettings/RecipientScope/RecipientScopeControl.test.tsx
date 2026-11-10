@@ -173,14 +173,14 @@ describe('saving', () => {
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent(
             'Not saved. The previous setting still applies; your choice stays here until you try again or reload the page.',
         );
         expect(radio(/Platform-wide/)).toBeChecked();
         expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
 
         await user.click(screen.getByRole('button', { name: 'Save' }));
-        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument());
         expect(onSave).toHaveBeenCalledTimes(2);
     });
 
@@ -221,7 +221,7 @@ describe('saving', () => {
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
-        expect(await screen.findByRole('alert')).toBeInTheDocument();
+        expect(await screen.findByTestId('snackbar')).toBeInTheDocument();
         screen.getAllByRole('radio').forEach((option) => expect(option).toBeEnabled());
         expect(radio(/Platform-wide/)).toBeChecked();
         // Focus returns to Save, so a keyboard user can retry without searching for their place.
