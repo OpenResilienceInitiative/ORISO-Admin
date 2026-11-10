@@ -36,7 +36,7 @@ const toggleInitialValues = { tenantAdminControls: { allowedPermissionToggles: {
 export const Default: Story = {
     render: () => (
         <Page>
-            <Page.BackWithActions path="/admin/tenants" title="Dreambau" tabs={tabs} />
+            <Page.BackWithActions path="/admin/tenants" parentKey="sidebar.tenants" title="Dreambau" tabs={tabs} />
             <div className={styles.appearancePage}>
                 <CardGrid raster>
                     <CardGrid.Item span={3}>

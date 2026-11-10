@@ -74,6 +74,23 @@ describe('TileHelp dialog', () => {
         expect(media(dialog)).toHaveAttribute('data-tile-help-media', 'placeholder');
     });
 
+    it('keeps every step in the layout but only the current one in reach of the keyboard and screen readers', async () => {
+        const dialog = await openHelp();
+        const heading = (name: string) => within(dialog).queryByRole('heading', { name });
+
+        expect(heading('one.title')).toBeInTheDocument();
+        expect(heading('two.title')).not.toBeInTheDocument();
+        // The hidden steps are still rendered, so the text area is as tall as the longest of them.
+        const hidden = within(dialog).getByText('two.title').closest('[data-current]');
+        expect(hidden).toHaveAttribute('data-current', 'false');
+        expect(hidden).toHaveAttribute('aria-hidden', 'true');
+        expect(hidden).toHaveAttribute('inert');
+
+        await userEvent.click(within(dialog).getByRole('button', { name: 'tileHelp.next' }));
+        expect(heading('two.title')).toBeInTheDocument();
+        expect(heading('one.title')).not.toBeInTheDocument();
+    });
+
     it('still moves through the steps with the arrow keys', async () => {
         const dialog = await openHelp();
 

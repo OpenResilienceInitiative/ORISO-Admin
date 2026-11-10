@@ -77,8 +77,9 @@ export const HelpSlideshow: Story = {
 };
 
 /**
- * Only the first slide has a drawing. The picture box keeps its height on every step (the tile
- * icon stands in), so Weiter does not jump while clicking through; the header shows the tile icon.
+ * The picture box keeps its height on every step, so Weiter does not jump while clicking
+ * through; the header shows the tile icon. Every step has its own drawing now; a step without
+ * one would show the tile icon in the same box.
  */
 export const HelpKeepsItsGeometry: Story = {
     play: async ({ canvasElement }) => {
@@ -111,9 +112,7 @@ export const HelpKeepsItsGeometry: Story = {
             // eslint-disable-next-line no-await-in-loop -- the slides follow one another.
             await userEvent.click(within(dialog).getByRole('button', { name: /^(weiter|next)$/i }));
             // eslint-disable-next-line no-await-in-loop
-            await expect(
-                dialog.querySelector('[data-tile-help-media="placeholder"] [data-tile-help-placeholder] svg'),
-            ).not.toBeNull();
+            await expect(dialog.querySelector('[data-tile-help-media="visual"] img')).not.toBeNull();
             const current = measure();
             // eslint-disable-next-line no-await-in-loop
             await expect(current.media).toBe(first.media);

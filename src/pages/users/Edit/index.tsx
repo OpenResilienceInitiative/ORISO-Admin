@@ -864,7 +864,11 @@ export const UserEditOrAdd = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}

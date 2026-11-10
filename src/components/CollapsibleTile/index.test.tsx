@@ -25,6 +25,7 @@ describe('CollapsibleTile', () => {
         renderTile(true);
         await userEvent.type(screen.getByLabelText('Editor'), 'Entwurf');
         await userEvent.click(screen.getByRole('button', { name: /Impressum/ }));
+        expect(screen.getByLabelText('Editor', { hidden: true })).not.toBeVisible();
         await userEvent.click(screen.getByRole('button', { name: /Impressum/ }));
         expect(screen.getByLabelText('Editor')).toHaveValue('Entwurf');
     });
@@ -32,5 +33,33 @@ describe('CollapsibleTile', () => {
     it('names its state in the header', () => {
         renderTile();
         expect(screen.getByRole('button', { name: /Veröffentlicht/ })).toBeInTheDocument();
+    });
+
+    it('opens and closes with Enter and Space', async () => {
+        renderTile();
+        const header = screen.getByRole('button', { name: /Impressum/ });
+        header.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(header).toHaveAttribute('aria-expanded', 'true');
+        await userEvent.keyboard(' ');
+        expect(header).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    it('points the header at its body and starts open on request', () => {
+        renderTile(true);
+        const header = screen.getByRole('button', { name: /Impressum/ });
+        expect(header).toHaveAttribute('aria-expanded', 'true');
+        expect(document.getElementById(header.getAttribute('aria-controls') ?? '')).toContainElement(
+            screen.getByLabelText('Editor'),
+        );
+    });
+
+    it('renders no chip without a status', () => {
+        render(
+            <CollapsibleTile icon={<span />} title="Impressum">
+                <span />
+            </CollapsibleTile>,
+        );
+        expect(screen.getByRole('button', { name: 'Impressum' })).toBeInTheDocument();
     });
 });

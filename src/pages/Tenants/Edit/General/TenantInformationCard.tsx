@@ -1,12 +1,8 @@
-import type { ReactNode } from 'react';
 import type { FormInstance } from 'antd';
-import { useTranslation } from 'react-i18next';
+import type { Rule } from 'antd/es/form';
 import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { CardEditable } from '../../../../components/CardEditable';
-import { MuiFormField, MuiNumberFormField, MuiMultilineFormField } from '../../../../components/mui/MuiFormField';
-import { TraegerSenderFields } from '../../../../components/Tenants/TraegerSenderFields';
-import { TraegerDpoFields } from '../../../../components/Tenants/TraegerDpoFields';
-import { getDomain } from '../../../../utils/getDomain';
+import { TraegerFieldSections } from './TraegerFieldSections';
 import styles from './styles.module.scss';
 
 type Props = {
@@ -14,74 +10,38 @@ type Props = {
     initialValues: Record<string, unknown>;
     isLoading: boolean;
     shouldShowSubdomainField: boolean;
+    requiredRule: Rule;
     onSave: (values: Record<string, any>) => void;
 };
 
-const wrapInFieldGroup = (field: ReactNode, name: string) => (
-    <div key={name} className={styles.fieldGroup}>
-        {field}
-    </div>
-);
+/** Which parts the edit tile shows: with the data protection officer (the create dialog has the topic instead). */
+const EDIT_SECTIONS = ['general', 'sender', 'description', 'dpo'] as const;
 
-export const TenantInformationCard = ({ form, initialValues, isLoading, shouldShowSubdomainField, onSave }: Props) => {
-    const { t } = useTranslation();
-    const requiredRule = { required: true, message: t('form.errors.required') };
-    return (
-        <CardEditable
-            isLoading={isLoading}
-            editMode={false}
-            titleKey="tenants.add.mainTenantTitle"
-            headerIcon={<BusinessOutlinedIcon />}
-            variant="dialog"
-            editButtonPlacement="footer"
-            initialValues={initialValues}
-            formProp={form}
-            onSave={onSave}
-            className={styles.tenantInfoCard}
-        >
-            <div className={styles.fieldGroup}>
-                <MuiFormField
-                    name="name"
-                    label={t('tenants.add.form.name.placeholder')}
-                    required
-                    rules={[requiredRule]}
-                />
-            </div>
-            {shouldShowSubdomainField && (
-                <div className={styles.fieldGroup}>
-                    <MuiFormField
-                        name="subdomain"
-                        label={t('tenants.add.form.subdomain.placeholder')}
-                        disabled
-                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
-                    />
-                </div>
-            )}
-            <div className={styles.fieldGroup}>
-                <MuiNumberFormField
-                    name={['licensing', 'allowedNumberOfUsers']}
-                    label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
-                    required
-                    min={1}
-                    rules={[requiredRule]}
-                />
-            </div>
-            <div className={styles.fieldGroup}>
-                <MuiFormField
-                    name="address"
-                    label={t('tenants.add.form.address.label')}
-                    placeholder={t('tenants.add.form.address.placeholder')}
-                />
-            </div>
-            <TraegerSenderFields wrapField={wrapInFieldGroup} />
-            <div className={styles.fieldGroup}>
-                <MuiMultilineFormField
-                    name="description"
-                    label={t('tenants.add.form.description.label')}
-                    placeholder={t('tenants.add.form.description.placeholder')}
-                />
-            </div>
-            <TraegerDpoFields wrapField={wrapInFieldGroup} />
-        </CardEditable>
-    );
-};
+/** The editable Träger tile of the master-data page; its fields are the shared `TraegerFieldSections`. */
+export const TenantInformationCard = ({
+    form,
+    initialValues,
+    isLoading,
+    shouldShowSubdomainField,
+    requiredRule,
+    onSave,
+}: Props) => (
+    <CardEditable
+        isLoading={isLoading}
+        editMode={false}
+        titleKey="tenants.add.mainTenantTitle"
+        headerIcon={<BusinessOutlinedIcon />}
+        variant="dialog"
+        editButtonPlacement="footer"
+        initialValues={initialValues}
+        formProp={form}
+        onSave={onSave}
+        className={styles.tenantInfoCard}
+    >
+        <TraegerFieldSections
+            subdomain={{ visible: shouldShowSubdomainField, editable: false }}
+            requiredRule={requiredRule}
+            sections={EDIT_SECTIONS}
+        />
+    </CardEditable>
+);

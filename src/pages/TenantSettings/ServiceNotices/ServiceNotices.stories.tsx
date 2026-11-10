@@ -142,7 +142,7 @@ export const PlatformRoute: Story = {
             const label = canvas.getByText(name, { selector: 'label' });
             expect(label.getBoundingClientRect().bottom).toBeLessThanOrEqual(clockInput.getBoundingClientRect().top);
         });
-        await expect(canvas.getByRole('link', { name: i18n.t<string>('serviceNotices.title') })).toHaveAttribute(
+        await expect(canvas.getByRole('tab', { name: i18n.t<string>('serviceNotices.title') })).toHaveAttribute(
             'href',
             routePathNames.serviceNotices,
         );

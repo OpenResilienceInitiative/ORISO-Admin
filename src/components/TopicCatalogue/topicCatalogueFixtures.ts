@@ -1,4 +1,4 @@
-import type { CatalogueTopic } from './index';
+import type { CatalogueLanguage, CatalogueTopic } from './index';
 import type { TopicLayout } from './topicLayout';
 
 /** The 20 topics of dev (names and short descriptions as the service delivers them). */
@@ -67,8 +67,9 @@ export const FIXTURE_TOPICS: CatalogueTopic[] = [
 
 /** An example grouping for the design review; the real one is defined by the platform admin. */
 export const FIXTURE_LAYOUT: TopicLayout = [
-    { id: 'general', name: 'Allgemeine Beratung', topicIds: [1, 14, 4, 13] },
-    { id: 'family', name: 'Kinder, Jugend und Familie', topicIds: [2, 3, 10, 12, 8, 19] },
+    { id: 'general', name: 'Allgemeine Beratung', names: { en: 'General counselling' }, topicIds: [1, 14, 4, 13] },
+    // "Schulden" sits in two categories on purpose: a topic may be in several.
+    { id: 'family', name: 'Kinder, Jugend und Familie', topicIds: [2, 3, 10, 12, 8, 19, 14] },
     { id: 'health', name: 'Gesundheit und Leben', topicIds: [18, 11, 7, 6, 17, 15, 16] },
     { id: 'migration', name: 'Migration', topicIds: [20, 9, 5] },
 ];
@@ -98,3 +99,35 @@ export const FIXTURE_LONG_LAYOUT: TopicLayout = [
     },
     { id: 'short', name: 'Kurz', topicIds: [3] },
 ];
+
+/** The seven languages of the platform; German is the source. */
+export const FIXTURE_LANGUAGES: CatalogueLanguage[] = [
+    { code: 'de', label: 'Deutsch' },
+    { code: 'de@informal', label: 'Deutsch (du)' },
+    { code: 'en', label: 'Englisch' },
+    { code: 'fr', label: 'Französisch' },
+    { code: 'ru', label: 'Russisch' },
+    { code: 'tr', label: 'Türkisch' },
+    { code: 'ti', label: 'Tigrinya' },
+];
+
+/** A tiny own icon (SVG) so the stories show an uploaded icon next to the standard one. */
+export const FIXTURE_ICON = `data:image/svg+xml;utf8,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="#a5000a" d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z"/></svg>',
+)}`;
+
+const ENGLISH: Record<number, string> = {
+    1: 'General social counselling',
+    2: 'Children and young people',
+    14: 'Debt',
+    17: 'Grief counselling',
+    18: 'Addiction',
+    20: 'Migration',
+};
+
+/** The topics of dev with a few translations and two own icons, as the platform admin would leave them. */
+export const FIXTURE_TOPICS_I18N: CatalogueTopic[] = FIXTURE_TOPICS.map((topic) => ({
+    ...topic,
+    names: ENGLISH[topic.id] ? { en: ENGLISH[topic.id], fr: topic.id === 20 ? 'Migration' : '' } : undefined,
+    icon: topic.id === 14 || topic.id === 17 ? FIXTURE_ICON : undefined,
+}));

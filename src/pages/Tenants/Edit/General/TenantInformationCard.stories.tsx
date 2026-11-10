@@ -23,6 +23,7 @@ const Example = () => {
                         }}
                         isLoading={false}
                         shouldShowSubdomainField
+                        requiredRule={{ required: true }}
                         onSave={() => {}}
                     />
                 </CardGrid.Item>
@@ -41,5 +42,8 @@ type Story = StoryObj<typeof meta>;
 export const Filled: Story = {
     play: async ({ canvas }) => {
         await expect(canvas.getByText(/Trägerinformationen|Tenant information|Provider information/i)).toBeVisible();
+        // The fixture values must render, otherwise the title assertion alone passes with an empty card.
+        await expect(canvas.getByDisplayValue('Beispiel-Träger')).toBeVisible();
+        await expect(canvas.getByDisplayValue('Musterstraße 1')).toBeVisible();
     },
 };
