@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
-import { notification } from 'antd';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { snackbar as notification } from '../components/Snackbar';
 import { useTenantAdminControlsMutation } from './useTenantAdminControlsMutation.hook';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
 import { updateTenantAdminControls } from '../api/tenant/updateTenantAdminControls';
@@ -17,12 +17,11 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-vi.mock('antd', () => ({
-    notification: { success: vi.fn() },
-}));
-
 describe('useTenantAdminControlsMutation', () => {
-    beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.spyOn(notification, 'success').mockImplementation(vi.fn() as never);
+    });
 
     it('caches the full server response, not the partial request body', async () => {
         // Server normalizes the partial request into the full controls object (backend nullAsTrue).

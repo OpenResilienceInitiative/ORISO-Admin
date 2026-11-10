@@ -67,6 +67,7 @@ export const Card = ({
     return (
         <Box
             data-testid={dataTestId}
+            data-search-tile={titleKey}
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
@@ -80,6 +81,7 @@ export const Card = ({
                     [styles.hasSubtitle]: subTitle || subTitleKey,
                     [styles.dialogCardTitle]: isDialog,
                 })}
+                data-admin-card-title
             >
                 <div className={classNames(styles.titleContainer, { [styles.dialogTitleContainer]: isDialog })}>
                     {headerIcon && <div className={styles.headerIcon}>{headerIcon}</div>}

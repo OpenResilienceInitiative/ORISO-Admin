@@ -111,8 +111,14 @@ const TileHelpDialog = ({ topic: firstTopic, tileIcon, onClose }: TileHelpDialog
                     data-tile-help-media={slide?.visual ? 'visual' : 'placeholder'}
                 >
                     {slide?.visual ?? (
-                        <span className={styles.placeholderIcon}>{tileIcon ?? <InfoOutlinedIcon />}</span>
+                        <span className={styles.placeholderIcon} data-tile-help-placeholder>
+                            {tileIcon ?? <InfoOutlinedIcon />}
+                        </span>
                     )}
+                    {/* The red band: grows once, pulls back a little and settles whenever a step
+                        appears (the box is re-keyed per step). It sits in the box's padding, under
+                        the picture, so it never covers a drawing. Still under „Bewegung reduzieren“. */}
+                    <span className={styles.band} data-tile-help-band />
                 </div>
                 {/* The texts of all steps sit in one grid cell and only the current one shows, so the
                     area is as tall as the longest step and Next stays put. The others are hidden

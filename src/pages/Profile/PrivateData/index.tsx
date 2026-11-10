@@ -1,5 +1,5 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../components/Snackbar';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputField } from '../../../components/FormInputField';
 import { useUpdateUserData } from '../../../hooks/useUpdateUserData.hook';
@@ -13,7 +13,7 @@ export const PrivateData = () => {
     const { data, isLoading } = useUserData();
     const { mutate: updateData } = useUpdateUserData({
         onSuccess: () => {
-            notification.success({ message: t('profile.privateData.success') });
+            snackbar.success({ message: t('profile.privateData.success') });
         },
     });
 
