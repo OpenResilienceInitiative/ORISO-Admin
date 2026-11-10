@@ -18,7 +18,7 @@ const TRAEGER_POLICIES = '*/service/tenantadmin/:id/permission-policies';
 
 const agency = (settings: AgencySettings) => ({
     _embedded: {
-        id: '55',
+        id: 'organisms-permissions-agencypermissionssettings',
         name: 'Beratungsstelle Nord',
         tenantId: 2,
         settings,
@@ -38,7 +38,8 @@ const handlers = (
 ];
 
 const meta = {
-    title: 'Organisms/Permissions/AgencyPermissionsSettings',
+    title: 'Settings/Einstellungen/Funktionszugriff/AgencyPermissionsSettings',
+    id: 'organisms-permissions-agencypermissionssettings',
     component: AgencyPermissionsSettings,
     parameters: { layout: 'fullscreen' },
     args: { agencyId: '55' },

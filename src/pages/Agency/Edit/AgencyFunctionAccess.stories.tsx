@@ -5,7 +5,8 @@ import { AgencyEditFrame, agencyEditHandlers, installAgencyStoryAuth } from './a
  * Beratungsstelle > Funktionszugriff (`/admin/agency/:id/functionalities`): the real page, HTTP mocked.
  */
 const meta = {
-    title: 'Admin/Agency/Function access',
+    title: 'Settings/Beratungsstellen/Funktionszugriff/Ganze Seite',
+    id: 'admin-agency-function-access',
     component: AgencyEditFrame,
     parameters: { layout: 'fullscreen', msw: { handlers: agencyEditHandlers } },
     render: () => <AgencyEditFrame section="functionalities" />,

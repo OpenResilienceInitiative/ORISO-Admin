@@ -8,7 +8,8 @@ import { ConsentUnavailableNotice } from './index';
  * (#914). Before this, the editor's function bar simply had a gap there.
  */
 const meta = {
-    title: 'Organisms/Legal/ConsentUnavailableNotice',
+    title: 'Settings/Einstellungen/Rechtliches/ConsentUnavailableNotice',
+    id: 'organisms-legal-consentunavailablenotice',
     component: ConsentUnavailableNotice,
     parameters: { layout: 'padded' },
     args: { reason: 'noDepartments', language: 'de' },

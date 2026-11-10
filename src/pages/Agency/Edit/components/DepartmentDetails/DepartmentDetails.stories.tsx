@@ -18,7 +18,8 @@ const slotsFor = (from: string, until: string): OpeningHoursSlot[] =>
  * card to GET/PUT /agencyadmin/agencies/{agencyId}/topics/{topicId}/details.
  */
 const meta: Meta<typeof DepartmentDetailsCard> = {
-    title: 'Organisms/Agency/DepartmentDetails',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/DepartmentDetails',
+    id: 'organisms-agency-departmentdetails',
     component: DepartmentDetailsCard,
     decorators: [
         (Story) => (

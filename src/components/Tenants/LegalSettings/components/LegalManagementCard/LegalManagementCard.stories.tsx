@@ -5,7 +5,8 @@ import { expectReadOnlyTile } from '../../../../CardEditable/readOnlyTileStory.m
 import { LegalManagementCard } from './index';
 
 const meta = {
-    title: 'Organisms/Legal/LegalManagementCard',
+    title: 'Settings/Einstellungen/Rechtliches/LegalManagementCard',
+    id: 'organisms-legal-legalmanagementcard',
     component: LegalManagementCard,
     args: { allowEdit: true, allowed: false, onSave: () => {} },
     parameters: { layout: 'padded' },

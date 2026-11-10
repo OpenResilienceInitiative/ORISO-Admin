@@ -45,7 +45,8 @@ const Harness = ({ readOnly = false, seeded = true }: { readOnly?: boolean; seed
     );
 };
 const meta = {
-    title: 'Organisms/Tenants/AssistantIdentity',
+    title: 'Settings/Einstellungen/Erscheinungsbild/AssistantIdentity',
+    id: 'organisms-tenants-assistantidentity',
     component: Harness,
     // The tile spans the whole row of the raster, as on the Appearance tab.
     decorators: [(Story, { parameters }) => inTheRaster(Story, 3, parameters.rasterWidth)],

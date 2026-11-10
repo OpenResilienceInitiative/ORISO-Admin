@@ -10,7 +10,8 @@ import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard } from '.';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/CounsellorTutorialSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/CounsellorTutorialSettingsCard',
+    id: 'organisms-globalsettings-counsellortutorialsettingscard',
     component: CounsellorTutorialSettingsCard,
     parameters: { layout: 'padded' },
     decorators: [

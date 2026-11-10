@@ -5,7 +5,8 @@ import { AgencyEditFrame, agencyEditHandlers, installAgencyStoryAuth } from './a
  * Beratungsstelle > Stammdaten (`/admin/agency/:id/general`): the real page, HTTP mocked.
  */
 const meta = {
-    title: 'Admin/Agency/Master data',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/Ganze Seite',
+    id: 'admin-agency-master-data',
     component: AgencyEditFrame,
     parameters: { layout: 'fullscreen', msw: { handlers: agencyEditHandlers } },
     render: () => <AgencyEditFrame />,

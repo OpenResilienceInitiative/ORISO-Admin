@@ -55,7 +55,8 @@ const Harness = ({
 };
 
 const meta = {
-    title: 'Organisms/Permissions/RecipientScopeControl',
+    title: 'Settings/Einstellungen/Funktionszugriff/RecipientScopeControl',
+    id: 'organisms-permissions-recipientscopecontrol',
     component: Harness,
     parameters: { layout: 'padded' },
     args: { level: 'platform' },
