@@ -55,6 +55,26 @@ it('denies another save when the simulated permission is revoked, keeping saved 
     expect(screen.queryByRole('button', { name: 'Weitere Beratungsstelle' })).not.toBeInTheDocument();
 });
 
+it('keeps the reason for the denied save in the form after the pop-up is closed', async () => {
+    const denied = /Die zusätzliche Erlaubnis ist nicht mehr verfügbar/;
+    render(<CentreSetupProposal initialStep="saved" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Weitere Beratungsstelle' }));
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.click(dialog.getByRole('button', { name: 'Auswahl übernehmen' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Allgemeine Sozialberatung' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Weitere Beratungsstellen im eigenen Träger erlauben/ }));
+
+    const popup = await screen.findByTestId('snackbar');
+    expect(popup).toHaveTextContent(denied);
+    fireEvent.click(within(popup).getByRole('button', { name: 'Meldung schließen' }));
+    await waitFor(() => expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument());
+
+    // The save stays disabled, so the form still says why.
+    expect(screen.getByRole('button', { name: 'Beratungsstelle speichern' })).toBeDisabled();
+    expect(screen.getByText(denied)).toBeInTheDocument();
+});
+
 it('completes the first invited centre without the additional-centre permission', async () => {
     render(<CentreSetupProposal allowAdditional={false} />);
     fireEvent.click(screen.getByRole('button', { name: 'Beratungsstelle speichern' }));
