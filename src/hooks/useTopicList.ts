@@ -9,6 +9,8 @@ interface UseTopicDataOptions extends QueryOptions<ResponseList<TopicData>> {
     order?: string;
     pageSize?: number;
     search?: string;
+    /** `QueryOptions` leaves it out; it is passed on to `useQuery` with the rest. */
+    enabled?: boolean;
 }
 
 export const useTopicList = ({ current, sortBy, order, pageSize, search, ...options }: UseTopicDataOptions) => {

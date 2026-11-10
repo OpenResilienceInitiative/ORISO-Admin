@@ -28,12 +28,13 @@ describe('shared focus ring', () => {
         expect(appCss).toMatch(/\.MuiRadio-root, \.MuiCheckbox-root\)\.Mui-focusVisible/);
     });
 
-    it.each(['../components/EditButton/styles.module.scss', '../components/M3Switch/styles.module.scss'])(
-        '%s draws no ring of its own colour',
-        (path) => {
-            expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
-        },
-    );
+    it.each([
+        '../components/EditButton/styles.module.scss',
+        '../components/M3Switch/styles.module.scss',
+        '../components/TopicCatalogue/styles.module.scss',
+    ])('%s draws no ring of its own colour', (path) => {
+        expect(read(path)).not.toMatch(/outline:\s*\d+px solid #[0-9a-f]{3,6}/i);
+    });
 
     it('lets a component move the ring by setting the offset token, because the shared rule is more specific', () => {
         // The shared rule (0,4,0) beats a component's own `outline-offset`; only the token survives it.
@@ -49,8 +50,14 @@ describe('shared focus ring', () => {
         expect(read('../components/Card/styles.module.scss')).toMatch(
             /--admin-focus-ring-color:\s*var\(--admin-focus-ring-on-surface,\s*var\(--m3-primary/,
         );
+        // The editor's text surface is white in every scheme: its ring is the fixed brand accent.
         expect(read('../components/FormPluginEditor/M3RichTextEditor.module.scss')).toMatch(
-            /--admin-focus-ring-color:\s*#ffb4aa/,
+            /--admin-focus-ring-color:\s*var\(--oriso-app-accent-dark,\s*#a5000a\)/,
+        );
+        // The editor hints are the shared pop-up now: it stays dark in every scheme and takes its ring from the
+        // text colour of its own tone, a pair built to be readable on the container.
+        expect(read('../components/Snackbar/Snackbar.module.scss')).toMatch(
+            /--snackbar-focus:\s*var\(--snackbar-on-container\)/,
         );
     });
 

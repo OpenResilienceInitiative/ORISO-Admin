@@ -1,0 +1,33 @@
+/*
+ * What the search leaves behind on the page it opens: the tile it pointed at
+ * glows once in the primary container tone (M3 state-layer idea: a soft ring,
+ * no new colour). Not an error or hint box, only a pointer.
+ */
+
+:global([data-search-highlight='true']) {
+    // 2.6s: keep in step with HIGHLIGHT_MS in tileTarget.ts, which removes the mark when the glow ends.
+    animation: admin-search-tile-glow 2.6s ease-out 1;
+    outline: 3px solid var(--admin-focus-ring-color);
+    outline-offset: 4px;
+}
+
+@keyframes admin-search-tile-glow {
+    0% {
+        box-shadow: 0 0 0 0 var(--m3-primary-container, #ffe2de);
+    }
+
+    30% {
+        box-shadow: 0 0 0 16px var(--m3-primary-container, #ffe2de);
+    }
+
+    100% {
+        outline-color: transparent;
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :global([data-search-highlight='true']) {
+        animation: none;
+    }
+}

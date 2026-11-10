@@ -140,6 +140,17 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).not.toBe('#fcf9f9');
     });
 
+    it('keeps tile pictures as drawn in both schemes, because tiles and dialogs stay light', () => {
+        const root = document.createElement('div');
+
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+        expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
+
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+    });
+
     it('uses the same stored seeds without writing a separate admin palette', () => {
         const root = document.createElement('div');
         applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: '#646d78' }, root);
@@ -268,5 +279,21 @@ describe('applyAdminInvertedTheme', () => {
             ratio,
             `${onRole} (${tokens[onRole]}) on ${surface} (${tokens[surface]}) = ${ratio.toFixed(2)}:1`,
         ).toBeGreaterThanOrEqual(4.5);
+    });
+});
+
+describe('switching scheme on the same root', () => {
+    it('leaves no inverted-only token behind when the light scheme is applied afterwards', () => {
+        const root = document.createElement('div');
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const light = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'light').tokens;
+        const onRoot = Array.from(root.style).filter((name) => name.startsWith('--m3-') || name.startsWith('--admin-'));
+        // The light shell also derives the contrast-checked card ring (#1168); it is not a palette token.
+        expect(onRoot.filter((name) => !(name in light) && name !== '--admin-focus-ring-on-surface')).toEqual([]);
+        Object.entries(light)
+            .filter(([name]) => name.startsWith('--m3-'))
+            .forEach(([name, value]) => expect(root.style.getPropertyValue(name), name).toBe(value));
     });
 });

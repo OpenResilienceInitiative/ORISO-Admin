@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../../../../components/Card';
 import { LiveChatLinks } from '../../../../components/LiveChatLinks';
 import { TenantPermissionsSettings } from '../../../../components/Tenants/AppSettings/PermissionsSettings/TenantPermissionsSettings';
+import { HintText } from '../../../../components/HintText';
 import styles from './styles.module.scss';
 
 export const TenantGlobalSettings = () => {
@@ -12,12 +13,13 @@ export const TenantGlobalSettings = () => {
     const tenantId = Number(id);
 
     return (
-        <Row gutter={[24, 24]}>
+        // No horizontal gutter: its negative side margins made the page 12px wider than its host (a sideways scroll).
+        <Row gutter={[0, 24]}>
             <Col span={24}>
-                <div className={styles.warningCard}>
-                    <strong>{t('tenants.globalSettings.superAdminWarning.title')}</strong>
-                    <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>
-                </div>
+                {/* A permanent explanation: plain text, no fill and no border (never a box in the page). */}
+                <HintText title={t('tenants.globalSettings.superAdminWarning.title')}>
+                    {t('tenants.globalSettings.superAdminWarning.description')}
+                </HintText>
                 {Number.isSafeInteger(tenantId) && tenantId > 0 && (
                     <Card titleKey="liveChatLinks.title">
                         <LiveChatLinks key={tenantId} mode="manage" tenantId={tenantId} />

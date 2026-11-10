@@ -2,8 +2,6 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
-import Alert from '@mui/material/Alert';
-import AlertTitle from '@mui/material/AlertTitle';
 import AddIcon from '@mui/icons-material/Add';
 import routePathNames from '../../../appConfig';
 import type { DataTableSort } from '../../../components/DataTable';
@@ -25,6 +23,7 @@ import decodeHTML from '../../../utils/decodeHTML';
 import { TenantDataTable, type TenantRow } from './TenantDataTable';
 import { nextTenantSortState, tenantSortOf } from './tenantSort';
 import styles from './styles.module.scss';
+import { Notify } from '../../../components/Notify';
 
 type DeleteResult = 'success' | 'error' | null;
 
@@ -116,38 +115,61 @@ export const TenantsList = () => {
             </Page.Title>
 
             {deleteResult === 'success' && (
-                <Alert severity="success" className={styles.notice} onClose={() => setDeleteResult(null)}>
+                <Notify
+                    title={t('notify.title.tenants')}
+                    severity="success"
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
                     {t('tenants.list.deleteMessage.success')}
-                </Alert>
+                </Notify>
             )}
             {deleteResult === 'error' && (
-                <Alert severity="error" className={styles.notice} onClose={() => setDeleteResult(null)}>
-                    <AlertTitle>{t('tenants.list.deleteMessage.error.title')}</AlertTitle>
+                <Notify
+                    severity="error"
+                    title={t('tenants.list.deleteMessage.error.title')}
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
                     {t('tenants.list.deleteMessage.error.description')}
-                </Alert>
+                </Notify>
             )}
 
-            <TenantDataTable
-                rows={data?.data ?? []}
-                loading={isLoading}
-                emptyText={isError ? t('message.error.default') : t('tenants.list.empty')}
-                sort={tenantSortOf(tableState.sortBy, tableState.order)}
-                onSortChange={onSortChange}
-                page={tableState.current ?? 1}
-                pageSize={tableState.pageSize ?? 10}
-                total={data?.total ?? 0}
-                onPageChange={(current) => setTableState((state) => ({ ...state, current }))}
-                onPageSizeChange={(pageSize) => setTableState((state) => ({ ...state, current: 1, pageSize }))}
-                showSubdomain={!settings.multitenancyWithSingleDomainEnabled}
-                onEdit={
-                    can(PermissionAction.Update, Resource.Tenant)
-                        ? (row) => navigate(`${routePathNames.tenants}/${row.id}`)
-                        : undefined
-                }
-                onDelete={can(PermissionAction.Delete, Resource.Tenant) ? setTenantToDelete : undefined}
-                canDeleteRow={(row) => settings.mainTenantSubdomainForSingleDomainMultitenancy !== row.subdomain}
-                ariaLabel={t('tenants.title')}
-            />
+            {isError && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.tenants')}
+                    causeKey="tenants:list"
+                    jump="tenants-list-table"
+                    retry
+                >
+                    {t('error.loading')}
+                </Notify>
+            )}
+
+            <div id="tenants-list-table">
+                <TenantDataTable
+                    rows={data?.data ?? []}
+                    loading={isLoading}
+                    emptyText={isError ? t('message.error.default') : t('tenants.list.empty')}
+                    sort={tenantSortOf(tableState.sortBy, tableState.order)}
+                    onSortChange={onSortChange}
+                    page={tableState.current ?? 1}
+                    pageSize={tableState.pageSize ?? 10}
+                    total={data?.total ?? 0}
+                    onPageChange={(current) => setTableState((state) => ({ ...state, current }))}
+                    onPageSizeChange={(pageSize) => setTableState((state) => ({ ...state, current: 1, pageSize }))}
+                    showSubdomain={!settings.multitenancyWithSingleDomainEnabled}
+                    onEdit={
+                        can(PermissionAction.Update, Resource.Tenant)
+                            ? (row) => navigate(`${routePathNames.tenants}/${row.id}`)
+                            : undefined
+                    }
+                    onDelete={can(PermissionAction.Delete, Resource.Tenant) ? setTenantToDelete : undefined}
+                    canDeleteRow={(row) => settings.mainTenantSubdomainForSingleDomainMultitenancy !== row.subdomain}
+                    ariaLabel={t('tenants.title')}
+                />
+            </div>
 
             {tenantToDelete !== null && (
                 <Modal

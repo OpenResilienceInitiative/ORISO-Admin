@@ -134,7 +134,7 @@ const TenantAdminEditor = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
-            <Page.BackWithActions path={listPath} title={title}>
+            <Page.BackWithActions path={listPath} parentKey="sidebar.users" title={title}>
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}

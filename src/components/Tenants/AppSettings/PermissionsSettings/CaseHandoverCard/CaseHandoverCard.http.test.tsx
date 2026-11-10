@@ -168,7 +168,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
-        const alert = await screen.findByRole('alert');
+        const alert = await screen.findByTestId('case-handover-save-error');
         expect(alert).toHaveTextContent(/not saved/i);
         expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'NONE' });
@@ -179,20 +179,20 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(/not allowed/i);
+        expect(await screen.findByTestId('case-handover-save-error')).toHaveTextContent(/not allowed/i);
     });
 
     it('retries the failed save from the error message', async () => {
         server.putStatus = 500;
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
-        const alert = await screen.findByRole('alert');
+        const alert = await screen.findByTestId('case-handover-save-error');
 
         server.putStatus = 200;
         await userEvent.setup().click(within(alert).getByRole('button', { name: /try again/i }));
 
         await waitFor(() => expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
-        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByTestId('case-handover-save-error')).not.toBeInTheDocument());
     });
 
     it('shows a BST admin the rules read-only with a note that the Träger admin sets them', async () => {
