@@ -1,7 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { message } from 'antd';
 import { Outlet } from 'react-router-dom';
 import i18next from 'i18next';
 import type { PropsWithChildren } from 'react';
@@ -26,7 +25,7 @@ vi.mock('./api/settings/apiServerSettings', () => ({ apiServerSettings: mocks.ap
 // the public pages render, so the routed pages are stubbed out.
 vi.mock('./pages/Login/Login', async () => {
     const { useAdminFeedback } = await import('./hooks/useAdminFeedback');
-    const { theme, message: staticMessage } = await import('antd');
+    const { theme } = await import('antd');
     const Content = () => {
         const { token } = theme.useToken();
         return <span>Production theme {token.colorPrimary}</span>;
@@ -37,7 +36,6 @@ vi.mock('./pages/Login/Login', async () => {
             const { token } = theme.useToken();
             return (
                 <button
-                    data-contextual={feedback.message !== staticMessage}
                     data-theme={token.colorPrimary}
                     type="button"
                     onClick={() => feedback.message.success(<Content />)}
@@ -97,16 +95,16 @@ describe('AdminApp', () => {
         window.history.pushState({}, '', '/admin/login');
     });
 
-    it('installs contextual feedback inside the production themed provider', async () => {
+    it('mounts the snackbar host inside the production themed provider', async () => {
         mocks.getPublicTenantData.mockResolvedValue({});
         render(<AdminApp />);
         const button = await screen.findByRole('button', { name: 'login page' });
-        expect(button).toHaveAttribute('data-contextual', 'true');
         await userEvent.click(button);
-        expect(await screen.findByText(`Production theme ${button.getAttribute('data-theme')}`)).toBeInTheDocument();
+        const content = await screen.findByText(`Production theme ${button.getAttribute('data-theme')}`);
+        expect(content.closest('[role="status"]')).not.toBeNull();
     });
 
-    it('commits the canonical owner before the bootstrap settings request and retains the loading gate', async () => {
+    it('shows a transport failure from the bootstrap settings request and retains the loading gate', async () => {
         mocks.getPublicTenantData.mockResolvedValue({});
         let report: TransportFeedback = () => {
             throw new Error('Bootstrap did not begin');
@@ -118,21 +116,17 @@ describe('AdminApp', () => {
                 finish = resolve;
             });
         });
-        const staticError = vi.spyOn(message, 'error');
-        try {
-            render(<AdminApp />);
-            await waitFor(() => expect(mocks.apiServerSettings).toHaveBeenCalledTimes(1));
-            expect(screen.queryByRole('button', { name: 'login page' })).not.toBeInTheDocument();
-            act(() => report({ content: 'Committed bootstrap owner', duration: 0 }));
-            expect(await screen.findByText('Committed bootstrap owner')).toBeInTheDocument();
-            expect(staticError).not.toHaveBeenCalled();
-            await act(async () => {
-                finish({});
-            });
-            expect(await screen.findByRole('button', { name: 'login page' })).toBeInTheDocument();
-        } finally {
-            staticError.mockRestore();
-        }
+        render(<AdminApp />);
+        await waitFor(() => expect(mocks.apiServerSettings).toHaveBeenCalledTimes(1));
+        expect(screen.queryByRole('button', { name: 'login page' })).not.toBeInTheDocument();
+        act(() => report({ content: 'Bootstrap failure', duration: 0 }));
+        // An error is announced through the assertive live region, even before the app has loaded.
+        const failure = await screen.findByText('Bootstrap failure');
+        expect(failure.closest('[role="alert"]')).not.toBeNull();
+        await act(async () => {
+            finish({});
+        });
+        expect(await screen.findByRole('button', { name: 'login page' })).toBeInTheDocument();
     });
 
     it('brands the tab on the anonymous login route, outside the protected tree', async () => {

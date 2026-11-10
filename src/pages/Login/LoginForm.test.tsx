@@ -5,6 +5,7 @@ import less from 'less';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
 import { FETCH_ERRORS } from '../../api/fetchData';
@@ -62,6 +63,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
     return translations[key] || key;
 };
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let snackbarErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
 
@@ -101,17 +103,6 @@ vi.mock('react-router-dom', async () => {
         ...actual,
         useNavigate: () => mocks.navigate,
         useLocation: () => ({ search: mocks.search }),
-    };
-});
-
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        message: {
-            ...actual.message,
-            error: mocks.messageError,
-        },
     };
 });
 
@@ -159,6 +150,12 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
+        // Records the call and still raises the pop-up, so a test can see what the person sees.
+        const raise = snackbar.error.bind(snackbar);
+        snackbarErrorSpy = vi.spyOn(snackbar, 'error').mockImplementation(((...args: Parameters<typeof raise>) => {
+            mocks.messageError(...args);
+            return raise(...args);
+        }) as never);
         mocks.navigate.mockReset();
         mocks.search = '';
         mocks.recordLoginFailure.mockReset();
@@ -167,6 +164,7 @@ describe('LoginForm', () => {
 
     afterEach(() => {
         consoleWarnSpy.mockRestore();
+        snackbarErrorSpy.mockRestore();
     });
 
     it('keeps the first-centre continuation through the password and OTP challenge', async () => {
@@ -526,6 +524,8 @@ describe('LoginForm', () => {
                 'Too many attempts. Please wait about 7 minutes before trying again.',
             );
         });
+        // The pop-up reaches the host: an error, with the sign-in lead line.
+        expect(await screen.findByTestId('snackbar')).toHaveAttribute('data-severity', 'error');
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
             outcome: 'rate_limited',
             transport: 'too_many_requests',
