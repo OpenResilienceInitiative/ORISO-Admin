@@ -1,0 +1,33 @@
+/* A document tile (imprint, privacy, contract documents) uses the whole raster row. The M3 editor
+   and the draft notice above it cap themselves at 800px, the legal cards at 960px; the variable and
+   the rule below lift both caps for this tile only. */
+
+.documentTile {
+    --m3-editor-max-width: none;
+    --m3-editor-text-max-width: 88ch;
+
+    &.documentTile > * {
+        max-width: none;
+    }
+}
+
+/* Inside a collapsible tile the header is the tile: the card inside gives up its own surface, and
+   a form stays at a readable width instead of 1200px wide fields. */
+
+.collapsedDocument,
+.collapsedForm {
+    --m3-editor-max-width: none;
+    --m3-editor-text-max-width: 88ch;
+
+    &.collapsedDocument > *,
+    &.collapsedForm > * {
+        max-width: none;
+        border: 0;
+        background: none;
+        box-shadow: none;
+    }
+}
+
+.collapsedForm {
+    max-width: 720px;
+}

@@ -3,7 +3,11 @@ import { ReactElement, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import BusinessCenterOutlinedIcon from '@mui/icons-material/BusinessCenterOutlined';
+import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { ThemeProvider } from '@mui/material/styles';
+import { GdprIcon, ImprintIcon } from '../../../components/CustomIcons/LegalIcons';
 import { snackbar } from '../../../components/Snackbar';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { AgencyAccessError } from '../../../api/agency/getAgencyById';
@@ -23,10 +27,19 @@ import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
-import { OpenDepartmentFieldOnRequest } from './components/DepartmentDetails/OpenDepartmentFieldOnRequest';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
+import { AgencyMasterDataTile } from './components/MasterDataTile';
+import { AgencyTileGrid, type AgencyTile, type AgencyTileLayout } from './AgencyTileGrid';
+import {
+    contractDocumentsTileStatus,
+    dataProtectionContactTileStatus,
+    imprintTileStatus,
+    privacyTileStatus,
+    responsibleTileStatus,
+    type LegalTileStatus,
+} from './agencyLegalTileStatus';
 import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
@@ -39,7 +52,6 @@ import { AgencyLegalTextWithTemplates } from '../../../components/Tenants/LegalS
 import { LegalTemplateUnreadMarker } from '../../../components/Tenants/LegalSettings/components/LegalTemplateCompare/LegalTemplateUnreadMarker';
 import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSettings/hooks/useLegalProposalInbox';
 import pageStyles from '../../../components/Page/styles.module.scss';
-import { CardEditable } from '../../../components/CardEditable';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
@@ -62,6 +74,11 @@ type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
 
 interface AgencyPageEditProps {
     section?: AgencySettingsSection;
+    /**
+     * How the Rechtliches tab lays out its tiles. `raster` gives the document tiles the whole row;
+     * `collapsible` folds every tile up to its header, the first one open.
+     */
+    legalLayout?: AgencyTileLayout;
 }
 
 const getEntityId = (value: unknown) => {
@@ -77,7 +94,7 @@ const getEntityId = (value: unknown) => {
     return '';
 };
 
-export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => {
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { id } = useParams();
@@ -425,71 +442,39 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderGeneralSettings = () => {
         if (isEditing) {
+            // The order of the tiles on this tab. Moving a setting to another tile is a one-line change here.
+            const masterDataTiles: AgencyTile[] = [
+                {
+                    id: 'master-data',
+                    span: 3,
+                    node: (
+                        <AgencyMasterDataTile
+                            initialValues={initialValues}
+                            onSave={onSaveCard}
+                            departmentFieldRequest={departmentFieldRequest}
+                            persistedTeamAgency={initialValues.teamAgency}
+                        />
+                    ),
+                },
+                {
+                    id: 'department-details',
+                    node: (
+                        <AgencyDepartmentDetails
+                            agencyData={agencyData}
+                            // The Fachbereich field only renders when the tenant offers topics.
+                            onAddDepartment={
+                                tenantTopics?.length > 0
+                                    ? () => setDepartmentFieldRequest((request) => request + 1)
+                                    : undefined
+                            }
+                        />
+                    ),
+                },
+            ];
+
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
-                    <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    <CardGrid raster>
-                        <CardGrid.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.edit.general.general_information"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                <AgencyGeneralInformation asFields />
-                            </CardEditable>
-                        </CardGrid.Item>
-                        <CardGrid.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.form.registrationSettings.title"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                {({ editing }) => <RegistrationSettings asFields editing={editing} />}
-                            </CardEditable>
-                        </CardGrid.Item>
-                        <CardGrid.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.edit.settings.title"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                {({ form: cardForm, startEditing }) => (
-                                    <>
-                                        <OpenDepartmentFieldOnRequest
-                                            request={departmentFieldRequest}
-                                            startEditing={startEditing}
-                                            form={cardForm}
-                                        />
-                                        <AgencySettings
-                                            isEditMode={isEditing}
-                                            asFields
-                                            persistedTeamAgency={initialValues.teamAgency}
-                                        />
-                                    </>
-                                )}
-                            </CardEditable>
-                        </CardGrid.Item>
-                        <CardGrid.Item>
-                            <AgencyDepartmentDetails
-                                agencyData={agencyData}
-                                // The Fachbereich field only renders when the tenant offers topics.
-                                onAddDepartment={
-                                    tenantTopics?.length > 0
-                                        ? () => setDepartmentFieldRequest((request) => request + 1)
-                                        : undefined
-                                }
-                            />
-                        </CardGrid.Item>
-                    </CardGrid>
+                    <AgencyTileGrid tiles={masterDataTiles} />
                 </ThemeProvider>
             );
         }
@@ -525,7 +510,6 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderFunctionalitiesSettings = () => (
         <>
-            <h3 className={pageStyles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
             <AgencyPermissionsSettings
                 agencyId={id}
@@ -556,45 +540,84 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         </Form>
     );
 
-    const renderLegalSettings = () => (
-        <>
-            <h3 className={pageStyles.backHeadline}>
-                {t(`agency.edit.settings.legal.title`)}{' '}
-                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-            </h3>
-            <CardGrid raster>
-                <CardGrid.Item>
-                    <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
-                </CardGrid.Item>
-                <CardGrid.Item>
-                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
-                </CardGrid.Item>
-                <CardGrid.Item span={3}>
-                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
-                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
-                </CardGrid.Item>
-                <CardGrid.Item span={3}>
-                    {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
-                        Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
-                        with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
+    const renderLegalSettings = () => {
+        // The order of the tiles on this tab. Moving a setting to another tile is a one-line change here.
+        const summary = (icon: ReactElement, titleKey: string, status: LegalTileStatus) => ({
+            icon,
+            title: t(titleKey),
+            status: t(status.key),
+            statusTone: status.tone,
+        });
+        const legalTiles: AgencyTile[] = [
+            {
+                id: 'responsible',
+                summary: summary(
+                    <BusinessCenterOutlinedIcon />,
+                    'agency.edit.settings.legal.responsible.title',
+                    responsibleTileStatus(agencyData),
+                ),
+                node: <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />,
+            },
+            {
+                id: 'data-protection-contact',
+                summary: summary(
+                    <PrivacyTipOutlinedIcon />,
+                    'agency.edit.settings.legal.contact.title',
+                    dataProtectionContactTileStatus(agencyData, traegerDpo),
+                ),
+                node: <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />,
+            },
+            {
+                id: 'contract-documents',
+                summary: summary(
+                    <DescriptionOutlinedIcon />,
+                    'tenants.legal.dataProcessingAgreement.title',
+                    contractDocumentsTileStatus(),
+                ),
+                document: true,
+                span: 3,
+                // The DPA is managed at tenant (Träger) level — agency admins get a read-only view.
+                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />,
+            },
+            {
+                id: 'imprint',
+                summary: summary(<ImprintIcon />, 'tenants.legal.agencyImprint.title', imprintTileStatus(agencyData)),
+                document: true,
+                span: 3,
+                /* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
+                   Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
+                   with "Alle Fachbereiche" editing the inheritable agency-wide text. */
+                node: (
                     <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardGrid.Item>
-                <CardGrid.Item span={3}>
+                ),
+            },
+            {
+                id: 'privacy',
+                summary: summary(
+                    <GdprIcon />,
+                    'tenants.legal.agencyDataProtection.title',
+                    privacyTileStatus(agencyData),
+                ),
+                document: true,
+                span: 3,
+                node: (
                     <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardGrid.Item>
-            </CardGrid>
-        </>
-    );
+                ),
+            },
+        ];
+
+        return <AgencyTileGrid tiles={legalTiles} layout={legalLayout} />;
+    };
 
     const renderPageBody = () => (
         <>
@@ -641,6 +664,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
             <Page.BackWithActions
                 path={routePathNames.agency}
+                parentKey="sidebar.agency"
                 title={
                     isEditing
                         ? agencyData?.name || t<string>('agency.edit.general.headline')

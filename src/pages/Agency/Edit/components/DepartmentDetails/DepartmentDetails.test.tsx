@@ -86,12 +86,17 @@ describe('AgencyDepartmentDetails (container)', () => {
         render(<AgencyDepartmentDetails agencyData={agencyData} />);
 
         await userEvent.click(screen.getByText('edit'));
-        const openingHours = screen.getByLabelText('agency.edit.general.address.opening_hours');
-        await userEvent.type(openingHours, 'Nur Di 10-12');
+        // Tuesday (second switch) opens with the 09:00–17:00 default range.
+        await userEvent.click(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1]);
         await userEvent.click(screen.getByText('card.edit.save'));
 
         expect(h.mutate).toHaveBeenCalledWith(
-            expect.objectContaining({ openingHours: 'Nur Di 10-12' }),
+            expect.objectContaining({
+                openingHours: JSON.stringify({
+                    version: 1,
+                    openingHours: [{ fromDay: 'TUESDAY', from: '09:00', untilDay: 'TUESDAY', until: '17:00' }],
+                }),
+            }),
             expect.anything(),
         );
     });
