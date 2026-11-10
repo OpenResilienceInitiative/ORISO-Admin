@@ -162,6 +162,10 @@ export const M3Tooltip = ({
         </span>
     );
 
+    // Cloning must not wipe a description the trigger already carries: keep it, and add the bubble to it.
+    const ownDescription = (children.props as { 'aria-describedby'?: string })['aria-describedby'];
+    const describedBy = [ownDescription, visible && !nameOnly ? id : undefined].filter(Boolean).join(' ') || undefined;
+
     return (
         <span
             ref={wrapperRef}
@@ -172,7 +176,7 @@ export const M3Tooltip = ({
             onMouseLeave={() => setOpen(false)}
         >
             {cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, {
-                'aria-describedby': visible && !nameOnly ? id : undefined,
+                'aria-describedby': describedBy,
             })}
             {visible && (portal ? createPortal(bubble, document.body) : bubble)}
         </span>

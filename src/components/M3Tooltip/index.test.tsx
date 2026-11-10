@@ -170,4 +170,44 @@ describe('M3Tooltip', () => {
         expect(trigger).toHaveFocus();
         expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     });
+
+    // The tooltip clones its trigger; a description the trigger already carries must survive that.
+    describe('a trigger that already has its own description', () => {
+        const trigger = (props: { text: string; nameOnly?: boolean; keepWrapper?: boolean }) => (
+            <>
+                <span id="own-hint">Nur lesbar.</span>
+                <M3Tooltip {...props}>
+                    <button type="button" aria-describedby="own-hint">
+                        Zurück
+                    </button>
+                </M3Tooltip>
+            </>
+        );
+
+        it('keeps it while keepWrapper shows no bubble', () => {
+            render(trigger({ text: '', keepWrapper: true }));
+
+            expect(screen.getByRole('button', { name: 'Zurück' })).toHaveAccessibleDescription('Nur lesbar.');
+        });
+
+        it('adds the bubble to it instead of replacing it', async () => {
+            const user = userEvent.setup();
+            render(trigger({ text: 'Zurück zu Träger' }));
+
+            await user.tab();
+            expect(await screen.findByRole('tooltip')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Zurück' })).toHaveAccessibleDescription(
+                'Nur lesbar. Zurück zu Träger',
+            );
+        });
+
+        it('keeps it while a name-only bubble is shown', async () => {
+            const user = userEvent.setup();
+            render(trigger({ text: 'Zurück zu Träger', nameOnly: true }));
+
+            await user.tab();
+            expect(await screen.findByRole('tooltip')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Zurück' })).toHaveAccessibleDescription('Nur lesbar.');
+        });
+    });
 });
