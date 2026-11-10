@@ -28,7 +28,10 @@ const helpKey = (offered: number, notOffered: number) => {
 /** One topic picker per selected centre, offering only that centre's topics (#1264). */
 export const CentreTopicPickers = ({ selectedCentres, centres, topicName, className }: CentreTopicPickersProps) => {
     const { t } = useTranslation();
-    const picked: TopicsByCentre = Form.useWatch('topicsByAgency') ?? {};
+    // Until the page has turned the server's list into a per-centre map, the field may still hold
+    // that list: indexing it by centre id would hand back one of its entries (#1302).
+    const watched = Form.useWatch('topicsByAgency');
+    const picked: TopicsByCentre = watched && !Array.isArray(watched) ? watched : {};
 
     return (
         <>

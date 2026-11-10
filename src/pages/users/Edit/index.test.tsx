@@ -855,6 +855,33 @@ describe('topics per centre (#1264)', () => {
         ]);
     });
 
+    // #1302: the search row carries the server's list. Read as a map by centre id, centre 0 resolved
+    // to the list's first entry (an object) and the picker threw "t.map is not a function".
+    it('opens the editor of a counsellor at centre ID 0 and shows that centre’s topics', async () => {
+        const ZERO = {
+            id: 0,
+            name: 'Null',
+            postcode: '10000',
+            city: 'Berlin',
+            tenantId: TENANT.id,
+            topics: [{ id: 14, name: 'Wohnen' }],
+        };
+        const stored = { topicsByAgency: [{ agencyId: 0, topicIds: [14] }] };
+        editConsultant([ZERO], stored);
+        mocks.consultantsResult = {
+            data: { data: [{ ...mocks.consultantsResult.data.data[0], ...stored }] },
+            isLoading: false,
+        };
+        mocks.agenciesResult = { data: { data: [ZERO, NORD] }, isLoading: false };
+        mocks.topicsResult = { data: [{ id: 14, name: 'Wohnen' }], isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        expect(await optionsOf(user, 'Themen bei Null (10000 Berlin)')).toEqual(['Wohnen']);
+        expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 0, topicIds: [14] }]);
+    });
+
     it('sends only flat topicIds to a server that does not know topicsByAgency', async () => {
         editConsultant([NORD], { topics: [SUCHT] });
         const user = userEvent.setup();

@@ -74,6 +74,8 @@ describe('topics a centre no longer offers', () => {
     it('lists the picked topics a centre does not offer', () => {
         expect(notOfferedAt(NORD, [option(SUCHT), option(FAMILIE), '12'])).toEqual(['13']);
         expect(notOfferedAt(undefined, [option(SUCHT)])).toEqual([]);
+        // A server list or any other non-array value (#1302) names nothing instead of throwing.
+        expect(notOfferedAt(NORD, { agencyId: 0, topicIds: [14] } as never)).toEqual([]);
     });
 
     it('tells a changed selection from the one that was loaded', () => {
