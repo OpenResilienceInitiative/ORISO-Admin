@@ -671,17 +671,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'topics',
         'features',
     ],
-    'app:topics': [
-        'themen katalog',
-        'standard themen',
-        'caritas themen',
-        'katalog',
-        'topic catalogue',
-        'topic catalog',
-        'standard topics',
-        'caritas topics',
-        'demo',
-    ],
 
     // ── Beratungsstelle ──────────────────────────────────────────────────────
     'agency:master-data': [
