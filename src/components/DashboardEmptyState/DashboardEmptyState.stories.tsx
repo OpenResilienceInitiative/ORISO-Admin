@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DashboardEmptyState } from './DashboardEmptyState';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
+import trackingIllustration from '../../resources/img/tile-help/statistics/tracking.webp';
 
 const meta = {
     title: 'Molecules/DashboardEmptyState',
@@ -48,4 +49,29 @@ export const Mobile: Story = {
             </div>
         ),
     ],
+};
+
+const STATISTICS_HIGHLIGHTS = [
+    { title: 'Verlauf über Zeit', text: 'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.' },
+    { title: 'Träger im Vergleich', text: 'Auslastung je Träger – nur wenn jeder Wert groß genug ist.' },
+    { title: 'Themen', text: 'Welche Themen am häufigsten angefragt werden.' },
+];
+
+// Statistics preview (ORISO-Admin#1374): line-art left, what will appear here right.
+export const WithIllustrationAndHighlights: Story = {
+    args: {
+        illustration: trackingIllustration,
+        title: 'Das sehen Sie hier, sobald genug Daten da sind',
+        highlights: STATISTICS_HIGHLIGHTS,
+    },
+};
+
+// Same, while nothing has happened yet: the CTA leads to the step that produces data.
+export const WithIllustrationAndAction: Story = {
+    args: {
+        illustration: trackingIllustration,
+        title: 'Ihr Dashboard füllt sich mit der ersten Beratung',
+        highlights: STATISTICS_HIGHLIGHTS,
+        action: { label: 'Beratende verwalten', onClick: () => {} },
+    },
 };

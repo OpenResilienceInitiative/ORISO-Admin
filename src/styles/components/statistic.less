@@ -22,7 +22,7 @@
 }
 
 .statisticDashboard {
-    width: min(100%, 1236px);
+    width: 100%;
     margin-top: 16px;
 }
 
@@ -35,7 +35,7 @@
     margin-bottom: 16px;
     padding: 0 0 12px;
     gap: 10px 12px;
-    grid-template-columns: minmax(0, 499px);
+    grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
 }
 
 .statisticDashboard__filterSearchWrap {
@@ -47,7 +47,7 @@
 
 .statisticDashboard__filterSearch {
     width: 100%;
-    max-width: 499px;
+    max-width: var(--statistic-filter-width, 400px);
 }
 
 .statisticDashboard__filterSuggestions {
@@ -56,7 +56,7 @@
     top: calc(100% + 8px);
     left: 0;
     display: grid;
-    width: min(100%, 499px);
+    width: min(100%, var(--statistic-filter-width, 400px));
     box-sizing: border-box;
     max-height: min(320px, calc(100vh - 220px));
     padding: 8px;
@@ -232,14 +232,73 @@
     color: var(--m3-on-tertiary-container);
 }
 
-.statisticDashboard__notice--info {
-    background: var(--m3-surface-container);
-    color: var(--m3-on-surface-variant);
-}
-
 .statisticDashboard__notice--warning {
     background: var(--warning-light);
     color: var(--m3-on-surface);
+}
+
+// One quiet line above the cards (Admin#1374): stand + optional "protected" hint,
+// the long privacy reason behind a disclosure. Replaces stacked full-width notice bars.
+.statisticDashboard__infoRow {
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin: 0 0 16px;
+    background: var(--m3-surface-container-low);
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.statisticDashboard__infoItems {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 24px;
+}
+
+.statisticDashboard__infoItem {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.statisticDashboard__infoWhy {
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    color: var(--m3-on-surface);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.statisticDashboard__infoReasons {
+    display: grid;
+    max-width: 90ch;
+    padding-left: 26px;
+    margin-top: 8px;
+    gap: 4px;
+
+    // `display: grid` would otherwise beat the UA rule for [hidden].
+    &[hidden] {
+        display: none;
+    }
 }
 
 .statisticDashboard__loading {
@@ -299,6 +358,9 @@
 }
 
 .statisticDashboard__metricCard {
+    // White tiles (ORISO-Admin#1374); the notTracked variant overrides this.
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     position: relative;
     display: flex;
     min-width: 0;
@@ -593,6 +655,36 @@
     }
 }
 
+.statisticDashboard__cardEmptyState {
+    display: flex;
+    min-width: 0;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--m3-on-surface-variant);
+    font-size: 14px;
+    line-height: 20px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+    }
+}
+
+// Not tracked yet: no surface, no elevation, a dashed outline — a slot that exists,
+// not a card that broke. Two classes, so the dashed style wins over the shared card.
+.statisticDashboard__metricCard.statisticDashboard__metricCard--notTracked {
+    --admin-form-card-surface: transparent;
+    --admin-card-outline: var(--m3-outline-variant);
+    --admin-card-elevation: none;
+
+    border-style: dashed;
+
+    .statisticDashboard__metricIcon {
+        opacity: 0.6;
+    }
+}
+
 .statisticDashboard__cardEmptyHint {
     overflow: hidden;
     color: var(--m3-on-surface-variant);
@@ -602,7 +694,7 @@
 }
 
 .statisticDashboard__emptyHero {
-    margin-bottom: 12px;
+    margin: 24px 0 0;
 }
 
 // While the whole dashboard is empty the metric grids step back behind the
@@ -665,6 +757,8 @@
 }
 
 .statisticDashboard__chartCard {
+    --admin-form-card-surface: var(--m3-surface-container-lowest);
+
     min-height: 322px;
     padding: 25px 24px 24px;
 }
@@ -1200,7 +1294,7 @@
 
 @media screen and (max-width: 1200px) {
     .statisticDashboard__filterBar {
-        grid-template-columns: minmax(0, 499px);
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
     }
 }
 
@@ -1437,4 +1531,70 @@
         font-size: 13px;
         font-variant-numeric: tabular-nums;
     }
+}
+
+// ORISO-Admin#1374 — statistics as designed: levels and filter in one header row,
+// white key-figure tiles, a dashed trend placeholder for protected figures.
+.statisticDashboard__headerRow {
+    display: flex;
+    width: calc(100% - var(--admin-subnav-inset, 0%));
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-inline-start: var(--admin-subnav-inset, 0%);
+    box-shadow: inset 0 -1px 0 0 var(--m3-outline-variant);
+    gap: 8px 16px;
+
+    // The divider belongs to the whole row, not to the tab bar alone.
+    .statisticDashboard__scopeTabs {
+        width: auto;
+        min-width: 0;
+        max-width: none;
+        flex: 1 1 auto;
+        margin-inline-start: 0;
+        box-shadow: none;
+    }
+
+    .statisticDashboard__filterBar {
+        min-width: 0;
+        flex: 0 1 var(--statistic-filter-width, 400px);
+        padding: 0 0 8px;
+        margin: 0;
+        grid-template-columns: minmax(0, var(--statistic-filter-width, 400px));
+    }
+}
+
+.statisticDashboard__cardSparkline {
+    display: block;
+    width: 100%;
+    height: 36px;
+
+    path {
+        fill: none;
+        stroke: var(--m3-outline-variant);
+        stroke-dasharray: 4 5;
+        stroke-width: 2;
+        vector-effect: non-scaling-stroke;
+    }
+}
+
+@media screen and (max-width: 840px) {
+    .statisticDashboard__headerRow .statisticDashboard__filterBar {
+        flex: 1 1 100%;
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+// One calm icon style for every figure: a monochrome outlined glyph in the same
+// neutral circle, whatever tone the card definition asks for (ORISO-Admin#1374).
+.statisticDashboard .statisticDashboard__metricIcon,
+.statisticDashboard .statisticDashboard__metricIcon--muted,
+.statisticDashboard .statisticDashboard__metricIcon--coral,
+.statisticDashboard .statisticDashboard__metricIcon--danger {
+    --statistic-dashboard-icon-glyph-size: 22px;
+    --statistic-dashboard-icon-size: 40px;
+
+    flex-basis: 40px;
+    background: var(--m3-surface-container-high);
+    color: var(--m3-on-surface);
 }

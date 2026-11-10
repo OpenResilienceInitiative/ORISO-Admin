@@ -41,5 +41,5 @@ export const WithoutStatus: Story = { args: { status: undefined } };
 
 export const LongTitle: Story = {
     args: { title: 'Kontaktdaten Verantwortlicher für die Datenverarbeitung der Beratungsstelle', defaultOpen: true },
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
 };

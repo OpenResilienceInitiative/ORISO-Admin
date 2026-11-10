@@ -10,6 +10,15 @@
     --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
     --input-label-bg: var(--m3-surface-container-lowest, #ffffff);
 
+    /* The panel surface follows the colour scheme, so the field text must too (it is a fixed #1b1b1c in app.css). */
+    --admin-form-field-text: var(--m3-on-surface, #1b1b1c);
+
+    /* Labels, helper text and placeholders follow the scheme too. app.css derives them from a fixed grey at the root,
+       which is 1.7:1 on the dark panel of the inverted scheme; in the light scheme the role is the same grey. */
+    --admin-form-muted-text: var(--m3-on-surface-variant, #444748);
+    --label-color: var(--m3-on-surface-variant, #444748);
+    --input-placeholder-color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 64%, transparent);
+
     display: flex;
     min-width: 0;
     flex: 1 1 auto;
@@ -80,7 +89,7 @@
 
 /* With three columns the short topics would leave two thirds of a row empty, so they fill it. */
 @container (min-width: 752px) and (max-width: 1007px) {
-    .stack {
+    .stack:not(.stackColumn) {
         flex-direction: row;
         grid-column: 1 / -1;
 
