@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Form, FormInstance, Modal } from 'antd';
+import { Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +27,7 @@ import {
 import iphoneFrame from '../../../../../resources/img/theme-preview/iphone-14-pro.png';
 import { buildPreviewUrl } from './previewUrl';
 import styles from './styles.module.scss';
+import { HintText } from '../../../../HintText';
 
 interface ThemeBuilderProps {
     tenantId: string;
@@ -190,19 +191,14 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                 ]}
             />
             {saveRejected && tooPale && (
-                <Alert className={styles.tooPaleAlert} type="error" showIcon message={unusableSeedMessage} />
+                <HintText tone="error" className={styles.tooPaleAlert}>
+                    {unusableSeedMessage}
+                </HintText>
             )}
             {tooPale && !saveRejected && (
-                <Alert className={styles.tooPaleAlert} type="warning" showIcon message={t('theme.builder.tooPale')} />
+                <HintText className={styles.tooPaleAlert}>{t('theme.builder.tooPale')}</HintText>
             )}
-            {signalTooClose && (
-                <Alert
-                    className={styles.tooPaleAlert}
-                    type="warning"
-                    showIcon
-                    message={t('theme.builder.signalTooClose')}
-                />
-            )}
+            {signalTooClose && <HintText className={styles.tooPaleAlert}>{t('theme.builder.signalTooClose')}</HintText>}
         </>
     );
 };

@@ -3,7 +3,7 @@ import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import PhoneInTalkOutlinedIcon from '@mui/icons-material/PhoneInTalkOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
-import { Alert, Button, Skeleton } from 'antd';
+import { Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Select } from '../../../../../components/M3Select';
@@ -21,6 +21,7 @@ import { useUpdateDepartmentDetails } from '../../../../../hooks/useUpdateDepart
 import { AgencyData } from '../../../../../types/agency';
 import { DepartmentDetails } from '../../../../../types/departmentDetails';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../../components/Notify';
 
 export interface DepartmentOption {
     id: number;
@@ -151,19 +152,18 @@ export const DepartmentDetailsCard = ({
                 variant="dialog"
                 subTitle={departmentSelect}
             >
-                <Alert
-                    type="error"
-                    showIcon
-                    message={t('agency.edit.general.department_details.loadError.title')}
-                    description={t('agency.legal.department.loadError.text', { name: selectedName })}
-                    action={
-                        onRetry && (
-                            <Button size="small" onClick={onRetry}>
-                                {t('agency.legal.department.loadError.retry')}
-                            </Button>
-                        )
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    severity="error"
+                    title={t('agency.edit.general.department_details.loadError.title')}
+                    actions={
+                        onRetry
+                            ? [{ label: t('agency.legal.department.loadError.retry'), onClick: onRetry }]
+                            : undefined
                     }
-                />
+                >
+                    {t('agency.legal.department.loadError.text', { name: selectedName })}
+                </Notify>
             </Card>
         );
     }

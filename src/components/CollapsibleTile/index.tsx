@@ -13,6 +13,8 @@ export interface CollapsibleTileProps {
     statusTone?: 'neutral' | 'attention';
     /** Open on first render. */
     defaultOpen?: boolean;
+    /** Called with the new state when the header is toggled, so a parent that rebuilds the tile can keep it open. */
+    onOpenChange?: (open: boolean) => void;
     children: ReactNode;
     className?: string;
 }
@@ -28,6 +30,7 @@ export const CollapsibleTile = ({
     status,
     statusTone = 'neutral',
     defaultOpen = false,
+    onOpenChange,
     children,
     className,
 }: CollapsibleTileProps) => {
@@ -36,8 +39,10 @@ export const CollapsibleTile = ({
     const bodyId = useId();
 
     const toggle = () => {
+        const next = !open;
         setMounted(true);
-        setOpen((current) => !current);
+        setOpen(next);
+        onOpenChange?.(next);
     };
 
     return (

@@ -28,7 +28,7 @@ export const AccessDenied = () => {
                         </Button>
                         {/* The page sits outside the protected layout, so without this the
                             only way out of a 403 loop was to let the session expire. */}
-                        <Button onClick={() => logout(true)}>{t('logout')}</Button>
+                        <Button onClick={() => logout(true, undefined, 'explicit')}>{t('logout')}</Button>
                     </div>
                 </div>
             </div>

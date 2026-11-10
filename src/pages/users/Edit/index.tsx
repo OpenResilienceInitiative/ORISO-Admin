@@ -1,4 +1,4 @@
-import { Alert, Button, Space, Col, Row, Form } from 'antd';
+import { Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -73,6 +73,7 @@ import {
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
+import { HintText } from '../../../components/HintText';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -817,16 +818,13 @@ export const UserEditOrAdd = () => {
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
-    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
     let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
 
     if (pendingSlug) {
-        publicSlugAlertType = 'warning';
         publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
     } else if (slugStatus === 'REJECTED') {
         publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
     } else if (activePublicSlug) {
-        publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
 
@@ -1078,12 +1076,9 @@ export const UserEditOrAdd = () => {
                                             <input />
                                         </Form.Item>
                                         {isEditing && (
-                                            <Alert
-                                                type={publicSlugAlertType}
-                                                showIcon
-                                                message={t('counselor.publicSlug.status.title')}
-                                                description={publicSlugAlertDescription}
-                                            />
+                                            <HintText title={t('counselor.publicSlug.status.title')}>
+                                                {publicSlugAlertDescription}
+                                            </HintText>
                                         )}
                                         {pendingSlug && (
                                             <Space>

@@ -6,6 +6,8 @@ import styles from './styles.module.scss';
 interface TraegerDpoFieldsProps {
     /** Wraps each field, so hosts keep their own spacing (`fieldGroup` on Allgemein). */
     wrapField?: (field: ReactNode, name: string) => ReactNode;
+    /** Set to false where the host shows the title and help itself, e.g. as a tile section heading. */
+    showHeading?: boolean;
 }
 
 const FIELDS = [
@@ -22,14 +24,16 @@ const FIELDS = [
  * Beratungsstelle's DPO contact. A Beratungsstelle without its own inherits it for the
  * "Datenschutzbeauftragte:r" placeholder. Nothing here is required.
  */
-export const TraegerDpoFields = ({ wrapField = (field) => field }: TraegerDpoFieldsProps) => {
+export const TraegerDpoFields = ({ wrapField = (field) => field, showHeading = true }: TraegerDpoFieldsProps) => {
     const { t } = useTranslation();
     return (
         <>
-            <div className={styles.heading}>
-                <p className={styles.title}>{t('tenants.form.dpo.title')}</p>
-                <p className={styles.help}>{t('tenants.form.dpo.help')}</p>
-            </div>
+            {showHeading && (
+                <div className={styles.heading}>
+                    <p className={styles.title}>{t('tenants.form.dpo.title')}</p>
+                    <p className={styles.help}>{t('tenants.form.dpo.help')}</p>
+                </div>
+            )}
             {FIELDS.map(({ key, label, maxLength, ...rest }) =>
                 wrapField(
                     <MuiFormField

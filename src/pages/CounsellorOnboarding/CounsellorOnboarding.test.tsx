@@ -191,7 +191,9 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
+        // A rejected password is field-level hint text under the password, not a pop-up.
+        expect(await screen.findByText('accountSetup.passwordUnchanged')).toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'accountSetup.submit' })).toBeEnabled();
     });
@@ -207,7 +209,7 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.serviceError');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('accountSetup.serviceError');
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
         expect(mocks.fetchData.mock.calls.length - before).toBe(1);
         expect(client.activateTwoFactor).not.toHaveBeenCalled();
@@ -270,7 +272,7 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByRole('alert');
+        await screen.findByTestId('snackbar');
         view.rerender(
             <MemoryRouter>
                 <CounsellorOnboarding inviteToken="second" client={client} />
@@ -279,7 +281,7 @@ describe('CounsellorOnboarding', () => {
         await screen.findByText('second@example.org');
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
         expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
@@ -734,7 +736,7 @@ describe('CounsellorOnboarding', () => {
         });
         renderFlow(client);
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
+        expect(await screen.findByTestId('wizard-topics-none')).toHaveTextContent('counsellorOnboarding.topics.none');
         expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
         expect(submit()).toBeDisabled();

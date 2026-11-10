@@ -2089,7 +2089,8 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
 
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
 
-            expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+            // The refusal is an error pop-up on the shared snackbar channel, outside the dialog.
+            expect(await within(await screen.findByTestId('snackbar-host')).findByRole('alert')).toHaveTextContent(
                 'Letzte Beratungsperson einer aktiven Stelle.',
             );
             expect(mocks.navigate).not.toHaveBeenCalled();
@@ -2106,7 +2107,7 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
             renderForm();
             const dialog = await reviewMoveTo(user);
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
-            await within(dialog).findByRole('alert');
+            await within(await screen.findByTestId('snackbar-host')).findByRole('alert');
 
             await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }));
 

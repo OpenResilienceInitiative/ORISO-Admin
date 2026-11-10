@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { snackbar } from '../../../../../components/Snackbar';
 import { DeletionWindowModal } from './index';
 
@@ -9,6 +9,7 @@ const mutations = vi.hoisted(() => ({
     cancel: vi.fn(),
     pause: vi.fn(),
     toast: vi.fn(),
+    errorToast: vi.fn(),
     pending: false,
 }));
 
@@ -55,10 +56,15 @@ vi.mock('../../../../../components/Modal', () => ({
 
 describe('DeletionWindowModal', () => {
     beforeEach(() => {
-        vi.spyOn(snackbar, 'success').mockImplementation(mutations.toast as never);
-        vi.spyOn(snackbar, 'error').mockImplementation(mutations.toast as never);
         vi.clearAllMocks();
+        vi.spyOn(snackbar, 'success').mockImplementation(mutations.toast as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(mutations.errorToast as never);
         mutations.pending = false;
+    });
+
+    // The spies sit on the shared snackbar object: put it back so they never stack across tests.
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     describe('cancel', () => {
@@ -124,9 +130,9 @@ describe('DeletionWindowModal', () => {
             await userEvent.click(screen.getByRole('button', { name: 'deletionWindow.cancel.confirm' }));
 
             await vi.waitFor(() =>
-                expect(mutations.toast).toHaveBeenCalledWith(expect.objectContaining({ content: key })),
+                expect(mutations.errorToast).toHaveBeenCalledWith(expect.objectContaining({ content: key })),
             );
-            expect(JSON.stringify(mutations.toast.mock.calls)).not.toContain('RAW SERVER TEXT');
+            expect(JSON.stringify(mutations.errorToast.mock.calls)).not.toContain('RAW SERVER TEXT');
             expect(onClose).not.toHaveBeenCalled();
         });
 
@@ -137,7 +143,7 @@ describe('DeletionWindowModal', () => {
             await userEvent.click(screen.getByRole('button', { name: 'deletionWindow.cancel.confirm' }));
 
             await vi.waitFor(() =>
-                expect(mutations.toast).toHaveBeenCalledWith(
+                expect(mutations.errorToast).toHaveBeenCalledWith(
                     expect.objectContaining({ content: 'deletionWindow.error.forbidden' }),
                 ),
             );

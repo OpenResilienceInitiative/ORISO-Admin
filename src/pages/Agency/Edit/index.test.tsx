@@ -1,10 +1,13 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Form } from 'antd';
 import { snackbar as notification } from '../../../components/Snackbar';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
+import { UserRole } from '../../../enums/UserRole';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -27,12 +30,13 @@ const mocks = vi.hoisted(() => ({
     isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    canCreateAgency: true,
     userRoles: {
         hasRole: () => true,
         isSuperAdmin: true,
         isTechnicalAccount: false,
         isTenantScopedAdmin: false,
-        roles: [],
+        roles: [] as UserRole[],
         tenantId: 0,
     },
     dpaGate: { dpaPublished: true, dpaSigned: true },
@@ -65,6 +69,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 beforeEach(() => {
+    mocks.canCreateAgency = true;
     mocks.consultantSearchFilters = [];
     mocks.consultantSearchCalls = [];
     mocks.consultantSearchFailed = false;
@@ -114,6 +119,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
     'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string) => translations[key] || key;
@@ -308,6 +314,13 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => mocks.userRoles,
 }));
 
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: PermissionAction, resource: Resource) =>
+            action === PermissionAction.Create && resource === Resource.Agency && mocks.canCreateAgency,
+    }),
+}));
+
 vi.mock('../../../hooks/useDpaGate.hook', () => ({
     useDpaGate: () => ({ data: mocks.dpaGate, isLoading: false, isError: false }),
 }));
@@ -371,6 +384,33 @@ describe('AgencyPageEdit create flow', () => {
         // cards share the row width and wrap/stack below the floor.
         expect(container.querySelector('[data-admin-card-grid]')).toBeInTheDocument();
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
+    });
+
+    it('denies the direct add route without the agency creation permission', () => {
+        mocks.canCreateAgency = false;
+        mocks.userRoles = {
+            ...mocks.userRoles,
+            isSuperAdmin: false,
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            tenantId: 2,
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing agency readable without the agency creation permission', async () => {
+        mocks.canCreateAgency = false;
+        mocks.routeId = '2';
+        mocks.agencyData = { id: 2, name: 'Springfield QA Dev Beratungsstelle', tenantId: 2 };
+
+        await act(async () => renderWithClient(<AgencyPageEdit />));
+
+        expect(screen.getByRole('heading', { name: 'Springfield QA Dev Beratungsstelle' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Schade!' })).not.toBeInTheDocument();
     });
 
     it('does not submit a new agency without a selected tenant', async () => {
