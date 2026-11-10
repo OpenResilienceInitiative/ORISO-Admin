@@ -13,6 +13,8 @@ import { markTokenDiagnostic } from '../../scripts/story-token-diagnostic';
 import { applyAdminInvertedTheme, applyAdminTheme } from '../utils/applyAdminTheme';
 import { contrastRatio } from '../utils/contrastRatio';
 import { computeOrisoPalette, type OrisoSchemeName } from '../utils/theme/orisoScheme';
+import { checkInspectionLiveness } from './inspectionLiveness';
+import { tokenReferenceCases, tokenReferenceObservationIds, type TokenReferenceCase } from './tokenReferenceMatrix';
 
 type ReferenceStoryContext = Parameters<NonNullable<typeof fieldStories.FieldAnatomy.render>>[1];
 
@@ -36,15 +38,21 @@ interface InspectionReport {
     observations: Observation[];
 }
 
+// One frozen manifest (tokenReferenceMatrix.ts) owns the contexts; stories only consume it.
+const matrixCase = (storyName: string): TokenReferenceCase => {
+    const entry = tokenReferenceCases.find((candidate) => candidate.storyName === storyName);
+    if (!entry) throw new Error(`Token reference matrix has no case ${storyName}`);
+    return entry;
+};
 const contexts = [
-    { primaryColor: '#A5000A', scheme: 'light', locale: 'de' },
-    { primaryColor: '#A5000A', scheme: 'light', locale: 'en' },
-    { primaryColor: '#A5000A', scheme: 'inverted', locale: 'de' },
-    { primaryColor: '#A5000A', scheme: 'inverted', locale: 'en' },
-    { primaryColor: '#1D4ED8', scheme: 'light', locale: 'de' },
-    { primaryColor: '#1D4ED8', scheme: 'light', locale: 'en' },
-    { primaryColor: '#1D4ED8', scheme: 'inverted', locale: 'de' },
-    { primaryColor: '#1D4ED8', scheme: 'inverted', locale: 'en' },
+    matrixCase('RedLightGerman').context,
+    matrixCase('RedLightEnglish').context,
+    matrixCase('RedInvertedGerman').context,
+    matrixCase('RedInvertedEnglish').context,
+    matrixCase('BlueLightGerman').context,
+    matrixCase('BlueLightEnglish').context,
+    matrixCase('BlueInvertedGerman').context,
+    matrixCase('BlueInvertedEnglish').context,
 ] satisfies InspectionReport['context'][];
 
 const readReport = (canvasElement: HTMLElement): InspectionReport => {
@@ -54,6 +62,12 @@ const readReport = (canvasElement: HTMLElement): InspectionReport => {
     expect(report.observations.length).toBeGreaterThan(0);
     expect(new Set(report.observations.map(({ id }) => id)).size).toBe(report.observations.length);
     return report;
+};
+
+const inspectorOutput = (canvasElement: HTMLElement): HTMLElement => {
+    const output = canvasElement.querySelector<HTMLElement>('[data-applied-token-inspector]');
+    if (!output) throw new Error('The applied token inspector must be rendered');
+    return output;
 };
 
 const findObservation = (report: InspectionReport, id: string) => {
@@ -282,6 +296,8 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
         const report = readReport(canvasElement);
         markTokenDiagnostic('play:report:after', context);
         expect(report.context).toMatchObject(context);
+        // Frozen matrix: exactly these observations, no silently dropped or extra row.
+        expect(report.observations.map(({ id }) => id)).toEqual([...tokenReferenceObservationIds.field]);
         markTokenDiagnostic('play:palette:before', context);
         Object.entries(tokens)
             .filter(([name]) => name.startsWith('--admin-field-'))
@@ -347,6 +363,8 @@ const fieldContract = (context: InspectionReport['context']): Story => ({
         });
         expect(disabledSelect).toBeDisabled();
         expect(disabledSelect.closest('.ant-select')).toHaveAttribute('aria-disabled', 'true');
+        // Browser-hang check: the finished inspection must settle and never stall the page.
+        await checkInspectionLiveness(inspectorOutput(canvasElement));
         markTokenDiagnostic('play:after', context);
     },
 });
@@ -529,12 +547,14 @@ export const UnresolvedAuthoredRootAndRestore: Story = {
     },
 };
 
-export const ThemeBridgeBlueInvertedEnglish: Story = {
-    render: (_, storyContext) => reference(contexts[7], storyContext, true),
-    beforeEach: prepareContext(contexts[7]),
+const bridgeContract = ({ context, expectedPrimaryButton }: TokenReferenceCase): Story => ({
+    render: (_, storyContext) => reference(context, storyContext, true),
+    beforeEach: prepareContext(context),
     play: async ({ canvasElement }) => {
-        const context = contexts[7];
         expect(readReport(canvasElement).context).toMatchObject(context);
+        expect(readReport(canvasElement).observations.map(({ id }) => id)).toEqual([
+            ...tokenReferenceObservationIds.bridge,
+        ]);
         const button = findObservation(readReport(canvasElement), 'component:bridge-primary-button:background-color');
         const expected = computeOrisoPalette({ accentDark: context.primaryColor }, context.scheme).tokens[
             '--m3-primary'
@@ -543,14 +563,15 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
             import.meta.env.VITE_ORISO_TOKEN_DIAGNOSTIC && button.target
                 ? canvasElement.querySelector(button.target.selector)
                 : null;
-        // Preserve the pre-existing product scheme: the dark algorithm derives this role from the raw M3 seed.
-        // The inspector must expose this known baseline colour difference, not relabel it as a match.
+        // Pre-existing product scheme: in the inverted scheme the dark algorithm derives this role from the
+        // raw M3 seed. The inspector must expose that known baseline difference, not relabel it as a match.
         const resolvedPrimary = antdTheme.getDesignToken(
             buildAdminAntdTheme({ seeds: { accentDark: context.primaryColor }, scheme: context.scheme }),
         ).colorPrimary;
         const normalizedExpected = serialize('background-color', expected);
         const normalizedResolved = serialize('background-color', resolvedPrimary);
-        expect(normalizedResolved).not.toBe(normalizedExpected);
+        // The manifest pin and the live colours must agree before the inspector is judged against them.
+        expect(normalizedResolved === normalizedExpected ? 'match' : 'mismatch').toBe(expectedPrimaryButton);
         const issue = `bridge-primary-button background-color: mismatch; expected ${expected}, applied ${normalizedResolved}`;
         const releaseMotion = beginTokenMotionDiagnostic(
             'bridge',
@@ -563,21 +584,21 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
         captureTokenCSS('bridge:before-assert', canvasElement, context, diagnosticTarget, button.id, expected);
         try {
             await waitFor(() => {
-                const current = findObservation(
-                    readReport(canvasElement),
-                    'component:bridge-primary-button:background-color',
-                );
+                const report = readReport(canvasElement);
+                const current = findObservation(report, 'component:bridge-primary-button:background-color');
                 expect(document.documentElement.style.getPropertyValue('--m3-primary').trim()).toBe(expected);
                 expect(getComputedStyle(document.documentElement).getPropertyValue('--m3-primary').trim()).toBe(
                     expected,
                 );
+                // The root token itself is applied correctly in every context.
+                expect(findObservation(report, 'palette:--m3-primary')).toMatchObject({ expected, status: 'match' });
                 expect(current).toMatchObject({
                     expected,
                     actual: normalizedResolved,
-                    status: 'mismatch',
+                    status: expectedPrimaryButton,
                     source: 'buildAdminAntdTheme().token.colorPrimary ← computeOrisoPalette --m3-primary',
                 });
-                expect(current.issues).toEqual([issue]);
+                expect(current.issues).toEqual(expectedPrimaryButton === 'match' ? [] : [issue]);
                 expect(current.target).toEqual({
                     selector: '[data-token-inspection-bridge] button.ant-btn-primary',
                     property: 'background-color',
@@ -592,10 +613,13 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
                 expect(current.actual).toBe(normalizedResolved);
                 const row = within(canvasElement).getByRole('row', { name: /bridge-primary-button.*background-color/ });
                 expect(row).toBeVisible();
-                expect(row).toHaveTextContent('mismatch');
-                expect(row).toHaveTextContent(issue);
+                expect(row).toHaveTextContent(expectedPrimaryButton ?? '');
+                if (expectedPrimaryButton === 'mismatch') expect(row).toHaveTextContent(issue);
             });
             captureTokenCSS('bridge:assertion-passed', canvasElement, context, diagnosticTarget, button.id, expected);
+            expect(i18n.resolvedLanguage).toBe(context.locale);
+            // Browser-hang check: the finished inspection must settle and never stall the page.
+            await checkInspectionLiveness(inspectorOutput(canvasElement));
         } catch (error) {
             captureTokenCSS('bridge:failure', canvasElement, context, diagnosticTarget, button.id, expected);
             throw error;
@@ -603,5 +627,48 @@ export const ThemeBridgeBlueInvertedEnglish: Story = {
             releaseMotion();
             captureTokenCSS('bridge:finally', canvasElement, context, diagnosticTarget, button.id, expected);
         }
+    },
+});
+
+export const ThemeBridgeRedLightGerman = bridgeContract(matrixCase('ThemeBridgeRedLightGerman'));
+export const ThemeBridgeRedLightEnglish = bridgeContract(matrixCase('ThemeBridgeRedLightEnglish'));
+export const ThemeBridgeRedInvertedGerman = bridgeContract(matrixCase('ThemeBridgeRedInvertedGerman'));
+export const ThemeBridgeRedInvertedEnglish = bridgeContract(matrixCase('ThemeBridgeRedInvertedEnglish'));
+export const ThemeBridgeBlueLightGerman = bridgeContract(matrixCase('ThemeBridgeBlueLightGerman'));
+export const ThemeBridgeBlueLightEnglish = bridgeContract(matrixCase('ThemeBridgeBlueLightEnglish'));
+export const ThemeBridgeBlueInvertedGerman = bridgeContract(matrixCase('ThemeBridgeBlueInvertedGerman'));
+export const ThemeBridgeBlueInvertedEnglish = bridgeContract(matrixCase('ThemeBridgeBlueInvertedEnglish'));
+
+/**
+ * Browser-hang check under churn: many rapid changes to the observed specimen and the root tokens
+ * must not leave the inspector looping or blocking. Restores everything it touches.
+ */
+export const InspectionStaysResponsiveUnderChurn: Story = {
+    render: (_, storyContext) => reference(contexts[0], storyContext),
+    beforeEach: prepareContext(contexts[0]),
+    play: async ({ canvasElement }) => {
+        const input = canvasElement.querySelector('input.ant-input:not([disabled])');
+        if (!(input instanceof HTMLElement)) throw new Error('The real Antd Input must render');
+        const root = document.documentElement;
+        const previousInput = input.getAttribute('style');
+        const previousToken = root.style.getPropertyValue('--inspection-churn');
+        try {
+            for (let step = 0; step < 200; step += 1) {
+                input.style.setProperty('outline-width', `${step % 4}px`);
+                root.style.setProperty('--inspection-churn', String(step));
+            }
+            await checkInspectionLiveness(inspectorOutput(canvasElement));
+        } finally {
+            if (previousInput === null) input.removeAttribute('style');
+            else input.setAttribute('style', previousInput);
+            if (previousToken) root.style.setProperty('--inspection-churn', previousToken);
+            else root.style.removeProperty('--inspection-churn');
+        }
+        await waitFor(() =>
+            expect(findObservation(readReport(canvasElement), 'component:field-input:background-color').status).toBe(
+                'match',
+            ),
+        );
+        await checkInspectionLiveness(inspectorOutput(canvasElement));
     },
 };
