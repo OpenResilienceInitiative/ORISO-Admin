@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Form, FormInstance, Modal } from 'antd';
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { appURL } from '../../../../../appConfig';
 import { CardEditable } from '../../../../CardEditable';
 import { coloursHelp } from './help';
+import { ColorPresets } from './ColorPresets';
+import { ContrastBadge, ContrastNotice } from '../../../../ContrastBadge';
 import { MuiColorField } from '../../../../mui/MuiColorField';
 import { SideScrollerFooter } from '../../../../SideScrollerFooter';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
@@ -70,26 +73,31 @@ const getThemeRows = (tokens: Record<string, string>, t: (key: string) => string
     {
         color: tokens['--oriso-app-accent-dark'],
         label: t('theme.builder.accentDarkColor'),
-        description: t('theme.builder.summary.accentDark'),
+        description: t('theme.builder.purpose.accentDark'),
     },
     {
         color: tokens['--oriso-app-accent-light'],
         label: t('theme.builder.accentLightColor'),
-        description: t('theme.builder.summary.accentLight'),
+        description: t('theme.builder.purpose.accentLight'),
     },
     {
         color: tokens['--m3-error'],
-        label: t('theme.builder.summary.errorLabel'),
-        description: t('theme.builder.summary.error'),
+        label: t('theme.builder.signalColor'),
+        description: t('theme.builder.purpose.signal'),
     },
 ];
 
+/** Name, then one line on what the colour is used for, then hex and contrast on the right (#1374). */
 const ColorSummaryRow = ({ color, label, description }: { color: string; label: string; description: string }) => (
     <div className={styles.colorSummaryRow}>
         <span className={styles.colorSwatch} style={{ backgroundColor: color }} />
         <span className={styles.colorText}>
-            <span className={styles.colorDescription}>{description}</span>
             <span className={styles.colorLabel}>{label}</span>
+            <span className={styles.colorDescription}>{description}</span>
+        </span>
+        <span className={styles.colorValue}>
+            <span className={styles.colorHex}>{color ? color.toUpperCase() : '–'}</span>
+            <ContrastBadge color={color} />
         </span>
     </div>
 );
@@ -104,6 +112,7 @@ const ThemeSummary = ({ seeds }: { seeds: TenantSeeds }) => {
             {rows.map((row) => (
                 <ColorSummaryRow {...row} key={row.label} />
             ))}
+            <ContrastNotice colors={rows.map(({ label, color }) => ({ name: label, color }))} />
         </div>
     );
 };
@@ -130,8 +139,10 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
         <>
             <div className={styles.colorEditor}>
                 <MuiColorField
-                    className={styles.colorField}
+                    className={classNames(styles.colorField, styles.colorFieldWithPresets)}
                     labelKey="theme.builder.accentDarkColor"
+                    descriptionKey="theme.builder.purpose.accentDark"
+                    showContrast
                     name={['theming', 'primaryColor']}
                     required
                     disabled={locks.accentDark}
@@ -146,19 +157,38 @@ const ThemeBuilderForm = ({ form, storedSeeds, locks, editing, saveRejected = fa
                         },
                     ]}
                 />
+                <ColorPresets
+                    value={accentDark ?? getAccentDark(storedSeeds)}
+                    disabled={locks.accentDark}
+                    onChange={(hex) =>
+                        // A preset is always usable, so it also clears an error left by an earlier own colour.
+                        form.setFields([{ name: ['theming', 'primaryColor'], value: hex, errors: [] }])
+                    }
+                />
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.accentLightColor"
+                    descriptionKey="theme.builder.purpose.accentLight"
+                    showContrast
                     name={['theming', 'accent']}
                     disabled={locks.accentLight}
                 />
                 <MuiColorField
                     className={styles.colorField}
                     labelKey="theme.builder.signalColor"
+                    descriptionKey="theme.builder.purpose.signal"
+                    showContrast
                     name={['theming', 'signal']}
                     disabled={locks.signal}
                 />
             </div>
+            <ContrastNotice
+                colors={[
+                    { name: t('theme.builder.accentDarkColor'), color: draftSeeds.accentDark },
+                    { name: t('theme.builder.accentLightColor'), color: draftSeeds.accentLight },
+                    { name: t('theme.builder.signalColor'), color: draftSeeds.signal },
+                ]}
+            />
             {saveRejected && tooPale && (
                 <Alert className={styles.tooPaleAlert} type="error" showIcon message={unusableSeedMessage} />
             )}
@@ -445,16 +475,20 @@ export const ThemeEditorModal = ({
                             />
                         </section>
                         {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
-                        <SideScrollerFooter
-                            className={styles.themePreviewScrollerFooter}
-                            ariaLabel={t('theme.builder.preview.scroll')}
-                            previousLabel={t('theme.builder.preview.previous')}
-                            nextLabel={t('theme.builder.preview.next')}
-                            canScrollBackward={previewScrollState.canScrollBackward}
-                            canScrollForward={previewScrollState.canScrollForward}
-                            onScrollBackward={() => scrollPreview(-1)}
-                            onScrollForward={() => scrollPreview(1)}
-                        />
+                        {/* Only while the phones overflow: two disabled arrows on top of
+                            phones that already fit read as broken controls. */}
+                        {(previewScrollState.canScrollBackward || previewScrollState.canScrollForward) && (
+                            <SideScrollerFooter
+                                className={styles.themePreviewScrollerFooter}
+                                ariaLabel={t('theme.builder.preview.scroll')}
+                                previousLabel={t('theme.builder.preview.previous')}
+                                nextLabel={t('theme.builder.preview.next')}
+                                canScrollBackward={previewScrollState.canScrollBackward}
+                                canScrollForward={previewScrollState.canScrollForward}
+                                onScrollBackward={() => scrollPreview(-1)}
+                                onScrollForward={() => scrollPreview(1)}
+                            />
+                        )}
                     </div>
                 </div>
             </Form>
@@ -523,6 +557,7 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
             <CardEditable
                 key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${effectiveSignal}-${locks.accentDark}-${locks.accentLight}-${locks.signal}`}
                 allowEdit={canEdit}
+                readOnlyAccess={readOnly}
                 isLoading={isLoading}
                 titleKey="settings.colors"
                 subTitle={t<string>('settings.colors.howto')}

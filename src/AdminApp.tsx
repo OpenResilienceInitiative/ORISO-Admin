@@ -79,8 +79,8 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     return (
         <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
             <AntdApp component={false}>
-                <SnackbarHost />
                 {children}
+                <SnackbarHost />
             </AntdApp>
         </ConfigProvider>
     );

@@ -29,7 +29,14 @@ export interface TileHelpTopic {
     related?: TileHelpTopic[];
 }
 
-const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; onClose: () => void }) => {
+interface TileHelpDialogProps {
+    topic: TileHelpTopic;
+    /** The icon of the tile the help belongs to; shown in the header and as the stand-in picture. */
+    tileIcon?: ReactNode;
+    onClose: () => void;
+}
+
+const TileHelpDialog = ({ topic: firstTopic, tileIcon, onClose }: TileHelpDialogProps) => {
     const { t } = useTranslation();
     const [trail, setTrail] = useState<TileHelpTopic[]>([firstTopic]);
     const [index, setIndex] = useState(0);
@@ -51,7 +58,14 @@ const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; 
 
     return (
         <Modal
-            title={t(topic.titleKey)}
+            title={
+                <span className={styles.heading}>
+                    <span className={styles.headingIcon} aria-hidden data-tile-help-icon>
+                        {tileIcon ?? <InfoOutlinedIcon />}
+                    </span>
+                    <span>{t(topic.titleKey)}</span>
+                </span>
+            }
             description={t(topic.essenceKey)}
             width={720}
             onClose={onClose}
@@ -87,40 +101,68 @@ const TileHelpDialog = ({ topic: firstTopic, onClose }: { topic: TileHelpTopic; 
             {/* The arrow keys move through the slides while the focus is anywhere in here. */}
             {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
             <div className={styles.slide} onKeyDown={handleKeyDown} data-tile-help-slide={slide?.id}>
-                {slide?.visual && <div className={styles.visual}>{slide.visual}</div>}
-                {slide && <h3 className={styles.slideTitle}>{t(slide.titleKey)}</h3>}
-                {slide && <p className={styles.slideBody}>{t(slide.bodyKey)}</p>}
-                {slide?.example && (
-                    <figure className={styles.example}>
-                        <figcaption>{t('tileHelp.example')}</figcaption>
-                        <div inert>{slide.example}</div>
-                    </figure>
-                )}
-                {isLast && (Boolean(topic.related?.length) || trail.length > 1) && (
-                    <div className={styles.related}>
-                        {trail.length > 1 && (
-                            <M3Button variant="outlined" onClick={() => openTopic(trail.slice(0, -1))}>
-                                {t('tileHelp.backTo', { title: t(trail[trail.length - 2].titleKey) })}
-                            </M3Button>
-                        )}
-                        {topic.related?.map((related) => (
-                            <M3Button
-                                key={related.id}
-                                variant="outlined"
-                                onClick={() => openTopic([...trail, related])}
-                            >
-                                {t('tileHelp.seeAlso', { title: t(related.titleKey) })}
-                            </M3Button>
-                        ))}
-                    </div>
-                )}
+                {/* Every step keeps the same picture box, so the text and Next never jump. A step
+                    without a drawing of its own shows the tile's icon in its place. */}
+                <div
+                    key={`${topic.id}-${slide?.id}`}
+                    className={styles.media}
+                    aria-hidden
+                    data-tile-help-media={slide?.visual ? 'visual' : 'placeholder'}
+                >
+                    {slide?.visual ?? (
+                        <span className={styles.placeholderIcon} data-tile-help-placeholder>
+                            {tileIcon ?? <InfoOutlinedIcon />}
+                        </span>
+                    )}
+                    {/* The red band: grows once, pulls back a little and settles whenever a step
+                        appears (the box is re-keyed per step). It sits in the box's padding, under
+                        the picture, so it never covers a drawing. Still under „Bewegung reduzieren“. */}
+                    <span className={styles.band} data-tile-help-band />
+                </div>
+                <div className={styles.content}>
+                    {slide && <h3 className={styles.slideTitle}>{t(slide.titleKey)}</h3>}
+                    {slide && <p className={styles.slideBody}>{t(slide.bodyKey)}</p>}
+                    {slide?.example && (
+                        <figure className={styles.example}>
+                            <figcaption>{t('tileHelp.example')}</figcaption>
+                            <div inert>{slide.example}</div>
+                        </figure>
+                    )}
+                    {isLast && (Boolean(topic.related?.length) || trail.length > 1) && (
+                        <div className={styles.related}>
+                            {trail.length > 1 && (
+                                <M3Button variant="outlined" onClick={() => openTopic(trail.slice(0, -1))}>
+                                    {t('tileHelp.backTo', { title: t(trail[trail.length - 2].titleKey) })}
+                                </M3Button>
+                            )}
+                            {topic.related?.map((related) => (
+                                <M3Button
+                                    key={related.id}
+                                    variant="outlined"
+                                    onClick={() => openTopic([...trail, related])}
+                                >
+                                    {t('tileHelp.seeAlso', { title: t(related.titleKey) })}
+                                </M3Button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </Modal>
     );
 };
 
 /** The info button every tile can carry. Opens the explanation of the tile as a slideshow. */
-export const TileHelpButton = ({ topic, tileTitle }: { topic: TileHelpTopic; tileTitle: string }) => {
+export const TileHelpButton = ({
+    topic,
+    tileTitle,
+    tileIcon,
+}: {
+    topic: TileHelpTopic;
+    tileTitle: string;
+    /** The tile's own icon, so the explanation visibly belongs to it. */
+    tileIcon?: ReactNode;
+}) => {
     const { t } = useTranslation();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -134,7 +176,7 @@ export const TileHelpButton = ({ topic, tileTitle }: { topic: TileHelpTopic; til
             >
                 <InfoOutlinedIcon />
             </IconButton>
-            {isOpen && <TileHelpDialog topic={topic} onClose={() => setIsOpen(false)} />}
+            {isOpen && <TileHelpDialog topic={topic} tileIcon={tileIcon} onClose={() => setIsOpen(false)} />}
         </>
     );
 };

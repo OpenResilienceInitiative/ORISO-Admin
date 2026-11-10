@@ -270,3 +270,19 @@ describe('applyAdminInvertedTheme', () => {
         ).toBeGreaterThanOrEqual(4.5);
     });
 });
+
+describe('switching scheme on the same root', () => {
+    it('leaves no inverted-only token behind when the light scheme is applied afterwards', () => {
+        const root = document.createElement('div');
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const light = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'light').tokens;
+        const onRoot = Array.from(root.style).filter((name) => name.startsWith('--m3-') || name.startsWith('--admin-'));
+        // The light shell also derives the contrast-checked card ring (#1168); it is not a palette token.
+        expect(onRoot.filter((name) => !(name in light) && name !== '--admin-focus-ring-on-surface')).toEqual([]);
+        Object.entries(light)
+            .filter(([name]) => name.startsWith('--m3-'))
+            .forEach(([name, value]) => expect(root.style.getPropertyValue(name), name).toBe(value));
+    });
+});
