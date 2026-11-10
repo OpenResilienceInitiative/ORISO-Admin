@@ -684,7 +684,7 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
     ],
 
     // ── Beratungsstelle ──────────────────────────────────────────────────────
-    'agency:general-info': [
+    'agency:master-data': [
         'name',
         'adresse',
         'straße',
@@ -708,8 +708,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'opening hours',
         'hours',
         'description',
-    ],
-    'agency:registration': [
         'sichtbar',
         'sichtbarkeit',
         'registrierung',
@@ -727,8 +725,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'assign counsellors',
         'postcode areas',
         'catchment',
-    ],
-    'agency:service-settings': [
         'teamberatung',
         'träger zuordnung',
         'fachbereich',
