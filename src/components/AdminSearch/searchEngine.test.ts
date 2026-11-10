@@ -229,6 +229,8 @@ const CASES: Case[] = [
     { options: PLATFORM_DE, query: 'Fachbereiche', top: ['global:one-topic', 'page:topics'], within: ['page:topics'] },
     // Pages and lists
     { options: PLATFORM_DE, query: 'Träger', top: 'page:tenants' },
+    // The English page is labelled "Providers" since the glossary alignment of the English copy.
+    { options: PLATFORM_EN, query: 'providers', top: 'page:tenants' },
     { options: PLATFORM_EN, query: 'tenants', top: 'page:tenants' },
     { options: PLATFORM_DE, query: 'Beratungsstellen', top: 'page:agency' },
     { options: PLATFORM_DE, query: 'Beratungsstelle anlegen', top: 'page:found-agency' },

@@ -82,7 +82,10 @@ export const MasterDataInvertedScheme: Story = {
             clearAdminInvertedThemeTokens(document.documentElement);
             applyAdminTheme({ primaryColor: '#A5000A' });
             // Colours are animated: hand the story back to the accessibility audit only once they have settled.
-            const panel = canvasElement.querySelector(PANEL);
+            // The status panel has no field label; take the first panel that has one.
+            const panel = [...canvasElement.querySelectorAll(PANEL)].find((candidate) =>
+                candidate.querySelector('label'),
+            );
             const label = panel?.querySelector('label');
             await waitFor(() => {
                 expect(getComputedStyle(panel!).backgroundColor).toBe('rgb(255, 255, 255)');

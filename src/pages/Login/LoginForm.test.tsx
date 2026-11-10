@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
@@ -453,9 +453,12 @@ describe('LoginForm', () => {
         await user.type(otpField, '123456');
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        const hint = await screen.findByTestId('login-credentials-hint');
         // The OTP field stays so the person can correct the code, not start over.
         expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+        // The jump button points at the code, not at the user name.
+        await user.click(within(hint).getByRole('button', { name: 'snackbar.jump' }));
+        await waitFor(() => expect(screen.getByPlaceholderText('One-time password')).toHaveFocus());
     });
 
     /*

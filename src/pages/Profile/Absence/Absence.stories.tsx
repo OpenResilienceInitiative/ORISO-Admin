@@ -7,7 +7,8 @@ import { inTheRaster } from '../profileStory.matrix';
 import { Absence } from './index';
 
 const meta = {
-    title: 'Pages/Profile/Absence',
+    title: 'Settings/Mein Account/Absence',
+    id: 'pages-profile-absence',
     component: Absence,
     parameters: { layout: 'padded' },
     decorators: [

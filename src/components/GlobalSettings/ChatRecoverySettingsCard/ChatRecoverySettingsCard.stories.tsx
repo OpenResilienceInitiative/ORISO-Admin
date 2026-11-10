@@ -6,7 +6,8 @@ import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { ChatRecoverySettingsCard } from '.';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/ChatRecoverySettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/ChatRecoverySettingsCard',
+    id: 'organisms-globalsettings-chatrecoverysettingscard',
     component: ChatRecoverySettingsCard,
     args: {
         data: { asker: 'LOGIN_PASSWORD', consultant: 'LOGIN_PASSWORD', revision: 1 },

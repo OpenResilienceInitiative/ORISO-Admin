@@ -498,8 +498,8 @@ export const PlatformAdminsTab: Story = {
             const row = await rowOf(canvasElement, 'Muster');
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
-        await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        await step('delete confirmation identifies the platform admin', () =>
+            expectDeleteDialog(canvasElement, /Plattform-Admin Anna Muster löschen\?/),
         );
     },
 };
@@ -662,7 +662,12 @@ export const LicenceLimitIgnoresSearch: Story = {
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
 
         await user.click(canvas.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await canvas.findByPlaceholderText(/Suche nach E-Mail-Adresse/), 'Muster');
+        await user.type(
+            await canvas.findByRole('textbox', {
+                name: /Vorname, Nachname, Anzeigename, E-Mail, ID oder Beratungsstelle/,
+            }),
+            'Muster',
+        );
         await waitFor(() => expect(canvas.queryByText('Ben Beispiel')).toBeNull());
         await expect(await canvas.findByText(/^3\/3 Berater/)).toBeVisible();
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
@@ -1450,7 +1455,7 @@ const toolbarLabels = {
     },
     en: {
         tenant: 'Provider',
-        centre: 'Agency',
+        centre: 'Counselling centre',
         expand: 'Expand search',
         collapse: 'Collapse search',
         invitations: 'Go to invitations',

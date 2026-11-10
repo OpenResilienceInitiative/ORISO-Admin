@@ -35,7 +35,8 @@ const initialValues = {
 };
 
 const meta = {
-    title: 'Admin/Agency/Master data tile',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/MasterDataTile',
+    id: 'admin-agency-master-data-tile',
     component: AgencyMasterDataTile,
     parameters: { layout: 'padded', msw: { handlers: agencyEditHandlers } },
     args: {

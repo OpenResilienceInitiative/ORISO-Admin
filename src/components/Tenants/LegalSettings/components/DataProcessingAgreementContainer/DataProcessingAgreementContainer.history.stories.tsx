@@ -11,7 +11,8 @@ const currentVersion = '2026-09-30T12:00:00';
 let tenantReads = 0;
 const signedVersion = '2026-07-01T12:00:00';
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementContainer/Signature history',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementContainer/Signature history',
+    id: 'organisms-legal-dataprocessingagreementcontainer-signature-history',
     component: DataProcessingAgreementContainer,
     decorators: [(Story) => withAdminProviders(Story)],
     parameters: {

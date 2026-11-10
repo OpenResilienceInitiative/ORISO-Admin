@@ -208,6 +208,8 @@ describe('the authenticated first-centre setup', () => {
         mocks.fetchData.mockRejectedValueOnce(new Error('offline'));
         renderPage();
         expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
+        // The blocking error replaces the page, so it is announced rather than appearing silently.
+        expect(screen.getByRole('alert')).toHaveTextContent('agency.setup.unavailable');
         expect(agencyReads()).toHaveLength(0);
         await userEvent.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
         await screen.findByDisplayValue('Beratung Nord');

@@ -27,7 +27,8 @@ const SeedSwitch = ({ on }: { on: boolean }) => {
 };
 
 const meta: Meta<typeof AgencySettings> = {
-    title: 'Organisms/Agency/AgencySettings/TopicPicker',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/TopicPicker',
+    id: 'organisms-agency-agencysettings-topicpicker',
     component: AgencySettings,
     args: { isEditMode: true },
     parameters: {

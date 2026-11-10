@@ -7,6 +7,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import {
     ConsultantPersonalFields,
@@ -54,6 +55,7 @@ import {
 } from '../../../api/counselor/changeConsultantTenant';
 import { AGENCY_CONSULTANTS_KEY } from '../../../hooks/useAgencyConsultants';
 import { useAppConfigContext } from '../../../context/useAppConfig';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { CentreTopicPickers } from './CentreTopicPickers';
 import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
@@ -140,12 +142,17 @@ interface TenantMove {
     result?: ChangeConsultantTenantResult;
 }
 
-export const UserEditOrAdd = () => {
+type UserEditFormProps = {
+    id: string;
+    typeOfUsers: TypeOfUser.Consultants | TypeOfUser.AgencyAdmins;
+    can: ReturnType<typeof useUserPermissions>['can'];
+};
+
+const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
     const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
-    const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
@@ -153,7 +160,6 @@ export const UserEditOrAdd = () => {
     // question — see `ADMIN_REMARKS_ROLES`.
     const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
-    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
     const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
@@ -900,6 +906,18 @@ export const UserEditOrAdd = () => {
             </Page.BackWithActions>
 
             <ThemeProvider theme={orisoMuiTheme}>
+                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        targetTenantId={singleData.tenantId}
+                        canManage={can(
+                            PermissionAction.Update,
+                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
+                        )}
+                    />
+                )}
                 <Form
                     disabled={isReadOnly}
                     labelAlign="left"
@@ -1133,4 +1151,26 @@ export const UserEditOrAdd = () => {
             )}
         </Page>
     );
+};
+
+export const UserEditOrAdd = () => {
+    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const { can } = useUserPermissions();
+
+    if (!id || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        return <AccessDenied />;
+    }
+
+    if (typeOfUsers === TypeOfUser.AgencyAdmins) {
+        const canOpenEditor =
+            id === 'add'
+                ? can(PermissionAction.Create, Resource.AgencyAdminUser)
+                : can(PermissionAction.Read, Resource.AgencyAdminUser) &&
+                  can(PermissionAction.Update, Resource.AgencyAdminUser);
+        if (!canOpenEditor) {
+            return <AccessDenied />;
+        }
+    }
+
+    return <UserEditForm id={id} typeOfUsers={typeOfUsers} can={can} />;
 };

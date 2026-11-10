@@ -1,7 +1,7 @@
 // @vitest-environment oriso-jsdom
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { AdminDashboardStatisticsResponse } from '../api/statistic/getDashboardStatistics';
@@ -33,6 +33,10 @@ import { FETCH_ERRORS, fetchData } from '../api/fetchData';
 import getDashboardStatistics from '../api/statistic/getDashboardStatistics';
 import i18n from '../i18n';
 import { Statistic } from './Statistic';
+
+// CI runners are heavily contended; the 1s default for findBy*/waitFor flakes there. A pop-up needs the whole
+// chain (query settles, page re-renders, the snackbar host mounts and renders) before its text is on screen.
+configure({ asyncUtilTimeout: 10_000 });
 
 const dashboardMock = vi.mocked(getDashboardStatistics);
 const fetchDataMock = vi.mocked(fetchData);

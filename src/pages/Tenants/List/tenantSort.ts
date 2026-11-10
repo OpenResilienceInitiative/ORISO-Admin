@@ -1,11 +1,13 @@
 import type { DataTableSort } from '../../../components/DataTable';
 
-/** Columns the TenantService search can order by, and the `field` value it expects for each. */
+/**
+ * Columns the TenantService search can order by, and the `field` value it expects for each. The
+ * service also knows SUBDOMAIN and BERATERCOUNT, but both moved into the details (no column).
+ * It has no field for the last update, so that column cannot be sorted without a backend change.
+ */
 export const TENANT_SORT_FIELD_BY_COLUMN: Record<string, string> = {
     name: 'NAME',
     id: 'ID',
-    subdomain: 'SUBDOMAIN',
-    licences: 'BERATERCOUNT',
 };
 
 /**

@@ -97,7 +97,8 @@ const SwitchingHarness = () => (
 );
 
 const meta = {
-    title: 'Organisms/Agency/RegistrationSettingsCounsellors',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/RegistrationSettingsCounsellors',
+    id: 'organisms-agency-registrationsettingscounsellors',
     component: Harness,
     parameters: { msw: { handlers: [http.get('*/service/users/consultants/search*', search)] } },
     beforeEach: async () => {
@@ -168,7 +169,7 @@ export const NoCounsellorsInTheTenantEnglish: Story = {
     play: async ({ canvasElement }) => {
         await i18n.changeLanguage('en');
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/No further counsellors of this tenant/)).toBeInTheDocument();
+        await expect(await canvas.findByText(/No further counsellors of this provider/)).toBeInTheDocument();
     },
 };
 

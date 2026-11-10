@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useEffect } from 'react';
 import { Form } from 'antd';
 import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material/styles';
@@ -17,7 +18,8 @@ const FormValue = () => {
 
 /** Settings card of an existing Beratungsstelle, incl. the topic permission default for invited counsellors. */
 const meta: Meta<typeof AgencySettings> = {
-    title: 'Organisms/Agency/AgencySettings',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/AgencySettings',
+    id: 'organisms-agency-agencysettings',
     component: AgencySettings,
     parameters: { msw: { handlers: [http.get('*/service/topic/', () => HttpResponse.json([]))] } },
     decorators: [
@@ -80,6 +82,14 @@ let tenantsRecovered = false;
  * "Erneut versuchen"; the select keeps quiet text. The retry asks again and the select fills.
  */
 export const TenantsLoadErrorRetry: Story = {
+    decorators: [
+        (Story) => {
+            // Edit mode shows the tenant of the agency in a disabled select: it names it once the list has loaded.
+            const form = Form.useFormInstance();
+            useEffect(() => form.setFieldValue('tenantId', 3), [form]);
+            return <Story />;
+        },
+    ],
     parameters: {
         msw: {
             handlers: [
@@ -107,5 +117,7 @@ export const TenantsLoadErrorRetry: Story = {
         await userEvent.click(within(popup).getByRole('button', { name: /Erneut/ }));
         await waitFor(() => expect(tenantRequests).toBeGreaterThan(before));
         await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+        // The response reached the select: the disabled field names the Träger.
+        await waitFor(() => expect(within(canvasElement).getByDisplayValue('Träger Nord')).toBeVisible());
     },
 };

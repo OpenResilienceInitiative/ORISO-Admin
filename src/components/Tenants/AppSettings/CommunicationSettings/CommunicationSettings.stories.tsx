@@ -8,7 +8,8 @@ import { CommunicationSettings } from './index';
 const tenant = { id: 7, name: 'Träger Süd', settings: { extendedSettings: { isVideoCallAllowed: true } } };
 
 const meta = {
-    title: 'Organisms/AppSettings/CommunicationSettings',
+    title: 'Settings/Einstellungen/Funktionalitäten/CommunicationSettings',
+    id: 'organisms-appsettings-communicationsettings',
     component: CommunicationSettings,
     args: { tenantId: '7' },
     parameters: {

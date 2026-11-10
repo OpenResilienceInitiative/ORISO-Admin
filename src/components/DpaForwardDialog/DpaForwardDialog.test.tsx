@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DpaForwardDialog } from './DpaForwardDialog';
 import { DpaForwardError, DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
@@ -185,11 +185,31 @@ describe('DpaForwardDialog link minting', () => {
         renderDialog({ forward });
 
         await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
-        await screen.findByTestId('dpa-forward-link-error');
-        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.linkRetry' }));
+        const popup = await screen.findByTestId('dpa-forward-link-error');
+        await user.click(within(popup).getByRole('button', { name: 'dpaForward.dialog.linkRetry' }));
 
         await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(LINK.signUrl));
         expect(forward).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the retry inside the dialog after the error pop-up is closed', async () => {
+        const forward = vi.fn().mockRejectedValueOnce(new DpaForwardError('TECHNICAL')).mockResolvedValueOnce(ok());
+        const user = userEvent.setup();
+        renderDialog({ forward });
+
+        await user.click(screen.getByRole('button', { name: 'dpaForward.dialog.linkCreate' }));
+        const popup = await screen.findByTestId('dpa-forward-link-error');
+        await user.click(within(popup).getByRole('button', { name: 'snackbar.close' }));
+        await waitFor(() => expect(screen.queryByTestId('dpa-forward-link-error')).not.toBeInTheDocument());
+
+        // The modal keeps Tab inside and the pop-up sits outside it: the way to try again must stay in the dialog.
+        const section = within(screen.getByTestId('dpa-forward-link-section'));
+        expect(section.getByText('dpaForward.dialog.linkError')).toBeInTheDocument();
+        await user.click(section.getByRole('button', { name: 'dpaForward.dialog.linkRetry' }));
+
+        await waitFor(() => expect(screen.getByLabelText('dpaForward.dialog.linkLabel')).toHaveValue(LINK.signUrl));
+        expect(forward).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText('dpaForward.dialog.linkError')).not.toBeInTheDocument();
     });
 
     it('names the 409 case: the operator has published no agreement to forward', async () => {

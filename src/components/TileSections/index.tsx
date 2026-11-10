@@ -21,6 +21,8 @@ interface TileSectionProps {
     picture?: ReactNode;
     /** Puts the picture right of the content for panels that are wide and short. */
     pictureBeside?: boolean;
+    /** Spans every column of the tile, for a panel that reads better wide and short (e.g. a status). */
+    wide?: boolean;
     children?: ReactNode;
 }
 
@@ -33,14 +35,27 @@ const TileSectionsRoot = ({ children, className }: TileSectionsProps) => (
     <div className={classNames(styles.sections, className)}>{children}</div>
 );
 
-const TileSection = ({ id, title, titleAction, note, footer, picture, pictureBeside, children }: TileSectionProps) => {
+const TileSection = ({
+    id,
+    title,
+    titleAction,
+    note,
+    footer,
+    picture,
+    pictureBeside,
+    wide,
+    children,
+}: TileSectionProps) => {
     const headingId = `tile-section-${id}`;
 
     return (
         <section
             role="group"
             aria-labelledby={headingId}
-            className={classNames(styles.section, { [styles.sectionBeside]: pictureBeside })}
+            className={classNames(styles.section, {
+                [styles.sectionBeside]: pictureBeside,
+                [styles.sectionWide]: wide,
+            })}
         >
             <div className={styles.main}>
                 <div className={styles.heading}>

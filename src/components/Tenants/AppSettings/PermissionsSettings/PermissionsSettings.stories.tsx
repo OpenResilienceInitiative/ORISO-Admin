@@ -9,7 +9,8 @@ import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSe
 const filledSettings = { ...DEFAULT_PERMISSION_SETTINGS };
 
 const meta = {
-    title: 'Organisms/Permissions/PermissionsSettings',
+    title: 'Settings/Einstellungen/Funktionszugriff/PermissionsSettings',
+    id: 'organisms-permissions-permissionssettings',
     component: PermissionsSettingsView,
     parameters: {
         layout: 'fullscreen',

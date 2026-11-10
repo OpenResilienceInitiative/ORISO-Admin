@@ -10,6 +10,7 @@ import { Page } from '../../../components/Page';
 import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -32,6 +33,7 @@ const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
     const isPlatformAdmin = pathname.includes('/platform-admins/');
+    const labelScope = isPlatformAdmin ? 'platformAdmins' : 'tenantAdmins';
     const { isSuperAdmin, isTenantScopedAdmin, tenantId: ownTenantId } = useUserRoles();
     // A scoped admin always uses their own tenant, regardless of query parameters.
     const queryTenantId = new URLSearchParams(search).get('tenantId');
@@ -87,7 +89,7 @@ const TenantAdminEditor = () => {
         onSuccess: () => {
             navigate(listPath);
             snackbar.success({
-                message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
+                message: t(`${labelScope}.message.${isEditing ? 'update' : 'add'}`),
             });
         },
         onError: async (error) => {
@@ -123,7 +125,7 @@ const TenantAdminEditor = () => {
         return <AccessDenied />;
     }
 
-    const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
+    const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t(`${labelScope}.edit.back`);
     const requiredRule = { required: true, message: t('form.errors.required') };
     // Platform admins stay excluded from the grant mechanism (route is shared).
     const showGrantConsultantIdentity =
@@ -170,8 +172,19 @@ const TenantAdminEditor = () => {
                     initialValues={{ tenantId, ...data }}
                 >
                     <Row gutter={[24, 24]}>
+                        {isEditing && data && (
+                            <Col xs={24} lg={12}>
+                                <ManagedEntityStatus
+                                    entityKind="account"
+                                    entityName={`${data.firstname ?? ''} ${data.lastname ?? ''}`.trim()}
+                                    entityId={id}
+                                    canManage={canUpdate}
+                                    targetTenantId={data.tenantId}
+                                />
+                            </Col>
+                        )}
                         <Col xs={24} lg={12}>
-                            <Card titleKey="tenantAdmins.card.personalDataTitle">
+                            <Card titleKey={`${labelScope}.card.personalDataTitle`}>
                                 <MuiFormField
                                     name="firstname"
                                     label={t('firstname')}

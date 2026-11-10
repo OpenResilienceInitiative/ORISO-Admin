@@ -8,7 +8,7 @@ import { Notify } from '../../components/Notify';
  * A successful login with a missing DPA never shows this — it authenticates
  * and runs into the global DPA blocker instead.
  */
-export const LoginCredentialsHint = () => {
+export const LoginCredentialsHint = ({ otpStage = false }: { otpStage?: boolean }) => {
     const { t } = useTranslation();
 
     return (
@@ -16,8 +16,9 @@ export const LoginCredentialsHint = () => {
             title={t('notify.title.login')}
             testId="login-credentials-hint"
             severity="error"
-            // The hint has no height of its own; "Ansehen" goes to the field the person has to correct.
-            jump='input[autocomplete="username"]'
+            // The hint has no height of its own; "Ansehen" goes to the field the person has to correct: the
+            // code after a failed code submission, otherwise the user name.
+            jump={otpStage ? 'input#basic_otp' : 'input[autocomplete="username"]'}
         >
             {t('message.error.auth.credentialsOrInvite')}
         </Notify>

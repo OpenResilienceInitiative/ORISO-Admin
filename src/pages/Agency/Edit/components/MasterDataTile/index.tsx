@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
 import { CardEditable } from '../../../../../components/CardEditable';
@@ -16,6 +17,8 @@ interface AgencyMasterDataTileProps {
     /** Counts up each time the Fachbereich tile asks for the department field to open. */
     departmentFieldRequest: number;
     persistedTeamAgency: boolean;
+    /** The confirmed status of the centre; sits as a wide panel on top, outside the form fields. */
+    status?: ReactNode;
 }
 
 /**
@@ -28,6 +31,7 @@ export const AgencyMasterDataTile = ({
     onSave,
     departmentFieldRequest,
     persistedTeamAgency,
+    status,
 }: AgencyMasterDataTileProps) => {
     const { t } = useTranslation();
 
@@ -50,6 +54,11 @@ export const AgencyMasterDataTile = ({
                         form={form}
                     />
                     <TileSections>
+                        {status && (
+                            <TileSections.Section wide id="agency-status" title={t('entityStatus.title')}>
+                                {status}
+                            </TileSections.Section>
+                        )}
                         <TileSections.Section id="agency-general" title={t('agency.edit.general.general_information')}>
                             <AgencyGeneralInformation asFields minColumnWidth={FIELD_COLUMN_MIN} />
                         </TileSections.Section>
