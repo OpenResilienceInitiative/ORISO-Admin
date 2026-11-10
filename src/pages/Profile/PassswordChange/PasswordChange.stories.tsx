@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { PasswordChange } from './index';
 
 const meta = {
-    title: 'Pages/Profile/PasswordChange',
+    title: 'Settings/Mein Account/PasswordChange',
+    id: 'pages-profile-passwordchange',
     component: PasswordChange,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin'])],

@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line import/no-unresolved -- Storybook subpath export
+import { expect } from 'storybook/test';
 import { useNavigate } from 'react-router-dom';
+import i18n from '../../../i18n';
 import { M3Button } from '../../../components/M3Button';
 import { Page } from '../../../components/Page';
 import { getSettingsTabs } from '../../../constants/settingsTabs';
@@ -15,7 +19,8 @@ import {
  * here; the card is driven by local state so the filled and the emptied field state are visible.
  */
 const meta = {
-    title: 'Pages/TenantSettings/ErstantwortSettingsPage',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/ErstantwortSettingsPage',
+    id: 'pages-tenantsettings-erstantwortsettingspage',
     component: Page,
     parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof Page>;
@@ -61,6 +66,7 @@ const filled: ErstantwortContentMap = {
 };
 
 const PageWithCard = ({ initial, days }: { initial: ErstantwortContentMap; days?: number }) => {
+    const { t } = useTranslation();
     const [content, setContent] = useState<ErstantwortContentMap>(initial);
     const [deadline, setDeadline] = useState<number | undefined>(days);
     return (
@@ -76,7 +82,7 @@ const PageWithCard = ({ initial, days }: { initial: ErstantwortContentMap; days?
                 }
                 onDeadlineChange={setDeadline}
                 platformDefaults={platformDefaults}
-                footer={<M3Button variant="filled">Veröffentlichen</M3Button>}
+                footer={<M3Button variant="filled">{t('tenants.erstantwort.publish')}</M3Button>}
             />
         </Page>
     );
@@ -90,4 +96,17 @@ export const FilledGermanTexts: Story = {
 /** The greeting and the deadline were emptied: published as "" and 0, so the platform text and default apply. */
 export const EmptiedField: Story = {
     render: () => <PageWithCard initial={{ ...filled, erstantwortGreeting: { de: '<p></p>' } }} days={undefined} />,
+};
+
+/** The controls follow the selected language; example content remains in its authored language. */
+export const EnglishControls: Story = {
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('en');
+        return () => i18n.changeLanguage(previousLanguage);
+    },
+    render: () => <PageWithCard initial={filled} days={3} />,
+    play: async ({ canvas }) => {
+        await expect(canvas.getByRole('button', { name: 'Publish' })).toBeVisible();
+    },
 };

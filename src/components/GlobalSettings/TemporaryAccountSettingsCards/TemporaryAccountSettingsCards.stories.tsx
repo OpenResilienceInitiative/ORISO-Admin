@@ -18,7 +18,8 @@ const defaults: TemporaryAccountSettings = {
 };
 
 const meta = {
-    title: 'Organisms/GlobalSettings/TemporaryAccountSettingsCards',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/TemporaryAccountSettingsCards',
+    id: 'organisms-globalsettings-temporaryaccountsettingscards',
     component: TemporaryGuestAccountsSettingsCard,
     decorators: [
         (Story, { parameters }) => (

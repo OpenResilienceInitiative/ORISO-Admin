@@ -45,12 +45,14 @@ export const brandedTenant = { ...tenant, theming: { ...tenant.theming, ...brand
 export const appearanceHandlersFor = (data: typeof tenant) => [
     http.get(`${baseTenantPublicEndpoint}/*`, () => HttpResponse.json(data)),
     http.get(`${tenantAdminEndpoint}/1`, () => HttpResponse.json(data)),
+    http.get(`${tenantAdminEndpoint}/1/permission-policies`, () => HttpResponse.json({ tenantId: 1, policies: {} })),
 ];
 export const appearanceHandlers = appearanceHandlersFor(tenant);
 
 export const withAppearanceTenant = (data: typeof tenant) => (Story: () => ReactElement) =>
     withSeededAdminProviders(Story, (client) => {
         client.setQueryData([TENANT_DATA_KEY, 'no-tenant-claim'], data);
+        client.setQueryData([TENANT_DATA_KEY, 1], data);
     });
 export const withAppearanceData = withAppearanceTenant(tenant);
 

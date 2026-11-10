@@ -140,7 +140,8 @@ const handlers = ({ proposals = [template], draft = null as TenantLegalDraft | n
 };
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Received template (Träger)',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Received template (Träger)',
+    id: 'organisms-legal-legaltext-received-template-träger',
     component: TraegerLegalText,
     parameters: { layout: 'fullscreen' },
     decorators: [
