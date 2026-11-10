@@ -28,7 +28,8 @@ const meta = {
     parameters: { layout: 'fullscreen' },
     decorators: [
         (Story) => {
-            setStoryAuth([UserRole.TenantAdmin], 21);
+            // Creating a centre needs `Agency.create`, which the agency-admin role carries (guard on /admin/agency/add).
+            setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 21);
             // The preview already provides a MemoryRouter at "/"; the page reads `:id` from the route.
             return withAdminProviders(() => (
                 <Routes>

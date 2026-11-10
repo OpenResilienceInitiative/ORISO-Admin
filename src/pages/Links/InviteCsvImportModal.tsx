@@ -374,10 +374,20 @@ export const InviteCsvImportModal = ({
             case 'ambiguousId':
                 return t('links.csvImport.reason.ambiguousId', 'Mehrere ID-Spalten (Zeile {{line}})', line);
             case 'wrongIdType':
+                // The parser rejects only a header naming the other organisation type, so the file's label is the other ID.
                 return t(
                     'links.csvImport.reason.wrongIdType',
-                    'Die ID gehört zum anderen Tab: Träger-ID und Beratungsstellen-ID sind verschiedene Nummern (Zeile {{line}})',
-                    line,
+                    'Die ID-Spalte heißt {{headerLabel}}, die Datei wird aber im Tab „{{tab}}“ importiert, der eine {{idLabel}} erwartet. Bitte Organisation, ID und Tab prüfen (Zeile {{line}})',
+                    {
+                        headerLabel: isTenantId
+                            ? t('links.accountInvites.agencyId', 'Beratungsstellen-ID')
+                            : t('links.accountInvites.tenantId', 'Träger-ID'),
+                        tab: isTenantId
+                            ? t('links.tabs.tenants', 'Träger-Einladungen')
+                            : t('links.tabs.counsellor', 'Beratende-Einladungen'),
+                        idLabel,
+                        ...line,
+                    },
                 );
             case 'invalidId':
                 return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {

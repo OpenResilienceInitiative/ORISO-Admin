@@ -918,7 +918,7 @@
     "links.csvImport.status.idTaken": "{{idLabel}} taken",
     "links.csvImport.reason.invalidEmail": "Invalid email address (line {{line}})",
     "links.csvImport.reason.ambiguousId": "Multiple ID columns (line {{line}})",
-    "links.csvImport.reason.wrongIdType": "The ID belongs to the other tab: provider ID and counselling centre ID are different numbers (line {{line}})",
+    "links.csvImport.reason.wrongIdType": "The ID column is labelled {{headerLabel}}, but the file is imported on the “{{tab}}” tab, which expects a {{idLabel}}. Check the organisation, the ID and the tab (line {{line}})",
     "links.csvImport.reason.invalidId": "Invalid {{idLabel}} (line {{line}})",
     "links.csvImport.autoAssigned": "Auto-populated",
     "links.csvImport.auto": "Automatic",
