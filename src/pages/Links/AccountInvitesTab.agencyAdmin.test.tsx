@@ -6,6 +6,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { configure, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost } from '../../components/Snackbar';
 // Static import on purpose — see the note in AccountInvitesTab.test.tsx.
 import { CounsellorInvitesTab } from './AccountInvitesTab';
 import { UserRole } from '../../enums/UserRole';
@@ -265,6 +266,8 @@ describe.each([
     ['restricted agency admin', UserRole.RestrictedAgencyAdmin],
 ])('CounsellorInvitesTab for a %s', (_label, agencyRole) => {
     beforeEach(() => {
+        // Feedback is a snackbar: mount the host the app mounts once.
+        render(<SnackbarHost />);
         vi.clearAllMocks();
         window.localStorage.clear();
         mocks.useUserRoles.mockReturnValue(agencyAdminRoles(agencyRole, UserRole.UserAdmin));

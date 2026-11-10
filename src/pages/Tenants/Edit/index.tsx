@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Page } from '../../../components/Page';
 import routePathNames from '../../../appConfig';
 import { useSingleTenantData } from '../../../hooks/useSingleTenantData';
@@ -11,6 +12,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 export const TenantEditOrAdd = () => {
+    const { t } = useTranslation();
     const { settings } = useAppConfigContext();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
@@ -37,7 +39,18 @@ export const TenantEditOrAdd = () => {
         <Page isLoading={isLoading}>
             <Page.BackWithActions
                 path={routePathNames.tenants}
+                parentKey="sidebar.tenants"
                 titleKey={title}
+                meta={
+                    isEditing && data
+                        ? [
+                              data.subdomain,
+                              typeof data.beraterCount === 'number'
+                                  ? t('page.meta.counsellors', { count: data.beraterCount })
+                                  : undefined,
+                          ]
+                        : undefined
+                }
                 tabs={
                     canSeeTenantEditTabs &&
                     canSeeConfigTabs && [

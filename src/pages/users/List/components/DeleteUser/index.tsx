@@ -51,7 +51,6 @@ export const DeleteUserModal = ({ typeOfUser, deleteUserId, onClose }: DeleteUse
                     default:
                         message.error({
                             content: i18next.t([`message.error.${reason}`, 'message.error.default']) as string,
-                            duration: 3,
                         });
                 }
             }
