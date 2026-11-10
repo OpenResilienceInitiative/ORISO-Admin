@@ -54,12 +54,16 @@ import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSet
 import pageStyles from '../../../components/Page/styles.module.scss';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
 import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
 import { HintText } from '../../../components/HintText';
 
@@ -94,10 +98,19 @@ const getEntityId = (value: unknown) => {
     return '';
 };
 
-export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+const AgencyPageEditForm = ({
+    id,
+    section,
+    legalLayout,
+    canCreateAgency,
+}: {
+    id?: string;
+    section: AgencySettingsSection;
+    legalLayout: AgencyTileLayout;
+    canCreateAgency: boolean;
+}) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { id } = useParams();
     const isEditing = id !== 'add';
     const isLegalSection = section === 'legal';
     const isFunctionalitiesSection = section === 'functionalities';
@@ -239,6 +252,8 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
 
     const persistAgency = useCallback(
         (formData) => {
+            if (!isEditing && !canCreateAgency) return;
+
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
@@ -260,7 +275,7 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, mutate, navigate, t],
     );
 
     /**
@@ -708,4 +723,16 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
             )}
         </Page>
     );
+};
+
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+    const { id } = useParams();
+    const { can } = useUserPermissions();
+    const canCreateAgency = can(PermissionAction.Create, Resource.Agency);
+
+    if (id === 'add' && !canCreateAgency) {
+        return <AccessDenied />;
+    }
+
+    return <AgencyPageEditForm id={id} section={section} legalLayout={legalLayout} canCreateAgency={canCreateAgency} />;
 };
