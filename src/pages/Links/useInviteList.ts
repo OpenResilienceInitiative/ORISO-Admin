@@ -80,7 +80,7 @@ export const useInviteList = (
             // A superseded run leaves `loading` to the run that overtook it.
             if (isLatest()) setLoading(false);
         }
-    }, [tab, viewer, t, page, pageSize, query, phase, sortKey, sortDirection, message]);
+    }, [tab, viewer, t, page, pageSize, query, phase, sortKey, sortDirection]);
 
     useEffect(() => {
         reload();

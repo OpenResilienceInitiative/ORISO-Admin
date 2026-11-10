@@ -3,11 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AccountInviteDTO, PagedAccountInviteResponse } from '../../api/accountInvites/accountInvites';
 import { useInviteList, type InviteListQuery } from './useInviteList';
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), error: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+    list: vi.fn(),
+    error: vi.fn(),
+    feedback: { message: { error: (...args: unknown[]) => mocks.error(...args) } },
+}));
 const t = (_key: string, fallback: string) => fallback;
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t }) }));
 vi.mock('../../hooks/useAdminFeedback', () => ({
-    useAdminFeedback: () => ({ message: { error: mocks.error } }),
+    useAdminFeedback: () => mocks.feedback,
 }));
 vi.mock('../../api/accountInvites/accountInvites', () => ({ listAccountInvites: mocks.list }));
 
