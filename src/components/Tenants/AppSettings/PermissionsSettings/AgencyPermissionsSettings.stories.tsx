@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export is not resolved by ESLint 7.
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import type { AgencySettings } from '../../../../types/agency';
+import { findPopup, popupsOf } from '../../../../test/storyPopups';
 import { AgencyPermissionsSettings } from './AgencyPermissionsSettings';
 
 // All authenticated (`skipAuth: false`) calls must be mocked: an unmocked one reaches the
@@ -94,10 +95,25 @@ export const PlatformEnforcedVoiceMessagesOn: Story = {
 
 /** The Träger's channel switches cannot be read (403 for a centre-only admin): the tiles say so
  *  instead of showing defaults as the Träger's values. */
+let traegerRequests = 0;
+let traegerRecovered = false;
 export const TraegerPoliciesFailed: Story = {
     parameters: {
-        msw: { handlers: handlers({}, () => new HttpResponse(null, { status: 403 })) },
+        msw: {
+            handlers: handlers({}, () => {
+                traegerRequests += 1;
+                return traegerRecovered
+                    ? HttpResponse.json({ tenantId: 2, policies: {} })
+                    : new HttpResponse(null, { status: 403 });
+            }),
+        },
     },
+    beforeEach: () => {
+        traegerRequests = 0;
+        traegerRecovered = false;
+    },
+    // T2/N5: one outage, ONE pop-up (titled "Berechtigungen") with "Erneut versuchen"; each tile that depends on the
+    // Träger keeps its own quiet text. The retry asks again and the switches come back.
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(
@@ -108,5 +124,17 @@ export const TraegerPoliciesFailed: Story = {
         await expect(
             canvasElement.querySelector('[data-feature-policy="featureAskerEmailLiveChatEnabled"]'),
         ).toBeNull();
+        const popup = await findPopup(
+            canvasElement,
+            'Die Einstellungen des Trägers konnten nicht geladen werden',
+            'error',
+        );
+        await expect(popup).toHaveTextContent('Berechtigungen');
+        await expect(popupsOf(canvasElement)).toHaveLength(1);
+        const before = traegerRequests;
+        traegerRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(traegerRequests).toBeGreaterThan(before));
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
     },
 };

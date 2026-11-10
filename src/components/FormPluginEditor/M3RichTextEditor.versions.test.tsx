@@ -196,11 +196,15 @@ describe('M3RichTextEditor — version select (#268)', () => {
         await waitFor(() => {
             expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false');
         });
-        const editorSurface = within(screen.getByTestId('m3-editor-surface'));
-        expect(editorSurface.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
-        expect(editorSurface.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).toBeInTheDocument();
-        expect(editorSurface.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i })).toBeInTheDocument();
-        expect(editorSurface.getByRole('button', { name: /legal\.m3Editor\.closeVersionView/i })).toBeInTheDocument();
+        // The notice is a pop-up on the shared snackbar channel, not a box inside the editor surface.
+        const popup = within(await screen.findByTestId('snackbar'));
+        expect(popup.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i })).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: 'snackbar.close' })).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('m3-editor-surface')).queryByText(/legal\.m3Editor\.viewingVersion/i),
+        ).not.toBeInTheDocument();
     });
 
     it('restores an old version as a new draft (copy) via onRestoreVersion', async () => {
@@ -227,29 +231,30 @@ describe('M3RichTextEditor — version select (#268)', () => {
         });
     });
 
-    it('stacks the version snackbar with another editor notice', async () => {
+    it('stacks the version pop-up and another editor notice', async () => {
         const user = userEvent.setup();
         render(
             <M3RichTextEditor
                 title="Datenschutz"
                 value="<p>Entwurf</p>"
                 versions={versions}
-                snackbarSlot={
-                    <EditorHintSnackbar
-                        text="Weiterer Hinweis"
-                        onClose={() => undefined}
-                        closeLabel="Hinweis schließen"
-                    />
-                }
+                snackbarSlot={<EditorHintSnackbar text="Weiterer Hinweis" onClose={() => undefined} />}
                 enableAnchors={false}
             />,
         );
 
         await openVersionMenu(user);
         await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
-        const stack = within(screen.getByLabelText('legal.m3Editor.notices'));
-        expect(stack.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
-        expect(stack.getByText('Weiterer Hinweis')).toBeInTheDocument();
+        // No notice stack in the editor any more: both are pop-ups on the shared channel and stack.
+        expect(screen.queryByLabelText('legal.m3Editor.notices')).not.toBeInTheDocument();
+        expect(await screen.findByText('Weiterer Hinweis')).toBeInTheDocument();
+        expect(await screen.findByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+
+        // Closing one leaves the other.
+        const other = screen.getByText('Weiterer Hinweis').closest('[data-testid="snackbar"]') as HTMLElement;
+        await user.click(within(other).getByRole('button', { name: 'snackbar.close' }));
+        expect(screen.queryByText('Weiterer Hinweis')).not.toBeInTheDocument();
+        expect(screen.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
     });
 
     it('returns to the editable draft when "back to draft" is clicked', async () => {

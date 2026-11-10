@@ -1,6 +1,5 @@
 import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
-import Alert from '@mui/material/Alert';
 import { Form } from 'antd';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +12,7 @@ import { useAccountInactivitySettings } from '../../../hooks/useAccountInactivit
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { inactivityHelp } from './help';
 import styles from './styles.module.scss';
+import { Notify } from '../../Notify';
 
 interface Props {
     data?: AccountInactivitySettings;
@@ -73,7 +73,17 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
             {({ editing }) => (
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
-                    {error && <Alert severity="error">{t('globalSettings.accountInactivity.error.load')}</Alert>}
+                    {error && (
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.accountInactivity.error.load')}
+                        </Notify>
+                    )}
                     <FieldGrid>
                         {(['askerMonths', 'consultantMonths', 'otherMonths'] as const).map((name) => (
                             <MuiNumberFormField

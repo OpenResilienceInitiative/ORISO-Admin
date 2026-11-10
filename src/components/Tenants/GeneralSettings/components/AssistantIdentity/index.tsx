@@ -1,4 +1,4 @@
-import { Alert, ConfigProvider, Form, Radio } from 'antd';
+import { ConfigProvider, Form, Radio } from 'antd';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import { ReactComponent as Robot3 } from '../../../../../resources/img/assistant
 import { ReactComponent as Robot4 } from '../../../../../resources/img/assistant/robot-5475944-400.svg';
 import { assistantIconUploadPolicy } from '../../../../../utils/assistantIconUploadPolicy';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 const presets = [
     ['default', DefaultRobot],
@@ -151,7 +152,17 @@ export const AssistantIdentity = ({ tenantId, readOnly = false }: { tenantId: st
             headerIcon={<SmartToyOutlinedIcon />}
             help={assistantHelp}
         >
-            {isError && <Alert type="error" message={t('settings.assistant.loadError')} showIcon />}
+            {isError && (
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.assistant')}
+                    severity="error"
+                    causeKey={`assistant:load:${tenantId}`}
+                    retry
+                >
+                    {t('settings.assistant.loadError')}
+                </Notify>
+            )}
             <TileSections>
                 <TileSections.Section id="assistant-name" title={t('settings.assistant.section.name')}>
                     <FormInputField
