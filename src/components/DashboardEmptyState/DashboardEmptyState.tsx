@@ -14,29 +14,71 @@ export interface DashboardEmptyStateAction {
     onClick: () => void;
 }
 
+/** One thing the view will show once data is there (title + one line). */
+export interface DashboardEmptyStateHighlight {
+    title: string;
+    text: string;
+}
+
 export interface DashboardEmptyStateProps {
     /** Decorative icon, rendered inside the tinted circle. */
     icon?: ReactNode;
+    /**
+     * Decorative line-art picture (ORISO-Admin#1374). With it the state lays out
+     * as a row: picture left, text and highlights right.
+     */
+    illustration?: string;
+    /** What will appear here, in up to three short columns. */
+    highlights?: DashboardEmptyStateHighlight[];
     title: string;
     description?: string;
     action?: DashboardEmptyStateAction;
     className?: string;
 }
 
-export const DashboardEmptyState = ({ action, className, description, icon, title }: DashboardEmptyStateProps) => (
-    <section className={`dashboardEmptyState ${className || ''}`}>
-        {icon && (
+export const DashboardEmptyState = ({
+    action,
+    className,
+    description,
+    highlights,
+    icon,
+    illustration,
+    title,
+}: DashboardEmptyStateProps) => (
+    <section
+        className={`dashboardEmptyState${illustration ? ' dashboardEmptyState--withIllustration' : ''} ${
+            className || ''
+        }`}
+    >
+        {illustration && (
+            <span className="dashboardEmptyState__illustration" aria-hidden="true">
+                <img src={illustration} alt="" />
+            </span>
+        )}
+        {!illustration && icon && (
             <span className="dashboardEmptyState__icon" aria-hidden="true">
                 {icon}
             </span>
         )}
-        <h2 className="dashboardEmptyState__title">{title}</h2>
-        {description && <p className="dashboardEmptyState__description">{description}</p>}
-        {action && (
-            <Button type="primary" className="dashboardEmptyState__action" onClick={action.onClick}>
-                {action.label}
-            </Button>
-        )}
+        <div className="dashboardEmptyState__body">
+            <h2 className="dashboardEmptyState__title">{title}</h2>
+            {description && <p className="dashboardEmptyState__description">{description}</p>}
+            {!!highlights?.length && (
+                <ul className="dashboardEmptyState__highlights">
+                    {highlights.map((highlight) => (
+                        <li key={highlight.title}>
+                            <strong>{highlight.title}</strong>
+                            <span>{highlight.text}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            {action && (
+                <Button type="primary" className="dashboardEmptyState__action" onClick={action.onClick}>
+                    {action.label}
+                </Button>
+            )}
+        </div>
     </section>
 );
 
