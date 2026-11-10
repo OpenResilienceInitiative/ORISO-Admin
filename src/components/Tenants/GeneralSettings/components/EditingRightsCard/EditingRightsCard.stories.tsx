@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export is invisible to the eslint resolver
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { EditingRightsCard } from './index';
 import { inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
 
@@ -15,9 +15,19 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const InTheRaster: Story = {};
+/** The appearance editing right shows its state as a word next to the switch (#1374). */
+export const InTheRaster: Story = {
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getByText(/^(An|On)$/)).toBeVisible());
+    },
+};
 
-export const OffForOrganisationAdmins: Story = { args: { editable: false } };
+export const OffForOrganisationAdmins: Story = {
+    args: { editable: false },
+    play: async ({ canvasElement }) => {
+        await waitFor(() => expect(within(canvasElement).getByText(/^(Aus|Off)$/)).toBeVisible());
+    },
+};
 
 export const ReadOnly: Story = {
     args: { allowEdit: false },

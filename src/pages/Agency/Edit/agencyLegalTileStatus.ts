@@ -1,5 +1,6 @@
 import type { AgencyContact, AgencyData } from '../../../types/agency';
 import type { TenantDataProtectionOfficer } from '../../../types/tenant';
+import { isEmptyLegalContent } from '../../../components/Tenants/LegalSettings/utils/legalHelpTexts';
 import { hasOwnAgencyDpo } from '../../../utils/dataProtectionOfficer';
 
 /** What a collapsed legal tile says about itself. Texts live in the locale files under these keys. */
@@ -13,7 +14,7 @@ const REQUIRED_CONTACT_FIELDS: Array<keyof AgencyContact> = ['nameAndLegalForm',
 const isContactComplete = (contact?: AgencyContact | null) =>
     !!contact && REQUIRED_CONTACT_FIELDS.every((field) => !!contact[field]);
 
-const hasText = (texts?: Record<string, string>) => Object.values(texts ?? {}).some((text) => !!text?.trim());
+const hasText = (texts?: Record<string, string>) => !isEmptyLegalContent(texts);
 
 const COMPLETE: LegalTileStatus = { key: 'agency.legal.status.complete', tone: 'neutral' };
 const MISSING: LegalTileStatus = { key: 'agency.legal.status.missing', tone: 'attention' };
