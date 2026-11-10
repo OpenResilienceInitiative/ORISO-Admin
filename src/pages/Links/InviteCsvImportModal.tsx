@@ -9,6 +9,7 @@ import { Modal, DialogButton } from '../../components/Modal';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     assignBatchTenantIds,
+    type InviteCsvIdKind,
     type InviteCsvRejectionReason,
     type InviteCsvTarget,
     type ParseInviteCsvResult,
@@ -36,13 +37,6 @@ export interface InviteCsvCreateOutcome {
     /** Waiting, and no admin row for that unit has arrived (yet). */
     noUnitAdmin?: boolean;
 }
-
-/**
- * Which id space the CSV's 4th column addresses. `tenant` (Träger tab) resolves
- * empty cells client-side from the free-id sequence; `agency` leaves them empty
- * because AgencyService assigns the id when the invite is created (AUTO mode).
- */
-export type InviteCsvIdKind = 'tenant' | 'agency';
 
 type RowState = 'pending' | 'creating' | 'created' | 'failed';
 
@@ -379,6 +373,12 @@ export const InviteCsvImportModal = ({
                 return t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', line);
             case 'ambiguousId':
                 return t('links.csvImport.reason.ambiguousId', 'Mehrere ID-Spalten (Zeile {{line}})', line);
+            case 'wrongIdType':
+                return t(
+                    'links.csvImport.reason.wrongIdType',
+                    'Die ID gehört zum anderen Tab: Träger-ID und Beratungsstellen-ID sind verschiedene Nummern (Zeile {{line}})',
+                    line,
+                );
             case 'invalidId':
                 return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
                     idLabel,

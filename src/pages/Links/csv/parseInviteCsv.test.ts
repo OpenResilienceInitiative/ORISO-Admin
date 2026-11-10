@@ -75,6 +75,66 @@ describe('parseInviteCsv', () => {
         expect(result.rejected).toMatchObject([{ line: 2, reason: 'ambiguousId' }]);
     });
 
+    describe('ID column labelled for the other organisation type', () => {
+        // Same number, different organisation: a provider ID must never be read as a counselling centre ID.
+        const file = (idLabel: string, role: string, id = '4') =>
+            `Email,First Name,Name,Target,Role,${idLabel}\nmaria@example.org,Maria,Huber,existing,${role},${id}`;
+
+        it.each(['Provider ID', 'Tenant ID', 'Träger-ID'])('rejects "%s" on the counsellor tab', (label) => {
+            const result = parseInviteCsv(file(label, 'counsellor'), 'agency');
+            expect(result.rows).toEqual([]);
+            expect(result.rejected).toMatchObject([{ line: 2, reason: 'wrongIdType' }]);
+        });
+
+        it.each(['Counselling centre ID', 'Agency ID', 'Beratungsstellen-ID'])(
+            'rejects "%s" on the provider tab',
+            (label) => {
+                const result = parseInviteCsv(file(label, 'provider admin'), 'tenant');
+                expect(result.rows).toEqual([]);
+                expect(result.rejected).toMatchObject([{ line: 2, reason: 'wrongIdType' }]);
+            },
+        );
+
+        it('accepts the ID type that matches the importing tab', () => {
+            expect(parseInviteCsv(file('Provider ID', 'provider admin'), 'tenant').rows[0]).toMatchObject({ id: 4 });
+            expect(parseInviteCsv(file('Counselling centre ID', 'counsellor'), 'agency').rows[0]).toMatchObject({
+                id: 4,
+            });
+        });
+
+        it.each(['ID', 'Nr', 'Nummer'])('keeps the generic heading "%s" valid on both tabs', (label) => {
+            expect(parseInviteCsv(file(label, 'counsellor'), 'agency').rows[0]).toMatchObject({ id: 4 });
+            expect(parseInviteCsv(file(label, 'provider admin'), 'tenant').rows[0]).toMatchObject({ id: 4 });
+        });
+
+        it('keeps a provider-admin row on the counsellor tab, which uses the own provider and not the cell', () => {
+            const result = parseInviteCsv(file('Provider ID', 'provider admin'), 'agency');
+            expect(result.rejected).toEqual([]);
+            expect(result.rows[0]).toMatchObject({ role: 'TENANT_ADMIN', id: 4 });
+        });
+
+        it('does not reject a row without an ID, since there is no number to misread', () => {
+            const result = parseInviteCsv(
+                'Email,First Name,Name,Target,Role,Provider ID\nmaria@example.org,Maria,Huber,new,counsellor,',
+                'agency',
+            );
+            expect(result.rejected).toEqual([]);
+            expect(result.rows).toHaveLength(1);
+        });
+
+        it('checks only when the importing tab is given', () => {
+            expect(parseInviteCsv(file('Provider ID', 'counsellor')).rows[0]).toMatchObject({ id: 4 });
+        });
+
+        it('ignores a custom ID label, which keeps its fixed position', () => {
+            const result = parseInviteCsv(
+                'Email,First Name,Name,Träger-Nummer\nmaria@example.org,Maria,Huber,4',
+                'agency',
+            );
+            expect(result.rows[0]).toMatchObject({ id: 4 });
+        });
+    });
+
     it('accepts the provider ID heading in an extended invitation file', () => {
         const result = parseInviteCsv(
             'Email,First Name,Name,Target,Role,Provider ID,Template\nmaria@example.org,Maria,Huber,existing,provider admin,4,standard',

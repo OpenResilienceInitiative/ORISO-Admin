@@ -292,7 +292,7 @@ export const SendToAllTraeger: Story = {
         await userEvent.click(button);
         const dialog = await page.findByRole('dialog');
         await expect(
-            within(dialog).getByText(/Impressum-Vorlage an Träger senden|Send imprint template to Träger/),
+            within(dialog).getByText(/Impressum-Vorlage an Träger senden|Send imprint template to providers/),
         ).toBeInTheDocument();
         await expect(
             within(dialog).getByText(/Veröffentlicht wird dabei nichts|Nothing is published/),

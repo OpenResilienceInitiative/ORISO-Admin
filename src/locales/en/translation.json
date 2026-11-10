@@ -918,6 +918,7 @@
     "links.csvImport.status.idTaken": "{{idLabel}} taken",
     "links.csvImport.reason.invalidEmail": "Invalid email address (line {{line}})",
     "links.csvImport.reason.ambiguousId": "Multiple ID columns (line {{line}})",
+    "links.csvImport.reason.wrongIdType": "The ID belongs to the other tab: provider ID and counselling centre ID are different numbers (line {{line}})",
     "links.csvImport.reason.invalidId": "Invalid {{idLabel}} (line {{line}})",
     "links.csvImport.autoAssigned": "Auto-populated",
     "links.csvImport.auto": "Automatic",

@@ -696,6 +696,29 @@ describe('InviteCsvImportModal', () => {
             expect(screen.getByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
         });
 
+        it('says that an ID labelled for the other tab was held back', () => {
+            renderModal(
+                parseResultOf({
+                    rejected: [
+                        {
+                            line: 2,
+                            cells: ['c@x.de'],
+                            reason: 'wrongIdType',
+                            email: 'c@x.de',
+                            firstName: '',
+                            lastName: '',
+                        },
+                    ],
+                }),
+                { idKind: 'agency' },
+            );
+            expect(
+                screen.getByText(
+                    'Die ID gehört zum anderen Tab: Träger-ID und Beratungsstellen-ID sind verschiedene Nummern (Zeile 2)',
+                ),
+            ).toBeInTheDocument();
+        });
+
         it('spells out parse-level rejections next to the chip', () => {
             renderModal(
                 parseResultOf({
