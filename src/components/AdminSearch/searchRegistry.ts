@@ -500,15 +500,6 @@ export const SEARCH_TILES: RegistryTile[] = [
             ],
         },
     ),
-    tile(
-        'app:topics',
-        'tenants.appSettings.topics.title',
-        ['settings:app-settings', 'tenant:functionalities'],
-        'src/components/Tenants/AppSettings/TopicsSettings/index.tsx',
-        {
-            gate: 'multiTenant',
-        },
-    ),
 
     // ── Beratungsstelle in context ───────────────────────────────────────────
     // One card: the three former cards "General information", "Visibility in registration" and "Counseling
