@@ -3488,6 +3488,8 @@
     "tokenInspection.draft": "Entwurf",
     "tokenInspection.before": "Vorher — feste blaue Werte",
     "tokenInspection.after": "Nachher — M3-Zuordnung",
+    "adminSearch.page.foundAgency": "Beratungsstelle gründen",
+    "adminSearch.page.foundTenant": "Träger gründen",
     "home.role.platform": "Plattform-Admin",
     "home.role.tenant": "Träger-Admin",
     "home.role.agency": "Beratungsstellen-Admin",
