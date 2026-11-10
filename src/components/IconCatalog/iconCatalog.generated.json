@@ -1231,14 +1231,14 @@
         "usage": "app-used"
     },
     {
-        "id": "ui-icon:nav-glyphs:links:base",
-        "family": "links",
+        "id": "ui-icon:nav-glyphs:invite:base",
+        "family": "invite",
         "state": "base",
         "role": "default",
         "kind": "ui-icon",
         "size": null,
-        "fileName": "links.svg",
-        "sourcePath": "src/resources/img/svg/nav-glyphs/links.svg",
+        "fileName": "invite.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/invite.svg",
         "exportNames": [],
         "usageFiles": ["src/components/NavGlyph/index.tsx"],
         "usage": "app-used"
@@ -1456,6 +1456,45 @@
         "usage": "app-used"
     },
     {
+        "id": "sidebar-icon:navbar:invite:filled",
+        "family": "invite",
+        "state": "filled",
+        "role": "selected",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_active.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_active.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:invite:hover",
+        "family": "invite",
+        "state": "hover",
+        "role": "hover",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_hover.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_hover.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:invite:outline",
+        "family": "invite",
+        "state": "outline",
+        "role": "default",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_inactive.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_inactive.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "sidebar-icon:navbar:languages:filled",
         "family": "languages",
         "state": "filled",
@@ -1479,45 +1518,6 @@
         "sourcePath": "src/resources/img/svg/navbar/languages_inactive.svg",
         "exportNames": [],
         "usageFiles": ["src/components/cards/LanguagesCard/index.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:filled",
-        "family": "links",
-        "state": "filled",
-        "role": "selected",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_active.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_active.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:hover",
-        "family": "links",
-        "state": "hover",
-        "role": "hover",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_hover.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_hover.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:outline",
-        "family": "links",
-        "state": "outline",
-        "role": "default",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_inactive.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_inactive.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
         "usage": "app-used"
     },
     {

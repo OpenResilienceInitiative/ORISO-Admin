@@ -15,6 +15,7 @@ export const TypeOfLanguage = ({ tenantId, readOnly = false }: { tenantId: strin
         <CardEditable
             key={`type-of-language-${tenantId}-${readOnly}`}
             allowEdit={!readOnly}
+            readOnlyAccess={readOnly}
             className={styles.card}
             isLoading={isLoading}
             initialValues={{ ...data }}
