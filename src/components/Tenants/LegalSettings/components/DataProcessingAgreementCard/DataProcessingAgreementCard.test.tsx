@@ -1,6 +1,6 @@
 import React from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementCard } from './index';
 import { TranslationApiError } from '../../../../../api/tenant/translation';
@@ -35,11 +35,13 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onSaveDraft,
         languageSlot,
         helpSlot,
+        headerAction,
         snackbarSlot,
         aboveEditorSlot,
         belowSlot,
         versions,
         onRestoreVersion,
+        hideHeader,
     }: {
         value: string;
         onChange?: (html: string) => void;
@@ -49,19 +51,23 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         onSaveDraft?: (html: string) => void;
         languageSlot?: React.ReactNode;
         helpSlot?: React.ReactNode;
+        headerAction?: React.ReactNode;
         snackbarSlot?: React.ReactNode;
         aboveEditorSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
         versions?: { id: string; label: string; content: string; restorable?: boolean }[];
         onRestoreVersion?: (content: string) => void;
+        hideHeader?: boolean;
     }) => (
         <div
             data-testid="editor"
             data-value={value}
             data-readonly={readOnly ? 'true' : 'false'}
+            data-hide-header={hideHeader ? 'true' : 'false'}
             data-has-language-slot={languageSlot ? 'true' : 'false'}
         >
             {languageSlot}
+            {headerAction}
             {helpSlot}
             {snackbarSlot}
             {aboveEditorSlot}
@@ -736,5 +742,87 @@ describe('DataProcessingAgreementCard — local draft', () => {
         );
 
         expect(screen.queryByText('legal.draft.notice.title')).not.toBeInTheDocument();
+    });
+});
+
+describe('DataProcessingAgreementCard as a tile', () => {
+    const published = [{ id: 'v1', label: 'v1', content: JSON.stringify({ de: '<p>DE</p>' }) }];
+    const renderTile = (props: Partial<React.ComponentProps<typeof DataProcessingAgreementCard>> = {}) =>
+        render(
+            <DataProcessingAgreementCard
+                initialContentByLanguage={{ de: '<p>DE</p>' }}
+                languages={['de']}
+                versions={[]}
+                onPublish={vi.fn()}
+                collapsible
+                {...props}
+            />,
+        );
+    const header = () => screen.getByRole('button', { name: /^tenants\.legal\.dataProcessingAgreement\.title/ });
+
+    it('is a plain card unless the page asks for a tile', () => {
+        renderTile({ collapsible: false });
+
+        expect(document.querySelector('[data-collapsible-tile]')).toBeNull();
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-hide-header', 'false');
+        // Without a tile the explanation button stays in the editor header, where it always was.
+        expect(
+            within(screen.getByTestId('editor')).getByRole('button', { name: /tileHelp\.open/ }),
+        ).toBeInTheDocument();
+    });
+
+    it('folds up to a header and mounts no editor until it is unfolded', async () => {
+        renderTile();
+
+        expect(header()).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByTestId('editor')).toBeNull();
+
+        await userEvent.click(header());
+
+        expect(screen.getByTestId('editor')).toHaveAttribute('data-hide-header', 'true');
+    });
+
+    it('starts unfolded when asked to, with the explanation button in the tile and not in the editor', () => {
+        renderTile({ defaultOpen: true });
+
+        expect(header()).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ })).toHaveLength(1);
+        expect(within(screen.getByTestId('editor')).queryByRole('button', { name: /tileHelp\.open/ })).toBeNull();
+    });
+
+    it('says still empty before the first version, published after it', () => {
+        const { unmount } = renderTile();
+        expect(header()).toHaveTextContent('legal.status.empty');
+        unmount();
+
+        renderTile({ versions: published });
+        expect(header()).toHaveTextContent('legal.status.published');
+    });
+
+    it('lets a stored draft win over the published version', () => {
+        renderTile({ versions: published, draftSavedAt: '2026-08-12T08:30:00.000Z' });
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('says draft as soon as the text is edited, before anything is saved', async () => {
+        renderTile({ versions: published, defaultOpen: true });
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('reports every fold and unfold to the parent', async () => {
+        const onOpenChange = vi.fn();
+        renderTile({ onOpenChange });
+
+        await userEvent.click(header());
+        await userEvent.click(header());
+
+        expect(onOpenChange.mock.calls).toEqual([[true], [false]]);
     });
 });

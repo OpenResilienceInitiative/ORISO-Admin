@@ -4,7 +4,7 @@
 .notice {
     width: 100%;
     min-width: 0;
-    max-width: 960px;
+    max-width: var(--m3-editor-max-width, 960px);
     box-sizing: border-box;
 }
 

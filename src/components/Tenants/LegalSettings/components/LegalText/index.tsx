@@ -30,6 +30,9 @@ import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { TileHelpButton, type TileHelpTopic } from '../../../../TileHelp';
+import { ImprintIcon } from '../../../../CustomIcons/LegalIcons';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { legalDocumentStatus, legalTextState } from '../LegalDocumentTile/legalDocumentStatus';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -127,6 +130,13 @@ interface LegalTextProps {
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
+    /**
+     * Folds the card up to a tile header (icon, title, publication state). The explanation button and the help
+     * text then sit at the top of the unfolded content, and the editor does not repeat the title.
+     */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
 }
 
 /**
@@ -153,6 +163,8 @@ export const LegalText = ({
     placeHolderKey,
     icon,
     showConfirmationModal,
+    collapsible = false,
+    defaultOpen = false,
 }: LegalTextProps) => {
     const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
@@ -609,10 +621,17 @@ export const LegalText = ({
     // a save action that silently does nothing. A viewer without edit permission has no
     // draft, so the published text must not wait on that query.
     if (isLoading || serverDraft.isLoading || (isUserLoading && canEditLegalText)) {
-        return (
+        const loading = (
             <div className={styles.card}>
                 <Spin />
             </div>
+        );
+        return collapsible ? (
+            <LegalDocumentTile icon={icon ?? ImprintIcon} title={t(titleKey)} defaultOpen={defaultOpen}>
+                {loading}
+            </LegalDocumentTile>
+        ) : (
+            loading
         );
     }
 
@@ -668,7 +687,7 @@ export const LegalText = ({
         (historyState === 'available' ? versions?.find((version) => !version.supersededAt)?.publishedAt : undefined);
     const publicationStatus = isPublished && (
         <div className={styles.publicationStatus}>
-            <Tag color="green" data-testid="legal-publication-status">
+            <Tag color="green" className={styles.publishedTag} data-testid="legal-publication-status">
                 {publishedAt ? (
                     <>
                         {t('legal.status.publishedAt')}{' '}
@@ -852,7 +871,25 @@ export const LegalText = ({
             editor
         );
 
-    return (
+    // The tile header says where this text stands: live, still a draft, or not written yet.
+    const tileStatus = legalDocumentStatus(
+        t,
+        legalTextState({
+            isPublished,
+            differsFromPublished,
+            // Two drafts and no choice yet: the screen shows the live text, but a decision is pending.
+            hasConflict: serverDraft.hasConflict || !sourceChosen,
+        }),
+    );
+
+    const helpSlotContent = legalType && (
+        <>
+            {publicationStatus}
+            <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
+        </>
+    );
+
+    const card = (
         <div className={styles.card}>
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
@@ -905,8 +942,14 @@ export const LegalText = ({
                 <M3RichTextEditor
                     title={t(titleKey)}
                     icon={icon}
+                    // In a tile the header, the explanation button and the help text belong to the tile.
+                    hideHeader={collapsible}
                     headerAction={
-                        tileHelp && <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} tileIcon={<TileIcon />} />
+                        collapsible
+                            ? undefined
+                            : tileHelp && (
+                                  <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} tileIcon={<TileIcon />} />
+                              )
                     }
                     readOnly={!canEditLegalText}
                     publishing={isPending || draftActionPending}
@@ -939,14 +982,7 @@ export const LegalText = ({
                     }))}
                     language={activeLanguage}
                     onLanguageChange={setActiveLanguage}
-                    helpSlot={
-                        legalType && (
-                            <>
-                                {publicationStatus}
-                                <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
-                            </>
-                        )
-                    }
+                    helpSlot={collapsible ? undefined : helpSlotContent}
                     // Only hand over a slot when a message is actually showing: the editor reserves
                     // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                     snackbarSlot={
@@ -1102,5 +1138,20 @@ export const LegalText = ({
                 sentence can be blocking on open — possibly in a language other than
                 the one on screen. */}
         </div>
+    );
+
+    if (!collapsible) return card;
+
+    return (
+        <LegalDocumentTile
+            icon={icon ?? ImprintIcon}
+            title={t(titleKey)}
+            status={tileStatus}
+            help={tileHelp}
+            intro={helpSlotContent}
+            defaultOpen={defaultOpen}
+        >
+            {card}
+        </LegalDocumentTile>
     );
 };

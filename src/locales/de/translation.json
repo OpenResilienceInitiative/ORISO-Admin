@@ -1678,6 +1678,7 @@
     "agency.legal.status.managedByTraeger": "Vom Träger verwaltet",
     "legal.status.published": "Veröffentlicht",
     "legal.status.publishedAt": "Veröffentlicht am",
+    "legal.status.draft": "Entwurf",
     "tenants.legal.readOnly.lockedPlatformWide": "Änderungen an Rechtstexten sind plattformweit gesperrt. Der Plattformbetreiber kann sie unter Rechtliches → „Einstellungen Rechtstexte“ freigeben.",
     "tenants.legal.departmentDataProtection.status.inheritedFromTraeger": "Vom Träger übernommen",
     "tenants.legal.departmentDataProtection.status.inheritedFromAgency": "Von der Beratungsstelle übernommen",

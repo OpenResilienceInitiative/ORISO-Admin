@@ -2289,6 +2289,7 @@
     "agency.legal.status.managedByTraeger": "Managed by the Träger",
     "legal.status.published": "Published",
     "legal.status.publishedAt": "Published on",
+    "legal.status.draft": "Draft",
     "tenants.legal.readOnly.lockedPlatformWide": "Changes to legal texts are locked platform-wide. The platform operator can allow them under Legal → “Legal text settings”.",
     "tenants.legal.departmentDataProtection.status.inheritedFromTraeger": "Inherited from Träger",
     "tenants.legal.departmentDataProtection.status.inheritedFromAgency": "Inherited from the counselling centre",
