@@ -6,7 +6,9 @@ import { useInviteList, type InviteListQuery } from './useInviteList';
 const mocks = vi.hoisted(() => ({ list: vi.fn(), error: vi.fn() }));
 const t = (_key: string, fallback: string) => fallback;
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t }) }));
-vi.mock('antd', () => ({ message: { error: mocks.error } }));
+vi.mock('../../hooks/useAdminFeedback', () => ({
+    useAdminFeedback: () => ({ message: { error: mocks.error } }),
+}));
 vi.mock('../../api/accountInvites/accountInvites', () => ({ listAccountInvites: mocks.list }));
 
 const initial: InviteListQuery = { query: '', page: 1, pageSize: 20, phase: null, sort: null };
