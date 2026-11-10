@@ -8,6 +8,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { snackbar } from '../../../../components/Snackbar';
 import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { Card } from '../../../../components/Card';
+import { ManagedEntityStatus } from '../../../../components/EntityStatusCard';
 import { TileSections } from '../../../../components/TileSections';
 import { CardGrid } from '../../../../components/CardGrid';
 import { GeneralSettings } from '../../../../components/Tenants/GeneralSettings';
@@ -179,6 +180,17 @@ export const GeneralTenantSettings = () => {
                                 shouldShowSubdomainField={shouldShowSubdomainField}
                                 requiredRule={requiredRule}
                                 onSave={handleSave}
+                                leading={
+                                    <TileSections.Section wide id="traeger-status" title={t('entityStatus.title')}>
+                                        <ManagedEntityStatus
+                                            embedded
+                                            entityKind="tenant"
+                                            entityName={data?.name}
+                                            entityId={id}
+                                            canManage
+                                        />
+                                    </TileSections.Section>
+                                }
                             />
                         </CardGrid.Item>
                     }

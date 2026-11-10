@@ -1,5 +1,5 @@
 import { Button, Form } from 'antd';
-import { ReactElement, useCallback, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -30,6 +30,7 @@ import { AgencyDepartmentDetails } from './components/DepartmentDetails';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { AgencyMasterDataTile } from './components/MasterDataTile';
 import { AgencyTileGrid, type AgencyTile, type AgencyTileLayout } from './AgencyTileGrid';
 import {
@@ -117,6 +118,15 @@ const AgencyPageEditForm = ({
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
+    const [pendingStatusConfirmation, setPendingStatusConfirmation] = useState<{
+        entityId: string;
+        resolve: (approved: boolean) => void;
+    } | null>(null);
+    // Leaving the selected centre must cancel its outstanding approval, never write its status later.
+    // The cleanup also runs when the pending value changes to null after an answer. That is safe only because a
+    // promise settles once: `confirmNoTopicActivation` resolves with true before it clears the state, so the
+    // `resolve(false)` of this cleanup comes second and changes nothing. Keep that order.
+    useEffect(() => () => pendingStatusConfirmation?.resolve(false), [id, pendingStatusConfirmation]);
     const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
         formData: Record<string, unknown>;
@@ -141,7 +151,11 @@ const AgencyPageEditForm = ({
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
-    const { data: tenantTopics } = useTenantTopics(true);
+    const {
+        data: tenantTopics,
+        isLoading: tenantTopicsLoading,
+        isError: tenantTopicsError,
+    } = useTenantTopics(true, true, { failClosed: true });
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
     let legalTabIcon: ReactElement | null = null;
@@ -378,7 +392,27 @@ const AgencyPageEditForm = ({
         [isEditing, mutate, t],
     );
 
+    let activationBlockedReason: string | undefined;
+    if (tenantTopicsLoading) activationBlockedReason = 'entityStatus.activationTopicsLoading';
+    else if (tenantTopicsError) activationBlockedReason = 'entityStatus.activationTopicsError';
+    const beforeStatusChange = useCallback(
+        async (active: boolean, currentActive: boolean) => {
+            if (!active || currentActive) return true;
+            if (activationBlockedReason) return false;
+            if ((tenantTopics?.length ?? 0) === 0 || normalizeTopicIds(initialValues.topicIds).length > 0) return true;
+            return new Promise<boolean>((resolve) => {
+                setPendingStatusConfirmation({ entityId: id ?? '', resolve });
+            });
+        },
+        [id, activationBlockedReason, initialValues.topicIds, tenantTopics?.length],
+    );
+
     const confirmNoTopicActivation = useCallback(() => {
+        if (pendingStatusConfirmation) {
+            pendingStatusConfirmation.resolve(pendingStatusConfirmation.entityId === id);
+            setPendingStatusConfirmation(null);
+            return;
+        }
         if (pendingCardSave) {
             const pending = pendingCardSave;
             setPendingCardSave(null);
@@ -391,9 +425,14 @@ const AgencyPageEditForm = ({
         if (formData) {
             persistAgency(formData);
         }
-    }, [pendingCardSave, pendingNoTopicForm, persistAgency, persistCard]);
+    }, [id, pendingStatusConfirmation, pendingCardSave, pendingNoTopicForm, persistAgency, persistCard]);
 
     const cancelNoTopicActivation = useCallback(() => {
+        if (pendingStatusConfirmation) {
+            pendingStatusConfirmation.resolve(false);
+            setPendingStatusConfirmation(null);
+            return;
+        }
         if (pendingCardSave) {
             pendingCardSave.options?.onError?.();
             setPendingCardSave(null);
@@ -402,7 +441,7 @@ const AgencyPageEditForm = ({
 
         setPendingNoTopicForm(null);
         setSubmitted(false);
-    }, [pendingCardSave]);
+    }, [pendingStatusConfirmation, pendingCardSave]);
 
     const onSaveCard = useCallback(
         (formData, options?: { onError?: () => void; form?: ReturnType<typeof Form.useForm>[0] }) => {
@@ -468,6 +507,18 @@ const AgencyPageEditForm = ({
                             onSave={onSaveCard}
                             departmentFieldRequest={departmentFieldRequest}
                             persistedTeamAgency={initialValues.teamAgency}
+                            status={
+                                <ManagedEntityStatus
+                                    embedded
+                                    entityKind="agency"
+                                    entityName={agencyData?.name}
+                                    entityId={id}
+                                    canManage
+                                    targetTenantId={agencyTenantId}
+                                    onBeforeChange={beforeStatusChange}
+                                    activationBlockedReason={activationBlockedReason}
+                                />
+                            }
                         />
                     ),
                 },
@@ -718,7 +769,9 @@ const AgencyPageEditForm = ({
                     )}
             </Page.BackWithActions>
             {agencyContent}
-            {(pendingNoTopicForm || pendingCardSave) && (
+            {(pendingNoTopicForm ||
+                pendingCardSave ||
+                (pendingStatusConfirmation && pendingStatusConfirmation.entityId === id)) && (
                 <NoTopicConfirmModal onConfirm={confirmNoTopicActivation} onClose={cancelNoTopicActivation} />
             )}
         </Page>

@@ -90,6 +90,16 @@ export const agencyEditHandlers = [
     http.get('*/service/agencyadmin/agencies/:id/topics/:topicId/imprint', () =>
         HttpResponse.json({ content: null, publicationStatus: 'DRAFT' }),
     ),
+    // The status block inside the "Allgemein" tile reads the centre's confirmed status.
+    http.get('*/service/agencyadmin/agencies/:id/status', () =>
+        HttpResponse.json({
+            agencyId: Number(AGENCY_ID),
+            active: true,
+            ownActive: true,
+            tenantActive: true,
+            restrictions: [],
+        }),
+    ),
     http.get('*/service/agencyadmin/agencies/:id', () => HttpResponse.json({ _embedded: storyAgency })),
     http.put('*/service/agencyadmin/agencies/:id', () => HttpResponse.json({ _embedded: storyAgency })),
     http.get('*/service/agencyadmin/postcoderanges/:id', () =>

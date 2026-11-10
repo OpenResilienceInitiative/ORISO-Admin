@@ -5,10 +5,10 @@ const baseState: TableState = { current: 4, pageSize: 10, sortBy: undefined, ord
 
 describe('tenant list sort', () => {
     it('sends the TenantService field of the clicked column and returns to the first page', () => {
-        expect(nextTenantSortState(baseState, { key: 'licences', direction: 'desc' })).toEqual({
+        expect(nextTenantSortState(baseState, { key: 'id', direction: 'desc' })).toEqual({
             ...baseState,
             current: 1,
-            sortBy: 'BERATERCOUNT',
+            sortBy: 'ID',
             order: 'DESC',
         });
     });
@@ -21,7 +21,8 @@ describe('tenant list sort', () => {
     });
 
     it('shows the arrow only on a column the server sorts by', () => {
-        expect(tenantSortOf('SUBDOMAIN', 'ASC')).toEqual({ key: 'subdomain', direction: 'asc' });
+        expect(tenantSortOf('ID', 'ASC')).toEqual({ key: 'id', direction: 'asc' });
+        expect(tenantSortOf('SUBDOMAIN', 'ASC')).toBeNull();
         expect(tenantSortOf('UNKNOWN', 'ASC')).toBeNull();
     });
 

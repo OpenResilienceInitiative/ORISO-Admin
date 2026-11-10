@@ -28,6 +28,10 @@
     border-radius: 16px;
 }
 
+.sectionWide {
+    grid-column: 1 / -1;
+}
+
 .main {
     display: flex;
     min-width: 0;

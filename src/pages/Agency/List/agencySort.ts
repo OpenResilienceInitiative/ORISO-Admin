@@ -5,7 +5,6 @@ export const AGENCY_SORT_FIELD_BY_COLUMN: Record<string, string> = {
     id: 'ID',
     name: 'NAME',
     address: 'POST_CODE',
-    status: 'OFFLINE',
 };
 
 /**

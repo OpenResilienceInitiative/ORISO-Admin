@@ -28,6 +28,7 @@ const agency = (overrides: Record<string, unknown>): AgencyData =>
         email: 'mitte@caritas.example',
         teamAgency: 'false',
         offline: false,
+        active: true,
         status: 'CREATED',
         updateDate: new Date(Date.now() - 3 * 86_400_000).toISOString(),
         ...overrides,
@@ -46,7 +47,14 @@ const ROWS: AgencyData[] = [
         // A long topic name must not widen the row: the cell truncates it.
         topics: [{ id: 4, name: 'Schwangerschaftskonfliktberatung nach § 219 StGB und Familienplanung' }],
     }),
-    agency({ id: '7', name: 'Online-Beratung Süd', street: undefined, houseNumber: undefined, offline: true }),
+    agency({
+        id: '7',
+        name: 'Online-Beratung Süd',
+        street: undefined,
+        houseNumber: undefined,
+        offline: true,
+        active: false,
+    }),
     agency({ id: '9', name: 'Stelle in Auflösung', status: 'IN_DELETION', topics: [], phone: undefined }),
 ];
 
