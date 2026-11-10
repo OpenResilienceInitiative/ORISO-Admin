@@ -270,7 +270,7 @@ export const DpaBlocker = ({
                                                         target:
                                                             submitBlocker === 'consent'
                                                                 ? DPA_CONSENT_ANCHOR_ID
-                                                                : '[aria-invalid="true"]',
+                                                                : '[data-testid="dpa-blocker"] [aria-invalid="true"]',
                                                     }),
                                             },
                                         ]}
