@@ -112,6 +112,7 @@
         content: '';
         inset: 0;
         opacity: 0;
+        pointer-events: none;
         transition: opacity 160ms ease;
     }
 }
@@ -258,7 +259,8 @@
         border: 1px solid ButtonText;
     }
 
-    .root:focus-visible {
+    .root:focus-visible,
+    .currentLabel:focus-visible {
         outline-color: Highlight;
     }
 }

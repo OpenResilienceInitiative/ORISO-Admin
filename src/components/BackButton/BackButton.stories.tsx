@@ -164,10 +164,15 @@ export const LongGermanTitle: Story = {
         // focusable by script.
         const parent = within(canvasElement).getByRole('link', { name: 'Träger-Verwaltung für Beratungsstellen' });
         parent.focus();
-        await userEvent.tab();
-        await expect(current).toHaveFocus();
-        await waitFor(() => expect(within(document.body).getByRole('tooltip')).toHaveTextContent(LONG_CURRENT));
-        current.blur();
+        try {
+            await userEvent.tab();
+            await expect(current).toHaveFocus();
+            await waitFor(() => expect(within(document.body).getByRole('tooltip')).toHaveTextContent(LONG_CURRENT));
+        } finally {
+            // Always let go, so a failed assertion does not leave focus and an open bubble to the next story.
+            current.blur();
+            await waitFor(() => expect(within(document.body).queryByRole('tooltip')).not.toBeInTheDocument());
+        }
     },
 };
 
