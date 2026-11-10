@@ -154,6 +154,7 @@ export const LegalConsentField = ({
                         {isBlankConsentText(draft) && (
                             <HintText
                                 tone="error"
+                                role="alert"
                                 title={t('legal.consent.error.empty.title')}
                                 className={styles.notice}
                                 data-testid="consent-empty-error"
@@ -164,6 +165,7 @@ export const LegalConsentField = ({
                         {draftMissingMandatoryToken && (
                             <HintText
                                 tone="error"
+                                role="alert"
                                 title={t('legal.consent.error.missingLegalLinks.title')}
                                 className={styles.notice}
                                 data-testid="consent-missing-token-error"

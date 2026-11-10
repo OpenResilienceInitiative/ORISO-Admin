@@ -17,6 +17,7 @@ import { CopyLinkRow } from './CopyLinkRow';
 import { DpaCanonicalMailPreview } from './DpaCanonicalMailPreview';
 import styles from './styles.module.scss';
 import { Notify } from '../Notify';
+import { HintText } from '../HintText';
 
 export interface DpaForwardResult {
     link: DpaForwardLink;
@@ -319,14 +320,24 @@ export const DpaForwardDialog = ({
                         )}
 
                         {linkState.kind === 'error' && (
-                            <Notify
-                                title={t('notify.title.dpa')}
-                                testId="dpa-forward-link-error"
-                                severity="error"
-                                actions={[{ label: t('dpaForward.dialog.linkRetry'), onClick: requestLink }]}
-                            >
-                                {t(linkState.why)}
-                            </Notify>
+                            <>
+                                <Notify
+                                    title={t('notify.title.dpa')}
+                                    testId="dpa-forward-link-error"
+                                    severity="error"
+                                    actions={[{ label: t('dpaForward.dialog.linkRetry'), onClick: requestLink }]}
+                                >
+                                    {t(linkState.why)}
+                                </Notify>
+                                {/* The modal keeps Tab inside it and the pop-up sits outside: without this, closing the
+                                    pop-up would leave no way to ask for the link again. The pop-up announces the event. */}
+                                <HintText
+                                    tone="error"
+                                    actions={[{ label: t('dpaForward.dialog.linkRetry'), onClick: requestLink }]}
+                                >
+                                    {t(linkState.why)}
+                                </HintText>
+                            </>
                         )}
 
                         {link && (

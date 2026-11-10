@@ -74,6 +74,8 @@ const LoginForm = () => {
     const { mutateAsync: loginAsync } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
+    // The failed attempt already carried a code: "Ansehen" then points at the code field.
+    const [credentialsHintAtOtp, setCredentialsHintAtOtp] = useState(false);
     const [showSetupIncomplete, setShowSetupIncomplete] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
@@ -211,6 +213,7 @@ const LoginForm = () => {
                 // Until 2026-09 that 400 silently revealed the OTP field instead of
                 // saying anything, so a plain typo looked like a dead button.
                 setShowCredentialsHint(true);
+                setCredentialsHintAtOtp(otpSubmitted);
                 recordLoginFailure({ outcome: 'credentials', transport: describeTransport(error.message), stage });
             }
         } finally {
@@ -266,7 +269,7 @@ const LoginForm = () => {
                         <OtpResendLink onResend={resendCode} cooldownSeconds={resendCooldownSeconds} />
                     )}
 
-                    {showCredentialsHint && <LoginCredentialsHint />}
+                    {showCredentialsHint && <LoginCredentialsHint otpStage={credentialsHintAtOtp} />}
                     {showSetupIncomplete && (
                         <Notify title={t('notify.title.login')} testId="login-setup-incomplete-hint" severity="error">
                             {t('message.error.auth.setupIncomplete')}
