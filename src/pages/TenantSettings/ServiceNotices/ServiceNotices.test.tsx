@@ -111,6 +111,7 @@ describe('service-notice saved drafts', () => {
         fillDraft();
         await userEvent.click(screen.getByRole('button', { name: 'serviceNotices.save' }));
         await screen.findByText('Actual subject de-sie');
+        await findNotice('serviceNotices.saved', 'success');
         const put = mocks.fetchData.mock.calls.find(([request]) => request.method === 'PUT')?.[0];
         expect(JSON.parse(put.bodyData)).toEqual({
             maintenanceDate: draft.maintenanceDate,
@@ -133,6 +134,14 @@ describe('service-notice saved drafts', () => {
         expect(screen.getByLabelText('serviceNotices.start')).toHaveValue('09:00');
         expect(screen.getByLabelText('serviceNotices.statusUrl')).toHaveValue(draft.statusUrl);
         expect(mocks.fetchData.mock.calls[0][0].method).toBe('GET');
+    });
+
+    it('does not announce a saved draft when an existing one was only opened', async () => {
+        renderPage();
+        await openDraft();
+        const host = screen.queryByTestId('snackbar-host');
+        const popups = host ? within(host).queryAllByTestId('snackbar') : [];
+        expect(popups.some((popup) => /serviceNotices\.saved/.test(popup.textContent ?? ''))).toBe(false);
     });
 
     it('retains every changed input and the last saved preview on a 409 conflict', async () => {

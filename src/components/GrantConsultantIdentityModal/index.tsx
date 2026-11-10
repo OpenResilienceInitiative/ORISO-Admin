@@ -12,6 +12,7 @@ import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIde
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -161,9 +162,10 @@ export const GrantConsultantIdentityModal = ({
                             />
                         )}
                         {hasNoTopics && (
-                            <p role="alert" className={styles.noTopics}>
+                            // Appears after an agency is chosen and disables the confirm button: announce it.
+                            <HintText tone="error" role="alert">
                                 {t('grantConsultantIdentity.modal.noTopics')}
-                            </p>
+                            </HintText>
                         )}
                     </Form>
                 </Modal>

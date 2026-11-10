@@ -1,4 +1,4 @@
-import { Alert, Button, Form, Tooltip } from 'antd';
+import { Button, Form, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import DomainAddOutlinedIcon from '@mui/icons-material/DomainAddOutlined';
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import { useAgencyUpdate } from '../../hooks/useAgencyUpdate';
 import { AgencyData } from '../../types/agency';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 interface CreateAgencyModalProps {
     /**
@@ -64,7 +65,11 @@ export const CreateAgencyModal = ({ tenantId, disabled, onSuccess }: CreateAgenc
                 },
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
-                    snackbar.error({ content });
+                    snackbar.notify({
+                        severity: 'error',
+                        title: t('notify.title.agency') as string,
+                        description: content,
+                    });
                 },
             },
         );
@@ -111,7 +116,7 @@ export const CreateAgencyModal = ({ tenantId, disabled, onSuccess }: CreateAgenc
                     {/* disabled={false} keeps the outer (read-only) form context from disabling these fields */}
                     {/* onFinish also fires on Enter inside a field, not only via the OK button */}
                     <Form form={form} layout="vertical" size="large" disabled={false} onFinish={onFinish}>
-                        <Alert type="info" description={t('counselor.form.createAgency.offlineHint')} />
+                        <HintText>{t('counselor.form.createAgency.offlineHint')}</HintText>
                         <br />
                         <FormInputField
                             name="name"
