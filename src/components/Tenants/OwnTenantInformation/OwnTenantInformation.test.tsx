@@ -1,9 +1,15 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { FormInstance } from 'antd';
 import { OwnTenantInformation } from './index';
 
-const mocks = vi.hoisted(() => ({ canUpdateTenant: true, mutate: vi.fn(), refetched: false }));
+const mocks = vi.hoisted(() => ({
+    canUpdateTenant: true,
+    mutate: vi.fn(),
+    refetched: false,
+    form: undefined as FormInstance | undefined,
+}));
 
 const { tenant, refetchedTenant } = vi.hoisted(() => {
     const stored = {
@@ -21,6 +27,18 @@ const { tenant, refetchedTenant } = vi.hoisted(() => {
     return { tenant: stored, refetchedTenant: { ...stored, address: 'Refetched 9, 99999 Elsewhere' } };
 });
 
+// Captures the card's form instance so a test can read the form state itself.
+vi.mock('antd/lib/form/Form', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('antd/lib/form/Form')>();
+    return {
+        ...actual,
+        useForm: (...args: Parameters<typeof actual.useForm>) => {
+            const result = actual.useForm(...args);
+            [mocks.form] = result;
+            return result;
+        },
+    };
+});
 vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({ can: () => mocks.canUpdateTenant }),
 }));
@@ -39,6 +57,7 @@ describe('OwnTenantInformation', () => {
         mocks.canUpdateTenant = true;
         mocks.mutate.mockReset();
         mocks.refetched = false;
+        mocks.form = undefined;
     });
 
     it('shows what is stored for the Träger', () => {
@@ -59,6 +78,16 @@ describe('OwnTenantInformation', () => {
 
         expect(screen.queryByText('tenants.add.form.allowedConsultantsLicense.placeholder')).toBeNull();
         expect(screen.queryByText('tenants.add.form.subdomain.placeholder')).toBeNull();
+    });
+
+    it('keeps the licence number and subdomain out of the form state', () => {
+        render(<OwnTenantInformation />);
+
+        const values = mocks.form?.getFieldsValue(true) ?? {};
+        expect(values).not.toHaveProperty('licensing');
+        expect(values).not.toHaveProperty('subdomain');
+        expect(values).not.toHaveProperty('id');
+        expect(values).toMatchObject({ name: 'Caritas Springfield', address: tenant.address });
     });
 
     it('lets a user who may update the Träger change the address and saves only this card’s fields', async () => {

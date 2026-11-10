@@ -46,6 +46,10 @@ const CARD_FIELDS = [
 
 const SHOWN_FIELDS = ['name', ...CARD_FIELDS] as const;
 
+/** Only the fields this card shows, so the form never holds the licence number or subdomain. */
+const pickShownFields = (data: TenantData): Record<string, unknown> =>
+    Object.fromEntries(SHOWN_FIELDS.filter((field) => field in data).map((field) => [field, data[field]]));
+
 /**
  * CardEditable seeds its form from `initialValues` once, so late-arriving or refetched tenant data is
  * pushed in here, and only the fields this card shows. A refetch that lands while the card is open is
@@ -57,9 +61,7 @@ const SyncFormWithData = ({ data, form, editing }: { data?: TenantData; form: Fo
     editingRef.current = editing;
     useEffect(() => {
         if (data && !editingRef.current) {
-            form.setFieldsValue(
-                Object.fromEntries(SHOWN_FIELDS.filter((field) => field in data).map((field) => [field, data[field]])),
-            );
+            form.setFieldsValue(pickShownFields(data));
         }
     }, [data, form]);
     return null;
@@ -92,7 +94,7 @@ export const OwnTenantInformation = () => {
             headerIcon={<BusinessOutlinedIcon />}
             variant="dialog"
             editButtonPlacement="footer"
-            initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
+            initialValues={data ? pickShownFields(data) : {}}
             formProp={form}
             onSave={handleSave as never}
             className={styles.card}
