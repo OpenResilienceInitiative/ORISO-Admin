@@ -77,9 +77,17 @@ const CentreSetupExample = ({
     };
 
     const formFooter = (
-        <M3Button variant="filled" onClick={() => form.submit()} disabled={topicIds.length === 0 || creationDenied}>
-            {text.save}
-        </M3Button>
+        <>
+            {/* Stays in the form while saving is denied, so the way back survives a dismissed pop-up. */}
+            {creationDenied && (
+                <M3Button variant="outlined" onClick={() => setStep('saved')}>
+                    {text.return}
+                </M3Button>
+            )}
+            <M3Button variant="filled" onClick={() => form.submit()} disabled={topicIds.length === 0 || creationDenied}>
+                {text.save}
+            </M3Button>
+        </>
     );
     const savedFooter = step === 'saved' && (
         <>
