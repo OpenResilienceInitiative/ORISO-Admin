@@ -160,7 +160,7 @@ export const OnboardingTwoFactorSetup = ({
                 appLink && <TwoFactorAppConnect appLink={appLink} />
             )}
             {!supportsEmail && !supportsApp && (
-                <HintText tone="error" style={{ marginTop: 16 }}>
+                <HintText tone="error" role="alert" style={{ marginTop: 16 }}>
                     {t('twoFactorSetup.error.service')}
                 </HintText>
             )}

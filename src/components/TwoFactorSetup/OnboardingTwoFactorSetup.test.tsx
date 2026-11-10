@@ -232,9 +232,10 @@ describe('advertised onboarding method defaults and app availability', () => {
         render(<TwoFactorSetup context="onboarding" appLink={null} onVerify={() => {}} />);
         expect(screen.queryByLabelText('twoFactorSetup.otp.label')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'twoFactorSetup.submit' })).not.toBeInTheDocument();
-        // Unavailable state: plain error-toned text in the tile, not a pop-up.
+        // Unavailable state: error-toned text in the tile, announced inline because it explains why the user cannot go on, with no pop-up.
         expect(screen.getByText('twoFactorSetup.error.service')).toBeInTheDocument();
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByRole('alert')).toHaveTextContent('twoFactorSetup.error.service');
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
     });
 });
 
