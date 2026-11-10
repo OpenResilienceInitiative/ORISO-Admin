@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar } from '../../../../../components/Snackbar';
 import { DeletionWindowModal } from './index';
 
 const mutations = vi.hoisted(() => ({
@@ -13,11 +14,6 @@ const mutations = vi.hoisted(() => ({
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
-}));
-
-vi.mock('antd', async (original) => ({
-    ...(await original<typeof import('antd')>()),
-    message: { success: mutations.toast, error: mutations.toast },
 }));
 
 type Callbacks = { onSuccess: () => void; onError: (e: unknown) => void };
@@ -59,6 +55,8 @@ vi.mock('../../../../../components/Modal', () => ({
 
 describe('DeletionWindowModal', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'success').mockImplementation(mutations.toast as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(mutations.toast as never);
         vi.clearAllMocks();
         mutations.pending = false;
     });

@@ -9,6 +9,7 @@ import { CaseHandoverCard } from './index';
 import { SuperAdminPermissionsSettings } from '../SuperAdminPermissionsSettings';
 import { TenantPermissionsSettings } from '../TenantPermissionsSettings';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
+import { filledAlerts, findFilledAlert } from '../../../../../test/filledAlert';
 
 // FE#1725: the card reads and writes the rules of one Träger, named by `tenantId`.
 // Seam: the HTTP boundary (global fetch); the real hook and fetchData run.
@@ -168,7 +169,7 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
-        const alert = await screen.findByRole('alert');
+        const alert = await findFilledAlert();
         expect(alert).toHaveTextContent(/not saved/i);
         expect(await clientConsentButton()).toHaveAccessibleName(/Immediately, can object \(recommendation\)/i);
         expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'NONE' });
@@ -179,20 +180,20 @@ describe('CaseHandoverCard against the reason-policy endpoint', () => {
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(/not allowed/i);
+        expect(await findFilledAlert()).toHaveTextContent(/not allowed/i);
     });
 
     it('retries the failed save from the error message', async () => {
         server.putStatus = 500;
         mountCard(7);
         await chooseClientConsent(/Planned/i, /^Immediately, can object \(recommendation\)$/i);
-        const alert = await screen.findByRole('alert');
+        const alert = await findFilledAlert();
 
         server.putStatus = 200;
         await userEvent.setup().click(within(alert).getByRole('button', { name: /try again/i }));
 
         await waitFor(() => expect(server.store.get('7')?.[1]).toMatchObject({ clientConsent: 'OPT_OUT' }));
-        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+        await waitFor(() => expect(filledAlerts()).toHaveLength(0));
     });
 
     it('shows a BST admin the rules read-only with a note that the Träger admin sets them', async () => {

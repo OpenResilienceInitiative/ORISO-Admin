@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, notification } from 'antd';
+import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
@@ -212,7 +213,7 @@ export const TenantPermissionsSettings = ({
                 if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
                 confirmedPolicyData.current = saved;
                 rebuildEffectivePolicyData();
-                notification.success({
+                snackbar.success({
                     message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
                     duration: 3,
                 });

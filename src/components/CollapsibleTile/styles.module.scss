@@ -37,8 +37,10 @@
     }
 
     &:focus-visible {
-        // The ring is the shared one (app.css); the header sits flush in its tile, so it is drawn inside.
         --admin-focus-ring-offset: -2px;
+
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
