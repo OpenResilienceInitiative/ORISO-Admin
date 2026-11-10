@@ -11,8 +11,6 @@ import { UserRole } from '../../enums/UserRole';
 import { findPopup, popupsOf } from '../../test/storyPopups';
 import { setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
-import { createInviteEmailPreviewHandler } from '../../utils/storybook/inviteEmailPreviewHandlers';
-
 const TEMPLATES_ENDPOINT = '*/service/useradmin/invite-email-templates';
 
 /** The list is asked per kind; a Träger admin asks for the Träger kind too, which these stories leave empty. */

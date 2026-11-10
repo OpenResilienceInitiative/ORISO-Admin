@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Select, Tooltip } from 'antd';
+import { Alert, Button, Input, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -644,7 +644,7 @@ export const EmailTemplatesDialog = ({
                         <label className={styles.metaLabel} htmlFor={`${fieldId}-load-template`}>
                             {t('links.templates.existingTemplates', 'Existing templates')}
                         </label>
-                        <Select
+                        <M3Select
                             id={`${fieldId}-load-template`}
                             placeholder={t('links.templates.loadTemplate', 'Load template')}
                             value={editingTemplate ? String(editingTemplate.id) : undefined}
@@ -795,7 +795,7 @@ export const EmailTemplatesDialog = ({
                             <label className={styles.metaLabel} htmlFor={`${fieldId}-language`}>
                                 {t('links.templates.field.language', 'Language')}
                             </label>
-                            <Select
+                            <M3Select
                                 id={`${fieldId}-language`}
                                 disabled={submitting || editingTemplate?.systemDefault === true}
                                 value={draftMeta.language}

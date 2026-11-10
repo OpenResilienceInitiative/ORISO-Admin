@@ -1,9 +1,9 @@
 import { appendFileSync } from 'node:fs';
 import React from 'react';
-import { message } from 'antd';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
+import { snackbar } from '../../components/Snackbar';
 import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -1896,7 +1896,7 @@ describe('TenantInvitesTab deleted template selection', () => {
                 resolveOld = resolve;
                 rejectOld = reject;
             });
-            const errorToast = vi.spyOn(message, 'error');
+            const errorToast = vi.spyOn(snackbar, 'error');
             renderTenantTab();
             const user = userEvent.setup();
             await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
