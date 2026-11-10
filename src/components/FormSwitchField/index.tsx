@@ -25,6 +25,8 @@ interface FormSwitchFieldProps {
     switchLabel?: string;
     /** Asked before the switch turns ON; see `MuiSwitchField`. Turning it off never asks. */
     confirmEnable?: (proceed: () => void) => void;
+    /** „An“/„Aus“ next to the switch, from `MuiSwitch` (#1374). Replaces the checked/unchecked labels. */
+    showStateLabel?: boolean;
 }
 
 interface FormSwitchFieldLocalProps {
@@ -38,6 +40,7 @@ interface FormSwitchFieldLocalProps {
     inverseValue?: boolean;
     switchLabel: string;
     confirmEnable?: (proceed: () => void) => void;
+    showStateLabel?: boolean;
 }
 
 const FormSwitchFieldLocal = ({
@@ -51,6 +54,7 @@ const FormSwitchFieldLocal = ({
     inverseValue,
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: FormSwitchFieldLocalProps) => {
     const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
@@ -74,8 +78,9 @@ const FormSwitchFieldLocal = ({
                 ariaLabel={switchLabel}
                 onChange={onSwitchChange}
                 checked={!!fieldChecked}
+                showStateLabel={showStateLabel}
             />
-            {!disableLabels && (
+            {!disableLabels && !showStateLabel && (
                 <span className="formSwitchField__stateLabel">{t(fieldChecked ? checkedKey : unCheckedKey)}</span>
             )}
             {paragraphKey && <Paragraph className="desc__toggleText">{t(paragraphKey)}</Paragraph>}
@@ -100,6 +105,7 @@ export const FormSwitchField = ({
     unCheckedKey = 'no',
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: FormSwitchFieldProps) => {
     const [t] = useTranslation();
     const message = errorMessage || t('form.errors.required');
@@ -123,6 +129,7 @@ export const FormSwitchField = ({
                 inverseValue={inverseValue}
                 switchLabel={accessibleSwitchLabel}
                 confirmEnable={confirmEnable}
+                showStateLabel={showStateLabel}
             />
         </Form.Item>
     );

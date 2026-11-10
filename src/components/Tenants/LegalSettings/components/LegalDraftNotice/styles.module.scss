@@ -13,7 +13,7 @@
     justify-content: space-between;
 
     /* Line up with the M3 editor shell below, which caps at 800px. */
-    max-width: 800px;
+    max-width: var(--m3-editor-max-width, 800px);
     margin-bottom: mui.$mui-unit * 1.5;
     padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);

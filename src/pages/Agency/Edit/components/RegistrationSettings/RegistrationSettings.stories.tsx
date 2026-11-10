@@ -12,8 +12,10 @@ import {
     setSessionTokens,
 } from '../../../../../api/auth/tokenSessionStore';
 import i18n from '../../../../../i18n';
+import { CardEditable } from '../../../../../components/CardEditable';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { RegistrationSettings } from '.';
+import { PostCodeRanges } from './PostCodeRanges';
 
 /**
  * #953: the counsellor picker of a new counselling centre offers only people of the centre's own
@@ -205,5 +207,30 @@ export const ChangingTheTenantDropsThePick: Story = {
 
         // The new Träger's search never answers, so only the change itself can have cleared the pick.
         await waitFor(() => expect(canvas.queryByText(/Erika Beispiel/)).not.toBeInTheDocument());
+    },
+};
+
+export const InvalidPostcodeRange: Story = {
+    render: () => (
+        <CardEditable
+            initialValues={{ postCodes: [{ from: '10551', until: '10551' }] }}
+            titleKey="agency.form.registrationSettings.title"
+            variant="dialog"
+            editButtonPlacement="footer"
+        >
+            <PostCodeRanges />
+        </CardEditable>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
+        const postcode = canvas.getByRole('textbox', { name: 'Von' });
+        await userEvent.clear(postcode);
+        await userEvent.type(postcode, '1055');
+        await userEvent.click(canvas.getByRole('button', { name: 'Speichern' }));
+
+        const explanation = 'Die Postleitzahl muss aus 5 Ziffern bestehen.';
+        await expect(await canvas.findByText(explanation)).toBeVisible();
+        await expect(postcode).toHaveAccessibleDescription(explanation);
     },
 };

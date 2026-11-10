@@ -192,7 +192,9 @@ export const FailedPublicationKeepsDraft: Story = {
         await expect(localStorage.getItem(DRAFT_KEY)).toBe(draftBefore);
         await expect(requests).toHaveLength(1);
         await expect(publishedContent).toEqual(content);
-        await expect(canvasElement.ownerDocument.querySelector('.ant-notification-notice-error')).toBeNull();
+        await expect(
+            canvasElement.ownerDocument.querySelector('[data-testid="snackbar"][data-severity="error"]'),
+        ).toBeNull();
     },
 };
 export const AgencyRecipientAfterExpiry: Story = {

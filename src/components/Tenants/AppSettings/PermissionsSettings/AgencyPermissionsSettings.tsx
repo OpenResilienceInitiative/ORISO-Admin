@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { notification } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
@@ -86,10 +86,10 @@ export const AgencyPermissionsSettings = ({
             try {
                 // A field patch lets the agency mutation queue merge into its latest confirmed response.
                 const saved = await updateAgency({ settings: { [field]: policy.value } });
-                notification.success({ message: t('message.agency.updated'), duration: 3 });
+                snackbar.success({ message: t('message.agency.updated'), duration: 3 });
                 return agencyPermissionPolicies(saved.settings);
             } catch (error) {
-                notification.error({ message: t('tenants.permissions.policy.saveError') });
+                snackbar.error({ message: t('tenants.permissions.policy.saveError') });
                 throw error;
             }
         },

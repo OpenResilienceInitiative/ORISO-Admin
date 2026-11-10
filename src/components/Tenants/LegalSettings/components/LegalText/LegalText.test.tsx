@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, expect, it, vi, beforeAll, beforeEach } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../../../Snackbar';
 import { LegalText } from './index';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -53,11 +54,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../hooks/useLegalTextReadOnlyReason', () => ({
     useLegalTextReadOnlyReason: () => mocks.readOnlyReason,
 }));
-
-vi.mock('antd', async () => {
-    const antd = await vi.importActual<typeof import('antd')>('antd');
-    return { ...antd, notification: { ...antd.notification, success: mocks.notifySuccess } };
-});
 
 const tenantFormData = () => {
     const key = [mocks.imprint, mocks.storedConsent, mocks.activeLanguages];
@@ -274,6 +270,7 @@ beforeEach(() => {
     mocks.versions = [];
     mocks.historyState = 'available';
     mocks.notifySuccess.mockReset();
+    vi.spyOn(snackbar, 'success').mockImplementation(mocks.notifySuccess);
     mocks.readOnlyReason = { key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false };
     mocks.dataCache = undefined;
     window.localStorage.clear();

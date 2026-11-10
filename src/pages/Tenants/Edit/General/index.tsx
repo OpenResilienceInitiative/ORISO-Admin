@@ -1,9 +1,10 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { Form, notification } from 'antd';
+import { Form } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
 import { ThemeProvider } from '@mui/material/styles';
+import { snackbar } from '../../../../components/Snackbar';
 import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { Card } from '../../../../components/Card';
@@ -96,7 +97,7 @@ export const GeneralTenantSettings = () => {
     const saveErrorHandler = createTenantSaveErrorHandler({
         t,
         setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
-        notifyError: (message) => notification.error({ message }),
+        notifyError: (message) => snackbar.error({ message }),
         canShowSubdomainError: shouldShowSubdomainField,
     });
 
@@ -112,7 +113,7 @@ export const GeneralTenantSettings = () => {
                     } as any;
                     const completeSuccess = () => {
                         finishSaving();
-                        notification.success({ message: t('tenants.created.modal.title') });
+                        snackbar.success({ message: t('tenants.created.modal.title') });
                         navigate(routePathNames.tenants);
                     };
                     const rollbackAndExit = async (error?: unknown) => {
@@ -123,7 +124,7 @@ export const GeneralTenantSettings = () => {
                             .catch(() => undefined)
                             .finally(() => {
                                 finishSaving();
-                                notification.error({ message: conflictMessage });
+                                snackbar.error({ message: conflictMessage });
                                 navigate(routePathNames.tenants);
                             });
                     };
@@ -134,16 +135,16 @@ export const GeneralTenantSettings = () => {
                     });
                 } else {
                     finishSaving();
-                    notification.success({ message: t('tenants.created.modal.title') });
+                    snackbar.success({ message: t('tenants.created.modal.title') });
                     navigate(routePathNames.tenants);
                 }
                 return;
             }
 
             if (data?.licensing?.allowedNumberOfUsers !== rData?.licensing?.allowedNumberOfUsers) {
-                notification.success({ message: t('tenants.message.consultantsChangedSuccess') });
+                snackbar.success({ message: t('tenants.message.consultantsChangedSuccess') });
             } else {
-                notification.success({ message: t('tenants.message.update') });
+                snackbar.success({ message: t('tenants.message.update') });
             }
             navigate(routePathNames.tenants);
         },
