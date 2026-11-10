@@ -17,16 +17,19 @@ OUTPUT = Path('docs/admin-settings-language-inventory.md')
 
 
 def locales(language):
+    """Return the merged locale values for a language; the assistant file overrides the main file."""
     values = json.loads(Path(f'src/locales/{language}/translation.json').read_text(encoding='utf-8'))
     values.update(json.loads(Path(f'src/locales/{language}/assistant.json').read_text(encoding='utf-8')))
     return values
 
 
 def escape(value):
+    """Make a locale value safe for use inside a Markdown table cell."""
     return str(value).replace('|', r'\|').replace('\n', ' ').replace('<', '&lt;').replace('>', '&gt;')
 
 
 def render():
+    """Build the complete inventory Markdown from the locale files and the mapped source files."""
     german, english = locales('de'), locales('en')
     references = defaultdict(set)
     card_titles = defaultdict(set)
@@ -157,6 +160,7 @@ def render():
 
 
 def main():
+    """Write the inventory, or with --check fail when the saved file is stale."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--check', action='store_true', help='fail if the saved inventory is stale')
     args = parser.parse_args()

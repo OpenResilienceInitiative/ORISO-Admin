@@ -434,7 +434,7 @@
     "inactiveAudit.table.createdAt": "Created at",
     "inactiveAudit.table.role": "Role",
     "inactiveAudit.table.accountId": "Account ID",
-    "inactiveAudit.table.accountTenantId": "Account provider",
+    "inactiveAudit.table.accountTenantId": "Account provider ID",
     "inactiveAudit.table.lastActivityAt": "Last activity",
     "inactiveAudit.table.thresholdDays": "Threshold (days)",
     "inactiveAudit.table.recipientEmail": "Recipient email",

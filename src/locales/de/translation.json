@@ -1338,7 +1338,7 @@
     "inactiveAudit.filters.role": "Rolle filtern",
     "inactiveAudit.subTitle": "Security-06 Inaktivitäts-Audit-Logs",
     "inactiveAudit.table.accountId": "Konto-ID",
-    "inactiveAudit.table.accountTenantId": "Träger des Kontos",
+    "inactiveAudit.table.accountTenantId": "Träger-ID des Kontos",
     "inactiveAudit.table.createdAt": "Erstellt am",
     "inactiveAudit.table.emailDispatched": "E-Mail versendet",
     "inactiveAudit.table.lastActivityAt": "Letzte Aktivität",
