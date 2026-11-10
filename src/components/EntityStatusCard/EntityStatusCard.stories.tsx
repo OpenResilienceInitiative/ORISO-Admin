@@ -576,7 +576,7 @@ export const CentreDetailsMobile: Story = {
             (client) => {
                 client.setQueryData(['AGENCY', '7'], centreFixture);
                 client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-                client.setQueryData(['ALL_TOPICS', true], []);
+                client.setQueryData(['ALL_TOPICS', true, 'fail-closed'], []);
                 client.setQueryData(['TRAEGER_DPO', 1], null);
             },
         ),
@@ -762,7 +762,7 @@ const renderTopiclessCentre = (topicsLoaded = true) =>
         (client) => {
             client.setQueryData(['AGENCY', '7'], topiclessCentre);
             client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-            if (topicsLoaded) client.setQueryData(['ALL_TOPICS', true], [offeredTopic]);
+            if (topicsLoaded) client.setQueryData(['ALL_TOPICS', true, 'fail-closed'], [offeredTopic]);
             client.setQueryData(['TRAEGER_DPO', 1], null);
         },
     );

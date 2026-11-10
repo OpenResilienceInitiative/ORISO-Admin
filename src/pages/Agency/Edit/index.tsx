@@ -91,6 +91,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         resolve: (approved: boolean) => void;
     } | null>(null);
     // Leaving the selected centre must cancel its outstanding approval, never write its status later.
+    // The cleanup also runs when the pending value changes to null after an answer. That is safe only because a
+    // promise settles once: `confirmNoTopicActivation` resolves with true before it clears the state, so the
+    // `resolve(false)` of this cleanup comes second and changes nothing. Keep that order.
     useEffect(() => () => pendingStatusConfirmation?.resolve(false), [id, pendingStatusConfirmation]);
     const [departmentFieldRequest, setDepartmentFieldRequest] = useState(0);
     const [pendingCardSave, setPendingCardSave] = useState<{
@@ -114,7 +117,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     } = useDpaGate(tenantId ?? 0, !isEditing && isTenantScopedAdmin);
     const [form] = Form.useForm();
     const { mutate, mutateAsync, isPending: isAgencySaving } = useAgencyUpdate(id);
-    const { data: tenantTopics, isLoading: tenantTopicsLoading, isError: tenantTopicsError } = useTenantTopics(true);
+    const {
+        data: tenantTopics,
+        isLoading: tenantTopicsLoading,
+        isError: tenantTopicsError,
+    } = useTenantTopics(true, true, { failClosed: true });
     const legalDataMissing = useAgencyLegalDataMissing(agencyData);
     const hasNewLegalTemplate = useHasUnreadLegalProposals('agency', id, isEditing && !isAgencyInaccessible);
     let legalTabIcon: ReactElement | null = null;

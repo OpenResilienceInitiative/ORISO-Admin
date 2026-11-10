@@ -12,7 +12,7 @@ import classNames from 'classnames';
 import { Link } from 'react-router-dom';
 import routePathNames from '../../appConfig';
 import type { DisplayStatus } from '../../types/userDisplayStatus';
-import { statusValue } from '../EntityStatusCard/presentation';
+import { entityStatusListAttributes } from '../EntityStatusCard/presentation';
 import styles from './statusBadge.module.scss';
 
 /** active = primary container, pending = tertiary container, ended = secondary container. */
@@ -48,14 +48,8 @@ export const StatusBadge = ({ status, inviteTo = routePathNames.links, accountSt
         className: classNames(styles.badge, styles[tone], { [styles.link]: status === 'INVITED' }),
         'data-status': status,
         'data-tone': tone,
-        ...(accountStatus
-            ? {
-                  'data-testid': 'entity-status-list',
-                  'data-entity-kind': 'account',
-                  'data-entity-id': accountStatus.id,
-                  'data-active': statusValue(accountStatus.active),
-              }
-            : {}),
+        // `data-active` is the confirmed own flag, not the word: a row can read "In Bearbeitung" and still be active.
+        ...(accountStatus ? entityStatusListAttributes('account', accountStatus.id, accountStatus.active) : {}),
     };
     const content = (
         <>

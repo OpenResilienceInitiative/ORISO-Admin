@@ -24,7 +24,7 @@ import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { ResizeTable } from '../../../components/ResizableTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import styles from './styles.module.scss';
-import { statusLabel, statusValue } from '../../../components/EntityStatusCard/presentation';
+import { entityStatusListAttributes, statusLabel } from '../../../components/EntityStatusCard/presentation';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { ReactComponent as RowExpandIcon } from '../../../resources/img/svg/table-actions/row_expand_200.svg';
@@ -244,23 +244,18 @@ export const AgencyList = () => {
             : []),
         {
             title: t('agency.online.title'),
-            dataIndex: 'offline',
-            key: 'offline',
+            dataIndex: 'active',
+            key: 'active',
             // Backend offline sorting is the own flag, whereas this column shows effective status.
             sorter: false,
             showSorterTooltip: false,
             width: 100,
             ellipsis: true,
-            render: (_offline: boolean, agency: AgencyData) => {
+            render: (_active: boolean | null | undefined, agency: AgencyData) => {
                 const { active } = agency;
                 const tagClass = active === true ? styles.tagOnline : styles.tagOffline;
                 return (
-                    <span
-                        data-testid="entity-status-list"
-                        data-entity-kind="agency"
-                        data-entity-id={agency.id}
-                        data-active={statusValue(active)}
-                    >
+                    <span {...entityStatusListAttributes('agency', agency.id, active)}>
                         <Tag className={typeof active === 'boolean' ? tagClass : undefined}>
                             {t(statusLabel(active))}
                         </Tag>

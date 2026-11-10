@@ -25,7 +25,7 @@ import { TenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
 import styles from './styles.module.scss';
-import { statusLabel, statusValue } from '../../../components/EntityStatusCard/presentation';
+import { entityStatusListAttributes, statusLabel } from '../../../components/EntityStatusCard/presentation';
 
 const TENANT_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
     beraterCount: 'BERATERCOUNT',
@@ -141,14 +141,7 @@ export const TenantsList = () => {
             key: 'active',
             width: 100,
             render: (active: boolean | null | undefined, tenant: TenantData) => (
-                <span
-                    data-testid="entity-status-list"
-                    data-entity-kind="tenant"
-                    data-entity-id={tenant.id}
-                    data-active={statusValue(active)}
-                >
-                    {t(statusLabel(active))}
-                </span>
+                <span {...entityStatusListAttributes('tenant', tenant.id, active)}>{t(statusLabel(active))}</span>
             ),
         },
         !settings.multitenancyWithSingleDomainEnabled && {
