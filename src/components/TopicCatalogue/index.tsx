@@ -234,6 +234,8 @@ export const TopicCatalogue = ({
     // ---- texts in the chosen language ----
 
     const topicText = (topic: CatalogueTopic) => textIn(topic.name, topic.names, lang, sourceLanguage);
+    const descriptionText = (topic: CatalogueTopic) =>
+        textIn(topic.description ?? '', topic.descriptions, lang, sourceLanguage);
     const groupText = (group: TopicGroup) => textIn(group.name, group.names, lang, sourceLanguage);
     const isMachine = (key: string) => (editing ? machine : machineTranslated).includes(machineMark(lang, key));
 
@@ -404,6 +406,15 @@ export const TopicCatalogue = ({
             list.map((topic) => (topic.id === topicId ? { ...topic, names: { ...topic.names, [lang]: text } } : topic)),
         );
         setMachine((list) => list.filter((entry) => entry !== machineMark(lang, topicNameKey(topicId))));
+    };
+
+    const setTopicDescription = (topicId: number, text: string) => {
+        setDraftTopics((list) =>
+            list.map((topic) =>
+                topic.id === topicId ? { ...topic, descriptions: { ...topic.descriptions, [lang]: text } } : topic,
+            ),
+        );
+        setMachine((list) => list.filter((entry) => entry !== machineMark(lang, topicDescriptionKey(topicId))));
     };
 
     const setGroupName = (group: TopicGroup, text: string) => {
@@ -720,7 +731,26 @@ export const TopicCatalogue = ({
                     ) : (
                         renderLabel(topicText(topic), topic.name, topicNameKey(topic.id), styles.name)
                     )}
-                    {description}
+                    {editingOtherLanguage && !isBlank(topic.description) ? (
+                        <>
+                            <input
+                                className={classNames(styles.nameInput, styles.descriptionInput, {
+                                    [styles.missingInput]: isBlank(descriptionText(topic)),
+                                })}
+                                value={descriptionText(topic)}
+                                aria-label={t('topicCatalogue.topicDescriptionIn', {
+                                    name: topic.name,
+                                    language: languages.find((entry) => entry.code === lang)?.label ?? lang,
+                                })}
+                                placeholder={topic.description ?? ''}
+                                disabled={saving}
+                                onChange={(event) => setTopicDescription(topic.id, event.target.value)}
+                            />
+                            {machineBadge(topicDescriptionKey(topic.id), descriptionText(topic))}
+                        </>
+                    ) : (
+                        description
+                    )}
                     <span className={styles.usage}>{countLabel}</span>
                 </div>
                 {hiddenChip(topic)}

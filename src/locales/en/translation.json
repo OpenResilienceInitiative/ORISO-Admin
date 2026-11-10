@@ -1747,6 +1747,7 @@
     "topicCatalogue.missingCount_one": "{{count}} text not translated yet",
     "topicCatalogue.missingCount_other": "{{count}} texts not translated yet",
     "topicCatalogue.topicNameIn": "Name of “{{name}}” in {{language}}",
+    "topicCatalogue.topicDescriptionIn": "Description of “{{name}}” in {{language}}",
     "topicCatalogue.translate": "Translate missing texts with AI",
     "topicCatalogue.translateNothing": "No translation is missing.",
     "topicCatalogue.translateDone_one": "{{count}} text translated. Please check it, AI texts are shown in italics.",

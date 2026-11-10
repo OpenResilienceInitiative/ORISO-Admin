@@ -614,6 +614,10 @@
     }
 }
 
+.descriptionInput {
+    margin-top: 4px;
+}
+
 .nameInput.missingInput {
     border-color: var(--warning-text, #8a5100);
 }

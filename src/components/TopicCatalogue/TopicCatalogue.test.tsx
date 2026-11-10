@@ -538,6 +538,41 @@ describe('TopicCatalogue languages', () => {
         expect([...change.machineTranslated].sort()).toEqual(['en|group:a', 'en|topic:2', 'fr|topic:1']);
     });
 
+    it('lets the admin correct a machine-made description, which also removes its mark', async () => {
+        const onTranslate = vi.fn().mockResolvedValue({ en: { 'topicDescription:1': 'WRONG' } });
+        const { onSaveLayout } = setup({ topics: translated, languages, onTranslate });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(textButton('Fehlende Texte mit KI übersetzen'));
+        await waitFor(() => expect(status()).toHaveTextContent('1 Text übersetzt'));
+        await u.click(langButton('en'));
+
+        const input = label('Beschreibung von „Sucht“ auf Englisch');
+        expect(input).toHaveValue('WRONG');
+        await u.clear(input);
+        await u.type(input, 'Addiction counselling');
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        const change = onSaveLayout.mock.calls[0][0];
+        expect(change.topics.find((topic: CatalogueTopic) => topic.id === 1).descriptions).toEqual({
+            en: 'Addiction counselling',
+        });
+        expect(change.machineTranslated).not.toContain('en|topicDescription:1');
+    });
+
+    it('types a missing description by hand', async () => {
+        const { onSaveLayout } = setup({ topics: translated, languages });
+        const u = user();
+        await u.click(label('Bearbeiten'));
+        await u.click(langButton('en'));
+        await u.type(label('Beschreibung von „Schulden“ auf Englisch'), 'Debt advice');
+        await u.click(textButton('Speichern'));
+        await waitFor(() => expect(onSaveLayout).toHaveBeenCalled());
+        expect(onSaveLayout.mock.calls[0][0].topics).toEqual([
+            expect.objectContaining({ id: 2, descriptions: { en: 'Debt advice' } }),
+        ]);
+    });
+
     it('never overwrites text typed or moved while the translation is on its way', async () => {
         let answer: (value: Record<string, Record<string, string>>) => void = () => undefined;
         const onTranslate = vi.fn().mockReturnValue(

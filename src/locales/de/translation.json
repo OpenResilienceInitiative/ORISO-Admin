@@ -2278,6 +2278,7 @@
     "topicCatalogue.missingCount_one": "{{count}} Text noch nicht übersetzt",
     "topicCatalogue.missingCount_other": "{{count}} Texte noch nicht übersetzt",
     "topicCatalogue.topicNameIn": "Name von „{{name}}“ auf {{language}}",
+    "topicCatalogue.topicDescriptionIn": "Beschreibung von „{{name}}“ auf {{language}}",
     "topicCatalogue.translate": "Fehlende Texte mit KI übersetzen",
     "topicCatalogue.translateNothing": "Es fehlt keine Übersetzung.",
     "topicCatalogue.translateDone_one": "{{count}} Text übersetzt. Bitte prüfen, die KI-Texte sind kursiv markiert.",
