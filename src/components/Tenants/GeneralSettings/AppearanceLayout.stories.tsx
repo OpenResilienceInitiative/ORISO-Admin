@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
 import { Page } from '../../Page';
-import { CardDeck } from '../../CardDeck';
+import { CardGrid } from '../../CardGrid';
 import { Card } from '../../Card';
 import { CardEditable } from '../../CardEditable';
 import { FormSwitchField } from '../../FormSwitchField';
@@ -10,7 +10,7 @@ import styles from './styles.module.scss';
 /**
  * Layout-only harness for the tenant appearance (theme-settings) page. It composes
  * the real style modules and components — Page sticky header + tabs, `appearancePage`,
- * `CardDeck`, and the master-data toggle inside a real `CardEditable` (same
+ * `CardGrid`, and the master-data toggle inside a real `CardEditable` (same
  * `layout="vertical"` form context as production) — WITHOUT the data hooks, so
  * mobile-layout regressions are observable in isolation:
  *   - ≥24px gap between the sticky tab bar and the first card (was flush on mobile).
@@ -35,20 +35,15 @@ const toggleInitialValues = { tenantAdminControls: { allowedPermissionToggles: {
 export const Default: Story = {
     render: () => (
         <Page>
-            <Page.BackWithActions path="/admin/tenants" title="Dreambau" tabs={tabs} />
+            <Page.BackWithActions path="/admin/tenants" parentKey="sidebar.tenants" title="Dreambau" tabs={tabs} />
             <div className={styles.appearancePage}>
-                <CardDeck
-                    className={styles.cardDeck}
-                    ariaLabel="Erscheinungsbild"
-                    previousLabel="Zurück"
-                    nextLabel="Weiter"
-                >
-                    <CardDeck.Item className={styles.cardSlotImages}>
+                <CardGrid raster>
+                    <CardGrid.Item span={3}>
                         <Card autoHeight dialogContentPadding titleKey="Individuelle Bilder" variant="dialog">
                             Bitte beachten Sie, dass wir nur JPG-/PNG-Formate bis zu 500 KB annehmen können.
                         </Card>
-                    </CardDeck.Item>
-                    <CardDeck.Item>
+                    </CardGrid.Item>
+                    <CardGrid.Item>
                         <CardEditable
                             allowEdit={false}
                             initialValues={toggleInitialValues}
@@ -77,11 +72,10 @@ export const Default: Story = {
                                 disableLabels
                                 className={styles.masterDataToggle}
                                 switchLabel="Bearbeitung durch Träger-Admins erlauben"
-                                switchVariant="m3"
                             />
                         </CardEditable>
-                    </CardDeck.Item>
-                </CardDeck>
+                    </CardGrid.Item>
+                </CardGrid>
             </div>
         </Page>
     ),

@@ -1,7 +1,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
 import { GlobalLoginSettingsPage } from '.';
 
@@ -25,8 +25,14 @@ vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => (
 vi.mock('../../components/GlobalSettings/OneTopicPerAgencySettingsCard', () => ({
     OneTopicPerAgencySettingsCardContainer: () => <div data-testid="topics-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div />,
+}));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
 }));
 
 beforeEach(async () => i18n.changeLanguage('de'));

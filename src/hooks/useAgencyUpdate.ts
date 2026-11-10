@@ -19,6 +19,7 @@ export const useAgencyUpdate = (id: string) => {
             if (id === 'add') {
                 return addAgencyData(data);
             }
+            await queryClient.cancelQueries({ queryKey: ['AGENCY', id] });
             const latestAgencyData = queryClient.getQueryData<AgencyData>(['AGENCY', id]) ?? agencyData;
             const mergedAgencyData = mergeWith({}, latestAgencyData, data, (objValue, srcValue) => {
                 return objValue instanceof Array ? srcValue : undefined;
@@ -51,14 +52,24 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
+            // Switching the centre offline must not echo the stored data protection contact:
+            // AgencyService validates any contact it receives and rejected an incomplete stored one,
+            // so the centre could not be paused (#1243). Omitted, the service keeps the stored
+            // contact. Going online still sends it, so the service keeps checking it there.
+            const requestData =
+                data.online === false && data.dataProtection === undefined
+                    ? { ...mergedAgencyData, dataProtection: undefined }
+                    : mergedAgencyData;
+
             // Cache the accepted main write at once so a queued save uses what the server holds.
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
-                queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
-            );
+            const response = await updateAgencyData(latestAgencyData, requestData, (saved) => {
+                if (saved) queryClient.setQueryData(['AGENCY', id], saved);
+            });
 
             // Cache only a confirmed write. A rejected legal publication must not enter the base
             // of a later unrelated card update and get published by that second request.
-            queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
+            await queryClient.cancelQueries({ queryKey: ['AGENCY', id] });
+            queryClient.setQueryData(['AGENCY', id], response);
             return response;
         },
         // Preparation writes (coverage or counsellor assignment) may succeed before the main PUT

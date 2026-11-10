@@ -32,7 +32,7 @@ export interface FloatingLabelInputProps extends Omit<InputProps, 'variant' | 's
  * be aligned with the parent surface via the `--admin-field-label-surface`
  * (legacy: `--global-search-field-surface`) custom property.
  */
-export const FloatingLabelInput = ({
+const FloatingLabelInputControl = ({
     label,
     error,
     supportingText,
@@ -129,5 +129,14 @@ export const FloatingLabelInput = ({
         </div>
     );
 };
+
+// A public noStyle adapter supplies a valid status context standalone and
+// inherits the enclosing Form.Item validation status without adding a DOM box.
+// Keep value/onChange/id/ref on the actual control so named outer items bind it.
+export const FloatingLabelInput = (props: FloatingLabelInputProps) => (
+    <Form.Item noStyle>
+        <FloatingLabelInputControl {...props} />
+    </Form.Item>
+);
 
 export default FloatingLabelInput;

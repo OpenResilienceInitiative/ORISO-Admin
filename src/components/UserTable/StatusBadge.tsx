@@ -9,6 +9,7 @@ import MailOutlineOutlinedIcon from '@mui/icons-material/MailOutlineOutlined';
 import NorthEastIcon from '@mui/icons-material/NorthEast';
 import PendingOutlinedIcon from '@mui/icons-material/PendingOutlined';
 import classNames from 'classnames';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import routePathNames from '../../appConfig';
 import type { DisplayStatus } from '../../types/userDisplayStatus';
@@ -16,7 +17,8 @@ import { entityStatusListAttributes } from '../EntityStatusCard/presentation';
 import styles from './statusBadge.module.scss';
 
 /** active = primary container, pending = tertiary container, ended = secondary container. */
-type Tone = 'active' | 'pending' | 'ended';
+export type BadgeTone = 'active' | 'pending' | 'ended';
+type Tone = BadgeTone;
 
 const STATUS: Record<DisplayStatus, { label: string; tone: Tone; Icon: typeof CheckIcon }> = {
     ACTIVE: { label: 'Aktiv', tone: 'active', Icon: CheckIcon },
@@ -30,6 +32,22 @@ const STATUS: Record<DisplayStatus, { label: string; tone: Tone; Icon: typeof Ch
     ERROR: { label: 'Fehler', tone: 'ended', Icon: CloseIcon },
     null: { label: 'Unbekannt', tone: 'pending', Icon: HelpOutlineOutlinedIcon },
 };
+
+/** The same tonal chip for states that are not account states (e.g. a Beratungsstelle's visibility). */
+export const ToneBadge = ({
+    tone,
+    Icon,
+    children,
+}: {
+    tone: BadgeTone;
+    Icon: typeof CheckIcon;
+    children: ReactNode;
+}) => (
+    <span className={classNames(styles.badge, styles[tone])} data-tone={tone}>
+        <Icon className={styles.icon} aria-hidden />
+        {children}
+    </span>
+);
 
 export interface StatusBadgeProps {
     status: DisplayStatus;

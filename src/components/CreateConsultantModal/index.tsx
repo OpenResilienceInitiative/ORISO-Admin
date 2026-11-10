@@ -1,9 +1,10 @@
-import { Button, Form, message, Tooltip } from 'antd';
+import { Button, Form, Tooltip } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import PersonAddOutlinedIcon from '@mui/icons-material/PersonAddOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { FETCH_ERRORS, X_REASON } from '../../api/fetchData';
 import { UnsavedChangesModal } from '../CardEditable/components/UnsavedChanges';
 import { ConsultantPersonalFields, ConsultantSettingsFields, type ConsultantFieldName } from '../ConsultantFields';
@@ -14,7 +15,7 @@ import { useAddOrUpdateConsultantOrAdmin } from '../../hooks/useAddOrUpdateConsu
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { ADMIN_REMARKS_ROLES } from '../../utils/adminRemarksRoles';
 import { CounselorData } from '../../types/counselor';
-import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
+import { extractApiErrorMessage, extractSmtpSendFailure } from '../../utils/extractApiErrorMessage';
 import styles from './styles.module.scss';
 
 interface CreateConsultantModalProps {
@@ -34,7 +35,11 @@ interface CreateConsultantModalProps {
  * What this surface does not offer, stated rather than left out, so the difference from the page
  * form is a decision that can be revisited. The remarks are gated by role below, not hidden.
  */
-const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [];
+const PERSONAL_EXCLUSIONS: readonly ConsultantFieldName[] = [
+    // #1144: the counsellor chooses their own password through the setup e-mail, so no
+    // administrator ever knows it.
+    'password',
+];
 
 const SETTINGS_EXCLUSIONS: readonly ConsultantFieldName[] = [
     // ADR-008: a standing supervisor is attached to an existing counsellor, and
@@ -125,7 +130,7 @@ export const CreateConsultantModal = ({
         typeOfUser: TypeOfUser.Consultants,
         onSuccess: (consultant) => {
             isSaving.current = false;
-            message.success({ content: t('message.counselor.add'), duration: 3 });
+            snackbar.success({ content: t('message.counselor.add'), duration: 3 });
             const createAnother = keepOpenAfterSave.current;
             keepOpenAfterSave.current = false;
 
@@ -150,6 +155,14 @@ export const CreateConsultantModal = ({
             isSaving.current = false;
             keepOpenAfterSave.current = false;
 
+            // The counsellor exists; only the set-up mail failed. Another submit would only hit
+            // "username not available", so the dialog closes (#1144).
+            if (await extractSmtpSendFailure(error)) {
+                snackbar.warning({ content: t('counselor.create.setupMailNotSent') });
+                closeModal();
+                return;
+            }
+
             if (error instanceof Response) {
                 const reason = error.headers.get(FETCH_ERRORS.X_REASON);
                 if (
@@ -158,13 +171,13 @@ export const CreateConsultantModal = ({
                     reason === X_REASON.NUMBER_OF_LICENSES_EXCEEDED ||
                     reason === X_REASON.PASSWORD_NOT_VALID
                 ) {
-                    message.error({ content: t(`message.error.${reason}`), duration: 8 });
+                    snackbar.error({ content: t(`message.error.${reason}`) });
                     return;
                 }
             }
 
             const content = await extractApiErrorMessage(error);
-            message.error({ content, duration: 8 });
+            snackbar.error({ content });
         },
     });
 
@@ -265,7 +278,11 @@ export const CreateConsultantModal = ({
                             onFinish={(values) => startSaving(values, false)}
                         >
                             <div className={styles.columns}>
-                                <ConsultantPersonalFields exclude={personalExclusions} autoFocusFirstField />
+                                <ConsultantPersonalFields
+                                    exclude={personalExclusions}
+                                    autoFocusFirstField
+                                    setupEmailHint
+                                />
                                 <ConsultantSettingsFields exclude={SETTINGS_EXCLUSIONS} />
                             </div>
                             {/*

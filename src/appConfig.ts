@@ -8,6 +8,8 @@ const { subdomain } = getLocationVariables();
 
 export const mainURL = runtimeConfig.apiBaseUrl;
 export const appURL = runtimeConfig.appBaseUrl;
+/** APP_URL exactly as configured; '' when unset (unlike `appURL`, no API fallback). */
+export const configuredAppURL = runtimeConfig.configuredAppUrl;
 export const matrixURL = runtimeConfig.matrixBaseUrl;
 const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
@@ -36,6 +38,7 @@ export const consultantsHasAgencyEndpoint = (agencyId: string) =>
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
 export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
+export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
 // SigNoz via UserService's existing structured logger.
@@ -66,6 +69,8 @@ export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
 export const accountInactivityActivityEndpoint = `${userServiceURL}/service/users/account-inactivity/activity`;
+// Temporary accounts from direct links (ORISO-Admin#1241, ORISO-UserService#1476): platform admin only.
+export const temporaryAccountSettingsEndpoint = `${userServiceURL}/service/users/admin/temporary-account-settings`;
 export const userDataEndpoint = `${userServiceURL}/service/users/data`;
 export const userAdminDataEndpoint = `${userServiceURL}/service/useradmin/data`;
 export const userPasswordChangeEndpoint = `${userServiceURL}/service/users/password/change`;
@@ -86,9 +91,11 @@ export const supervisorLogsEndpoint = `${userServiceURL}/service/users/superviso
 export const caseHandoverLogsEndpoint = `${userServiceURL}/service/users/case-handover/logs`;
 export const caseHandoverReasonPoliciesEndpoint = `${userServiceURL}/service/users/case-handover/reason-policies`;
 export const inactiveAccountAuditLogsEndpoint = `${userServiceURL}/service/users/inactive-accounts/audit-logs`;
+export const deletionAuditLogsEndpoint = `${userServiceURL}/service/users/deletion-audit-logs`;
 export const agencyAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/agencyadmins/search`;
 export const adminListPreferencesEndpoint = `${userServiceURL}/service/useradmin/list-preferences`;
 export const adminStatisticsDashboardEndpoint = `${userServiceURL}/service/useradmin/statistics/dashboard`;
+export const adminStatisticsSettingsEndpoint = `${userServiceURL}/service/useradmin/statistics/settings`;
 export const tutorialStatisticsEndpoint = `${userServiceURL}/service/useradmin/statistics/tutorials`;
 export const invitelinksEndpoint = `${userServiceURL}/service/useradmin/invitelinks`;
 export const accountInvitesEndpoint = `${userServiceURL}/service/useradmin/account-invites`;
@@ -103,6 +110,8 @@ export const XHRheader = { AcceptLanguage: 'de' };
  */
 const routePathNames = {
     root: '/admin',
+    /** Start page for every role (ORISO-Admin#1323). */
+    home: '/admin/home',
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',
@@ -135,6 +144,7 @@ const routePathNames = {
     logs: '/admin/logs',
     caseHandoverLogs: '/admin/logs/case-handover',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
+    deletionAuditLogs: '/admin/logs/deletions',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
     imprint: '/impressum',
@@ -146,6 +156,7 @@ const routePathNames = {
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',
+    /** Old address of the live-chat links; redirects to Funktionszugriff (ORISO-Admin#1321). */
     linksExternalInbounds: '/admin/links/external-inbounds',
 };
 

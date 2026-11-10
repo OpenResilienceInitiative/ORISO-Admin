@@ -3,6 +3,8 @@ import Title from 'antd/lib/typography/Title';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Box } from '../Box';
+import { TileFill, TileNote } from '../TileFill';
+import { TileHelpButton, type TileHelpTopic } from '../TileHelp';
 import { Tooltip } from '../tooltip/Tooltip';
 import { ReactComponent as InfoIcon } from '../../resources/img/svg/i.svg';
 import styles from './styles.module.scss';
@@ -27,6 +29,12 @@ interface CardProps {
     /** Optional footer slot: rendered below a top divider (M3 card action row —
      *  Back/Next, Cancel/Save, Edit, etc.). Shared by every wizard/settings card. */
     footer?: React.ReactNode;
+    /** Adds the info button that opens the explanation of this tile. */
+    help?: TileHelpTopic;
+    /** The picture for the free space of a tile; without it the first slide of `help` is used. */
+    picture?: React.ReactNode;
+    /** A short note with an icon, pinned to the bottom of the tile. */
+    note?: { icon: React.ReactNode; text: React.ReactNode };
     /** Forwarded to the card root as `data-testid` (preserves existing test anchors). */
     dataTestId?: string;
 }
@@ -46,15 +54,20 @@ export const Card = ({
     variant = 'default',
     headerIcon,
     footer,
+    help,
+    picture,
+    note,
     dataTestId,
     children,
 }: CardProps) => {
     const { t } = useTranslation();
     const isDialog = variant === 'dialog';
+    const fillVisual = picture ?? help?.slides[0]?.visual;
 
     return (
         <Box
             data-testid={dataTestId}
+            data-search-tile={titleKey}
             className={classNames(styles.card, className, {
                 [styles.fullHeight]: fullHeight,
                 [styles.dialogCard]: isDialog,
@@ -62,11 +75,13 @@ export const Card = ({
             })}
             contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
+            {help && <TileHelpButton topic={help} tileTitle={t(titleKey)} tileIcon={headerIcon} />}
             <div
                 className={classNames(styles.cardTitle, cardTitleClassName, {
                     [styles.hasSubtitle]: subTitle || subTitleKey,
                     [styles.dialogCardTitle]: isDialog,
                 })}
+                data-admin-card-title
             >
                 <div className={classNames(styles.titleContainer, { [styles.dialogTitleContainer]: isDialog })}>
                     {headerIcon && <div className={styles.headerIcon}>{headerIcon}</div>}
@@ -92,10 +107,13 @@ export const Card = ({
                     [styles.isLoading]: isLoading,
                     [styles.dialogContainer]: isDialog,
                     [styles.dialogContentPadding]: isDialog && dialogContentPadding,
+                    [styles.fillContainer]: !isDialog && fillVisual,
                 })}
             >
                 {isLoading && <Spin />}
                 {!isLoading && children}
+                {!isLoading && note && <TileNote icon={note.icon}>{note.text}</TileNote>}
+                {!isLoading && fillVisual && <TileFill visual={fillVisual} />}
             </div>
             {footer && <div className={styles.footer}>{footer}</div>}
         </Box>

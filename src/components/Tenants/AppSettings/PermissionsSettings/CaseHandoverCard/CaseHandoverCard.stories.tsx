@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useTranslation } from 'react-i18next';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, screen, userEvent, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -85,7 +87,7 @@ const meta = {
         },
     },
     args: {
-        onModuleEnabledChange: () => undefined,
+        onFeaturePolicyChange: () => undefined,
         onClientConsentPolicyChange: () => undefined,
         onNotificationTemplateChange: () => undefined,
         onMaxAccessDurationChange: () => undefined,
@@ -132,6 +134,11 @@ export const Editable: Story = {
     },
 };
 
+export const HelpSlideshow: Story = {
+    ...Editable,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
 /** The shape GET /service/users/case-handover/reason-policies really answers:
  *  `clientConsent` as the bare enum string, the mode beside it in `clientConsentMode`
  *  (`CaseHandoverService.CaseHandoverReason`) — not the policy object the card writes.
@@ -173,7 +180,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         const canvas = within(canvasElement);
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))/i,
+                name: /(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))/i,
             }),
         ).toBeVisible();
         await expect(canvas.getByDisplayValue(/1 h 30 min/)).toBeVisible();
@@ -181,7 +188,7 @@ export const StoredPolicyAsReturnedByTheUserService: Story = {
         await userEvent.click(canvas.getByRole('tab', { name: 'Geplant verhindert' }));
         await expect(
             canvas.getByRole('button', {
-                name: /(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))/i,
+                name: /(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))/i,
             }),
         ).toBeVisible();
     },
@@ -211,15 +218,15 @@ export const RetiredCodesFromTenantService: Story = {
         await expect(
             canvas
                 .getByRole('button', {
-                    name: /(Beratende Person|advising person).*(Weitere Informationen|More information)/i,
+                    name: /(beratenden Person|the counsellor).*(Erst nach Zustimmung|Only after consent).*(Vorgabe|requirement)/i,
                 })
                 .querySelector('[data-icon="switch-on"]'),
         ).not.toBeNull();
     },
 };
 
-/** Read-only ceiling: admins without policy-edit permission see the same card
- *  with every control disabled. */
+/** Read-only: a BST admin (no Träger write access) sees the Träger's rules with every control
+ *  disabled and a plain note that the Träger administration sets them (FE#1725). */
 export const ReadOnly: Story = {
     args: {
         policies,
@@ -227,33 +234,133 @@ export const ReadOnly: Story = {
         canEdit: false,
         moduleEnabled: true,
     },
+    play: async ({ canvas }) => {
+        await expect(canvas.getByTestId('case-handover-read-only-note')).toHaveTextContent(
+            /Träger-Administration|Träger administration/,
+        );
+        await expect(
+            canvas.getByRole('button', {
+                name: /(Zustimmung der ratsuchenden Person|Consent from the advice seeker).*(Auswahl „Vorgabe oder Empfehlung“ öffnen|Open requirement or recommendation choices)/i,
+            }),
+        ).toBeDisabled();
+    },
 };
 
-/** Figma 1789:11645 — clicking the master policy FAB reveals the four
- * policy states and the information action. Kept open for visual review. */
-export const PolicyMenuOpen: Story = {
+/** Save failed (FE#1725): the error says so and the admin's edit stays visible; "Try again"
+ *  resends it. No silent rollback. */
+export const SaveFailed: Story = {
     args: {
         policies,
         isLoading: false,
         canEdit: true,
         moduleEnabled: true,
-        openPolicyMenu: 'caseHandoverEnabled',
+        onRetrySave: fn(),
     },
-    play: async ({ canvasElement }) => {
+    // The container passes the translated text; the story does the same in the active locale.
+    render: function SaveFailedStory(args) {
+        const { t } = useTranslation();
+        return (
+            <CaseHandoverCardView {...args} saveError={t('tenants.permissions.card.caseHandover.saveFailed.other')} />
+        );
+    },
+    play: async ({ args }) => {
+        const alert = await screen.findByTestId('case-handover-save-error');
+        await expect(alert).toHaveTextContent(/Nicht gespeichert|Not saved/);
+        await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
+        await expect(args.onRetrySave).toHaveBeenCalled();
+    },
+};
+
+/** Platform-wide settings page: no Träger in scope, so the card says where the rules are set. */
+export const NoTraegerInScope: Story = {
+    args: {
+        policies: [],
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: false,
+        noTenant: true,
+    },
+    play: async ({ canvas }) => {
+        await expect(
+            canvas.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/),
+        ).toBeVisible();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+    },
+};
+
+/** Every current reason the backend returns gets a tab, unknown new platform reasons included.
+ *  OTHER_EMERGENCY stays hidden (Frank 2026-08-17; open product question, FE#1725). */
+export const AllPlatformReasons: Story = {
+    args: {
+        policies: [
+            ...policies,
+            {
+                code: 'OTHER_EMERGENCY',
+                label: 'Other emergency',
+                clientConsentRequired: false,
+                clientConsent: { value: 'NONE', mode: 'SUGGESTED' },
+                accessAllowed: false,
+                enabled: true,
+                displayOrder: 30,
+            },
+            {
+                code: 'TEAM_REORGANISATION',
+                label: 'Team reorganisation',
+                clientConsentRequired: true,
+                clientConsent: { value: 'OPT_IN', mode: 'SUGGESTED' },
+                accessAllowed: true,
+                enabled: true,
+                displayOrder: 60,
+            },
+        ],
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+    },
+    play: async ({ canvas }) => {
+        const tabs = within(canvas.getByRole('tablist', { name: /Übergabegründe|Handover reasons/i })).getAllByRole(
+            'tab',
+        );
+        // 4 neutral + new reason + legal-violation placeholder; emergency hidden.
+        await expect(tabs).toHaveLength(6);
+        await expect(canvas.queryByRole('tab', { name: /Notfall|Emergency/i })).toBeNull();
+        await expect(canvas.getByRole('tab', { name: 'Team reorganisation' })).toBeVisible();
+    },
+};
+
+/** Figma 1789:11645 — the master is two buttons: the round one switches the module on or off,
+ * the lock makes it a requirement or leaves it adjustable. There is no menu and no info entry. */
+export const MasterPolicyButtons: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+        onFeaturePolicyChange: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
         const canvas = within(canvasElement);
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation enforced|Aktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation enforced|Deaktivierung erzwungen)$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Activation \(adjustable\)|Aktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(
-            canvas.getByRole('button', { name: /^(Deactivation \(adjustable\)|Deaktivierung \(anpassbar\))$/i }),
-        ).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeVisible();
+        const round = canvas.getByRole('button', {
+            name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/,
+        });
+        const lock = canvas.getByRole('button', {
+            name: /(Adjustable|Anpassbar) – (Make it a requirement|Als Vorgabe festlegen)$/,
+        });
+        await expect(round).toHaveAttribute('aria-pressed', 'true');
+        await expect(lock).toHaveAttribute('aria-pressed', 'false');
+
+        await userEvent.click(round);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        await userEvent.click(lock);
+        await expect(args.onFeaturePolicyChange).toHaveBeenLastCalledWith('caseHandoverEnabled', {
+            value: true,
+            mode: 'ENFORCED',
+        });
+        await expect(canvas.queryByRole('button', { name: /^(More information|Weitere Informationen)$/i })).toBeNull();
     },
 };
 
@@ -276,12 +383,11 @@ export const AdviceSeekerConsentMenuOpen: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const expectedLabels = [
-            /^(Consent opt-in \(enforced\)|Zustimmung Opt-In \(Vorgabe\))$/i,
-            /^(Consent opt-out \(enforced\)|Zustimmung Opt-Out \(Vorgabe\))$/i,
-            /^(No consent \(adjustable\)|keine Zustimmung \(anpassbar\))$/i,
-            /^(Consent opt-in \(adjustable\)|Zustimmung Opt-In \(anpassbar\))$/i,
-            /^(Consent opt-out \(adjustable\)|Zustimmung Opt-Out \(anpassbar\))$/i,
-            /^(More information|Weitere Informationen)$/i,
+            /^(Only after consent \(requirement\)|Erst nach Zustimmung \(Vorgabe\))$/i,
+            /^(Immediately, can object \(requirement\)|Sofort, Widerspruch möglich \(Vorgabe\))$/i,
+            /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
         ];
 
         await Promise.all(
@@ -290,7 +396,7 @@ export const AdviceSeekerConsentMenuOpen: Story = {
             }),
         );
         await Promise.all(
-            canvas.getAllByText(/^(Recommendation|Empfehlung)$/i).map(async (status) => {
+            canvas.getAllByText(/^(Adjustable|Anpassbar)$/i).map(async (status) => {
                 await expect(status).toBeVisible();
             }),
         );
@@ -298,6 +404,35 @@ export const AdviceSeekerConsentMenuOpen: Story = {
         await expect(
             canvas.queryByText(/\((?:can be adjusted|cannot be changed|änderbar|nicht änderbar)\)/i),
         ).toBeNull();
+    },
+};
+
+/** FE#1725 story 32: each consent option says in one sentence what the client experiences.
+ *  Opt-out explains the "silent" mode: access starts at once, the client is informed and can object. */
+export const ConsentMenuWithClientImpact: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        openPolicyMenu: 'clientConsent:ADVICE_REQUESTED',
+    },
+    play: async ({ canvas }) => {
+        const optOut = canvas.getByRole('button', {
+            name: /^(Immediately, can object \(recommendation\)|Sofort, Widerspruch möglich \(Empfehlung\))$/i,
+        });
+        await expect(optOut).toHaveAccessibleDescription(/(sofort.*widersprechen|immediately.*object)/i);
+        await expect(
+            canvas.getByRole('button', {
+                name: /^(Only after consent \(recommendation\)|Erst nach Zustimmung \(Empfehlung\))$/i,
+            }),
+        ).toHaveAccessibleDescription(/(vorher gefragt|asked first)/i);
+        await expect(
+            canvas.getByRole('button', {
+                name: /^(Without asking \(recommendation\)|Ohne Nachfrage \(Empfehlung\))$/i,
+            }),
+        ).toHaveAccessibleDescription(/(nicht gefragt|not asked)/i);
+        await expect(canvas.getAllByText(/(Der Zugriff beginnt sofort|Access starts immediately)/)[0]).toBeVisible();
     },
 };
 
@@ -339,5 +474,73 @@ export const Loading: Story = {
         isLoading: true,
         canEdit: true,
         moduleEnabled: false,
+    },
+};
+
+/** LOCAL view fixture: reason GET failed independently from a loaded canonical master. */
+export const TenantReasonLoadFailed: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        policyLevel: 'tenant',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+        onFeaturePolicyChange: fn(),
+        onRetryLoad: fn(),
+        onClientConsentPolicyChange: fn(),
+    },
+    render: function ReasonLoadFailedStory(args) {
+        const { t } = useTranslation();
+        return <CaseHandoverCardView {...args} loadError={t('error.loading')} />;
+    },
+    play: async ({ canvas, args }) => {
+        const row = canvas
+            .getByTestId('case-handover-card')
+            .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+        await expect(row).not.toBeNull();
+        if (!row) throw new Error('Loaded canonical master missing');
+        await userEvent.click(
+            within(row).getByRole('button', { name: /(Active|Aktiviert) – (Deactivate|Deaktivieren)$/ }),
+        );
+        await expect(args.onFeaturePolicyChange).toHaveBeenCalledWith('caseHandoverEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+        await expect(args.onClientConsentPolicyChange).not.toHaveBeenCalled();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+        const alert = await screen.findByTestId('case-handover-card-error');
+        await expect(alert).toHaveAttribute('data-severity', 'error');
+        await userEvent.click(within(alert).getByRole('button', { name: /Erneut versuchen|Try again/i }));
+        await expect(args.onRetryLoad).toHaveBeenCalled();
+    },
+};
+
+/** Agency projection remains read-only even when the inherited master is only suggested. */
+export const AgencyReasonLoadFailed: Story = {
+    args: {
+        ...TenantReasonLoadFailed.args,
+        policyLevel: 'agency',
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: true } },
+        onFeaturePolicyChange: fn(),
+        onRetryLoad: fn(),
+    },
+    render: TenantReasonLoadFailed.render,
+    play: async ({ canvas, args }) => {
+        const row = canvas
+            .getByTestId('case-handover-card')
+            .querySelector<HTMLElement>('[data-feature-policy="caseHandoverEnabled"]');
+        await expect(row).not.toBeNull();
+        if (!row) throw new Error('Loaded inherited master missing');
+        await expect(within(row).getByRole('button')).toBeDisabled();
+        await expect(canvas.getByTestId('case-handover-read-only-note')).toBeVisible();
+        await expect(canvas.queryByRole('tablist')).toBeNull();
+        await expect(args.onFeaturePolicyChange).not.toHaveBeenCalled();
+        await userEvent.click(
+            within(await screen.findByTestId('case-handover-card-error')).getByRole('button', {
+                name: /Erneut versuchen|Try again/i,
+            }),
+        );
+        await expect(args.onRetryLoad).toHaveBeenCalled();
     },
 };

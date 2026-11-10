@@ -1,16 +1,20 @@
-import { Alert, Button, Form, notification } from 'antd';
+import { Button, Form } from 'antd';
 import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
+import BusinessCenterOutlinedIcon from '@mui/icons-material/BusinessCenterOutlined';
+import PrivacyTipOutlinedIcon from '@mui/icons-material/PrivacyTipOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { ThemeProvider } from '@mui/material/styles';
+import { GdprIcon, ImprintIcon } from '../../../components/CustomIcons/LegalIcons';
+import { snackbar } from '../../../components/Snackbar';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { AgencyAccessError } from '../../../api/agency/getAgencyById';
 import { PostCodeRange } from '../../../api/agency/getAgencyPostCodeRange';
 import { normalizeTopicIds } from '../../../api/agency/normalizeTopicIds';
 import routePathNames from '../../../appConfig';
 import { Page } from '../../../components/Page';
-import { CardDeck } from '../../../components/CardDeck';
 import { CardGrid } from '../../../components/CardGrid';
 import { DashboardEmptyState } from '../../../components/DashboardEmptyState/DashboardEmptyState';
 import { useFeatureContext } from '../../../context/FeatureContext';
@@ -23,10 +27,20 @@ import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { convertToOptions } from '../../../utils/convertToOptions';
 import { AgencySettings } from './components/AgencySettings';
 import { AgencyDepartmentDetails } from './components/DepartmentDetails';
-import { OpenDepartmentFieldOnRequest } from './components/DepartmentDetails/OpenDepartmentFieldOnRequest';
 import { AgencyGeneralInformation } from './components/GeneralInformation';
 import { RegistrationSettings } from './components/RegistrationSettings';
 import { NoTopicConfirmModal } from './components/NoTopicConfirm';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
+import { AgencyMasterDataTile } from './components/MasterDataTile';
+import { AgencyTileGrid, type AgencyTile, type AgencyTileLayout } from './AgencyTileGrid';
+import {
+    contractDocumentsTileStatus,
+    dataProtectionContactTileStatus,
+    imprintTileStatus,
+    privacyTileStatus,
+    responsibleTileStatus,
+    type LegalTileStatus,
+} from './agencyLegalTileStatus';
 import { CounsellingRelation } from '../../../enums/CounsellingRelation';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
@@ -39,16 +53,20 @@ import { AgencyLegalTextWithTemplates } from '../../../components/Tenants/LegalS
 import { LegalTemplateUnreadMarker } from '../../../components/Tenants/LegalSettings/components/LegalTemplateCompare/LegalTemplateUnreadMarker';
 import { useHasUnreadLegalProposals } from '../../../components/Tenants/LegalSettings/hooks/useLegalProposalInbox';
 import pageStyles from '../../../components/Page/styles.module.scss';
-import styles from './styles.module.scss';
-import { CardEditable } from '../../../components/CardEditable';
-import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
+import { LiveChatLinks } from '../../../components/LiveChatLinks';
+import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
 import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
-import { parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
+import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
+import { HintText } from '../../../components/HintText';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -61,6 +79,11 @@ type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
 
 interface AgencyPageEditProps {
     section?: AgencySettingsSection;
+    /**
+     * How the Rechtliches tab lays out its tiles. `raster` gives the document tiles the whole row;
+     * `collapsible` folds every tile up to its header, the first one open.
+     */
+    legalLayout?: AgencyTileLayout;
 }
 
 const getEntityId = (value: unknown) => {
@@ -76,10 +99,19 @@ const getEntityId = (value: unknown) => {
     return '';
 };
 
-export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => {
+const AgencyPageEditForm = ({
+    id,
+    section,
+    legalLayout,
+    canCreateAgency,
+}: {
+    id?: string;
+    section: AgencySettingsSection;
+    legalLayout: AgencyTileLayout;
+    canCreateAgency: boolean;
+}) => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { id } = useParams();
     const isEditing = id !== 'add';
     const isLegalSection = section === 'legal';
     const isFunctionalitiesSection = section === 'functionalities';
@@ -108,7 +140,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
     const { data: postCodes, isLoading: isLoadingPostCodes } = useAgencyPostCodesData({ id });
     const { isEnabled } = useFeatureContext();
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
-    const { isSuperAdmin, isTenantScopedAdmin, tenantId } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin, tenantId, hasRole } = useUserRoles();
+    const showLiveChatLinks =
+        resolveAgencyLiveChatLinksAccess({ isSuperAdmin, isTenantScopedAdmin, hasRole }) === 'read';
     const {
         data: dpaGate,
         isLoading: isDpaGateLoading,
@@ -232,6 +266,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const persistAgency = useCallback(
         (formData) => {
+            if (!isEditing && !canCreateAgency) return;
+
             mutate(buildAgencyUpdateData(formData), {
                 onError: () => {
                     setSubmitted(false);
@@ -239,14 +275,13 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onSuccess: (response) => {
                     navigate(routePathNames.agency);
 
-                    notification.success({
+                    snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
                     if (response?.consultantAssignmentFailed) {
-                        notification.warning({
+                        snackbar.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                     setSubmitted(false);
@@ -254,7 +289,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 },
             });
         },
-        [buildAgencyUpdateData, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, mutate, navigate, t],
     );
 
     /**
@@ -268,10 +303,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         ({ errorFields }: { errorFields?: ValidationErrorField[] }) => {
             const fields = describeAgencyValidationErrors(errorFields, t);
 
-            notification.error({
+            snackbar.error({
                 message: t('agency.edit.form.validationFailed'),
                 description: fields || t('form.errors.required'),
-                duration: 8,
             });
         },
         [t],
@@ -289,10 +323,9 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                         errors: [t('form.errors.required')],
                     },
                 ]);
-                notification.error({
+                snackbar.error({
                     message: t('agency.edit.general.more_settings.tenant.title'),
                     description: t('form.errors.required'),
-                    duration: 5,
                 });
                 setSubmitted(false);
                 return;
@@ -321,22 +354,27 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                 onError: async (error) => {
                     options?.onError?.();
                     const validationError = await parseAgencyFieldValidationError(error);
-                    if (validationError && options?.form) {
+                    if (validationError) {
                         const message = t(validationError.translationKey);
-                        options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
-                        options.form.scrollToField(validationError.fieldName, { focus: true });
+                        if (options?.form && isFieldMounted(options.form, validationError.fieldName)) {
+                            options.form.setFields([{ name: validationError.fieldName, errors: [message] }]);
+                            options.form.scrollToField(validationError.fieldName, { focus: true });
+                            return;
+                        }
+                        // The field lives on another card (the visibility switch is rejected for
+                        // an incomplete data protection contact): say what is missing instead.
+                        snackbar.error({ message });
                         return;
                     }
 
                     if (error instanceof Response && error.status === 400) {
-                        notification.error({
+                        snackbar.error({
                             message: t('message.error.default'),
-                            duration: 8,
                         });
                     }
                 },
                 onSuccess: (response) => {
-                    notification.success({
+                    snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
                     });
@@ -344,9 +382,8 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
                     // persistAgency shows belongs here. Without it the card reports
                     // success while the counsellor silently stayed unassigned.
                     if (response?.consultantAssignmentFailed) {
-                        notification.warning({
+                        snackbar.warning({
                             message: t('message.agency.consultantAssignmentFailed'),
-                            duration: 8,
                         });
                     }
                 },
@@ -432,15 +469,14 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         async <T,>(formData: T) => {
             try {
                 await mutateAsync(formData as Partial<AgencyData>);
-                notification.success({
+                snackbar.success({
                     message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                     duration: 3,
                 });
             } catch (error) {
                 if (error instanceof Response && error.status === 400) {
-                    notification.error({
+                    snackbar.error({
                         message: t('message.error.default'),
-                        duration: 8,
                     });
                 }
                 throw error;
@@ -460,86 +496,51 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderGeneralSettings = () => {
         if (isEditing) {
+            // The order of the tiles on this tab. Moving a setting to another tile is a one-line change here.
+            const masterDataTiles: AgencyTile[] = [
+                {
+                    id: 'master-data',
+                    span: 3,
+                    node: (
+                        <AgencyMasterDataTile
+                            initialValues={initialValues}
+                            onSave={onSaveCard}
+                            departmentFieldRequest={departmentFieldRequest}
+                            persistedTeamAgency={initialValues.teamAgency}
+                            status={
+                                <ManagedEntityStatus
+                                    embedded
+                                    entityKind="agency"
+                                    entityName={agencyData?.name}
+                                    entityId={id}
+                                    canManage
+                                    targetTenantId={agencyTenantId}
+                                    onBeforeChange={beforeStatusChange}
+                                    activationBlockedReason={activationBlockedReason}
+                                />
+                            }
+                        />
+                    ),
+                },
+                {
+                    id: 'department-details',
+                    node: (
+                        <AgencyDepartmentDetails
+                            agencyData={agencyData}
+                            // The Fachbereich field only renders when the tenant offers topics.
+                            onAddDepartment={
+                                tenantTopics?.length > 0
+                                    ? () => setDepartmentFieldRequest((request) => request + 1)
+                                    : undefined
+                            }
+                        />
+                    ),
+                },
+            ];
+
             return (
                 <ThemeProvider theme={orisoMuiTheme}>
-                    <h3 className={pageStyles.backHeadline}>{t(`agency.edit.settings.general.title`)}</h3>
-                    <CardDeck
-                        ariaLabel={t(`agency.edit.settings.general.title`)}
-                        previousLabel={t('agency.cardDeck.previous')}
-                        nextLabel={t('agency.cardDeck.next')}
-                    >
-                        <CardDeck.Item>
-                            <ManagedEntityStatus
-                                entityKind="agency"
-                                entityName={agencyData?.name}
-                                entityId={id}
-                                canManage
-                                targetTenantId={agencyTenantId}
-                                onBeforeChange={beforeStatusChange}
-                                activationBlockedReason={activationBlockedReason}
-                            />
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.edit.general.general_information"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                <AgencyGeneralInformation asFields />
-                            </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.form.registrationSettings.title"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                {({ editing }) => <RegistrationSettings asFields editing={editing} />}
-                            </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <CardEditable
-                                allowUnsavedChanges
-                                initialValues={initialValues}
-                                titleKey="agency.edit.settings.title"
-                                variant="dialog"
-                                editButtonPlacement="footer"
-                                onSave={onSaveCard}
-                            >
-                                {({ form: cardForm, startEditing }) => (
-                                    <>
-                                        <OpenDepartmentFieldOnRequest
-                                            request={departmentFieldRequest}
-                                            startEditing={startEditing}
-                                            form={cardForm}
-                                        />
-                                        <AgencySettings
-                                            isEditMode={isEditing}
-                                            asFields
-                                            persistedTeamAgency={initialValues.teamAgency}
-                                        />
-                                    </>
-                                )}
-                            </CardEditable>
-                        </CardDeck.Item>
-                        <CardDeck.Item>
-                            <AgencyDepartmentDetails
-                                agencyData={agencyData}
-                                // The Fachbereich field only renders when the tenant offers topics.
-                                onAddDepartment={
-                                    tenantTopics?.length > 0
-                                        ? () => setDepartmentFieldRequest((request) => request + 1)
-                                        : undefined
-                                }
-                            />
-                        </CardDeck.Item>
-                    </CardDeck>
+                    <AgencyTileGrid tiles={masterDataTiles} />
                 </ThemeProvider>
             );
         }
@@ -575,9 +576,11 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
 
     const renderFunctionalitiesSettings = () => (
         <>
-            <h3 className={pageStyles.backHeadline}>{t('settings.subhead.functionAccess')}</h3>
             {/* Agency-scoped toggles (the agency's own settings JSON) — not the tenant's. */}
-            <AgencyPermissionsSettings agencyId={id} />
+            <AgencyPermissionsSettings
+                agencyId={id}
+                liveChatLinks={showLiveChatLinks ? <LiveChatLinks mode="read" /> : undefined}
+            />
         </>
     );
 
@@ -603,49 +606,84 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         </Form>
     );
 
-    const renderLegalSettings = () => (
-        <>
-            <h3 className={pageStyles.backHeadline}>
-                {t(`agency.edit.settings.legal.title`)}{' '}
-                {legalDataMissing && <ErrorOutlinedIcon fontSize="small" color="error" />}
-            </h3>
-            <CardDeck
-                ariaLabel={t(`agency.edit.settings.legal.title`)}
-                previousLabel={t('legal.cardDeck.previous')}
-                nextLabel={t('legal.cardDeck.next')}
-            >
-                <CardDeck.Item>
-                    <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />
-                </CardDeck.Item>
-                <CardDeck.Item>
-                    <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
-                    {/* The DPA is managed at tenant (Träger) level — agency admins get a read-only view. */}
-                    <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
-                    {/* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
-                        Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
-                        with "Alle Fachbereiche" editing the inheritable agency-wide text. */}
+    const renderLegalSettings = () => {
+        // The order of the tiles on this tab. Moving a setting to another tile is a one-line change here.
+        const summary = (icon: ReactElement, titleKey: string, status: LegalTileStatus) => ({
+            icon,
+            title: t(titleKey),
+            status: t(status.key),
+            statusTone: status.tone,
+        });
+        const legalTiles: AgencyTile[] = [
+            {
+                id: 'responsible',
+                summary: summary(
+                    <BusinessCenterOutlinedIcon />,
+                    'agency.edit.settings.legal.responsible.title',
+                    responsibleTileStatus(agencyData),
+                ),
+                node: <ResponsibleSettings initialValues={initialValues} onSave={onSaveCard} />,
+            },
+            {
+                id: 'data-protection-contact',
+                summary: summary(
+                    <PrivacyTipOutlinedIcon />,
+                    'agency.edit.settings.legal.contact.title',
+                    dataProtectionContactTileStatus(agencyData, traegerDpo),
+                ),
+                node: <ContactSettings initialValues={initialValues} onSave={onSaveCard} traegerDpo={traegerDpo} />,
+            },
+            {
+                id: 'contract-documents',
+                summary: summary(
+                    <DescriptionOutlinedIcon />,
+                    'tenants.legal.dataProcessingAgreement.title',
+                    contractDocumentsTileStatus(),
+                ),
+                document: true,
+                span: 3,
+                // The DPA is managed at tenant (Träger) level — agency admins get a read-only view.
+                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />,
+            },
+            {
+                id: 'imprint',
+                summary: summary(<ImprintIcon />, 'tenants.legal.agencyImprint.title', imprintTileStatus(agencyData)),
+                document: true,
+                span: 3,
+                /* ADR-014: one editor per legal-text kind for the whole Beratungsstelle; the
+                   Fachbereich is chosen in the editor's lower function bar (Figma 1261:52149),
+                   with "Alle Fachbereiche" editing the inheritable agency-wide text. */
+                node: (
                     <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardDeck.Item>
-                <CardDeck.Item className={styles.documentEditorItem}>
+                ),
+            },
+            {
+                id: 'privacy',
+                summary: summary(
+                    <GdprIcon />,
+                    'tenants.legal.agencyDataProtection.title',
+                    privacyTileStatus(agencyData),
+                ),
+                document: true,
+                span: 3,
+                node: (
                     <AgencyLegalTextWithTemplates
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
                         saving={isAgencySaving}
                     />
-                </CardDeck.Item>
-            </CardDeck>
-        </>
-    );
+                ),
+            },
+        ];
+
+        return <AgencyTileGrid tiles={legalTiles} layout={legalLayout} />;
+    };
 
     const renderPageBody = () => (
         <>
@@ -671,23 +709,18 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         );
     } else if (isAgencyCreationDpaBlocked) {
         agencyContent = (
-            <Alert
-                type="warning"
-                showIcon
-                message={t('agency.dpaGate.title')}
-                description={t('agency.dpaGate.description')}
-                action={
-                    isDpaGateError ? (
-                        <Button size="small" onClick={() => refetchDpaGate()}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    ) : (
-                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
-                            {t('agency.dpaGate.openLegalSettings')}
-                        </Button>
-                    )
-                }
-            />
+            <HintText
+                title={t('agency.dpaGate.title')}
+                actions={[
+                    { label: t('tenants.legal.version.retry'), onClick: () => refetchDpaGate() },
+                    {
+                        label: t('agency.dpaGate.openLegalSettings'),
+                        onClick: () => navigate(`${routePathNames.themeSettings}/legal`),
+                    },
+                ]}
+            >
+                {t('agency.dpaGate.description')}
+            </HintText>
         );
     } else {
         agencyContent = renderPageBody();
@@ -697,6 +730,7 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
         <Page isLoading={isLoading || isLoadingPostCodes} stickyHeader>
             <Page.BackWithActions
                 path={routePathNames.agency}
+                parentKey="sidebar.agency"
                 title={
                     isEditing
                         ? agencyData?.name || t<string>('agency.edit.general.headline')
@@ -742,4 +776,16 @@ export const AgencyPageEdit = ({ section = 'general' }: AgencyPageEditProps) => 
             )}
         </Page>
     );
+};
+
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+    const { id } = useParams();
+    const { can } = useUserPermissions();
+    const canCreateAgency = can(PermissionAction.Create, Resource.Agency);
+
+    if (id === 'add' && !canCreateAgency) {
+        return <AccessDenied />;
+    }
+
+    return <AgencyPageEditForm id={id} section={section} legalLayout={legalLayout} canCreateAgency={canCreateAgency} />;
 };

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -84,21 +84,21 @@ describe('the authenticated first-centre setup', () => {
 
     it('refuses same-tenant but unassigned IDs before requesting or displaying their details', async () => {
         renderPage('6');
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
         expect(agencyReads()).toHaveLength(0);
         expect(screen.queryByDisplayValue('Beratung Nord')).not.toBeInTheDocument();
     });
 
     it.each(['add', '0', '1e2'])('refuses an invalid centre ID %s without agency reads', async (id) => {
         renderPage(id);
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
         expect(agencyReads()).toHaveLength(0);
     });
 
     it('does not treat ordinary user-admin as counselling-centre authority', async () => {
         mocks.roles = ['user-admin'];
         renderPage();
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
         expect(agencyReads()).toHaveLength(0);
     });
 
@@ -114,7 +114,7 @@ describe('the authenticated first-centre setup', () => {
         const phone = await screen.findByLabelText('agency.edit.general.address.phone');
         await user.type(phone, '03012345');
         await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.saveError');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('agency.setup.saveError');
         expect(phone).toHaveValue('03012345');
         expect(screen.queryByRole('heading', { name: 'Agency settings' })).not.toBeInTheDocument();
         fail = false;
@@ -139,7 +139,8 @@ describe('the authenticated first-centre setup', () => {
         const phone = await screen.findByLabelText('agency.edit.general.address.phone');
         await user.type(phone, '03012345');
         await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.saveError');
+        // The failed save and the failed recovery read each raise a pop-up; they stack.
+        expect(await screen.findByText('agency.setup.saveError')).toBeInTheDocument();
         expect(screen.getByLabelText('agency.edit.general.address.phone')).toHaveValue('03012345');
     });
 
@@ -163,7 +164,7 @@ describe('the authenticated first-centre setup', () => {
             const phone = await screen.findByLabelText('agency.edit.general.address.phone');
             await user.type(phone, '03012345');
             await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
-            expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+            expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
             expect(screen.queryByDisplayValue('Beratung Nord')).not.toBeInTheDocument();
             expect(screen.queryByLabelText('agency.edit.general.address.phone')).not.toBeInTheDocument();
             denied = false;
@@ -191,7 +192,7 @@ describe('the authenticated first-centre setup', () => {
         const user = userEvent.setup();
         await user.type(await screen.findByLabelText('agency.edit.general.address.phone'), '03012345');
         await user.click(screen.getByRole('button', { name: 'agency.setup.finish' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
         const readsBeforeRetry = agencyReads().length;
         assigned = false;
         await user.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
@@ -206,7 +207,7 @@ describe('the authenticated first-centre setup', () => {
     it('offers retry for unavailable assignment instead of creating a centre', async () => {
         mocks.fetchData.mockRejectedValueOnce(new Error('offline'));
         renderPage();
-        expect(await screen.findByRole('alert')).toHaveTextContent('agency.setup.unavailable');
+        expect(await screen.findByText('agency.setup.unavailable')).toBeInTheDocument();
         expect(agencyReads()).toHaveLength(0);
         await userEvent.click(screen.getByRole('button', { name: 'agency.setup.retry' }));
         await screen.findByDisplayValue('Beratung Nord');

@@ -1,16 +1,14 @@
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, notification } from 'antd';
-import { ColumnProps, TablePaginationConfig } from 'antd/lib/table';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDebouncedCallback } from 'use-debounce';
+import AddIcon from '@mui/icons-material/Add';
 import routePathNames from '../../../appConfig';
-import { EditButtons } from '../../../components/EditableTable/EditButtons';
+import type { DataTableSort } from '../../../components/DataTable';
+import { M3Button } from '../../../components/M3Button';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
-import { ResizeTable } from '../../../components/ResizableTable';
 import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -21,29 +19,13 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import { TenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
-import { getDomain } from '../../../utils/getDomain';
+import { TenantDataTable, type TenantRow } from './TenantDataTable';
+import { nextTenantSortState, tenantSortOf } from './tenantSort';
 import styles from './styles.module.scss';
-import { entityStatusListAttributes, statusLabel } from '../../../components/EntityStatusCard/presentation';
+import { Notify } from '../../../components/Notify';
 
-const TENANT_SORT_FIELD_BY_DATA_INDEX: Record<string, string> = {
-    beraterCount: 'BERATERCOUNT',
-    id: 'ID',
-    name: 'NAME',
-    subdomain: 'SUBDOMAIN',
-};
-
-const getTenantColumnSortOrder = (
-    dataIndex: keyof typeof TENANT_SORT_FIELD_BY_DATA_INDEX,
-    tableState: TableState,
-): 'ascend' | 'descend' | undefined => {
-    if (tableState.sortBy !== TENANT_SORT_FIELD_BY_DATA_INDEX[dataIndex]) {
-        return undefined;
-    }
-
-    return tableState.order === 'DESC' ? 'descend' : 'ascend';
-};
+type DeleteResult = 'success' | 'error' | null;
 
 export const TenantsList = () => {
     const navigate = useNavigate();
@@ -55,7 +37,8 @@ export const TenantsList = () => {
 
     const { settings } = useAppConfigContext();
     const [search, setSearch] = useState('');
-    const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
+    const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
+    const [deleteResult, setDeleteResult] = useState<DeleteResult>(null);
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
@@ -64,7 +47,7 @@ export const TenantsList = () => {
         setTableState((data) => ({ ...data, current: 1 }));
     }, []);
     const handleSearchDebounced = useDebouncedCallback(handleSearch, 1000);
-    const { data, isLoading } = useTenantsData({
+    const { data, isLoading, isError } = useTenantsData({
         page: tableState.current,
         perPage: tableState.pageSize,
         search,
@@ -72,139 +55,27 @@ export const TenantsList = () => {
         dir: tableState.order,
     });
     const { mutate: deleteTenant } = useDeleteTenant({
-        onSuccess: () => {
-            notification.success({ message: t('tenants.list.deleteMessage.success') });
-        },
-        onError: () => {
-            notification.error({
-                closeIcon: null,
-                duration: 10,
-                description: t('tenants.list.deleteMessage.error.description'),
-                message: t('tenants.list.deleteMessage.error.title'),
-            });
-        },
+        onSuccess: () => setDeleteResult('success'),
+        onError: () => setDeleteResult('error'),
     });
 
     const onDelete = useCallback(
         (id: number) => {
             setTenantToDelete(null);
+            setDeleteResult(null);
             deleteTenant(id);
         },
         [deleteTenant],
     );
 
-    const handleTableAction = useCallback((pagination: TablePaginationConfig, _: any, sorter: any) => {
-        const { current, pageSize } = pagination;
-
-        const activeSorter = Array.isArray(sorter) ? sorter[0] : sorter;
-        const sortField =
-            activeSorter?.field && typeof activeSorter.field === 'string'
-                ? TENANT_SORT_FIELD_BY_DATA_INDEX[activeSorter.field]
-                : undefined;
-
-        setTableState((currentState) => {
-            if (!sortField || !activeSorter?.order) {
-                return { ...currentState, current, pageSize, sortBy: undefined, order: undefined };
-            }
-
-            return {
-                ...currentState,
-                current,
-                pageSize,
-                sortBy: sortField,
-                order: activeSorter.order === 'descend' ? 'DESC' : 'ASC',
-            };
-        });
+    const onSortChange = useCallback((sort: DataTableSort | null) => {
+        setTableState((state) => nextTenantSortState(state, sort));
     }, []);
-
-    const pagination = {
-        total: data?.total,
-        current: tableState.current,
-        showSizeChanger: true,
-        pageSizeOptions: ['10', '20', '30'],
-    };
-
-    const columnsData = [
-        {
-            title: t('tenants.list.name'),
-            dataIndex: 'name',
-            width: 100,
-            ellipsis: true,
-            sorter: true,
-            sortOrder: getTenantColumnSortOrder('name', tableState),
-            showSorterTooltip: false,
-            render: (name: string) => <>{decodeHTML(name)}</>,
-        },
-        {
-            title: t('entityStatus.title'),
-            dataIndex: 'active',
-            key: 'active',
-            width: 100,
-            render: (active: boolean | null | undefined, tenant: TenantData) => (
-                <span {...entityStatusListAttributes('tenant', tenant.id, active)}>{t(statusLabel(active))}</span>
-            ),
-        },
-        !settings.multitenancyWithSingleDomainEnabled && {
-            width: 150,
-            title: t('tenants.list.subdomain'),
-            dataIndex: 'subdomain',
-            ellipsis: true,
-            sorter: true,
-            sortOrder: getTenantColumnSortOrder('subdomain', tableState),
-            showSorterTooltip: false,
-            render: (subdomain: string) => (
-                <Link target="_blank" to={`//${getDomain(subdomain)}`} className={styles.subdomain}>{`${getDomain(
-                    subdomain,
-                )}`}</Link>
-            ),
-        },
-        {
-            width: 100,
-            title: t('tenants.list.tenantId'),
-            dataIndex: 'id',
-            ellipsis: true,
-            sorter: true,
-            sortOrder: getTenantColumnSortOrder('id', tableState),
-            showSorterTooltip: false,
-        },
-        {
-            width: 130,
-            title: t('tenants.list.maxConsultants'),
-            dataIndex: 'beraterCount',
-            ellipsis: true,
-            sorter: true,
-            sortOrder: getTenantColumnSortOrder('beraterCount', tableState),
-            showSorterTooltip: false,
-        },
-        can([PermissionAction.Update, PermissionAction.Delete], Resource.Tenant) && {
-            width: 80,
-            title: '',
-            key: 'edit',
-            render: (_: unknown, record: TenantData) => {
-                return (
-                    <div className="tableActionWrapper">
-                        <EditButtons
-                            handleEdit={() => navigate(`${routePathNames.tenants}/${record.id}`)}
-                            handleDelete={() => setTenantToDelete(record)}
-                            record={record}
-                            hide={can(PermissionAction.Delete, Resource.Tenant) ? [] : ['delete']}
-                            disabled={{
-                                edit: false,
-                                delete: settings.mainTenantSubdomainForSingleDomainMultitenancy === record.subdomain,
-                            }}
-                            resource={Resource.Tenant}
-                        />
-                    </div>
-                );
-            },
-            className: 'counselorList__column',
-            fixed: 'right',
-        },
-    ] as Array<ColumnProps<TenantData>>;
 
     const canCreateTenant =
         can(PermissionAction.Create, Resource.Tenant) &&
         (isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING));
+    const addPath = `${routePathNames.tenants}/add/general${data?.total === 0 ? '?main=true' : ''}`;
 
     return (
         <Page>
@@ -216,59 +87,87 @@ export const TenantsList = () => {
                         placeholder: t('tenants.searchPlaceholder'),
                         onSearch: handleSearch,
                     }}
-                    add={
-                        canCreateTenant
-                            ? {
-                                  label: t('tenants.list.new'),
-                                  onAdd: () =>
-                                      navigate(
-                                          `${routePathNames.tenants}/add/general${
-                                              data?.total === 0 ? '?main=true' : ''
-                                          }`,
-                                      ),
-                              }
-                            : undefined
-                    }
+                    add={canCreateTenant ? { label: t('tenants.list.new'), onAdd: () => navigate(addPath) } : undefined}
                 >
-                    <div className={styles.searchContainer}>
+                    <div className={styles.toolbar}>
                         <GlobalSearchBar
-                            className={styles.searchWithButton}
+                            className={styles.searchField}
                             expandedWidth={499}
                             onSearch={handleSearch}
                             onSearchChange={handleSearchDebounced}
                             searchPlaceholder={t('tenants.searchPlaceholder')}
                         >
                             {canCreateTenant && (
-                                <div className={styles.toolbarActions}>
-                                    <Button
+                                <span className={styles.toolbarActions}>
+                                    <M3Button
+                                        variant="filled"
+                                        icon={<AddIcon />}
                                         className={styles.createButton}
-                                        type="primary"
-                                        icon={<PlusOutlined />}
-                                        onClick={() =>
-                                            navigate(
-                                                `${routePathNames.tenants}/add/general${
-                                                    data?.total === 0 ? '?main=true' : ''
-                                                }`,
-                                            )
-                                        }
+                                        onClick={() => navigate(addPath)}
                                     >
                                         {t('tenants.list.new')}
-                                    </Button>
-                                </div>
+                                    </M3Button>
+                                </span>
                             )}
                         </GlobalSearchBar>
                     </div>
                 </PageMobileActions>
             </Page.Title>
-            <div className={styles.tableContainer}>
-                <ResizeTable
+
+            {deleteResult === 'success' && (
+                <Notify
+                    title={t('notify.title.tenants')}
+                    severity="success"
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
+                    {t('tenants.list.deleteMessage.success')}
+                </Notify>
+            )}
+            {deleteResult === 'error' && (
+                <Notify
+                    severity="error"
+                    title={t('tenants.list.deleteMessage.error.title')}
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
+                    {t('tenants.list.deleteMessage.error.description')}
+                </Notify>
+            )}
+
+            {isError && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.tenants')}
+                    causeKey="tenants:list"
+                    jump="tenants-list-table"
+                    retry
+                >
+                    {t('error.loading')}
+                </Notify>
+            )}
+
+            <div id="tenants-list-table">
+                <TenantDataTable
+                    rows={data?.data ?? []}
                     loading={isLoading}
-                    columns={columnsData}
-                    dataSource={data?.data || []}
-                    pagination={pagination}
-                    onChange={handleTableAction}
-                    rowKey="id"
-                    locale={{ emptyText: t('tenants.list.empty') }}
+                    emptyText={isError ? t('message.error.default') : t('tenants.list.empty')}
+                    sort={tenantSortOf(tableState.sortBy, tableState.order)}
+                    onSortChange={onSortChange}
+                    page={tableState.current ?? 1}
+                    pageSize={tableState.pageSize ?? 10}
+                    total={data?.total ?? 0}
+                    onPageChange={(current) => setTableState((state) => ({ ...state, current }))}
+                    onPageSizeChange={(pageSize) => setTableState((state) => ({ ...state, current: 1, pageSize }))}
+                    showSubdomain={!settings.multitenancyWithSingleDomainEnabled}
+                    onEdit={
+                        can(PermissionAction.Update, Resource.Tenant)
+                            ? (row) => navigate(`${routePathNames.tenants}/${row.id}`)
+                            : undefined
+                    }
+                    onDelete={can(PermissionAction.Delete, Resource.Tenant) ? setTenantToDelete : undefined}
+                    canDeleteRow={(row) => settings.mainTenantSubdomainForSingleDomainMultitenancy !== row.subdomain}
+                    ariaLabel={t('tenants.title')}
                 />
             </div>
 

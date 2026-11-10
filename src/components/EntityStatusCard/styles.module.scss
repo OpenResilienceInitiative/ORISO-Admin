@@ -20,11 +20,63 @@
     gap: mui.$mui-unit * 2;
     overflow-wrap: anywhere;
 
+    /* Wide: status and notices side by side, so the card stays low instead of one tall narrow column. */
+    @container (min-width: 560px) {
+        display: grid;
+        column-gap: mui.$mui-unit * 4;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        .accountInfo {
+            grid-column: 1 / -1;
+        }
+
+        .primary:has(+ .secondary:empty) {
+            grid-column: 1 / -1;
+        }
+    }
+
     p,
     h6,
     ul {
         margin: 0;
     }
+}
+
+.primary {
+    display: flex;
+    min-width: 0;
+    flex-flow: row wrap;
+    align-items: flex-start;
+    gap: mui.$mui-unit * 2 mui.$mui-unit * 4;
+
+    /* Name and switch share a row when there is room, and stack below ~520px of card width. */
+    > * {
+        min-width: min(100%, 220px);
+        flex: 1 1 220px;
+    }
+}
+
+.secondary {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+
+    &:empty {
+        display: none;
+    }
+}
+
+/* Inside a tile section: the section is the surface and names it, so the card adds neither. */
+.embedded {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.embeddedStatus {
+    display: flex;
 }
 
 .confirmed {

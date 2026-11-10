@@ -1,3 +1,4 @@
+@use '../../styles/nativeSelectChevron';
 @use '../../styles/muiSpacing' as mui;
 
 .pagination {
@@ -23,9 +24,8 @@
 }
 
 /* Compact M3 outlined select — native element, admin tokens. Height sits on the
-   MUI 8px grid; border width, radius and the focus ring stay literal (the repo
-   has no token for either, and `outline: 2px solid var(--m3-primary)` is the
-   house focus pattern at every other site). */
+   MUI 8px grid; border width, radius and the focus ring width stay literal;
+   the ring colour is the shared focus ring token (#1168). */
 
 .pageSizeSelect {
     height: mui.$mui-unit * 4;
@@ -39,7 +39,7 @@
 }
 
 .pageSizeSelect:focus-visible {
-    outline: 2px solid var(--m3-primary, #a5000a);
+    outline: 2px solid var(--admin-focus-ring-color);
     outline-offset: 1px;
 }
 
@@ -87,4 +87,8 @@
     .pagination.compact {
         padding: 0;
     }
+}
+
+.selectFrame {
+    @include nativeSelectChevron.native-select-chevron(18px, 4px);
 }

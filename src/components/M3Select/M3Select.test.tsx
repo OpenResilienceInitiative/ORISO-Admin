@@ -1,0 +1,39 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vite-plus/test';
+import { M3Select } from './index';
+
+const options = [{ value: 'de', label: 'Deutsch' }];
+
+describe('M3Select', () => {
+    it('uses the decorative ORISO chevron and keeps selecting with the keyboard', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        const { container } = render(<M3Select aria-label="Language" options={options} onChange={onChange} />);
+        const arrow = container.querySelector('.ant-select-arrow .anticon');
+        expect(arrow).toHaveAttribute('aria-hidden', 'true');
+        expect(arrow?.querySelector('path')).toHaveAttribute(
+            'd',
+            'M12 15.4L6 9.4L7.4 8L12 12.6L16.6 8L18 9.4L12 15.4Z',
+        );
+
+        await user.tab();
+        expect(screen.getByRole('combobox', { name: 'Language' })).toHaveFocus();
+        await user.keyboard('{Enter}');
+        expect(screen.getByRole('combobox', { name: 'Language' })).toHaveAttribute('aria-expanded', 'true');
+        await user.click(await screen.findByTitle('Deutsch'));
+        expect(onChange).toHaveBeenCalledWith('de', options[0]);
+    });
+
+    it('reserves the trailing slot for loading, then restores clearing and honors a hidden chevron', () => {
+        const { container, rerender } = render(
+            <M3Select options={options} defaultValue="de" allowClear loading suffixIcon={null} />,
+        );
+        expect(container.querySelector('.ant-select-arrow-loading .anticon-loading')).toBeInTheDocument();
+        expect(container.querySelector('.ant-select-clear')).not.toBeInTheDocument();
+
+        rerender(<M3Select options={options} defaultValue="de" allowClear suffixIcon={null} />);
+        expect(container.querySelector('.ant-select-arrow')).not.toBeInTheDocument();
+        expect(container.querySelector('.ant-select-clear')).toBeInTheDocument();
+    });
+});

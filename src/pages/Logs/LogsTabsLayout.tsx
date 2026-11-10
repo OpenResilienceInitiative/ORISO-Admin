@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+// The bundled person_search_filled.svg is a 5%-opacity illustration, not a tab glyph.
+import PersonSearchIcon from '@mui/icons-material/PersonSearchOutlined';
 import { Page } from '../../components/Page';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
@@ -8,7 +10,7 @@ import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import routePathNames from '../../appConfig';
 import { ReactComponent as PowerOffIcon } from '../../resources/img/svg/power_off.svg';
 import { ReactComponent as FaceNodIcon } from '../../resources/img/svg/face_nod.svg';
-import { ReactComponent as PersonSearchIcon } from '../../resources/img/svg/person_search_filled.svg';
+import { ReactComponent as DeleteIcon } from '../../resources/img/svg/delete.svg';
 
 interface LogsTabsLayoutProps {
     /** Supervision audit — every admin with consultant read except the platform admin. */
@@ -17,6 +19,8 @@ interface LogsTabsLayoutProps {
     showCaseHandover: boolean;
     /** Inactive-account audit is super-admin only. */
     showInactive: boolean;
+    /** Deletion log (who deleted what) is platform-admin only. */
+    showDeletion: boolean;
 }
 
 /**
@@ -25,7 +29,12 @@ interface LogsTabsLayoutProps {
  * splitting these views over separate nav entries is what made the menu look duplicated
  * (ORISO-Admin#84). The child route renders in the Outlet.
  */
-export const LogsTabsLayout = ({ showSupervisor, showCaseHandover, showInactive }: LogsTabsLayoutProps) => {
+export const LogsTabsLayout = ({
+    showSupervisor,
+    showCaseHandover,
+    showInactive,
+    showDeletion,
+}: LogsTabsLayoutProps) => {
     const { t } = useTranslation();
     const { pathname } = useLocation();
     const isDesktopLayout = useIsDesktopLayout();
@@ -56,6 +65,15 @@ export const LogsTabsLayout = ({ showSupervisor, showCaseHandover, showInactive 
             label: t('sidebar.inactiveAudit', String(t('inactiveAudit.title'))),
             icon: <PowerOffIcon />,
             to: routePathNames.inactiveAccountAuditLogs,
+        });
+    }
+
+    if (showDeletion) {
+        tabs.push({
+            id: 'deletions',
+            label: t('sidebar.deletionAudit', String(t('deletionAudit.title'))),
+            icon: <DeleteIcon />,
+            to: routePathNames.deletionAuditLogs,
         });
     }
 

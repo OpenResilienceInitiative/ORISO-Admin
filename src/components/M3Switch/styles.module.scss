@@ -19,14 +19,36 @@
         height: 48px;
     }
 
+    // The disabled SVGs carry the Frontend's disabled palette; no extra dimming.
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.45;
     }
 
     &:focus-visible {
         border-radius: 24px;
-        outline: 2px solid #273270;
-        outline-offset: 2px;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset, 2px);
     }
+}
+
+// Optional state word next to the switch („An“/„Aus“, #1374). The minimum width
+// keeps the layout still when the word changes length.
+.withState {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stateLabel {
+    min-width: 3ch;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+}
+
+.stateLabelDisabled {
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
 }

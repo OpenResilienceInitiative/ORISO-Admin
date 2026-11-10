@@ -19,7 +19,8 @@ import {
     type InviteViewerScope,
     type TopicPermission,
 } from './inviteModel';
-import { toCreateInviteRequest } from './inviteRequest';
+import type { InviteSuggestion } from '../../components/OnboardingDesign/InviteSuggestionDialog';
+import { NO_INVITE_SUGGESTION, toCreateInviteRequest, toSuggestionFields } from './inviteRequest';
 import { counsellorNeedsUnitAdmin, fieldsForRole, invitableRoles, isValidEmail, type InviteTab } from './inviteRules';
 
 /** Who fills the bar; tenant and agency admins are pinned to their own units. */
@@ -155,6 +156,8 @@ export const useInviteDraft = ({
         initialValues?.topicPermission ?? BAR_DEFAULT_TOPIC_PERMISSION,
     );
     const [alsoCounsellor, setAlsoCounsellor] = useState<boolean>(initialValues?.alsoCounsellor ?? true);
+    // Optional icon and display name for the invitee (#1274); per person, never carried to the next one.
+    const [suggestion, setSuggestion] = useState<InviteSuggestion>(NO_INVITE_SUGGESTION);
     // The guided BST-Admin switch covers one founding invite only, so the next person is not silently a second one.
     const [roleBeforeGuidedSwitch, setRoleBeforeGuidedSwitch] = useState<InviteRole | null>(null);
 
@@ -431,6 +434,7 @@ export const useInviteDraft = ({
 
     const resetAfterSend = (created?: InviteCreated) => {
         clearPerson();
+        setSuggestion(NO_INVITE_SUGGESTION);
         if (sendAndNext) {
             // The next person starts from the same setup: role, unit, template and topic level (#1127).
             // Only the guided BST-Admin switch covers one founding invite, so the next person is a counsellor again.
@@ -484,6 +488,7 @@ export const useInviteDraft = ({
                         alsoCounsellor,
                         topicPermission,
                         templateId,
+                        suggestion: toSuggestionFields(suggestion),
                     },
                     { tab, viewer: viewer.scope, sendMode },
                 ),
@@ -541,6 +546,8 @@ export const useInviteDraft = ({
         },
         topics: { value: topicPermission, set: chooseTopicPermission },
         alsoCounsellor: { value: alsoCounsellor, set: setAlsoCounsellor },
+        /** Counsellor and BST-Admin invites may carry a suggested icon and name; a Träger admin invite may not. */
+        suggestion: { available: fields.agency, value: suggestion, set: setSuggestion },
         /** Which fields show as pills, which select menu is open, and which fields hold a valid value. */
         pills: { isCollapsed, collapse, collapseIfValid, expand, openSelect, setOpenSelect, valid: fieldValid },
         submit: {

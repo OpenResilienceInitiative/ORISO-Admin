@@ -5,7 +5,9 @@
     "settings.assistant.icon": "Icône de l’assistant",
     "settings.assistant.default": "Carimat (par défaut)",
     "settings.assistant.robot": "Robot",
-    "settings.assistant.upload": "Importer une icône",
+    "settings.assistant.section.name": "Nom",
+    "settings.assistant.section.icon": "Icône",
+    "settings.assistant.section.upload": "Icône personnalisée",
     "settings.assistant.formats": "SVG ou PNG, jusqu’à 512 Kio. Image carrée recommandée (512 × 512 px). Le SVG doit contenir uniquement des formes passives.",
     "settings.assistant.invalid": "Choisissez une icône prédéfinie ou une image SVG/PNG passive de 512 Kio maximum.",
     "language.short.en": "EN",
@@ -29,7 +31,10 @@
     "tenants.permissions.asker.channels.browserAgencyCounselling": "Navigateur pour le conseil",
     "tenants.permissions.asker.channels.browserLiveChat": "Navigateur pour le chat en direct",
     "tenants.permissions.asker.channels.browserSelfHelp": "Navigateur pour les groupes d’entraide",
-    "settings.assistant.inherit": "Utiliser le réglage hérité",
     "settings.assistant.inheritedIcon": "Icône héritée",
-    "settings.assistant.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer."
+    "settings.assistant.loadError": "Les paramètres n’ont pas pu être chargés. Veuillez réessayer.",
+    "tenants.permissions.asker.collection.agencyCounselling": "Adresse e-mail dans le conseil 1:1",
+    "tenants.permissions.asker.collection.selfHelp": "Adresse e-mail dans les groupes d’entraide",
+    "tenants.permissions.asker.collection.masterOff": "Autorisez d’abord les adresses e-mail pour le compte. Ces choix sont conservés.",
+    "tenants.permissions.asker.collection.description": "Ces réglages autorisent la collecte. Ils ne rendent pas l’adresse obligatoire et ne modifient pas les notifications."
 }

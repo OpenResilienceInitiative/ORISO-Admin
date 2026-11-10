@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, UseMutationOptions } from '@tanstack/react-query';
+import { useAdminFeedback } from './useAdminFeedback';
 import { apiServerSettings } from '../api/settings/apiServerSettings';
 import { fetchData, FETCH_METHODS } from '../api/fetchData';
 import { serverSettingsAdminEndpoint } from '../appConfig';
@@ -11,6 +11,7 @@ export const useSettingsAdminMutation = (
     // Lets a page replace the generic success notice with its own.
     { silentSuccess = false }: { silentSuccess?: boolean } = {},
 ) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const { settings, setManualSettings, setServerSettings } = useAppConfigContext();
 

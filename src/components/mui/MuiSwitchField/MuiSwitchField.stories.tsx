@@ -1,9 +1,12 @@
 import * as React from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- Storybook's subpath export is invisible to the eslint resolver
+import { expect, userEvent, within } from 'storybook/test';
 import { Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { MuiSwitchField } from './index';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 
 const withMuiForm = (children: React.ReactNode, options?: { initialValues?: Record<string, unknown> }) => (
     <ThemeProvider theme={orisoMuiTheme}>
@@ -47,6 +50,26 @@ export const DisabledChecked: Story = {
         disabled: true,
     },
     render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
+};
+
+/** View-only values stay readable and can be reached with the keyboard. */
+export const ReadOnlyChecked: Story = {
+    render: (args) => (
+        <ThemeProvider theme={orisoMuiTheme}>
+            <ReadOnlyTileContext.Provider value>
+                <Form disabled layout="vertical" style={{ maxWidth: 420 }} initialValues={{ enabled: true }}>
+                    <MuiSwitchField {...args} />
+                </Form>
+            </ReadOnlyTileContext.Provider>
+        </ThemeProvider>
+    ),
+    play: async ({ canvasElement }) => {
+        const toggle = within(canvasElement).getByRole('switch', { name: 'Enable SMTP' });
+        const switchBase = toggle.closest('.MuiSwitch-switchBase')!;
+        await expect(toggle).toHaveAttribute('aria-disabled', 'true');
+        await userEvent.hover(toggle);
+        await expect(getComputedStyle(switchBase).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    },
 };
 
 export const WithHelpText: Story = {
@@ -127,4 +150,48 @@ const AllStatesDemo = () => {
 
 export const AllStates: Story = {
     render: () => <AllStatesDemo />,
+};
+
+/** „An“/„Aus“ next to the switch (#1374). */
+export const StateLabelOff: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: false } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' })).not.toBeChecked();
+        await expect(canvas.getByText(/^(Aus|Off)$/)).toBeVisible();
+    },
+};
+
+/** The word follows the bound value when the switch is toggled. */
+export const StateLabelToggles: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: false } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByText(/^(Aus|Off)$/)).toBeVisible();
+        await userEvent.click(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' }));
+        await expect(canvas.getByText(/^(An|On)$/)).toBeVisible();
+    },
+};
+
+export const StateLabelOn: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByText(/^(An|On)$/)).toBeVisible();
+    },
+};
+
+export const StateLabelDisabled: Story = {
+    args: { showStateLabel: true, disabled: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' })).toBeDisabled();
+        await expect(canvas.getByText(/^(An|On)$/)).toBeVisible();
+    },
 };

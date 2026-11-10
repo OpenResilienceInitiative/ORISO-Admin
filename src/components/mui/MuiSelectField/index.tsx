@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { KeyboardArrowDownIcon } from '../../CustomIcons/EditorIcons';
 import { muiFieldSx } from '../fieldSx';
 import { flattenChildren } from '../flattenChildren';
 
@@ -86,6 +87,7 @@ interface MuiSelectControlProps {
     helpText?: string;
     validateStatus?: ValidateStatus;
     className?: string;
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -110,7 +112,9 @@ const MuiSelectControl = ({
     helpText,
     validateStatus,
     className,
+    confirmEnable,
 }: MuiSelectControlProps) => {
+    const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
@@ -162,7 +166,13 @@ const MuiSelectControl = ({
             onChange?.(((next as ResolvedOption[]) ?? []).map(emit));
             return;
         }
-        onChange?.(next ? emit(next as ResolvedOption) : undefined);
+        const nextValue = next ? emit(next as ResolvedOption) : undefined;
+        // Only the first pick asks: replacing or clearing a value never does.
+        if (nextValue !== undefined && !selected && confirmEnable) {
+            confirmEnable(() => onChange?.(nextValue));
+            return;
+        }
+        onChange?.(nextValue);
     };
 
     return (
@@ -172,6 +182,7 @@ const MuiSelectControl = ({
             multiple={isMulti}
             disableCloseOnSelect={isMulti}
             options={resolvedOptions}
+            popupIcon={<KeyboardArrowDownIcon />}
             value={selected as any}
             onChange={handleChange}
             onBlur={onBlur}
@@ -209,7 +220,9 @@ const MuiSelectControl = ({
                             ...params.slotProps.input,
                             endAdornment: (
                                 <>
-                                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                                    {loading ? (
+                                        <CircularProgress aria-label={t('loading')} color="inherit" size={18} />
+                                    ) : null}
                                     {params.slotProps.input.endAdornment}
                                 </>
                             ),
@@ -247,6 +260,12 @@ export interface MuiSelectFieldProps {
     initialValue?: string | string[];
     rules?: Rule[];
     className?: string;
+    /**
+     * Single select: asked before an EMPTY field gets its first value; the value changes only
+     * when it calls `proceed` (e.g. assigning a standing supervisor). Replacing or clearing a
+     * value never asks.
+     */
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -278,6 +297,7 @@ export const MuiSelectField = ({
     initialValue,
     rules = [],
     className,
+    confirmEnable,
 }: MuiSelectFieldProps) => {
     const [t] = useTranslation();
     const requiredMessage = errorMessage || t(`form.errors.required${isMulti ? '.multiSelect' : ''}`);
@@ -314,6 +334,7 @@ export const MuiSelectField = ({
                 required={required}
                 validateStatus={validateStatus}
                 className={className}
+                confirmEnable={isMulti ? undefined : confirmEnable}
             />
         </Form.Item>
     );

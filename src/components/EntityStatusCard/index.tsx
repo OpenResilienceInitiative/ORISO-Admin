@@ -36,6 +36,11 @@ interface Props {
     activationBlockedReason?: string;
     onSave: (active: boolean) => Promise<void | boolean>;
     onReload: () => void;
+    /**
+     * Renders without its own card surface and title, for use inside a tile section that already names it
+     * ("Status"). The confirmed status, notices and actions are the same.
+     */
+    embedded?: boolean;
 }
 export const EntityStatusCard = ({
     entityKind,
@@ -48,6 +53,7 @@ export const EntityStatusCard = ({
     activationBlockedReason,
     onSave,
     onReload,
+    embedded = false,
 }: Props) => {
     const { t, i18n } = useTranslation();
     const metadataId = useId();
@@ -78,6 +84,162 @@ export const EntityStatusCard = ({
         if (!value || Number.isNaN(Date.parse(value))) return t('entityStatus.unknown');
         return new Date(value).toLocaleString(i18n.language);
     };
+    const confirmed = (
+        <output
+            className={`${styles.confirmed} m3-body-medium`}
+            aria-label={t('entityStatus.confirmed')}
+            aria-live="polite"
+            data-testid="entity-status-confirmed"
+            data-active={state(active)}
+        >
+            {t(statusLabel(active))}
+        </output>
+    );
+    const actions = editing && (
+        <div className={styles.actions} data-testid="entity-status-actions">
+            <span data-testid="entity-status-cancel">
+                <M3Button
+                    block
+                    variant="outlined"
+                    disabled={saving}
+                    onClick={() => {
+                        setEditing(false);
+                        setSaveError(undefined);
+                    }}
+                >
+                    {t('btn.cancel')}
+                </M3Button>
+            </span>
+            <span data-testid="entity-status-save">
+                <M3Button block variant="filled" disabled={!canSave} loading={saving} onClick={save}>
+                    {t('save')}
+                </M3Button>
+            </span>
+        </div>
+    );
+    const content = (
+        <div className={`${styles.body} m3-body-medium`}>
+            <div className={styles.primary}>
+                <div className={styles.context}>
+                    <p data-testid="entity-status-context">
+                        <span className={styles.contextLabel}>{t(`entityStatus.kind.${entityKind}`)}</span>
+                        <span>{entityName || entityId}</span>
+                    </p>
+                    {!editing && canEdit && (
+                        <span data-testid="entity-status-edit">
+                            <M3Button
+                                onClick={() => {
+                                    setDraft(data?.ownActive === true);
+                                    setSaveError(undefined);
+                                    setEditing(true);
+                                }}
+                            >
+                                {t('edit')}
+                            </M3Button>
+                        </span>
+                    )}
+                </div>
+                <div className={styles.switch} data-testid="entity-status-switch">
+                    {known ? (
+                        <ToggleRow
+                            label={t('entityStatus.control')}
+                            description={t(`entityStatus.scope.${entityKind}`)}
+                            checked={editing ? draft : data?.ownActive === true}
+                            switchDisabled={!editing || !canEdit}
+                            onCheckedChange={setDraft}
+                        />
+                    ) : (
+                        !loadError && <p>{t('entityStatus.unknownNotice')}</p>
+                    )}
+                </div>
+                {!canManage && <p>{t('entityStatus.readOnly')}</p>}
+            </div>
+            <div className={styles.secondary}>
+                {isLoading && (
+                    <p role="status" data-testid="entity-status-pending">
+                        {t('entityStatus.loading')}
+                    </p>
+                )}
+                {saving && (
+                    <p role="status" data-testid="entity-status-pending">
+                        {t('entityStatus.saving')}
+                    </p>
+                )}
+                {(loadError || saveError) && (
+                    <div className={styles.error} role="alert" data-testid="entity-status-error">
+                        <p>{t(loadError ? 'entityStatus.error.load' : errorKey(saveError, entityKind))}</p>
+                        {loadError && (
+                            <M3Button variant="outlined" onClick={onReload} disabled={isLoading}>
+                                {t('entityStatus.reload')}
+                            </M3Button>
+                        )}
+                    </div>
+                )}
+                {activationBlocked && (
+                    <p role="status" data-testid="entity-status-activation-blocked">
+                        {t(activationBlocked)}
+                    </p>
+                )}
+                {data?.ownActive !== active && !loadError && typeof data?.ownActive === 'boolean' && (
+                    <p>
+                        {t('entityStatus.own')}:{' '}
+                        <output data-testid="entity-status-own-active" data-active={state(data?.ownActive)}>
+                            {t(statusLabel(data?.ownActive))}
+                        </output>
+                    </p>
+                )}
+                {data?.restrictions.length > 0 && (
+                    <ul>
+                        {data.restrictions.map((reason) => (
+                            <li key={reason}>
+                                {t(`entityStatus.restrictions.${reason}`, {
+                                    defaultValue: t('entityStatus.restrictionUnknown'),
+                                })}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
+            {entityKind === 'account' && (
+                <div data-testid="account-security-info" className={styles.accountInfo}>
+                    <div role="group" aria-labelledby={`${metadataId}-account`} className={styles.group}>
+                        <h6 id={`${metadataId}-account`} className="m3-title-small">
+                            {t('entityStatus.accountDetails')}
+                        </h6>
+                        <dl className={styles.metadata}>
+                            <dt>{t('entityStatus.username')}</dt>
+                            <dd>{account?.username ?? t('entityStatus.unknown')}</dd>
+                            <dt>{t('entityStatus.created')}</dt>
+                            <dd>{formatDate(account?.createDate)}</dd>
+                            <dt>{t('entityStatus.updated')}</dt>
+                            <dd>{formatDate(account?.updateDate)}</dd>
+                        </dl>
+                    </div>
+                    <div role="group" aria-labelledby={`${metadataId}-two-factor`} className={styles.group}>
+                        <h6 id={`${metadataId}-two-factor`} className="m3-title-small">
+                            {t('entityStatus.twoFactor.title')}
+                        </h6>
+                        <dl className={styles.metadata}>
+                            {(['required', 'configured', 'active'] as const).map((field) => (
+                                <div className={styles.metadataRow} key={field}>
+                                    <dt>{t(`entityStatus.twoFactor.short.${field}`)}</dt>
+                                    <dd>
+                                        <output
+                                            className={`${styles.valueBadge} m3-body-small`}
+                                            data-testid={`2fa-${field}`}
+                                            data-state={state(account?.twoFactor[field])}
+                                        >
+                                            {t(`entityStatus.boolean.${state(account?.twoFactor[field])}`)}
+                                        </output>
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
     return (
         <section
             className={styles.card}
@@ -85,163 +247,22 @@ export const EntityStatusCard = ({
             data-entity-kind={entityKind}
             aria-busy={isLoading || saving}
         >
-            <Card
-                titleKey="entityStatus.title"
-                cardTitleClassName={styles.header}
-                cardTitleChildren={
-                    <output
-                        className={`${styles.confirmed} m3-body-medium`}
-                        aria-label={t('entityStatus.confirmed')}
-                        aria-live="polite"
-                        data-testid="entity-status-confirmed"
-                        data-active={state(active)}
-                    >
-                        {t(statusLabel(active))}
-                    </output>
-                }
-                footer={
-                    editing && (
-                        <div className={styles.actions} data-testid="entity-status-actions">
-                            <span data-testid="entity-status-cancel">
-                                <M3Button
-                                    block
-                                    variant="outlined"
-                                    disabled={saving}
-                                    onClick={() => {
-                                        setEditing(false);
-                                        setSaveError(undefined);
-                                    }}
-                                >
-                                    {t('btn.cancel')}
-                                </M3Button>
-                            </span>
-                            <span data-testid="entity-status-save">
-                                <M3Button block variant="filled" disabled={!canSave} loading={saving} onClick={save}>
-                                    {t('save')}
-                                </M3Button>
-                            </span>
-                        </div>
-                    )
-                }
-            >
-                <div className={`${styles.body} m3-body-medium`}>
-                    <div className={styles.context}>
-                        <p data-testid="entity-status-context">
-                            <span className={styles.contextLabel}>{t(`entityStatus.kind.${entityKind}`)}</span>
-                            <span>{entityName || entityId}</span>
-                        </p>
-                        {!editing && canEdit && (
-                            <span data-testid="entity-status-edit">
-                                <M3Button
-                                    onClick={() => {
-                                        setDraft(data?.ownActive === true);
-                                        setSaveError(undefined);
-                                        setEditing(true);
-                                    }}
-                                >
-                                    {t('edit')}
-                                </M3Button>
-                            </span>
-                        )}
-                    </div>
-                    {isLoading && (
-                        <p role="status" data-testid="entity-status-pending">
-                            {t('entityStatus.loading')}
-                        </p>
-                    )}
-                    {saving && (
-                        <p role="status" data-testid="entity-status-pending">
-                            {t('entityStatus.saving')}
-                        </p>
-                    )}
-                    {(loadError || saveError) && (
-                        <div className={styles.error} role="alert" data-testid="entity-status-error">
-                            <p>{t(loadError ? 'entityStatus.error.load' : errorKey(saveError, entityKind))}</p>
-                            {loadError && (
-                                <M3Button variant="outlined" onClick={onReload} disabled={isLoading}>
-                                    {t('entityStatus.reload')}
-                                </M3Button>
-                            )}
-                        </div>
-                    )}
-                    {activationBlocked && (
-                        <p role="status" data-testid="entity-status-activation-blocked">
-                            {t(activationBlocked)}
-                        </p>
-                    )}
-                    {data?.ownActive !== active && !loadError && typeof data?.ownActive === 'boolean' && (
-                        <p>
-                            {t('entityStatus.own')}:{' '}
-                            <output data-testid="entity-status-own-active" data-active={state(data?.ownActive)}>
-                                {t(statusLabel(data?.ownActive))}
-                            </output>
-                        </p>
-                    )}
-                    <div className={styles.switch} data-testid="entity-status-switch">
-                        {known ? (
-                            <ToggleRow
-                                label={t('entityStatus.control')}
-                                description={t(`entityStatus.scope.${entityKind}`)}
-                                checked={editing ? draft : data?.ownActive === true}
-                                switchDisabled={!editing || !canEdit}
-                                onCheckedChange={setDraft}
-                            />
-                        ) : (
-                            !loadError && <p>{t('entityStatus.unknownNotice')}</p>
-                        )}
-                    </div>
-                    {!canManage && <p>{t('entityStatus.readOnly')}</p>}
-                    {data?.restrictions.length > 0 && (
-                        <ul>
-                            {data.restrictions.map((reason) => (
-                                <li key={reason}>
-                                    {t(`entityStatus.restrictions.${reason}`, {
-                                        defaultValue: t('entityStatus.restrictionUnknown'),
-                                    })}
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    {entityKind === 'account' && (
-                        <div data-testid="account-security-info" className={styles.accountInfo}>
-                            <div role="group" aria-labelledby={`${metadataId}-account`} className={styles.group}>
-                                <h6 id={`${metadataId}-account`} className="m3-title-small">
-                                    {t('entityStatus.accountDetails')}
-                                </h6>
-                                <dl className={styles.metadata}>
-                                    <dt>{t('entityStatus.username')}</dt>
-                                    <dd>{account?.username ?? t('entityStatus.unknown')}</dd>
-                                    <dt>{t('entityStatus.created')}</dt>
-                                    <dd>{formatDate(account?.createDate)}</dd>
-                                    <dt>{t('entityStatus.updated')}</dt>
-                                    <dd>{formatDate(account?.updateDate)}</dd>
-                                </dl>
-                            </div>
-                            <div role="group" aria-labelledby={`${metadataId}-two-factor`} className={styles.group}>
-                                <h6 id={`${metadataId}-two-factor`} className="m3-title-small">
-                                    {t('entityStatus.twoFactor.title')}
-                                </h6>
-                                <dl className={styles.metadata}>
-                                    {(['required', 'configured', 'active'] as const).map((field) => (
-                                        <div className={styles.metadataRow} key={field}>
-                                            <dt>{t(`entityStatus.twoFactor.short.${field}`)}</dt>
-                                            <dd>
-                                                <output
-                                                    className={`${styles.valueBadge} m3-body-small`}
-                                                    data-testid={`2fa-${field}`}
-                                                    data-state={state(account?.twoFactor[field])}
-                                                >
-                                                    {t(`entityStatus.boolean.${state(account?.twoFactor[field])}`)}
-                                                </output>
-                                            </dd>
-                                        </div>
-                                    ))}
-                                </dl>
-                            </div>
-                        </div>
-                    )}
+            {embedded ? (
+                <div className={styles.embedded}>
+                    <div className={styles.embeddedStatus}>{confirmed}</div>
+                    {content}
+                    {actions}
                 </div>
-            </Card>
+            ) : (
+                <Card
+                    titleKey="entityStatus.title"
+                    cardTitleClassName={styles.header}
+                    cardTitleChildren={confirmed}
+                    footer={actions}
+                >
+                    {content}
+                </Card>
+            )}
         </section>
     );
 };
@@ -253,6 +274,8 @@ interface ManagedProps {
     activationBlockedReason?: string;
     targetTenantId?: number | string;
     onBeforeChange?: (active: boolean, currentActive: boolean) => Promise<boolean>;
+    /** See `EntityStatusCard`: no own surface or title, for use inside a named tile section. */
+    embedded?: boolean;
 }
 export const ManagedEntityStatus = ({
     entityKind,
@@ -262,6 +285,7 @@ export const ManagedEntityStatus = ({
     activationBlockedReason,
     targetTenantId,
     onBeforeChange,
+    embedded,
 }: ManagedProps) => {
     const scopeAllowed = useStatusPermission(entityKind, entityId, targetTenantId);
     const client = useQueryClient();
@@ -307,6 +331,7 @@ export const ManagedEntityStatus = ({
             activationBlockedReason={activationBlockedReason}
             onSave={save}
             onReload={() => query.refetch()}
+            embedded={embedded}
         />
     );
 };

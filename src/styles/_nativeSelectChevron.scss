@@ -1,0 +1,44 @@
+/* stylelint-disable nesting-selector-no-missing-scoping-root -- Sass inserts the caller’s selector when the mixin expands. */
+
+/* Overlay the same decorative chevron without replacing the platform-native picker. */
+@mixin native-select-chevron($size: 20px, $inset: 8px) {
+    $arrow: url('../resources/img/svg/keyboard-arrow-down.svg');
+
+    position: relative;
+    display: inline-flex;
+
+    > select {
+        width: 100%;
+        appearance: none;
+        padding-inline-end: $size + $inset * 2;
+    }
+
+    &:after {
+        position: absolute;
+        top: 50%;
+        width: $size;
+        height: $size;
+        background-color: var(--m3-on-surface-variant, #444748);
+        content: '';
+        inset-inline-end: $inset;
+        /* stylelint-disable-next-line property-no-vendor-prefix -- Older Safari needs the prefixed mask. */
+        -webkit-mask: $arrow center / contain no-repeat;
+        mask: $arrow center / contain no-repeat;
+        pointer-events: none;
+        transform: translateY(-50%);
+    }
+
+    &:has(> select:disabled):after {
+        opacity: 0.38;
+    }
+
+    @media (forced-colors: active) {
+        > select {
+            appearance: auto;
+        }
+
+        &:after {
+            display: none;
+        }
+    }
+}

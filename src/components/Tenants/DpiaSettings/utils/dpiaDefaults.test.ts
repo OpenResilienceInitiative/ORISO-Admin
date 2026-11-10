@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { DPIA_SECTIONS, hasDpiaText } from './dpiaSections';
 import {
     DSFA_EDITOR_DEFAULTS,

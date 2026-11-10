@@ -5,6 +5,9 @@ import { useTranslation } from 'react-i18next';
 import routePathNames from '../../appConfig';
 import { InviteLinkErrorReason } from '../../api/tenantOnboarding/tenantOnboarding';
 import { M3Button } from '../../components/M3Button';
+import { OnboardingLeadArt } from '../../components/OnboardingDesign/OnboardingLeadArt';
+import { OnboardingPageHeader } from '../../components/OnboardingDesign/OnboardingPageHeader';
+import { HintText } from '../../components/HintText';
 
 const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: string }> = {
     CONSUMED: {
@@ -54,12 +57,10 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
     if (reason === 'CONSUMED') {
         return (
             <div data-testid="link-error-consumed">
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t(keys.title)}
-                </Typography>
-                <Typography role="alert" sx={{ mb: 2 }}>
+                <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
+                <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
                     {t(keys.description)}
-                </Typography>
+                </HintText>
                 <Typography color="text.secondary" sx={{ mb: 3 }}>
                     {t('tenantOnboarding.linkError.consumed.loginHint')}
                 </Typography>
@@ -76,12 +77,10 @@ export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) =>
 
     return (
         <div data-testid={`link-error-${reason.toLowerCase()}`}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                {t(keys.title)}
-            </Typography>
-            <Typography role="alert" sx={{ mb: 2 }}>
+            <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
+            <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
                 {t(keys.description)}
-            </Typography>
+            </HintText>
             <Typography color="text.secondary">{t('tenantOnboarding.linkError.contactHint')}</Typography>
         </div>
     );

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
 import { withUtcInstants } from '../../../utils/backendInstant';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
 import {

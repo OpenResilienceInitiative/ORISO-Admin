@@ -167,3 +167,29 @@ describe('compact status settings presentation', () => {
         expect(within(group).getByTestId('2fa-active')).toHaveAttribute('data-state', 'unknown');
     });
 });
+
+describe('embedded status block', () => {
+    it('keeps the confirmed status, notices, switch and actions, but adds no card title of its own', () => {
+        render(
+            <EntityStatusCard
+                embedded
+                entityKind="agency"
+                entityId="883"
+                entityName="Nordlicht"
+                canManage
+                isLoading={false}
+                data={{ active: true, ownActive: true, restrictions: [] }}
+                onSave={vi.fn()}
+                onReload={vi.fn()}
+            />,
+        );
+        // The tile section names it, so a second "Status" heading would only repeat.
+        expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+        expect(screen.getByTestId('entity-status-card')).toHaveAttribute('data-entity-kind', 'agency');
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true');
+        expect(screen.getByTestId('entity-status-context')).toHaveTextContent('Nordlicht');
+        fireEvent.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        expect(screen.getByRole('switch')).toBeEnabled();
+        expect(within(screen.getByTestId('entity-status-actions')).getAllByRole('button')).toHaveLength(2);
+    });
+});

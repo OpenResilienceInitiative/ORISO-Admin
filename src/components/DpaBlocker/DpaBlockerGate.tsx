@@ -207,7 +207,7 @@ const ScopedDpaBlockerGate = ({
         return (
             <DpaUnlockDialog
                 onUnlock={onUnlockPlatform}
-                onLogout={() => logout(true)}
+                onLogout={() => logout(true, undefined, 'explicit')}
                 checking={recheckPending || statusQuery.isFetching}
             />
         );
@@ -232,7 +232,7 @@ const ScopedDpaBlockerGate = ({
                 }
                 forward={forward}
                 tenantId={tenantId}
-                onLogout={() => logout(true)}
+                onLogout={() => logout(true, undefined, 'explicit')}
                 recheckRejected={recheckRejected}
             />
         );
@@ -291,7 +291,7 @@ const ScopedDpaBlockerGate = ({
             }}
             onRetry={onRetry}
             retryPending={statusQuery.isFetching}
-            onLogout={() => logout(true)}
+            onLogout={() => logout(true, undefined, 'explicit')}
         />
     );
 };

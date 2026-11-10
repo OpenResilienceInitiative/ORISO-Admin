@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { notification } from 'antd';
 // eslint-disable-next-line import/no-unresolved
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import i18n from '../../i18n';
+import { snackbar } from '../Snackbar';
 import { ManagedEntityStatus } from '.';
 import { withAdminProviders, withSeededAdminProviders, setStoryAuth } from '../../utils/storybook/adminStoryDecorators';
 import { UserRole } from '../../enums/UserRole';
@@ -341,6 +341,56 @@ export const Centre: Story = {
     parameters: { msw: { handlers: centreHandlers() } },
     play: pauseFlow,
 };
+/**
+ * Inside the "Allgemein" tile the card has no surface of its own and uses the tile's width: on a desktop the
+ * name and the switch share a row, so the card stays low; on a phone they stack.
+ */
+const embeddedAtWidth = (width: number, wide: boolean): Story => ({
+    beforeEach: ownTenantAuth,
+    args: {
+        entityKind: 'agency',
+        entityId: '7',
+        entityName: 'Selected counselling centre',
+        targetTenantId: 1,
+        embedded: true,
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        ),
+    ],
+    parameters: { msw: { handlers: centreHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        const card = canvas.getByTestId('entity-status-card');
+        await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
+        const context = canvas.getByTestId('entity-status-context').getBoundingClientRect();
+        const control = canvas.getByTestId('entity-status-switch').getBoundingClientRect();
+        if (wide) {
+            // Side by side, and low: status line, one row of content.
+            await expect(Math.abs(context.top - control.top)).toBeLessThan(24);
+            await expect(control.left).toBeGreaterThan(context.right);
+            await expect(card.getBoundingClientRect().height).toBeLessThan(180);
+        } else {
+            await expect(control.top).toBeGreaterThanOrEqual(context.bottom);
+        }
+        // Keyboard and non-colour cues stay: the status is a word, the switch is reachable and named.
+        await expect(canvas.getByTestId('entity-status-confirmed')).toHaveTextContent(/\S/);
+        const edit = within(canvas.getByTestId('entity-status-edit')).getByRole('button');
+        edit.focus();
+        await expect(edit).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        await expect(canvas.getByRole('switch')).toBeEnabled();
+        await expect(canvas.getByRole('switch')).toHaveAccessibleName(/./);
+    },
+});
+export const CentreEmbeddedDesktop1440: Story = embeddedAtWidth(1440, true);
+export const CentreEmbeddedMobile375: Story = embeddedAtWidth(375, false);
 export const Pending: Story = {
     parameters: {
         msw: {
@@ -434,6 +484,18 @@ const tenantFixture = {
     content: {},
     theming: {},
 };
+/** The metadata card's own button; the status block inside the same tile has an "Edit" and a "Save" too. */
+const metadataCardButton = async (card: HTMLElement, name: RegExp) => {
+    // The card shows its buttons only once the page has loaded the record, so wait for the right one.
+    let found: HTMLElement | undefined;
+    await waitFor(() => {
+        found = within(card)
+            .queryAllByRole('button', { name })
+            .find((candidate) => !candidate.closest('[data-testid="entity-status-card"]'));
+        expect(found).toBeDefined();
+    });
+    return found as HTMLElement;
+};
 export const TenantMetadataPreservesStatus: Story = {
     decorators: [
         (Story) => (
@@ -458,6 +520,9 @@ export const TenantMetadataPreservesStatus: Story = {
     parameters: {
         msw: {
             handlers: [
+                http.get('*/service/tenantadmin/controls', () =>
+                    HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
+                ),
                 http.get('*/service/tenantadmin/1', () => HttpResponse.json(tenantFixture)),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json(tenantFixture)),
                 http.put('*/service/tenantadmin/1', async ({ request }) => {
@@ -471,13 +536,16 @@ export const TenantMetadataPreservesStatus: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const field = await canvas.findByDisplayValue('Selected organisation');
+        // The Name & Slogan tile shows the name too; the Trägerinformationen card comes first in the tile order.
+        const [field] = await canvas.findAllByDisplayValue('Selected organisation');
         await expect(await canvas.findByTestId('entity-status-context')).toHaveTextContent('Selected organisation');
-        const card = field.closest('[data-testid="card-editable"]') ?? field.closest('section') ?? canvasElement;
-        await userEvent.click(within(card as HTMLElement).getByRole('button', { name: /Bearbeiten/ }));
+        // The card's footer sits next to its form, outside the tile section that holds the field.
+        const card = field.closest('form')?.parentElement;
+        if (!card) throw new Error('Real metadata card missing');
+        await userEvent.click(await metadataCardButton(card, /Bearbeiten/));
         await userEvent.clear(field);
         await userEvent.type(field, 'Updated organisation');
-        await userEvent.click(within(card as HTMLElement).getByRole('button', { name: /Speichern/ }));
+        await userEvent.click(await metadataCardButton(card, /Speichern/));
         await expect(await canvas.findByText('Metadata saved; paused status preserved')).toBeVisible();
     },
 };
@@ -556,6 +624,16 @@ const centreFixture = {
     },
     content: {},
 };
+/** What the master data tile of the centre page reads besides the centre itself. */
+const centreTileHandlers = () => [
+    http.get('*/service/useradmin/agencies/7/consultants*', () => HttpResponse.json({ total: 0, _embedded: [] })),
+    http.get('*/service/users/consultants/search*', () => HttpResponse.json({ total: 0, _embedded: [] })),
+    http.get('*/service/agencyadmin/postcoderanges/7', () =>
+        HttpResponse.json({ _embedded: { postcodeRanges: '00000-99999' } }),
+    ),
+    // Saving the master data tile writes the postcode ranges beside the centre.
+    http.post('*/service/agencyadmin/postcoderanges/7', () => HttpResponse.json({})),
+];
 export const CentreDetailsMobile: Story = {
     beforeEach: ownTenantAuth,
     decorators: [
@@ -584,6 +662,7 @@ export const CentreDetailsMobile: Story = {
         msw: {
             handlers: [
                 ...centreHandlers(),
+                ...centreTileHandlers(),
                 http.get('*/service/agencyadmin/agencies/7', () => HttpResponse.json({ _embedded: centreFixture })),
                 http.get('*/service/agencyadmin/agencies/7/*', () => HttpResponse.json([])),
                 http.get('*/service/tenantadmin/*', () => HttpResponse.json(tenantFixture)),
@@ -617,6 +696,7 @@ export const CentreMetadataPreservesStatus: Story = {
                 });
                 return [
                     ...centreHandlers(),
+                    ...centreTileHandlers(),
                     http.get('*/service/agencyadmin/agencies/7', () => HttpResponse.json({ _embedded: current })),
                     http.put('*/service/agencyadmin/agencies/7', async ({ request }) => {
                         const body = (await request.json()) as Record<string, unknown>;
@@ -640,10 +720,10 @@ export const CentreMetadataPreservesStatus: Story = {
         const field = await canvas.findByDisplayValue('Selected counselling centre');
         const card = field.closest('form')?.parentElement;
         if (!card) throw new Error('Real metadata card missing');
-        await userEvent.click(within(card).getByRole('button', { name: /Bearbeiten/ }));
+        await userEvent.click(await metadataCardButton(card, /Bearbeiten/));
         await userEvent.clear(field);
         await userEvent.type(field, 'Updated counselling centre');
-        await userEvent.click(within(card).getByRole('button', { name: /Speichern/ }));
+        await userEvent.click(await metadataCardButton(card, /Speichern/));
         await waitFor(() =>
             expect(canvas.getByTestId('entity-status-context')).toHaveTextContent('Updated counselling centre'),
         );
@@ -769,8 +849,8 @@ const renderTopiclessCentre = (topicsLoaded = true) =>
 export const TopiclessCentreActivationConfirmation: Story = {
     ...CentreDetailsMobile,
     beforeEach: async () => {
-        // antd static portals outlive a previously rendered story; start this consumer clean.
-        notification.destroy();
+        // Raised snackbars outlive a previously rendered story; start this consumer clean.
+        snackbar.clear();
         await ownTenantAuth();
         topiclessActive = false;
         topiclessCommands = [];
@@ -886,7 +966,8 @@ export const TopiclessCentreActivationConfirmation: Story = {
             canvas.queryByText(String(i18n.t('agency.form.registrationSettings.assigned.loadError'))),
         ).not.toBeInTheDocument();
         await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
-        await expect(body.queryByRole('alert')).not.toBeInTheDocument();
+        // The snackbar host keeps an empty live region mounted; only one that says something is an alert raised.
+        await expect(body.queryAllByRole('alert').filter((alert) => alert.textContent?.trim())).toHaveLength(0);
     },
 };
 
@@ -936,6 +1017,7 @@ export const DeferredTopicLookup: Story = {
         );
         await expect(topiclessCommands).toEqual([{ active: true }]);
         await expect(body.queryByText(String(i18n.t('message.error.default')))).not.toBeInTheDocument();
-        await expect(body.queryByRole('alert')).not.toBeInTheDocument();
+        // The snackbar host keeps an empty live region mounted; only one that says something is an alert raised.
+        await expect(body.queryAllByRole('alert').filter((alert) => alert.textContent?.trim())).toHaveLength(0);
     },
 };

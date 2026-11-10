@@ -10,6 +10,7 @@ import frFR from 'antd/es/locale/fr_FR';
 import ruRU from 'antd/es/locale/ru_RU';
 import trTR from 'antd/es/locale/tr_TR';
 import ukUA from 'antd/es/locale/uk_UA';
+import { MuiSelectChevron } from '../../../components/M3Select/MuiSelectChevron';
 import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../constants/supportedLanguages';
 import { muiFieldSx } from '../../../components/mui/fieldSx';
 import { Modal } from '../../../components/Modal';
@@ -21,6 +22,7 @@ import type { CounsellorTopicPermission } from '../../../api/counsellorOnboardin
 import { topics } from './fixtures';
 import { resources } from './copy';
 import styles from './styles.module.scss';
+import { Notify } from '../../../components/Notify';
 
 export interface TopicSelectionProposalProps {
     initialLanguage?: SupportedLanguageCode;
@@ -102,7 +104,7 @@ const TopicSelection = ({
             onChange={(event) => {
                 i18n.changeLanguage(event.target.value);
             }}
-            slotProps={{ select: { native: true } }}
+            slotProps={{ select: { native: true, IconComponent: MuiSelectChevron } }}
             sx={muiFieldSx()}
         >
             {SUPPORTED_LANGUAGE_CODES.map((code) => (
@@ -192,12 +194,13 @@ const TopicSelection = ({
                             <div className={styles.results}>
                                 {status === 'loading' && <p role="status">{t('loading')}</p>}
                                 {status === 'error' && (
-                                    <div>
-                                        <p role="alert">{t('error')}</p>
-                                        <M3Button variant="outlined" onClick={() => setStatus('ready')}>
-                                            {t('retry')}
-                                        </M3Button>
-                                    </div>
+                                    <Notify
+                                        title={t('notify.title.onboarding')}
+                                        severity="error"
+                                        actions={[{ label: t('retry'), onClick: () => setStatus('ready') }]}
+                                    >
+                                        {t('error')}
+                                    </Notify>
                                 )}
                                 {status === 'empty' && <p role="status">{t('empty')}</p>}
                                 {status === 'ready' &&

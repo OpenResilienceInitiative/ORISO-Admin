@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { LegalTextVersion } from '../../../../types/legalVersion';
 import { formatLegalVersionLabel, toEditorVersions } from './legalVersionOptions';
 

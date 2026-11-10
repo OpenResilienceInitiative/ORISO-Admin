@@ -2,9 +2,10 @@ import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost } from '../../components/Snackbar';
 import { hasRoleFor } from '../../components/Layout/adminNavFixtures';
 import { UserRole } from '../../enums/UserRole';
 
@@ -150,6 +151,9 @@ describe('EmailTemplatesDialog', () => {
     });
 
     beforeEach(() => {
+        // Feedback is a snackbar: mount the host the app mounts once.
+
+        render(<SnackbarHost />);
         mocks.listInviteEmailTemplates.mockReset();
         mocks.createInviteEmailTemplate.mockReset();
         mocks.updateInviteEmailTemplate.mockReset();

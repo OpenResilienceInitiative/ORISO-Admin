@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert } from 'antd';
+
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import {
@@ -12,8 +12,10 @@ import {
     hasMandatoryConsentToken,
     isBlankConsentText,
     MANDATORY_CONSENT_TOKEN,
+    runTogetherPlaceholders,
 } from '../../utils/consentTextValidation';
 import styles from './styles.module.scss';
+import { HintText } from '../../../../HintText';
 
 export interface LegalConsentFieldProps {
     /** The consent sentence of the language currently being edited. */
@@ -83,6 +85,7 @@ export const LegalConsentField = ({
 
     const missingMandatoryToken = !isBlankConsentText(value) && !hasMandatoryConsentToken(value);
     const draftMissingMandatoryToken = !isBlankConsentText(draft) && !hasMandatoryConsentToken(draft);
+    const draftRunTogether = runTogetherPlaceholders(draft);
 
     const openDialog = () => {
         setDraft(seed(value));
@@ -149,29 +152,43 @@ export const LegalConsentField = ({
                 >
                     <div className={styles.dialogBody}>
                         {isBlankConsentText(draft) && (
-                            <Alert
+                            <HintText
+                                tone="error"
+                                title={t('legal.consent.error.empty.title')}
                                 className={styles.notice}
-                                type="error"
-                                showIcon
                                 data-testid="consent-empty-error"
-                                message={t('legal.consent.error.empty.title')}
-                                description={t('legal.consent.error.empty.description')}
-                            />
+                            >
+                                {t('legal.consent.error.empty.description')}
+                            </HintText>
                         )}
                         {draftMissingMandatoryToken && (
-                            <Alert
+                            <HintText
+                                tone="error"
+                                title={t('legal.consent.error.missingLegalLinks.title')}
                                 className={styles.notice}
-                                type="error"
-                                showIcon
                                 data-testid="consent-missing-token-error"
-                                message={t('legal.consent.error.missingLegalLinks.title')}
-                                description={
-                                    <>
-                                        {t('legal.consent.error.missingLegalLinks.description')}{' '}
-                                        <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                                    </>
-                                }
-                            />
+                            >
+                                <>
+                                    {t('legal.consent.error.missingLegalLinks.description')}{' '}
+                                    <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
+                                </>
+                            </HintText>
+                        )}
+                        {/* A warning, not a blocker: "Apply" and Publish stay available (#1255). */}
+                        {draftRunTogether.length > 0 && (
+                            <HintText
+                                title={t('legal.consent.warning.runTogether.title')}
+                                className={styles.notice}
+                                data-testid="consent-run-together-warning"
+                            >
+                                <ul className={styles.runTogetherList}>
+                                    {draftRunTogether.map(({ first, second }) => (
+                                        <li key={`${first} ${second}`}>
+                                            {t('legal.consent.warning.runTogether.item', { first, second })}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </HintText>
                         )}
                         <LegalConsentTemplateEditor
                             activeTemplateId={activeTemplateId}

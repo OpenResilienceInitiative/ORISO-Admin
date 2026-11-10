@@ -166,6 +166,54 @@ export const SingleFachbereichPreselected: Story = {
     },
 };
 
+let departmentReads = 0;
+let departmentDown = true;
+
+/**
+ * The Fachbereich's own text cannot be read (L10): editing stays blocked, the failure is an error
+ * pop-up with "Erneut versuchen" and a quiet line in the tile. Retry reads the text again for real;
+ * once it arrives the editor opens.
+ */
+export const DepartmentReadFailure: Story = {
+    beforeEach: () => {
+        departmentReads = 0;
+        departmentDown = true;
+        setStoryAuth([UserRole.AgencyAdmin], TENANT_ID);
+    },
+    args: { agencyData: { ...agencyWithoutOwnText, topics: [TWO_TOPICS[0]] } },
+    parameters: {
+        msw: {
+            handlers: [
+                // First, so it wins over the generic department handler in `handlers`.
+                http.get('*/service/agencyadmin/agencies/:id/topics/:topicId/dpp', () => {
+                    departmentReads += 1;
+                    if (departmentDown) return new HttpResponse(null, { status: 500 });
+                    return HttpResponse.json({ content: null, publicationStatus: 'DRAFT' });
+                }),
+                ...handlers,
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const popup = await body.findByText('Rechtstext konnte nicht geladen werden', {}, { timeout: 8000 });
+        const card = popup.closest('[data-testid]') as HTMLElement;
+        await expect(card).toHaveAttribute('data-severity', 'error');
+        await expect(await canvas.findByText('Dieser Bereich konnte nicht geladen werden.')).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+        const readsBeforeRetry = departmentReads;
+        await expect(readsBeforeRetry).toBeGreaterThan(0);
+        departmentDown = false;
+
+        await userEvent.click(within(card).getByRole('button', { name: 'Erneut versuchen' }));
+
+        await waitFor(() => expect(departmentReads).toBeGreaterThan(readsBeforeRetry));
+        await expect(await canvas.findByText('Vom Träger übernommen', {}, { timeout: 8000 })).toBeVisible();
+        await waitFor(() => expect(body.queryByText('Rechtstext konnte nicht geladen werden')).not.toBeInTheDocument());
+    },
+};
+
 /** Same card at 390px (mobile): the function bar scrolls to reveal every control. */
 export const SingleFachbereichMobile: Story = {
     ...SingleFachbereichPreselected,

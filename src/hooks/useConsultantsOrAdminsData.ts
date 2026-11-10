@@ -42,7 +42,7 @@ export const useConsultantsOrAdminsData = ({
 
     return useQuery({
         queryKey: [typeOfUser.toUpperCase(), search, current, sortBy, order, pageSize, filters, rethrowOnFailure],
-        queryFn: () =>
+        queryFn: ({ signal }) =>
             fetchUserSearchWithSortFallback({
                 url: `${baseUrl}?query=${encodeURIComponent(search || '*')}&page=${current || 1}&perPage=${
                     pageSize || 10
@@ -52,6 +52,7 @@ export const useConsultantsOrAdminsData = ({
                 current,
                 pageSize,
                 rethrowOnFailure,
+                signal,
             }),
         ...(options as object),
         retry: false,

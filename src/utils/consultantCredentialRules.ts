@@ -13,10 +13,13 @@ import type { Rule } from 'antd/es/form';
 /** Lowercase letters, digits, hyphen, underscore — the Keycloak-safe subset. */
 export const USERNAME_PATTERN = /^[a-z0-9_-]+$/;
 
-export const PASSWORD_MIN_LENGTH = 8;
+/** One rule on every path (owner decision 2026-10-30): 16 characters, matching the app registration. */
+export const PASSWORD_MIN_LENGTH = 16;
 
 /** Lower + upper + digit + special, at least {@link PASSWORD_MIN_LENGTH} chars. */
-export const PASSWORD_POLICY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+export const PASSWORD_POLICY_PATTERN = new RegExp(
+    `^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{${PASSWORD_MIN_LENGTH},}$`,
+);
 
 export type UsernameErrorKey = 'message.error.username.required' | 'message.error.username.format';
 export type PasswordErrorKey = 'message.error.password.minLength' | 'message.error.password.policy';

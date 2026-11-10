@@ -38,6 +38,39 @@ const platformAdminHandlers = [
     http.get('*/service/tenantadmin/controls/chat-recovery', () =>
         HttpResponse.json({ asker: 'LOGIN_PASSWORD', consultant: 'RECOVERY_KEY', revision: 0 }),
     ),
+    http.get('*/service/users/admin/temporary-account-settings', () =>
+        HttpResponse.json({
+            callDeleteAfterMinutes: 15,
+            callMaxLifetimeHours: 24,
+            chatInactivityDays: 30,
+            hidePasswordField: false,
+            messageRetention: 'GUEST_DECIDES',
+            revision: 0,
+        }),
+    ),
+    http.get('*/service/useradmin/statistics/settings', () =>
+        HttpResponse.json({
+            revision: 0,
+            settings: [
+                {
+                    key: 'agencyMinimumCounsellors',
+                    value: '5',
+                    defaultValue: '5',
+                    options: ['2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                    effectiveFrom: '2026-10-20T08:00',
+                    changedBy: null,
+                },
+                {
+                    key: 'messageCountTracking',
+                    value: 'ENABLED',
+                    defaultValue: 'ENABLED',
+                    options: ['ENABLED', 'DISABLED'],
+                    effectiveFrom: null,
+                    changedBy: null,
+                },
+            ],
+        }),
+    ),
     ...okHandlers({ featureAnonymousChatEnabled: true }),
 ];
 
@@ -84,24 +117,14 @@ const assertProviderControlsFit = (canvasElement: HTMLElement) => {
     });
 };
 
-const assertResponsiveComposition = async (canvasElement: HTMLElement, expected: 'split' | 'stacked') => {
+const assertRasterColumns = async (canvasElement: HTMLElement, expected: number) => {
     await waitFor(() => {
-        expect(canvasElement.querySelector('[class*="globalConfigGrid_"]')).toBeTruthy();
+        expect(canvasElement.querySelector('[data-admin-card-grid]')).toBeTruthy();
         expect(canvasElement.querySelectorAll('[class*="provider_"]')).toHaveLength(2);
     });
 
-    const compactColumn = canvasElement.querySelector<HTMLElement>('[class*="compactCardColumn_"]')!;
-    const documentCard = canvasElement.querySelector<HTMLElement>('[class*="documentMasterDataCardSlot_"]')!;
-    const compactRect = compactColumn.getBoundingClientRect();
-    const documentRect = documentCard.getBoundingClientRect();
-
-    if (expected === 'split') {
-        expect(documentRect.left).toBeGreaterThan(compactRect.right);
-    } else {
-        expect(Math.abs(documentRect.left - compactRect.left)).toBeLessThanOrEqual(1);
-        expect(documentRect.top).toBeGreaterThanOrEqual(compactRect.bottom);
-    }
-
+    const grid = canvasElement.querySelector<HTMLElement>('[data-admin-card-grid]')!;
+    expect(getComputedStyle(grid).gridTemplateColumns.split(' ')).toHaveLength(expected);
     assertProviderControlsFit(canvasElement);
 };
 
@@ -116,7 +139,8 @@ export const Empty: Story = {
 };
 
 // Every card sits in its own <section>; the login card next to it has its own edit button.
-const oneTopicCard = (oneTopicSwitch: HTMLElement) => within(oneTopicSwitch.closest('section') as HTMLElement);
+const oneTopicCard = (oneTopicSwitch: HTMLElement) =>
+    within(oneTopicSwitch.closest('[data-admin-card-grid-item]') as HTMLElement);
 
 /** Platform admin: the platform-only cards render, and the one-topic-per-agency switch is editable. */
 export const PlatformAdmin: Story = {
@@ -136,7 +160,7 @@ export const TenantAdmin: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const oneTopicSwitch = await canvas.findByRole('switch', { name: oneTopicSwitchName });
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(oneTopicCard(oneTopicSwitch).queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };
@@ -178,24 +202,24 @@ export const Error: Story = {
     },
 };
 
-/** Wide content: compact settings stay beside the document master-data card. */
+/** Wide content: three columns of tiles. */
 export const ResponsiveWide: Story = {
     decorators: [withContentWidth(1164)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
         viewport: { defaultViewport: 'laptop' },
     },
-    play: ({ canvasElement }) => assertResponsiveComposition(canvasElement, 'split'),
+    play: ({ canvasElement }) => assertRasterColumns(canvasElement, 3),
 };
 
-/** Regression: a narrow admin content area stacks even while the browser viewport is 1100px wide. */
+/** Regression: the columns follow the admin content area, not the 1100px browser viewport. */
 export const ResponsiveIntermediateContent: Story = {
     decorators: [withContentWidth(880)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
         viewport: { defaultViewport: 'responsive1100' },
     },
-    play: ({ canvasElement }) => assertResponsiveComposition(canvasElement, 'stacked'),
+    play: ({ canvasElement }) => assertRasterColumns(canvasElement, 2),
 };
 
 /** At the compact breakpoint provider metadata stacks without clipping its field or action. */
@@ -205,7 +229,7 @@ export const Responsive640: Story = {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
         viewport: { defaultViewport: 'responsive640' },
     },
-    play: ({ canvasElement }) => assertResponsiveComposition(canvasElement, 'stacked'),
+    play: ({ canvasElement }) => assertRasterColumns(canvasElement, 1),
 };
 
 /** Narrow phone content keeps the same reading order and usable full-width provider controls. */
@@ -215,5 +239,5 @@ export const ResponsiveNarrow: Story = {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
         viewport: { defaultViewport: 'phoneSmall' },
     },
-    play: ({ canvasElement }) => assertResponsiveComposition(canvasElement, 'stacked'),
+    play: ({ canvasElement }) => assertRasterColumns(canvasElement, 1),
 };

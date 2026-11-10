@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, waitFor } from '@testing-library/react';
 import { ResizeTable } from './index';
 import * as measureModule from './measureAdminTableBodyScrollY';

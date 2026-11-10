@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import VerifiedUserOutlined from '@mui/icons-material/VerifiedUserOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
@@ -26,6 +26,7 @@ import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
 import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN, RESEND_NOT_ATTEMPTED, ResendError } from './OtpResendLink';
+import { Notify } from '../../components/Notify';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -63,6 +64,7 @@ const positiveSeconds = (value: unknown): number | undefined =>
     typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 
 const LoginForm = () => {
+    const { message } = useAdminFeedback();
     const [form] = Form.useForm();
     const { data: tenantData } = usePublicTenantData();
     const navigate = useNavigate();
@@ -266,9 +268,9 @@ const LoginForm = () => {
 
                     {showCredentialsHint && <LoginCredentialsHint />}
                     {showSetupIncomplete && (
-                        <Alert severity="error" role="alert" sx={{ mb: 2 }} data-testid="login-setup-incomplete-hint">
+                        <Notify title={t('notify.title.login')} testId="login-setup-incomplete-hint" severity="error">
                             {t('message.error.auth.setupIncomplete')}
-                        </Alert>
+                        </Notify>
                     )}
 
                     <a href={routePathNames.passwordReset} className="forgotPW">

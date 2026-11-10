@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Form } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
@@ -19,13 +19,15 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import type { AgencyData } from '../../types/agency';
 import { ReactComponent as CounsellingCentreIcon } from '../../resources/img/svg/navbar/counseling_active.svg';
 import styles from './agencySetup.module.scss';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 const Recovery = ({ retry }: { retry: () => void }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
     return (
         <div className={styles.setup}>
-            <Alert type="error" showIcon message={t('agency.setup.unavailable')} />
+            <HintText tone="error">{t('agency.setup.unavailable')}</HintText>
             <div className={styles.actions}>
                 <M3Button variant="outlined" onClick={retry}>
                     {t('agency.setup.retry')}
@@ -101,7 +103,11 @@ const AssignedAgencySetup = ({
                         }
                     >
                         <AgencyGeneralInformation asFields />
-                        {saveFailed && <Alert type="error" showIcon message={t('agency.setup.saveError')} />}
+                        {saveFailed && (
+                            <Notify title={t('notify.title.agency')} severity="error">
+                                {t('agency.setup.saveError')}
+                            </Notify>
+                        )}
                     </Card>
                 </Form>
             </div>

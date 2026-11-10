@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
     CounsellorOnboardingClient,
@@ -60,7 +60,7 @@ describe('useCounsellorOnboardingFlow', () => {
         );
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
         act(() => {
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
             result.current.updatePerson({ position: 'Leitung', title: 'Dipl.' });
             result.current.updateNames({ publicName: 'Lena', internalName: 'Lena B.' });
             result.current.updateAvatar({ avatarKind: 'INITIALS', avatarId: 'LB' });
@@ -300,7 +300,7 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.data.topicIds).toEqual([12, 13]);
 
         act(() => {
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
             result.current.updatePerson({ salutation: 'counsellor_female', position: 'Leitung', title: 'Dipl.' });
             result.current.updateNames({ publicName: 'Lena', internalName: 'Lena B.' });
             result.current.toggleTopic(13);
@@ -311,7 +311,7 @@ describe('useCounsellorOnboardingFlow', () => {
         });
         expect(result.current.state.phase).toBe('two-factor');
         expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-            account: { username: 'lena_b', password: 'SecurePass1!' },
+            account: { username: 'lena_b', password: 'SecurePassword1!' },
             person: { salutation: 'counsellor_female', position: 'Leitung', title: 'Dipl.' },
             names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
             topicIds: [12],
@@ -360,7 +360,7 @@ describe('useCounsellorOnboardingFlow', () => {
         expect(result.current.data.topicIds).toEqual([12, 13]);
         act(() => {
             result.current.updateAgency({ name: 'Alte Stelle' });
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
         });
 
         rerender({ token: 'other-token' });
@@ -378,7 +378,7 @@ describe('useCounsellorOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
 
         act(() => {
-            result.current.updateAccount({ username: '  lena_b  ', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: '  lena_b  ', password: 'SecurePassword1!' });
             result.current.setTopics([13]);
         });
         await act(async () => {
@@ -386,7 +386,7 @@ describe('useCounsellorOnboardingFlow', () => {
         });
 
         expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-            account: { username: 'lena_b', password: 'SecurePass1!' },
+            account: { username: 'lena_b', password: 'SecurePassword1!' },
             person: { salutation: undefined, position: undefined, title: undefined },
             names: { publicName: undefined, internalDisplayName: undefined },
             topicIds: [13],
@@ -403,7 +403,7 @@ describe('useCounsellorOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
 
         act(() => {
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
             result.current.toggleTopic(12);
         });
         await act(async () => {
@@ -466,7 +466,7 @@ describe('useCounsellorOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
 
         act(() => {
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
             result.current.toggleTopic(12);
         });
         await act(async () => {
@@ -504,7 +504,7 @@ describe('useCounsellorOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('form'));
 
         act(() => {
-            result.current.updateAccount({ username: 'lena_b', password: 'SecurePass1!' });
+            result.current.updateAccount({ username: 'lena_b', password: 'SecurePassword1!' });
             result.current.toggleTopic(12);
         });
         await act(async () => {
