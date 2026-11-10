@@ -13,13 +13,30 @@
     align-items: center;
     justify-content: center;
     padding: 6px 12px;
-    border: 1px solid #c4c7c8;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
     border-radius: 8px;
-    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.1px;
     line-height: 20px;
+    white-space: nowrap;
+}
+
+/* The base language (#1374): filled like a chosen language, and always first. */
+.baseLanguageChip {
+    border-color: var(--m3-secondary-container, #646d78);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
+    font-weight: 600;
+}
+
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
     white-space: nowrap;
 }
 
@@ -68,6 +85,7 @@
         border-radius: 8px;
         color: var(--m3-on-surface, #1b1b1c);
         cursor: pointer;
+        gap: 4px;
         font-size: 14px;
         font-weight: 500;
         letter-spacing: 0;
@@ -86,6 +104,11 @@
     &:global(.ant-checkbox-wrapper-disabled) > span:last-child {
         cursor: default;
         opacity: 1;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
     }
 
     &:hover {

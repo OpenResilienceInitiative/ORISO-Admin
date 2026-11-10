@@ -75,7 +75,7 @@ export const Card = ({
             })}
             contentClassName={classNames(styles.contentClassName, { [styles.dialogContentClassName]: isDialog })}
         >
-            {help && <TileHelpButton topic={help} tileTitle={t(titleKey)} />}
+            {help && <TileHelpButton topic={help} tileTitle={t(titleKey)} tileIcon={headerIcon} />}
             <div
                 className={classNames(styles.cardTitle, cardTitleClassName, {
                     [styles.hasSubtitle]: subTitle || subTitleKey,

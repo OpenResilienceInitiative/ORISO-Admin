@@ -23,6 +23,19 @@ describe('M3Tooltip', () => {
         expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
     });
 
+    it('shows a name-only tooltip without repeating it as the description', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3Tooltip nameOnly text="Einladungslink kopieren">
+                <button type="button" aria-label="Einladungslink kopieren" />
+            </M3Tooltip>,
+        );
+
+        await user.tab();
+        expect(await screen.findByRole('tooltip')).toHaveTextContent('Einladungslink kopieren');
+        expect(screen.getByRole('button', { name: 'Einladungslink kopieren' })).not.toHaveAttribute('aria-describedby');
+    });
+
     it('opens on keyboard focus and describes the trigger', async () => {
         const user = userEvent.setup();
         render(

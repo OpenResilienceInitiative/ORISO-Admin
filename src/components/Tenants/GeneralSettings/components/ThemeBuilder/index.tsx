@@ -557,6 +557,7 @@ export const ThemeBuilder = ({ tenantId, readOnly = false }: ThemeBuilderProps) 
             <CardEditable
                 key={`theme-builder-${effectiveAccentDark}-${effectiveAccentLight}-${effectiveSignal}-${locks.accentDark}-${locks.accentLight}-${locks.signal}`}
                 allowEdit={canEdit}
+                readOnlyAccess={readOnly}
                 isLoading={isLoading}
                 titleKey="settings.colors"
                 subTitle={t<string>('settings.colors.howto')}

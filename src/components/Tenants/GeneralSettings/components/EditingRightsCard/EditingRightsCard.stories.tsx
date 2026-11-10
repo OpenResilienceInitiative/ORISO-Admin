@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { EditingRightsCard } from './index';
 import { inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
+import { expectReadOnlyTile } from '../../../../CardEditable/readOnlyTileStory.matrix';
 
 const meta = {
     title: 'Organisms/Tenants/Appearance/EditingRightsCard',
@@ -30,8 +31,10 @@ export const OffForOrganisationAdmins: Story = {
 };
 
 export const ReadOnly: Story = {
-    args: { allowEdit: false },
+    args: { allowEdit: false, readOnlyAccess: true },
     play: async ({ canvasElement }) => {
+        // Read access only: the edit action stays, locked, and the tile names who can change it (#1374).
+        await expectReadOnlyTile(canvasElement, /nur Plattform-Admins|Only platform admins/);
         const toggle = within(canvasElement).getByRole('switch');
         await expect(toggle).toHaveAttribute('aria-disabled', 'true');
         toggle.focus();

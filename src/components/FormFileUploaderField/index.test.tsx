@@ -242,3 +242,56 @@ describe('assistant read failure feedback', () => {
         }
     });
 });
+
+/** #1374: "Individuelle Bilder" as a list, one row per image, with the same checks as the picture card. */
+describe('image list row', () => {
+    const renderRow = ({ formDisabled, value }: { formDisabled: boolean; value?: string }) => {
+        const changes: Record<string, unknown>[] = [];
+        const utils = render(
+            <Form
+                initialValues={{ logo: value }}
+                disabled={formDisabled}
+                onValuesChange={(changed) => changes.push(changed)}
+            >
+                <FormFileUploaderField
+                    name="logo"
+                    row={{ title: 'Logo', size: '512 × 512 px', description: 'Login screens · JPG or PNG' }}
+                />
+            </Form>,
+        );
+        return { ...utils, changes };
+    };
+
+    it('shows name, size and purpose, and offers no file picker in read mode', () => {
+        const { container, getByText } = renderRow({ formDisabled: true, value: 'https://cdn.example.org/logo.png' });
+        expect(getByText('Logo')).toBeInTheDocument();
+        expect(getByText('512 × 512 px')).toBeInTheDocument();
+        expect(getByText('Login screens · JPG or PNG')).toBeInTheDocument();
+        expect(container.querySelector('img[alt="Logo"]')).toHaveAttribute('src', 'https://cdn.example.org/logo.png');
+        expect(container.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    it('says when nothing is set and offers "add" while editing', async () => {
+        const { container, getByText, getByRole, changes } = renderRow({ formDisabled: false });
+        expect(getByText('settings.images.empty')).toBeInTheDocument();
+        expect(getByRole('button', { name: /settings\.images\.add/ })).toBeInTheDocument();
+
+        pickPng(container.querySelector('input[type="file"]') as HTMLInputElement);
+        await vi.waitFor(() => expect(changes.length).toBeGreaterThan(0));
+    });
+
+    it('offers "replace" once an image is set, and keeps rejecting what the picture card rejects', async () => {
+        const error = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+        const { container, getByRole, changes } = renderRow({
+            formDisabled: false,
+            value: 'https://cdn.example.org/logo.png',
+        });
+        expect(getByRole('button', { name: /settings\.images\.replace/ })).toBeInTheDocument();
+
+        pickFile(container.querySelector('input[type="file"]') as HTMLInputElement, 'logo.gif', 'image/gif');
+        await settle();
+        expect(changes).toHaveLength(0);
+        expect(error).toHaveBeenCalledWith('message.error.upload.filetype');
+        error.mockRestore();
+    });
+});

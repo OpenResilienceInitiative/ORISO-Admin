@@ -38,7 +38,8 @@ export const FunctionalitiesGrid = ({
                 <CommunicationSettings tenantId={tenantId} />
             </CardGrid.Item>
         )}
-        <CardGrid.Item>
+        {/* Two columns wide, so its panels sit side by side instead of in one tall column. */}
+        <CardGrid.Item span={2}>
             <OtherFunctionsSettings
                 tenantId={tenantId}
                 hideTopics={hideTopicsToggle}
