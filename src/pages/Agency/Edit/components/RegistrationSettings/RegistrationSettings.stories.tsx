@@ -169,7 +169,7 @@ export const NoCounsellorsInTheTenantEnglish: Story = {
     play: async ({ canvasElement }) => {
         await i18n.changeLanguage('en');
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/No further counsellors of this tenant/)).toBeInTheDocument();
+        await expect(await canvas.findByText(/No further counsellors of this provider/)).toBeInTheDocument();
     },
 };
 

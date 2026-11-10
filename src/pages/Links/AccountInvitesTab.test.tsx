@@ -1688,6 +1688,24 @@ describe('CSV import payload per tab', () => {
         expect(counsellorCall).not.toHaveProperty('importBatchId');
     });
 
+    it('holds back every row of a Träger-ID column on the counsellor tab instead of reading it as a Beratungsstellen-ID', async () => {
+        mocks.findInviteTenant.mockResolvedValue(null);
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
+        await importCsv(
+            user,
+            'E-Mail;Vorname;Name;Träger-ID;Ziel;Rolle\r\n' +
+                'pinned@example.org;Anna;Beispiel;42;bestehend;Berater:in\r\n',
+        );
+
+        // The table is mocked here: the rejected row shows as an empty batch instead of "1 Empfänger anlegen".
+        expect(await screen.findByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
     it('lists only the columns each tab imports in the CSV menu hint', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         const { unmount } = renderTenantTab();

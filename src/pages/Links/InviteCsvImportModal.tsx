@@ -9,6 +9,7 @@ import { Modal, DialogButton } from '../../components/Modal';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
     assignBatchTenantIds,
+    type InviteCsvIdKind,
     type InviteCsvRejectionReason,
     type InviteCsvTarget,
     type ParseInviteCsvResult,
@@ -36,13 +37,6 @@ export interface InviteCsvCreateOutcome {
     /** Waiting, and no admin row for that unit has arrived (yet). */
     noUnitAdmin?: boolean;
 }
-
-/**
- * Which id space the CSV's 4th column addresses. `tenant` (Träger tab) resolves
- * empty cells client-side from the free-id sequence; `agency` leaves them empty
- * because AgencyService assigns the id when the invite is created (AUTO mode).
- */
-export type InviteCsvIdKind = 'tenant' | 'agency';
 
 type RowState = 'pending' | 'creating' | 'created' | 'failed';
 
@@ -377,6 +371,24 @@ export const InviteCsvImportModal = ({
         switch (row.rejectedReason) {
             case 'invalidEmail':
                 return t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', line);
+            case 'ambiguousId':
+                return t('links.csvImport.reason.ambiguousId', 'Mehrere ID-Spalten (Zeile {{line}})', line);
+            case 'wrongIdType':
+                // The parser rejects only a header naming the other organisation type, so the file's label is the other ID.
+                return t(
+                    'links.csvImport.reason.wrongIdType',
+                    'Die ID-Spalte heißt {{headerLabel}}, die Datei wird aber im Tab „{{tab}}“ importiert, der eine {{idLabel}} erwartet. Bitte Organisation, ID und Tab prüfen (Zeile {{line}})',
+                    {
+                        headerLabel: isTenantId
+                            ? t('links.accountInvites.agencyId', 'Beratungsstellen-ID')
+                            : t('links.accountInvites.tenantId', 'Träger-ID'),
+                        tab: isTenantId
+                            ? t('links.tabs.tenants', 'Träger-Einladungen')
+                            : t('links.tabs.counsellor', 'Beratende-Einladungen'),
+                        idLabel,
+                        ...line,
+                    },
+                );
             case 'invalidId':
                 return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
                     idLabel,

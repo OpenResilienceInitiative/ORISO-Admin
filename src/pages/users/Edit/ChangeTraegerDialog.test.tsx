@@ -210,9 +210,9 @@ describe('ChangeTraegerDialog', () => {
         await i18n.changeLanguage('en');
         renderDialog({ openCases: 4 });
 
-        expect(screen.getByRole('dialog', { name: /Change Ada Lovelace’s Träger/ })).toBeInTheDocument();
-        expect(dialog()).toHaveTextContent('4 open cases stay with the previous Träger “Caritas Augsburg”');
+        expect(screen.getByRole('dialog', { name: /Change Ada Lovelace’s provider/ })).toBeInTheDocument();
+        expect(dialog()).toHaveTextContent('4 open cases stay with the previous provider “Caritas Augsburg”');
         expect(dialog()).toHaveTextContent('“Assignment ended”');
-        expect(within(dialog()).getByRole('button', { name: 'Change Träger' })).toBeInTheDocument();
+        expect(within(dialog()).getByRole('button', { name: 'Change provider' })).toBeInTheDocument();
     });
 });

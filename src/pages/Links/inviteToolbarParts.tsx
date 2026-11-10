@@ -69,7 +69,7 @@ export const useInviteMoreMenu = ({ tab, csv, bulk, sendMode, selectedTemplate }
             return;
         }
         try {
-            const result = parseInviteCsv(await readFileText(file));
+            const result = parseInviteCsv(await readFileText(file), tab === 'tenant' ? 'tenant' : 'agency');
             if (result.rows.length === 0 && result.rejected.length === 0) {
                 message.info(t('links.csvImport.emptyFile', 'Die CSV-Datei enthält keine Empfänger.'));
             } else {
