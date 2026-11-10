@@ -1,4 +1,4 @@
-import { Alert, Button, Form } from 'antd';
+import { Button, Form } from 'antd';
 import { ReactElement, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -61,6 +61,7 @@ import { canStartNewCounselling } from '../../../utils/dpaBlockerGate';
 import { isFieldMounted, parseAgencyFieldValidationError } from '../../../api/agency/agencyValidationError';
 import type { AgencyData } from '../../../types/agency';
 import { describeAgencyValidationErrors, ValidationErrorField } from './agencyValidationFeedback';
+import { HintText } from '../../../components/HintText';
 
 function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
     return data?.length === 0 || (data?.length === 1 && data[0].from === '00000' && data[0].until === '99999');
@@ -642,23 +643,18 @@ export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: 
         );
     } else if (isAgencyCreationDpaBlocked) {
         agencyContent = (
-            <Alert
-                type="warning"
-                showIcon
-                message={t('agency.dpaGate.title')}
-                description={t('agency.dpaGate.description')}
-                action={
-                    isDpaGateError ? (
-                        <Button size="small" onClick={() => refetchDpaGate()}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    ) : (
-                        <Button size="small" onClick={() => navigate(`${routePathNames.themeSettings}/legal`)}>
-                            {t('agency.dpaGate.openLegalSettings')}
-                        </Button>
-                    )
-                }
-            />
+            <HintText
+                title={t('agency.dpaGate.title')}
+                actions={[
+                    { label: t('tenants.legal.version.retry'), onClick: () => refetchDpaGate() },
+                    {
+                        label: t('agency.dpaGate.openLegalSettings'),
+                        onClick: () => navigate(`${routePathNames.themeSettings}/legal`),
+                    },
+                ]}
+            >
+                {t('agency.dpaGate.description')}
+            </HintText>
         );
     } else {
         agencyContent = renderPageBody();

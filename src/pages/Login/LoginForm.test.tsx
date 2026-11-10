@@ -320,7 +320,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -333,7 +333,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -423,7 +423,9 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('Your account is not fully set up yet.');
+        expect(await screen.findByTestId('login-setup-incomplete-hint')).toHaveTextContent(
+            'Your account is not fully set up yet.',
+        );
         expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
@@ -642,8 +644,9 @@ describe('LoginForm', () => {
         mocks.loginAsync.mockRejectedValueOnce({ message: FETCH_ERRORS.TIMEOUT });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-        expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(await screen.findByText(/The code could not be requested\. Please try again\./)).toBeInTheDocument();
+        // The failure is an error pop-up; the "request sent" confirmation must not appear next to it.
+        expect(screen.queryByText(/Request sent\./)).not.toBeInTheDocument();
     });
 
     /*
