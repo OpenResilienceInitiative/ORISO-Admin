@@ -4,8 +4,12 @@ import { contrastRatio } from '../contrastRatio';
 
 export type OrisoSchemeName = 'light' | 'inverted';
 
-/** Angular hue distance (degrees) below which error and brand read as the same family. */
-export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 30;
+/**
+ * Angular hue distance (degrees) below which error and brand read as the same family.
+ * Calibrated so the shipped pair — Caritas-Rot #a5000a and the system error #b1005e,
+ * about 28° apart — does not warn: with 30 the editor warned on untouched defaults (#1374).
+ */
+export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 25;
 
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
@@ -102,10 +106,23 @@ export const hueDistance = (hexA: string, hexB: string): number => {
     return Math.min(delta, 360 - delta);
 };
 
+/** Spread between the strongest and weakest RGB channel below which a colour reads as grey. */
+const ACHROMATIC_SPREAD = 26;
+
+/** Greys have no meaningful hue (`hueDegrees` returns 0, i.e. red). */
+const isAchromatic = (hex: string): boolean => {
+    const { r, g, b } = hexToRgb(hex);
+    return Math.max(r, g, b) - Math.min(r, g, b) < ACHROMATIC_SPREAD;
+};
+
 export const signalTooCloseToBrand = (seeds: TenantSeeds): boolean => {
     const brand = normalizeHex(getAccentDark(seeds));
     const signal = normalizeHex(getSignal(seeds));
     if (!brand || !signal) {
+        return false;
+    }
+    // A grey reads as hue 0 and would "match" every red brand; it is not the same colour family.
+    if (isAchromatic(brand) !== isAchromatic(signal)) {
         return false;
     }
     return hueDistance(brand, signal) < SIGNAL_BRAND_HUE_MIN_DISTANCE;
@@ -141,10 +158,14 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  * src/app.css before renaming or re-valuing this.
  */
 const STAGE_SURFACE = '#281715';
-const DARK_TEXT = '#141c25';
+export const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
     // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
     '--admin-workspace-background': '#fcf9f9',
+    // Pictures stay as drawn: tiles and dialogs keep their light surface in the inverted
+    // scheme (see the surface tokens), and the drawings are dark ink. A dark workspace sets
+    // PICTURE_FILTER_ON_DARK here together with its dark card surfaces, not before.
+    '--admin-picture-filter': 'none',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -166,6 +187,13 @@ const ADMIN_TABLE_TOKENS = {
     '--admin-form-card-surface': '#eae7e8',
     '--admin-form-label-text': '#444748',
 };
+
+/**
+ * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
+ * surface, this filter flips the strokes light (and turns the red accent back to red), so
+ * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` above.
+ */
+export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
 
 /**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
@@ -209,7 +237,8 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
     };
 };
 
-const readableOn = (background: string) =>
+/** Text colour the theme draws on `background`: the better of white and {@link DARK_TEXT}. */
+export const readableOn = (background: string) =>
     contrastRatio(DARK_TEXT, background) >= contrastRatio('#ffffff', background) ? DARK_TEXT : '#ffffff';
 
 /**
@@ -276,6 +305,15 @@ const invertedTokens = (
         '--m3-on-background': STAGE_SURFACE,
         '--m3-inverse-surface': '#fcf9f9',
         '--m3-inverse-on-surface': '#1a1c1e',
+        // Dark scheme: the inverse roles are the light scheme's, so the snackbar action keeps the brand red.
+        '--m3-inverse-primary': keepReadableOn(accentDark, '#fcf9f9'),
+        '--m3-success-container': '#39414b',
+        '--m3-on-success-container': '#e7effc',
+        '--m3-success-action': keepReadableOn(primary, '#39414b'),
+        // The tertiary container stays light in the dark scheme, so the warning snackbar has its own dark pair.
+        '--m3-warning-container': '#5a3a36',
+        '--m3-on-warning-container': '#ffdad6',
+        '--m3-warning-action': keepReadableOn(primary, '#5a3a36'),
         '--oriso-app-accent': primary,
         '--oriso-app-accent-dark': accentDark,
         '--oriso-app-accent-light': accentLight,
@@ -325,6 +363,9 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-primary-fixed': accentLight,
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
+            // Snackbar action text on the success and warning containers, whatever the brand seed.
+            '--m3-success-action': keepReadableOn(accentDark, '#e7effc'),
+            '--m3-warning-action': keepReadableOn(accentDark, '#ffdad6'),
             '--m3-secondary': '#4c555f',
             '--m3-on-secondary': '#ffffff',
             '--m3-secondary-container': '#646d78',

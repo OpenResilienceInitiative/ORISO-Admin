@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import i18n from '../../../../../i18n';
+import { findPopup } from '../../../../../test/storyPopups';
 import type { RecipientScopePolicy } from '../../../../../types/permissionPolicy';
 import { RecipientScopeControl } from './RecipientScopeControl';
 
@@ -54,7 +55,8 @@ const Harness = ({
 };
 
 const meta = {
-    title: 'Organisms/Permissions/RecipientScopeControl',
+    title: 'Settings/Einstellungen/Funktionszugriff/RecipientScopeControl',
+    id: 'organisms-permissions-recipientscopecontrol',
     component: Harness,
     parameters: { layout: 'padded' },
     args: { level: 'platform' },
@@ -191,7 +193,9 @@ export const SaveFails: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(option(canvas, /Plattformweit/));
         await userEvent.click(canvas.getByRole('button', { name: 'Speichern' }));
-        await expect(await canvas.findByRole('alert')).toHaveTextContent(/^Nicht gespeichert\./);
+        await expect(await findPopup(canvasElement, /Nicht gespeichert\./, 'error')).toHaveTextContent(
+            'Berechtigungen',
+        );
         await expect(option(canvas, /Plattformweit/)).toBeChecked();
         await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeEnabled();
     },
@@ -247,7 +251,7 @@ export const EnglishPlatformRequirement: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.getByRole('button', { name: 'Requirement' })).toHaveAttribute('aria-pressed', 'true');
-        await expect(canvas.getByText('Requirement: no Träger can change it.')).toBeVisible();
+        await expect(canvas.getByText('Requirement: no provider can change it.')).toBeVisible();
     },
 };
 

@@ -1231,14 +1231,14 @@
         "usage": "app-used"
     },
     {
-        "id": "ui-icon:nav-glyphs:links:base",
-        "family": "links",
+        "id": "ui-icon:nav-glyphs:invite:base",
+        "family": "invite",
         "state": "base",
         "role": "default",
         "kind": "ui-icon",
         "size": null,
-        "fileName": "links.svg",
-        "sourcePath": "src/resources/img/svg/nav-glyphs/links.svg",
+        "fileName": "invite.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/invite.svg",
         "exportNames": [],
         "usageFiles": ["src/components/NavGlyph/index.tsx"],
         "usage": "app-used"
@@ -1456,6 +1456,45 @@
         "usage": "app-used"
     },
     {
+        "id": "sidebar-icon:navbar:invite:filled",
+        "family": "invite",
+        "state": "filled",
+        "role": "selected",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_active.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_active.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:invite:hover",
+        "family": "invite",
+        "state": "hover",
+        "role": "hover",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_hover.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_hover.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
+        "id": "sidebar-icon:navbar:invite:outline",
+        "family": "invite",
+        "state": "outline",
+        "role": "default",
+        "kind": "sidebar-icon",
+        "size": null,
+        "fileName": "invite_inactive.svg",
+        "sourcePath": "src/resources/img/svg/navbar/invite_inactive.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "sidebar-icon:navbar:languages:filled",
         "family": "languages",
         "state": "filled",
@@ -1479,45 +1518,6 @@
         "sourcePath": "src/resources/img/svg/navbar/languages_inactive.svg",
         "exportNames": [],
         "usageFiles": ["src/components/cards/LanguagesCard/index.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:filled",
-        "family": "links",
-        "state": "filled",
-        "role": "selected",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_active.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_active.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:hover",
-        "family": "links",
-        "state": "hover",
-        "role": "hover",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_hover.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_hover.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
-        "usage": "app-used"
-    },
-    {
-        "id": "sidebar-icon:navbar:links:outline",
-        "family": "links",
-        "state": "outline",
-        "role": "default",
-        "kind": "sidebar-icon",
-        "size": null,
-        "fileName": "links_inactive.svg",
-        "sourcePath": "src/resources/img/svg/navbar/links_inactive.svg",
-        "exportNames": [],
-        "usageFiles": ["src/components/Layout/NavIcon.tsx"],
         "usage": "app-used"
     },
     {
@@ -1976,8 +1976,8 @@
         "fileName": "link_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/link_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/index.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:oriso:lock-open-right:400",
@@ -2018,7 +2018,7 @@
         "fileName": "mail_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/mail_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
+        "usageFiles": ["src/pages/Links/index.tsx", "src/pages/Links/InviteBar.tsx", "src/pages/Links/InvitePanel.tsx"],
         "usage": "app-used"
     },
     {
@@ -2174,7 +2174,7 @@
         "fileName": "snackbar_close_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/snackbar_close_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/FormPluginEditor/EditorHintSnackbar.tsx"],
+        "usageFiles": ["src/components/Snackbar/Snackbar.tsx"],
         "usage": "app-used"
     },
     {
@@ -2666,8 +2666,8 @@
         "fileName": "active-agencies.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/active-agencies.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:calendar:base",
@@ -2705,8 +2705,8 @@
         "fileName": "conversations.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/conversations.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/StatisticCard/StatisticCard.tsx", "src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:phone-calls:base",
@@ -2718,8 +2718,8 @@
         "fileName": "phone-calls.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/phone-calls.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:requests:base",
@@ -2731,8 +2731,8 @@
         "fileName": "requests.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/requests.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/StatisticCard/StatisticCard.tsx", "src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:scope-agency:base",
@@ -2783,8 +2783,8 @@
         "fileName": "text-messages.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/text-messages.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:topic:base",
@@ -2800,8 +2800,7 @@
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
-            "src/pages/Links/InvitePanel.tsx",
-            "src/pages/Statistic.tsx"
+            "src/pages/Links/InvitePanel.tsx"
         ],
         "usage": "app-used"
     },
@@ -2815,8 +2814,8 @@
         "fileName": "video-calls.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/video-calls.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "statistics-icon:statistics-dashboard:voice-messages:base",
@@ -2828,8 +2827,8 @@
         "fileName": "voice-messages.svg",
         "sourcePath": "src/resources/img/svg/statistics-dashboard/voice-messages.svg",
         "exportNames": [],
-        "usageFiles": ["src/pages/Statistic.tsx"],
-        "usage": "app-used"
+        "usageFiles": [],
+        "usage": "catalogued-only"
     },
     {
         "id": "ui-icon:table-actions:delete-forever:400",
@@ -2988,8 +2987,7 @@
             "src/components/CustomIcons/LegalIcons.tsx",
             "src/components/productTour/TourOverviewSection.tsx",
             "src/pages/Links/InviteBar.tsx",
-            "src/pages/Links/InvitePanel.tsx",
-            "src/pages/Statistic.tsx"
+            "src/pages/Links/InvitePanel.tsx"
         ],
         "usage": "app-used"
     },
@@ -3093,13 +3091,13 @@
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
             "src/components/CustomIcons/EditorIcons.tsx",
             "src/components/CustomIcons/LegalIcons.tsx",
-            "src/components/FormPluginEditor/EditorHintSnackbar.tsx",
             "src/components/GlobalSearch/GlobalSearchBar.tsx",
             "src/components/GlobalSearch/SplitButton.tsx",
             "src/components/M3NumberField/index.tsx",
             "src/components/overlay/Overlay.tsx",
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
+            "src/components/Snackbar/Snackbar.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",
             "src/pages/Links/InvitePanel.tsx",

@@ -4,6 +4,7 @@ import { CardEditable } from '../../../CardEditable';
 import { TileSections } from '../../../TileSections';
 import { otherFunctionsHelp } from './help';
 import { FormSwitchField } from '../../../FormSwitchField';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import styles from './styles.module.scss';
@@ -110,17 +111,16 @@ export const OtherFunctionsSettings = ({
                             </div>
                         )}
                     </TileSections.Section>
-                    <TileSections.Section id="other-team" title={t('tileHelp.otherFunctions.team.title')}>
+                    <TileSections.Section id="other-team" title={t(TEAM_FUNCTIONS.chat.nameKey)}>
+                        {/* Same row as its siblings in this tile; name and description come from the shared source. */}
                         <div className={styles.checkGroup}>
                             <FormSwitchField
-                                labelKey="tenants.appSettings.otherFunctions.teamDiscussion.title"
-                                name={['settings', 'featureTeamDiscussionEnabled']}
+                                labelKey={TEAM_FUNCTIONS.chat.nameKey}
+                                name={TEAM_FUNCTIONS.chat.field}
                                 inline
                                 disableLabels
                             />
-                            <p className={styles.checkInfo}>
-                                {t('tenants.appSettings.otherFunctions.teamDiscussion.description')}
-                            </p>
+                            <p className={styles.checkInfo}>{t(TEAM_FUNCTIONS.chat.descriptionKey)}</p>
                         </div>
                     </TileSections.Section>
                 </div>

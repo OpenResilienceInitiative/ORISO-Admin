@@ -1,16 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Form } from 'antd';
 import classNames from 'classnames';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
-import Alert from '@mui/material/Alert';
-import AlertTitle from '@mui/material/AlertTitle';
 import Typography from '@mui/material/Typography';
 import ArrowForward from '@mui/icons-material/ArrowForward';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import { useTranslation } from 'react-i18next';
-import { DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
+import { DPA_CONSENT_ANCHOR_ID, DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
 import { DpaLegalReader } from '../../components/DpaLegalForm/DpaLegalReader';
 import { DpaForwardDialog } from '../../components/DpaForwardDialog/DpaForwardDialog';
 import { M3Button } from '../../components/M3Button';
@@ -26,6 +24,8 @@ import {
 import { DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { WizardDpaForwardState } from './useTenantAdminOnboardingFlow';
 import styles from './styles.module.scss';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 interface OrganisationDpaStepProps {
     invite: TenantAdminOnboardingInviteDTO;
@@ -63,6 +63,13 @@ const BLOCKER_MESSAGE: Record<SubmitBlocker, string> = {
     fields: 'tenantOnboarding.validation.incomplete',
     consent: 'tenantOnboarding.dpa.acceptRequired',
     dpa: 'tenantOnboarding.dpa.unavailableBlocked',
+};
+
+/** Where "Ansehen" of a failed submit lands: the missing consent, the first invalid field, or the actions. */
+const blockerJump = (blocker: SubmitBlocker, actionsId: string): string => {
+    if (blocker === 'consent') return DPA_CONSENT_ANCHOR_ID;
+    if (blocker === 'fields') return '[aria-invalid="true"]';
+    return actionsId;
 };
 
 /**
@@ -115,6 +122,7 @@ export const OrganisationDpaStep = ({
     const [acceptTouched, setAcceptTouched] = useState(false);
     const [submitBlocker, setSubmitBlocker] = useState<SubmitBlocker | null>(null);
     const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+    const submitActionsId = useId();
 
     const dpaHtml = useMemo(
         () => DOMPurify.sanitize(pickLegalContentLanguage(invite.dpaContent, i18n.language)),
@@ -275,10 +283,14 @@ export const OrganisationDpaStep = ({
                 <div className={styles.dpaBlock}>
                     {confirmed && (
                         <>
-                            <Alert severity="success" data-testid="dpa-confirmed-notice" sx={{ mb: 2 }}>
-                                <AlertTitle>{t('tenantOnboarding.dpa.confirmed.title')}</AlertTitle>
+                            <HintText
+                                title={t('tenantOnboarding.dpa.confirmed.title')}
+                                role="status"
+                                data-testid="dpa-confirmed-notice"
+                                style={{ marginBottom: 16 }}
+                            >
                                 {t('tenantOnboarding.dpa.confirmed.description')}
-                            </Alert>
+                            </HintText>
                             {organisationSection}
                         </>
                     )}
@@ -288,9 +300,9 @@ export const OrganisationDpaStep = ({
                                 valid completion of this step; the agreement stays
                                 readable while the signer fields and the consent
                                 act are withdrawn. */}
-                            <Alert severity="success" data-testid="dpa-forwarded-notice" sx={{ mb: 2 }}>
+                            <HintText role="status" data-testid="dpa-forwarded-notice" style={{ marginBottom: 16 }}>
                                 {t('tenantOnboarding.dpa.forwarded.notice')}
-                            </Alert>
+                            </HintText>
                             {!dpaUnavailable && (
                                 <DpaLegalReader
                                     html={dpaHtml}
@@ -385,12 +397,18 @@ export const OrganisationDpaStep = ({
                 </div>
 
                 {submitBlocker && (
-                    <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
+                    <Notify
+                        title={t('notify.title.dpa')}
+                        testId="onboarding-submit-error"
+                        severity="error"
+                        // "Ansehen" lands on what has to be fixed, not on the editor's maximize button.
+                        jump={blockerJump(submitBlocker, submitActionsId)}
+                    >
                         {t(BLOCKER_MESSAGE[submitBlocker])}
-                    </Alert>
+                    </Notify>
                 )}
 
-                <div className={styles.actions}>
+                <div id={submitActionsId} className={styles.actions}>
                     {/* Every action on these surfaces carries its icon — the
                         blocker's do, so the primary here must too (#594 review). */}
                     <M3Button type="submit" variant="filled" block icon={<ArrowForward fontSize="small" />}>

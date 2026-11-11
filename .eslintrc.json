@@ -40,9 +40,29 @@
             {
                 "paths": [
                     {
+                        "name": "antd/es/message",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/lib/message",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/es/notification",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
+                        "name": "antd/lib/notification",
+                        "importNames": ["default"],
+                        "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                    },
+                    {
                         "name": "antd",
-                        "importNames": ["Select"],
-                        "message": "Use M3Select for a shared select arrow."
+                        "importNames": ["message", "notification", "Select"],
+                        "message": "Raise toasts through the snackbar channel (import { snackbar } from 'components/Snackbar'); use M3Select instead of the antd Select."
                     },
                     {
                         "name": "antd/es/select",

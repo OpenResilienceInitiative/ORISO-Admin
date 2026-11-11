@@ -40,7 +40,7 @@ export const setTokens = async (
     refresh_token: string | undefined,
     refresh_expires_in: number | undefined,
 ): Promise<void> => {
-    setSessionTokens(access_token || null, refresh_token || null);
+    if (setSessionTokens(access_token || null, refresh_token || null) === false) return;
 
     if (access_token) {
         setTokenExpiryInLocalStorage(ACCESS_TOKEN_VALID_UNTIL_KEY, expires_in);
@@ -77,7 +77,7 @@ export const tryRefreshAccessToken = (): Promise<boolean> => {
                 return false;
             }
 
-            setSessionTokens(response.access_token, response.refresh_token);
+            if (setSessionTokens(response.access_token, response.refresh_token) === false) return false;
             setTokenExpiryInLocalStorage(
                 ACCESS_TOKEN_VALID_UNTIL_KEY,
                 resolveExpiresInSeconds(response.access_token, response.expires_in),
@@ -189,7 +189,7 @@ export const bootstrapAuthSession = async (): Promise<boolean> => {
             return false;
         }
 
-        setSessionTokens(session.access_token, session.refresh_token);
+        if (setSessionTokens(session.access_token, session.refresh_token) === false) return false;
         setTokenExpiryInLocalStorage(
             ACCESS_TOKEN_VALID_UNTIL_KEY,
             resolveExpiresInSeconds(session.access_token, session.expires_in),

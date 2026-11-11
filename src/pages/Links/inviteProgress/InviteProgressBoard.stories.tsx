@@ -447,9 +447,11 @@ export const QueueProblemBadge: Story = {
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ canvasElement }) => {
         const rita = rowOf(canvasElement, 'rita.sommer@example.org');
-        await expect(rita.getByText(/^(Keine BST-Admin|No agency admin)$/)).toBeInTheDocument();
+        await expect(rita.getByText(/^(Keine BST-Admin|No counselling centre admin)$/)).toBeInTheDocument();
         await expect(
-            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Keine BST-Admin|No agency admin)$/),
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(
+                /^(Keine BST-Admin|No counselling centre admin)$/,
+            ),
         ).toBeNull();
     },
 };
@@ -608,7 +610,7 @@ export const RoleChipMenu: Story = {
         const items = within(menu).getAllByRole('menuitem');
         // Träger-Admin invites live on the Träger tab: two entries here.
         await expect(items).toHaveLength(2);
-        await userEvent.click(within(menu).getByText(/^(BST-Admin|Agency admin)$/));
+        await userEvent.click(within(menu).getByText(/^(BST-Admin|Counselling centre admin)$/));
         await expect(args.onRoleChange).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'lena.vogt@example.org' }),
             'AGENCY_ADMIN',
@@ -617,7 +619,7 @@ export const RoleChipMenu: Story = {
         await userEvent.click(roleChipOf(canvasElement, 'Anke Roth'));
         const accountMenu = await body.findByRole('menu');
         await expect(within(accountMenu).getByRole('link')).toHaveAttribute('href', '/admin/users/consultants');
-        await userEvent.click(within(accountMenu).getByText(/^(\+ auch BST-Admin|\+ also Agency admin)$/));
+        await userEvent.click(within(accountMenu).getByText(/^(\+ auch BST-Admin|\+ also Counselling centre admin)$/));
         await expect(args.onRoleAdd).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'anke.roth@example.org' }),
             'AGENCY_ADMIN',

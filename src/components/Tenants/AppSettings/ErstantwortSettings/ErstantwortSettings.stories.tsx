@@ -2,13 +2,15 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { findPopup, popupsOf } from '../../../../test/storyPopups';
 import { M3Button } from '../../../M3Button';
 import { ErstantwortSettings } from './index';
 
 const meta = {
-    title: 'Tenants/Erstantwort/PublishValidation',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/PublishValidation',
+    id: 'tenants-erstantwort-publishvalidation',
     component: ErstantwortSettings,
     parameters: {
         layout: 'padded',
@@ -52,8 +54,63 @@ export const MissingDisclosure: Story = {
         await expect(greeting.querySelector('h1, strong, br')).toBeNull();
         await expect(greeting.querySelectorAll('p')).toHaveLength(2);
         await userEvent.click(await canvas.findByRole('button', { name: /Veröffentlichen|Publish/i }));
-        await expect(canvas.getByRole('alert')).toBeVisible();
-        await expect(canvas.getByRole('alert')).toHaveTextContent(/mitlesen|read the conversation/i);
+        // The missing text is an event: one error pop-up titled "Erstantwort", not a box in the card.
+        const popup = await findPopup(canvasElement, /mitlesen|read the conversation/i, 'error');
+        await expect(popup).toHaveTextContent('Erstantwort');
+        // "Ansehen" opens the mandatory section and moves focus into it.
+        await userEvent.click(within(popup).getByRole('button', { name: 'Ansehen' }));
+        const section = canvasElement.querySelector('#erstantwort-section-erstantwortWhoReadsAlong') as HTMLElement;
+        await waitFor(() => expect(section.querySelector('button')).toHaveAttribute('aria-expanded', 'true'));
+        await waitFor(() => expect(section.contains(canvasElement.ownerDocument.activeElement)).toBe(true));
+    },
+};
+
+let tenantRequests = 0;
+let tenantRecovered = false;
+/**
+ * T6: the Träger cannot be read - one error pop-up titled "Erstantwort" with "Erneut versuchen"; the tile keeps
+ * quiet text. The retry asks again and the editors appear.
+ */
+export const LoadErrorRetry: Story = {
+    args: { tenantId: '987660' },
+    decorators: [
+        (Story) => (
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <Story />
+            </QueryClientProvider>
+        ),
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/useradmin/erstantwort/defaults', () => HttpResponse.json({ locale: 'de' })),
+                http.get('*/service/tenantadmin/987660', () => {
+                    tenantRequests += 1;
+                    return tenantRecovered
+                        ? HttpResponse.json({
+                              id: 987660,
+                              name: 'Synthetic tenant C',
+                              settings: { activeLanguages: ['de'], extendedSettings: { languageFormal: true } },
+                              content: {},
+                          })
+                        : new HttpResponse(null, { status: 500 });
+                }),
+            ],
+        },
+    },
+    beforeEach: () => {
+        tenantRequests = 0;
+        tenantRecovered = false;
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Erstantwort', 'error');
+        await expect(within(canvasElement).getByText('Dieser Bereich konnte nicht geladen werden.')).toBeVisible();
+        const before = tenantRequests;
+        tenantRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(tenantRequests).toBeGreaterThan(before));
+        await expect(await within(canvasElement).findByRole('button', { name: /Veröffentlichen/ })).toBeInTheDocument();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
     },
 };
 

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import LoginForm from './LoginForm';
 import i18n from '../../i18n';
 
@@ -168,11 +168,9 @@ export const SetupIncomplete: Story = {
     play: async (context) => {
         const canvas = await reachTheCodeStep(context);
 
-        await waitFor(() =>
-            expect(canvas.getByTestId('login-setup-incomplete-hint')).toHaveTextContent(
-                'Ihr Konto ist noch nicht vollständig eingerichtet.',
-            ),
-        );
+        const popup = await screen.findByTestId('login-setup-incomplete-hint');
+        await expect(popup).toHaveTextContent('Ihr Konto ist noch nicht vollständig eingerichtet.');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
         await expect(canvas.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
     },
 };

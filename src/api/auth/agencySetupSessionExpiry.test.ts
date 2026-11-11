@@ -44,7 +44,6 @@ vi.mock('../../appConfig', () => ({
     CSRF_WHITELIST_HEADER: '',
 }));
 vi.mock('../../utils/generateCsrfToken', () => ({ default: () => 'csrf' }));
-vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { language: 'de', t: (key: string) => key } }));
 
 const accessTokenExpiringAt = (validUntilMs: number): string =>

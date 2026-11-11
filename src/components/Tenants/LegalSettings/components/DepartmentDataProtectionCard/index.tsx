@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Alert, Button, Tag } from 'antd';
+import { Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
@@ -14,6 +14,7 @@ import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { Notify } from '../../../../Notify';
 import { EditorSnackbarQueue, editorSnackbarItems } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { consentPublicationBlockers } from '../../utils/consentTextValidation';
@@ -36,6 +37,8 @@ const STATUS_LABEL_KEYS: Record<DepartmentPublicationStatus, string> = {
 };
 
 interface DepartmentDataProtectionCardProps {
+    /** Element id of the card root, so a pop-up can jump to it. */
+    anchorId?: string;
     /** Name of the Fachbereich (topic) this data privacy policy belongs to — shown in the header. */
     departmentName?: string;
     /** The complete stored content map (language -> HTML), including keys we do not render. */
@@ -121,6 +124,8 @@ interface DepartmentDataProtectionCardProps {
     departmentSlot?: React.ReactNode;
     /** The editor snackbar place (e.g. the draft status), passed through to the editor. */
     snackbarSlot?: React.ReactNode;
+    /** Quiet state line(s) for the tile, shown under the description (for example an open draft decision). */
+    statusSlot?: React.ReactNode;
     comparison?: M3RichTextEditorProps['comparison'];
     errorMessage?: string;
     onCloseError?: () => void;
@@ -156,6 +161,7 @@ export const DepartmentDataProtectionCard = ({
     documentScope = 'department',
     departmentSlot,
     snackbarSlot,
+    statusSlot,
     comparison,
     errorMessage,
     onCloseError,
@@ -165,6 +171,7 @@ export const DepartmentDataProtectionCard = ({
     consentUnavailableReason,
     readOnly = false,
     readOnlyReason,
+    anchorId,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
@@ -190,6 +197,9 @@ export const DepartmentDataProtectionCard = ({
     );
     // Links the blocked-publication notice to the consent action it marks invalid.
     const consentBlockedId = useId();
+    const cardDomId = useId();
+    const rootId = anchorId ?? cardDomId;
+    const translateFieldId = useId();
     // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
     // the whole point of the notice is to send them to the right language tab.
     const blockedLanguageNames = useMemo(
@@ -268,13 +278,22 @@ export const DepartmentDataProtectionCard = ({
     const [consentBlockedClosed, setConsentBlockedClosed] = useState(false);
     const [versionsNoticeClosed, setVersionsNoticeClosed] = useState(false);
     const consentBlockedSnackbar =
-        blockedLanguages.length > 0 && !consentBlockedClosed ? (
-            <span id={consentBlockedId} data-testid="consent-publish-blocked">
-                <EditorHintSnackbar
-                    tone="error"
-                    text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
-                    onClose={() => setConsentBlockedClosed(true)}
-                />
+        blockedLanguages.length > 0 ? (
+            <span data-testid={consentBlockedClosed ? undefined : 'consent-publish-blocked'}>
+                {/* The pop-up is not in the tree: keep the reason as the consent trigger's description. It stays
+                    after the pop-up is closed, because the publication is still blocked. */}
+                <span id={consentBlockedId} hidden>
+                    {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                </span>
+                {!consentBlockedClosed && (
+                    <EditorHintSnackbar
+                        tone="error"
+                        text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                        // "Ansehen" lands on the consent action that must be fixed, not on an empty wrapper.
+                        jump={`[id="${rootId}"] [data-testid="consent-edit-trigger"]`}
+                        onClose={() => setConsentBlockedClosed(true)}
+                    />
+                )}
             </span>
         ) : undefined;
     const editorNotices = [
@@ -350,7 +369,7 @@ export const DepartmentDataProtectionCard = ({
     }
 
     return (
-        <div className={styles.card}>
+        <div id={rootId} className={styles.card}>
             <M3RichTextEditor
                 snackbarSlot={editorNotices.some(Boolean) ? <EditorSnackbarQueue items={editorNotices} /> : undefined}
                 comparison={comparison}
@@ -360,6 +379,7 @@ export const DepartmentDataProtectionCard = ({
                     <TileHelpButton
                         topic={documentType === 'imprint' ? legalTextHelp : privacyHelp}
                         tileTitle={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                        tileIcon={documentType === 'imprint' ? <ImprintIcon /> : <GdprIcon />}
                     />
                 }
                 value={currentContent}
@@ -437,11 +457,12 @@ export const DepartmentDataProtectionCard = ({
                                 ? readOnlyReason
                                 : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
                         </p>
+                        {statusSlot}
                     </>
                 }
                 aboveEditorSlot={
                     showFieldTranslate && (
-                        <div className={styles.translateField}>
+                        <div id={translateFieldId} className={styles.translateField}>
                             <Button
                                 size="small"
                                 loading={fieldTranslating}
@@ -452,8 +473,15 @@ export const DepartmentDataProtectionCard = ({
                             >
                                 {t('legal.translation.field.button')}
                             </Button>
+                            {/* A failed translation is an event: a pop-up, never text that pushes the editor down. */}
                             {fieldErrorKey && (
-                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                                <Notify
+                                    severity="error"
+                                    title={t('legal.translation.field.error.title')}
+                                    jump={translateFieldId}
+                                >
+                                    {t(fieldErrorKey)}
+                                </Notify>
                             )}
                         </div>
                     )
