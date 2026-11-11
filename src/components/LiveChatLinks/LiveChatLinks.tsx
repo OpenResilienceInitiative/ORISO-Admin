@@ -20,7 +20,7 @@ import { IconButton } from '../IconButton';
 import { M3Button } from '../M3Button';
 import { M3Tooltip } from '../M3Tooltip';
 import { Modal } from '../Modal';
-import { useTenantTopics } from '../../hooks/useTenantTopics';
+import { useLiveChatLinkTopics } from '../../hooks/useLiveChatLinkTopics';
 import type { LiveChatLinksAccess } from '../../constants/liveChatLinksAccess';
 import styles from './liveChatLinks.module.scss';
 
@@ -32,6 +32,7 @@ const PAGE_SIZE = 20;
 export interface LiveChatLinksProps {
     /** `manage`: platform admin. `read`: Träger and Beratungsstellen admins copy only. */
     mode: Exclude<LiveChatLinksAccess, 'none'>;
+    tenantId?: number;
 }
 
 /**
@@ -40,10 +41,10 @@ export interface LiveChatLinksProps {
  * switches them on and off or deletes them; everyone else sees the active links
  * of their scope — the server limits the list — and copies them.
  */
-export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
+export const LiveChatLinks = ({ mode, tenantId }: LiveChatLinksProps) => {
     const canManage = mode === 'manage';
     const { t } = useTranslation();
-    const { data: topics = [], isLoading: isLoadingTopics } = useTenantTopics(true);
+    const { data: topics = [], isLoading: isLoadingTopics, isError: topicsFailed } = useLiveChatLinkTopics(tenantId);
     const [topicId, setTopicId] = useState<number>();
     // FloatingLabelSelect keeps its own value once cleared, so a new link remounts it.
     const [createdCount, setCreatedCount] = useState(0);
@@ -78,6 +79,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
             const response = await listTopicInviteLinks({
                 page: 0,
                 size,
+                tenantId,
                 // Without the kind filter the server also returns account invites.
                 linkKind: LINK_KIND,
                 // A copied link that no longer works is worse than none.
@@ -90,7 +92,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         } finally {
             setLoadingLinks(false);
         }
-    }, [canManage, size, t]);
+    }, [canManage, size, t, tenantId]);
 
     useEffect(() => {
         loadLinks();
@@ -105,17 +107,20 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
     };
 
     const onCreate = async () => {
-        if (topicId == null) {
+        if (topicId == null || topicsFailed) {
             return;
         }
         setSubmitting(true);
         try {
-            await createTopicInviteLink({
-                topicId,
-                linkKind: LINK_KIND,
-                chatType: CHAT_TYPE,
-                anonymity: DEFAULT_ANONYMITY,
-            });
+            await createTopicInviteLink(
+                {
+                    topicId,
+                    linkKind: LINK_KIND,
+                    chatType: CHAT_TYPE,
+                    anonymity: DEFAULT_ANONYMITY,
+                },
+                tenantId,
+            );
             snackbar.success(t('links.created', 'Link created'));
             setTopicId(undefined);
             setCreatedCount((count) => count + 1);
@@ -134,7 +139,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const { id } = linkToDeactivate;
         setLinkToDeactivate(null);
         try {
-            await deactivateTopicInviteLink(id);
+            await deactivateTopicInviteLink(id, tenantId);
             snackbar.success(t('links.deactivated', 'Link deactivated'));
         } catch {
             snackbar.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
@@ -145,7 +150,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
 
     const onReactivate = async ({ id }: TopicInviteLinkDTO) => {
         try {
-            await reactivateTopicInviteLink(id);
+            await reactivateTopicInviteLink(id, tenantId);
             snackbar.success(t('liveChatLinks.reactivated'));
         } catch {
             snackbar.error(t('liveChatLinks.reactivateFailed'));
@@ -160,7 +165,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const { id } = linkToDelete;
         setLinkToDelete(null);
         try {
-            await deleteTopicInviteLink(id);
+            await deleteTopicInviteLink(id, tenantId);
             snackbar.success(t('liveChatLinks.deleted'));
         } catch {
             snackbar.error(t('liveChatLinks.deleteFailed'));
@@ -196,7 +201,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
                         variant="filled"
                         className={styles.createButton}
                         icon={<AddIcon />}
-                        disabled={topicId == null}
+                        disabled={topicId == null || topicsFailed}
                         loading={submitting}
                         onClick={onCreate}
                     >
@@ -205,6 +210,12 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
                 </div>
             ) : (
                 <p className={styles.note}>{t('liveChatLinks.readOnly.hint')}</p>
+            )}
+
+            {canManage && topicsFailed && (
+                <p className={styles.note} role="alert">
+                    {t('liveChatLinks.topicsFailed')}
+                </p>
             )}
 
             {isEmpty && (
