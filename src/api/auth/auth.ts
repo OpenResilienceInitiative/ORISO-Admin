@@ -10,28 +10,29 @@ import { getSessionAccessToken, getSessionRefreshToken, hasSessionTokens, setSes
 
 import parseJwt from '../../utils/parseJWT';
 
+const readJwtExpiry = (token: string | undefined): number | undefined => {
+    const expiry = token ? parseJwt(token)?.exp : undefined;
+    return typeof expiry === 'number' && Number.isFinite(expiry * 1000) ? expiry : undefined;
+};
+
 const resolveExpiresInSeconds = (token: string | undefined, expiresIn?: number): number | undefined => {
     if (expiresIn) {
         return expiresIn;
     }
 
-    if (!token) {
-        return undefined;
-    }
-
-    try {
-        const payload = parseJwt(token);
-        if (typeof payload?.exp === 'number') {
-            return Math.max(payload.exp - Math.floor(Date.now() / 1000), 0);
-        }
-    } catch {
-        return undefined;
-    }
-
-    return undefined;
+    const expiry = readJwtExpiry(token);
+    return expiry === undefined ? undefined : Math.max(expiry - Math.floor(Date.now() / 1000), 0);
 };
 
 export const RENEW_BEFORE_EXPIRY_IN_MS = 10 * 1000; // seconds
+const MAX_BROWSER_TIMER_DELAY_MS = 2 ** 31 - 1;
+const boundedTimerDelay = (delay: number) => Math.min(MAX_BROWSER_TIMER_DELAY_MS, Math.max(0, delay));
+
+const getCurrentAccessExpiry = () => {
+    // Another tab can update shared metadata without replacing this tab's access token.
+    const expiry = readJwtExpiry(getSessionAccessToken());
+    return expiry === undefined ? getTokenExpiryFromLocalStorage().accessTokenValidUntilTime : expiry * 1000;
+};
 
 export const setTokens = async (
     access_token: string | undefined,
@@ -56,29 +57,14 @@ export const setTokens = async (
     });
 };
 
-const refreshTokens = (): Promise<void> => {
-    const currentTime = new Date().getTime();
-    const tokenExpiry = getTokenExpiryFromLocalStorage();
-
-    if (tokenExpiry.refreshTokenValidUntilTime <= currentTime - RENEW_BEFORE_EXPIRY_IN_MS) {
-        logout(true);
-        return Promise.resolve();
-    }
-
-    return refreshAuthTokensViaBff().then((response) =>
-        setTokens(response.access_token, response.expires_in, response.refresh_token, response.refresh_expires_in),
-    );
-};
-
 let inflightTokenRefresh: Promise<boolean> | null = null;
 
 /**
  * Refresh the access/refresh token via the BFF and repopulate the in-memory token
  * store. Concurrent callers share a single in-flight refresh. Resolves to `true`
  * when a fresh token was obtained, `false` otherwise (e.g. the refresh token is
- * gone or already expired). Unlike {@link refreshTokens} this never logs the user
- * out by itself — the caller decides what to do on failure. Used by fetchData to
- * self-heal a single 401 (lapsed/empty access token) before forcing a logout.
+ * gone or already expired). The caller decides what to do on failure. Used by
+ * the renewal timer and by fetchData to self-heal a single 401 before logout.
  */
 export const tryRefreshAccessToken = (): Promise<boolean> => {
     if (inflightTokenRefresh) {
@@ -111,31 +97,85 @@ export const tryRefreshAccessToken = (): Promise<boolean> => {
     return inflightTokenRefresh;
 };
 
-const startTimers = ({
-    accessTokenValidInMs,
-    refreshTokenValidInMs,
-}: {
-    accessTokenValidInMs: number;
-    refreshTokenValidInMs: number;
-}) => {
-    const accessTokenRefreshIntervalInMs = accessTokenValidInMs - RENEW_BEFORE_EXPIRY_IN_MS;
+let accessRefreshTimeout: number | undefined;
+let refreshExpiryTimeout: number | undefined;
 
-    let refreshInterval: number | undefined;
-    if (accessTokenRefreshIntervalInMs > 0) {
-        refreshInterval = window.setInterval(() => {
-            refreshTokens();
-        }, accessTokenRefreshIntervalInMs);
+const stopTimers = () => {
+    if (accessRefreshTimeout !== undefined) {
+        window.clearTimeout(accessRefreshTimeout);
+        accessRefreshTimeout = undefined;
+    }
+    if (refreshExpiryTimeout !== undefined) {
+        window.clearTimeout(refreshExpiryTimeout);
+        refreshExpiryTimeout = undefined;
+    }
+};
+
+const expireSession = () => {
+    stopTimers();
+    // Stop protected requests immediately. Keycloak logout still receives the refresh token.
+    setSessionTokens(null, getSessionRefreshToken());
+    logout(true);
+};
+
+const startRefreshExpiryTimer = (remainingMs: number) => {
+    if (!Number.isFinite(remainingMs)) {
+        return;
     }
 
-    if (refreshTokenValidInMs > accessTokenValidInMs) {
-        window.setTimeout(() => {
-            if (refreshInterval) {
-                window.clearInterval(refreshInterval);
-            }
+    const timeout = window.setTimeout(async () => {
+        if (inflightTokenRefresh) {
+            await inflightTokenRefresh;
+        }
+        if (refreshExpiryTimeout !== timeout) {
+            return;
+        }
 
-            logout(true);
-        }, refreshTokenValidInMs);
+        // A request or another Admin tab may have renewed the shared session.
+        const remaining = getTokenExpiryFromLocalStorage().refreshTokenValidUntilTime - Date.now();
+        if (remaining > 0) {
+            startRefreshExpiryTimer(remaining);
+        } else {
+            expireSession();
+        }
+    }, boundedTimerDelay(remainingMs));
+    refreshExpiryTimeout = timeout;
+};
+
+const getAccessRefreshDelay = () => getCurrentAccessExpiry() - Date.now() - RENEW_BEFORE_EXPIRY_IN_MS;
+
+const startAccessRefreshTimer = (afterRenewal = false) => {
+    const delay = getAccessRefreshDelay();
+    // Fall back to the request's 401 retry if even a freshly renewed token is nearly expired.
+    if (!Number.isFinite(delay) || (afterRenewal && delay < RENEW_BEFORE_EXPIRY_IN_MS)) {
+        return;
     }
+
+    const timeout = window.setTimeout(async () => {
+        if (accessRefreshTimeout !== timeout || !hasSessionTokens()) {
+            return;
+        }
+        if (getAccessRefreshDelay() > 0) {
+            startAccessRefreshTimer();
+            return;
+        }
+        if (!inflightTokenRefresh && getTokenExpiryFromLocalStorage().refreshTokenValidUntilTime <= Date.now()) {
+            expireSession();
+            return;
+        }
+
+        const renewed = await tryRefreshAccessToken();
+        if (renewed && accessRefreshTimeout === timeout) {
+            startAccessRefreshTimer(true);
+        }
+    }, boundedTimerDelay(delay));
+    accessRefreshTimeout = timeout;
+};
+
+const startTimers = (afterRenewal = false) => {
+    stopTimers();
+    startAccessRefreshTimer(afterRenewal);
+    startRefreshExpiryTimer(getTokenExpiryFromLocalStorage().refreshTokenValidUntilTime - Date.now());
 };
 
 export const bootstrapAuthSession = async (): Promise<boolean> => {
@@ -164,51 +204,32 @@ export const bootstrapAuthSession = async (): Promise<boolean> => {
     }
 };
 
-export const handleTokenRefresh = (): Promise<void> => {
-    return new Promise((resolve) => {
-        bootstrapAuthSession()
-            .then((hasSession) => {
-                if (!hasSession) {
-                    logout(true);
-                    resolve();
-                    return;
-                }
+export const handleTokenRefresh = async (): Promise<void> => {
+    try {
+        if (!(await bootstrapAuthSession())) {
+            logout(true);
+            return;
+        }
+        if (inflightTokenRefresh) {
+            await inflightTokenRefresh;
+        }
 
-                const currentTime = new Date().getTime();
-                const tokenExpiry = getTokenExpiryFromLocalStorage();
-                const accessTokenValidInMs = tokenExpiry.accessTokenValidUntilTime - currentTime;
-                const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
+        const expiry = getTokenExpiryFromLocalStorage();
+        const now = Date.now();
+        if (expiry.refreshTokenValidUntilTime <= now) {
+            expireSession();
+            return;
+        }
+        const accessExpired = getCurrentAccessExpiry() <= now;
+        if (accessExpired && !(await tryRefreshAccessToken())) {
+            logout(true);
+            return;
+        }
 
-                if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
-                    logout(true);
-                    resolve();
-                } else if (accessTokenValidInMs <= 0) {
-                    refreshTokens().then(() => {
-                        // refreshTokens() has just renewed the access token and written the
-                        // fresh expiry to localStorage. Re-read it here: the pre-refresh
-                        // accessTokenValidInMs is <= 0, so reusing it would compute a negative
-                        // refresh interval and arm no renewal timer at all (silent re-expiry).
-                        const refreshedTime = new Date().getTime();
-                        const refreshedExpiry = getTokenExpiryFromLocalStorage();
-                        startTimers({
-                            accessTokenValidInMs: refreshedExpiry.accessTokenValidUntilTime - refreshedTime,
-                            refreshTokenValidInMs: refreshedExpiry.refreshTokenValidUntilTime - refreshedTime,
-                        });
-                        resolve();
-                    });
-                } else {
-                    startTimers({
-                        accessTokenValidInMs,
-                        refreshTokenValidInMs,
-                    });
-                    resolve();
-                }
-            })
-            .catch(() => {
-                logout(true);
-                resolve();
-            });
-    });
+        startTimers(accessExpired);
+    } catch {
+        logout(true);
+    }
 };
 
 export const getAccessTokenForRequests = (): string => getSessionAccessToken();
