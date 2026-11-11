@@ -136,29 +136,32 @@ export const ChatMessageSettingsCard = ({
                     disabled={disabled}
                 />
                 {collapseEnabled && (
-                    <MuiNumberFormField
-                        name="collapseThreshold"
-                        label={t('globalSettings.chatMessages.collapse.label')}
-                        helpText={t(
-                            'globalSettings.chatMessages.collapse.thresholdHelp',
-                            CHAT_COLLAPSE_THRESHOLD_LIMITS,
-                        )}
-                        disabled={disabled}
-                        min={CHAT_COLLAPSE_THRESHOLD_LIMITS.min}
-                        inputProps={{ max: CHAT_COLLAPSE_THRESHOLD_LIMITS.max }}
-                        rules={[
-                            {
-                                required: true,
-                                type: 'number',
-                                min: CHAT_COLLAPSE_THRESHOLD_LIMITS.min,
-                                max: CHAT_COLLAPSE_THRESHOLD_LIMITS.max,
-                                message: t(
-                                    'globalSettings.chatMessages.collapse.invalid',
-                                    CHAT_COLLAPSE_THRESHOLD_LIMITS,
-                                ),
-                            },
-                        ]}
-                    />
+                    // The switch's help line sits right above; without room the field's floating label covers it.
+                    <div className={styles.threshold}>
+                        <MuiNumberFormField
+                            name="collapseThreshold"
+                            label={t('globalSettings.chatMessages.collapse.label')}
+                            helpText={t(
+                                'globalSettings.chatMessages.collapse.thresholdHelp',
+                                CHAT_COLLAPSE_THRESHOLD_LIMITS,
+                            )}
+                            disabled={disabled}
+                            min={CHAT_COLLAPSE_THRESHOLD_LIMITS.min}
+                            inputProps={{ max: CHAT_COLLAPSE_THRESHOLD_LIMITS.max }}
+                            rules={[
+                                {
+                                    required: true,
+                                    type: 'number',
+                                    min: CHAT_COLLAPSE_THRESHOLD_LIMITS.min,
+                                    max: CHAT_COLLAPSE_THRESHOLD_LIMITS.max,
+                                    message: t(
+                                        'globalSettings.chatMessages.collapse.invalid',
+                                        CHAT_COLLAPSE_THRESHOLD_LIMITS,
+                                    ),
+                                },
+                            ]}
+                        />
+                    </div>
                 )}
             </section>
         </CardEditable>

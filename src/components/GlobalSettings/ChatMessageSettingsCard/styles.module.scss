@@ -32,3 +32,8 @@
     flex-direction: column;
     gap: 8px;
 }
+
+// Room for the outlined field's floating label below the switch's help line.
+.threshold {
+    margin-top: 16px;
+}
