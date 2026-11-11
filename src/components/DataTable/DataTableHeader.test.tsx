@@ -60,6 +60,39 @@ describe('DataTableHeader', () => {
         expect(screen.queryByRole('button', { name: 'Auswahl' })).not.toBeInTheDocument();
     });
 
+    describe('sortable column with a non-text label', () => {
+        const ICON_COLUMNS = [
+            { key: 'status', label: <span aria-hidden="true">●</span>, ariaLabel: 'Status', sortable: true },
+        ];
+
+        it('names the sort button from ariaLabel', async () => {
+            const user = userEvent.setup();
+            const onSortChange = vi.fn();
+            render(
+                <DataTable
+                    header={<DataTableHeader columns={ICON_COLUMNS} sort={null} onSortChange={onSortChange} />}
+                />,
+            );
+
+            const button = screen.getByRole('button', { name: 'Status' });
+            const header = button.closest('th');
+            // The name sits on the button only, so it is not announced twice.
+            expect(header).not.toHaveAttribute('aria-label');
+            expect(header).toHaveAttribute('aria-sort', 'none');
+            await user.click(button);
+            expect(onSortChange).toHaveBeenCalledWith({ key: 'status', direction: 'asc' });
+        });
+
+        it('moves the name to the header when no sort handler is supplied', () => {
+            render(<DataTable header={<DataTableHeader columns={ICON_COLUMNS} sort={null} />} />);
+
+            const header = screen.getByRole('columnheader', { name: 'Status' });
+            expect(header).toHaveAttribute('aria-label', 'Status');
+            expect(header).not.toHaveAttribute('aria-sort');
+            expect(screen.queryByRole('button', { name: 'Status' })).not.toBeInTheDocument();
+        });
+    });
+
     it('does not render a button for non-sortable columns', () => {
         renderHeader(null);
         expect(screen.queryByRole('button', { name: 'Eingeladen am' })).not.toBeInTheDocument();
