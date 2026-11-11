@@ -27,6 +27,7 @@ import { useMeasuredListLayout } from '../../../hooks/useMeasuredListLayout';
 import type { BasicTenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
+import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../config/subdomainFeature';
 import styles from './tenantDataTable.module.scss';
 
 /** TenantService search rows carry the Träger admins' e-mails (AdminTenantDTO.adminEmails). */
@@ -195,7 +196,8 @@ export const TenantDataTable = ({
     const rowIds = rows.map((row) => row.id).join(',');
     useEffect(() => setOpenRows([]), [rowIds]);
 
-    // Subdomain and the maximum of allowed counsellors live in the details (expanded row, phone card).
+    // The maximum of allowed counsellors lives in the details (expanded row, phone card); the subdomain
+    // would too, but is hidden for now (SUBDOMAINS_TECHNICALLY_FINISHED).
     const columns: DataTableColumn[] = [
         { key: 'name', label: t('tenants.list.name'), sortable: true, width: tablet ? undefined : '28%' },
         { key: 'status', label: t('entityStatus.title'), width: 110 },
@@ -232,7 +234,7 @@ export const TenantDataTable = ({
                       [t('tenants.list.tenantId'), row.id],
                   ] as [string, ReactNode][])
                 : []),
-            [t('tenants.list.subdomain'), showSubdomain ? subdomainLink(row) : null],
+            [t('tenants.list.subdomain'), SUBDOMAINS_TECHNICALLY_FINISHED && showSubdomain ? subdomainLink(row) : null],
             [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
             [
                 t('tenants.list.adminEmails'),

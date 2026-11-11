@@ -15,6 +15,15 @@ const mocks = vi.hoisted(() => ({
     can: (() => true) as (action: string, resource: string) => boolean,
 }));
 
+// The subdomain switch is read through this mock, so each test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+
 const translations: Record<string, string> = {
     'tenants.list.empty': 'No tenants',
     'tenants.list.maxConsultants': 'Max. allowed consultants',
@@ -152,6 +161,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             multitenancyWithSingleDomainEnabled: true,
         };
         mocks.can = () => true;
+        subdomainFeature.finished = false;
         withTenants([]);
         setWidth(1440);
     });
@@ -209,12 +219,30 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(screen.queryByRole('button', { name: /^Created/ })).not.toBeInTheDocument();
     });
 
-    it('shows the subdomain in the details only when Träger have their own domain', () => {
+    it('keeps the subdomain out of the details (not technically finished), also with own domains', () => {
         withTenants([tenant()]);
         const { unmount } = render(<TenantsList />);
         fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
         expect(screen.getByText('Max. allowed consultants')).toBeInTheDocument();
         expect(screen.getByText('40')).toBeInTheDocument();
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        unmount();
+
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: '',
+            multitenancyWithSingleDomainEnabled: false,
+        };
+        render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the subdomain in the details only when Träger have their own domain, once subdomains are finished', () => {
+        subdomainFeature.finished = true;
+        withTenants([tenant()]);
+        const { unmount } = render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
         expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
         unmount();
 

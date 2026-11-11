@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -29,6 +29,18 @@ vi.mock('../../api/fetchData', async () => {
         ...actual,
         fetchData: mocks.fetchData,
     };
+});
+
+// The subdomain switch is read through this mock, so the flow states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+afterEach(() => {
+    subdomainFeature.finished = false;
 });
 
 // A failed mail preview raises its own persistent pop-up, which would hold the one-at-a-time
@@ -80,10 +92,24 @@ const createForwardClient = (mailNotSent = false): DpaForwardClient => ({
     })),
 });
 
+/**
+ * The subdomain is required and typed by the Träger only once subdomains are technically finished;
+ * until then the field is greyed out and holds a name derived from the organisation name.
+ */
+const typeSubdomainWhenEditable = async (user: ReturnType<typeof userEvent.setup>) => {
+    if (subdomainFeature.finished) {
+        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+    }
+};
+
+/** The subdomain the registration carries in the current mode. */
+const expectedSubdomain = () =>
+    subdomainFeature.finished ? 'beispiel' : expect.stringMatching(/^beispiel-e-v-\d{6}$/);
+
 const completeOrganisationStep = async (user: ReturnType<typeof userEvent.setup>) => {
     await screen.findByLabelText('tenantOnboarding.organisation.name');
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-    await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+    await typeSubdomainWhenEditable(user);
     await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
     await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
@@ -296,6 +322,31 @@ describe('TenantAdminOnboarding', () => {
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
+    it('registers the subdomain the Träger typed once subdomains are technically finished', async () => {
+        subdomainFeature.finished = true;
+        const client = createClient();
+        const user = userEvent.setup();
+        renderFlow(client);
+
+        await waitFor(() => expect(screen.getByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers'));
+        expect(screen.getByLabelText('tenantOnboarding.organisation.subdomain')).toBeEnabled();
+        await completeOrganisationStep(user);
+
+        expect(await screen.findByText('admin@tenant.example')).toBeInTheDocument();
+        await user.type(screen.getByLabelText('tenantOnboarding.account.password'), 'SecurePassword1!');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'SecurePassword1!');
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.account.register' }));
+
+        await waitFor(() =>
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({
+                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                }),
+            ),
+        );
+    });
+
     it('renders the published DPA text and walks organisation → account → 2FA → done', async () => {
         const client = createClient();
         const user = userEvent.setup();
@@ -324,7 +375,11 @@ describe('TenantAdminOnboarding', () => {
                 expect.objectContaining({
                     reservedTenantId: 21,
                     tenantIdReservationToken: 'reservation-token-21',
-                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                    organisation: {
+                        name: 'Beispiel e.V.',
+                        subdomain: expectedSubdomain(),
+                        address: 'Musterstraße 1',
+                    },
                     dpa: expect.objectContaining({ accepted: true, signerName: 'Erika Beispiel' }),
                 }),
             ),
@@ -349,7 +404,7 @@ describe('TenantAdminOnboarding', () => {
 
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await typeSubdomainWhenEditable(user);
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerName'), 'Erika Beispiel');
         await user.type(screen.getByLabelText('tenantOnboarding.dpa.signerEmail'), 'gf@tenant.example');
@@ -492,7 +547,7 @@ describe('TenantAdminOnboarding — incomplete submit is answered at the action'
     const fillEverythingBut = async (user: ReturnType<typeof userEvent.setup>, skip: 'address' | 'nothing') => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await typeSubdomainWhenEditable(user);
         if (skip !== 'address') {
             await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
         }
@@ -558,7 +613,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
     const fillOrganisation = async (user: ReturnType<typeof userEvent.setup>) => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await typeSubdomainWhenEditable(user);
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     };
 
@@ -595,7 +650,7 @@ describe('TenantAdminOnboarding — an unavailable DPA cannot be accepted', () =
         // Fill only the organisation data — no signer fields, no consent.
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await typeSubdomainWhenEditable(user);
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
 
         // The second path is available without completing the signature form.
@@ -851,7 +906,7 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
 
         expect(organisation).toEqual({
             name: 'Beispiel e.V.',
-            subdomain: 'beispiel',
+            subdomain: expectedSubdomain(),
             address: 'Musterstraße 1',
             legalName: 'Beispiel Verband e.V.',
             contactEmail: 'kontakt@beispiel.example',
@@ -866,7 +921,7 @@ describe('TenantAdminOnboarding — Träger sender block (legal name and contact
 
         expect(organisation).toEqual({
             name: 'Beispiel e.V.',
-            subdomain: 'beispiel',
+            subdomain: expectedSubdomain(),
             address: 'Musterstraße 1',
             contactPhone: '+49 30 123456',
         });
@@ -877,7 +932,7 @@ describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)
     const fillOrganisationOnly = async (user: ReturnType<typeof userEvent.setup>) => {
         await screen.findByLabelText('tenantOnboarding.organisation.name');
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.name'), 'Beispiel e.V.');
-        await user.type(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), 'beispiel');
+        await typeSubdomainWhenEditable(user);
         await user.type(screen.getByLabelText('tenantOnboarding.organisation.address'), 'Musterstraße 1');
     };
 
@@ -940,7 +995,11 @@ describe('TenantAdminOnboarding — reopening the invite after a forward (#1065)
             expect(client.registerTenantAdmin).toHaveBeenCalledWith(
                 'raw-token',
                 expect.objectContaining({
-                    organisation: { name: 'Beispiel e.V.', subdomain: 'beispiel', address: 'Musterstraße 1' },
+                    organisation: {
+                        name: 'Beispiel e.V.',
+                        subdomain: expectedSubdomain(),
+                        address: 'Musterstraße 1',
+                    },
                     dpa: expect.objectContaining({ accepted: false }),
                 }),
             ),

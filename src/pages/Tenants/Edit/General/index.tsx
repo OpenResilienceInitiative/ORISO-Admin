@@ -26,6 +26,7 @@ import { M3Button } from '../../../../components/M3Button';
 import { orisoMuiTheme } from '../../../../theme/orisoMuiTheme';
 import { MuiFormField, MuiPasswordFormField } from '../../../../components/mui/MuiFormField';
 import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
+import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../../config/subdomainFeature';
 import { TraegerFieldSections } from './TraegerFieldSections';
 import { TenantInformationCard } from './TenantInformationCard';
 
@@ -86,12 +87,15 @@ export const GeneralTenantSettings = () => {
     };
 
     const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
+    // Creating: no subdomain field while subdomains are not technically finished. The save derives an
+    // internal one from the name (useAddOrUpdateTenant). Editing keeps its read-only field.
+    const shouldShowSubdomainOnCreate = SUBDOMAINS_TECHNICALLY_FINISHED && shouldShowSubdomainField;
 
     const saveErrorHandler = createTenantSaveErrorHandler({
         t,
         setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
         notifyError: (message) => snackbar.error({ message }),
-        canShowSubdomainError: shouldShowSubdomainField,
+        canShowSubdomainError: isEditing ? shouldShowSubdomainField : shouldShowSubdomainOnCreate,
     });
 
     const { mutate: update } = useAddOrUpdateTenant({
@@ -224,7 +228,7 @@ export const GeneralTenantSettings = () => {
                         >
                             <TraegerFieldSections
                                 subdomain={{
-                                    visible: shouldShowSubdomainField,
+                                    visible: shouldShowSubdomainOnCreate,
                                     editable: true,
                                     rules: [subdomainFormatRule],
                                 }}

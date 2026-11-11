@@ -109,7 +109,7 @@ const settle = async (canvasElement: HTMLElement, layout: Layout) => {
 
 /**
  * 1440 px viewport: 1144 px content next to the rail; status, ID, admins' e-mail and both dates per
- * row. Subdomain and the maximum of counsellors are in the details.
+ * row. The maximum of counsellors is in the details; the subdomain is hidden (not technically finished).
  */
 export const Desktop1440: Story = {
     play: async (context) => {
@@ -123,14 +123,15 @@ export const Desktop1440: Story = {
         await expect(widths[0]).toBe(Math.max(...widths));
         await userEvent.click(canvas.getByRole('button', { name: 'Details zu Caritas Nord anzeigen' }));
         await expect(canvas.getByRole('link', { name: 'stellvertretung@nord.example' })).toBeVisible();
-        await expect(canvas.getByRole('link', { name: /^nord\./ })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /^nord\./ })).toBeNull();
+        await expect(canvas.queryByText('Subdomain')).toBeNull();
         await expect(canvas.getByText('Max. erlaubte Berater')).toBeVisible();
         await expect(canvas.getByText('40')).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Caritas Nord löschen' })).toBeDisabled();
     },
 };
 
-/** Single-domain installation: the details show the maximum of counsellors but no subdomain. */
+/** Single-domain installation: the details show the maximum of counsellors, still no subdomain. */
 export const SingleDomainDetails: Story = {
     args: { showSubdomain: false },
     play: async (context) => {
