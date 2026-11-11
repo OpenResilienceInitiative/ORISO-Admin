@@ -17,7 +17,13 @@
 
 .leading {
     min-width: 0;
-    flex: 1 1 240px;
+    // Small basis: on a 360px phone the search and the "Filter" button still share one row;
+    // only the trailing actions wrap below them.
+    flex: 1 1 120px;
+
+    > * {
+        max-width: 100%;
+    }
 }
 
 .trailing {
