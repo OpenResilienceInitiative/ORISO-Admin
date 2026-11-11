@@ -1,12 +1,12 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../../../i18n';
 import type { RecipientScopePolicy } from '../../../../../types/permissionPolicy';
 import { RecipientScopeControl } from './RecipientScopeControl';
 
 // Seam 2: what an admin sees and can do on the "Internal group chats" tile — the three options with
-// their sentence, the Requirement/Recommendation switch (platform only), the locked Träger view,
+// their sentence, the Requirement/Adjustable switch (platform only), the locked Träger view,
 // and a failed save that keeps the edit. Strings are asserted as literals (DE + EN).
 
 afterEach(cleanup);
@@ -46,8 +46,8 @@ describe('options', () => {
         expect(radio(/Platform-wide/)).toHaveAccessibleDescription(
             'Counsellors can pick any colleague on the platform.',
         );
-        expect(radio(/Träger-wide/)).toHaveAccessibleDescription(
-            'Counsellors can pick colleagues of their own Träger, from all of its counselling centres.',
+        expect(radio(/Provider-wide/)).toHaveAccessibleDescription(
+            'Counsellors can pick colleagues of their own provider, from all of its counselling centres.',
         );
         expect(radio(/Counselling centre only/)).toHaveAccessibleDescription(
             'Counsellors can only pick colleagues from their own counselling centre.',
@@ -76,7 +76,7 @@ describe('options', () => {
     it('does not claim inheritance for a value the Träger set itself', () => {
         setup({ level: 'tenant', policy: { value: 'PLATFORM', mode: 'SUGGESTED', inherited: false } });
         expect(screen.queryByText('Inherited from the platform')).not.toBeInTheDocument();
-        expect(screen.getByText('Set by this Träger')).toBeInTheDocument();
+        expect(screen.getByText('Set by this provider')).toBeInTheDocument();
     });
 });
 
@@ -88,7 +88,7 @@ describe('backend without the field', () => {
             setup({ level, policy: undefined });
             screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
             expect(radio(/Counselling centre only/)).toBeChecked();
-            expect(screen.getByText('Available after the next backend update.')).toBeInTheDocument();
+            expect(screen.getByText('This setting is not available yet.')).toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
             expect(screen.queryByRole('button', { name: 'Requirement' })).not.toBeInTheDocument();
             expect(screen.queryByText('Inherited from the platform')).not.toBeInTheDocument();
@@ -100,7 +100,7 @@ describe('backend without the field', () => {
         await i18n.changeLanguage('de');
         try {
             setup({ policy: undefined });
-            expect(screen.getByText('Verfügbar nach dem nächsten Backend-Update.')).toBeInTheDocument();
+            expect(screen.getByText('Diese Einstellung ist noch nicht verfügbar.')).toBeInTheDocument();
         } finally {
             await i18n.changeLanguage('en');
         }
@@ -108,18 +108,18 @@ describe('backend without the field', () => {
 });
 
 describe('platform admin', () => {
-    it('saves the picked scope with the recommendation mode by default', async () => {
+    it('saves the picked scope with the adjustable mode by default', async () => {
         const { user, onSave } = setup();
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
         expect(onSave).toHaveBeenCalledWith({ value: 'PLATFORM', mode: 'SUGGESTED' });
     });
 
-    it('can make the scope a requirement through the Requirement/Recommendation switch', async () => {
+    it('can make the scope a requirement through the Requirement/Adjustable switch', async () => {
         const { user, onSave } = setup({ policy: { value: 'TENANT', mode: 'SUGGESTED', inherited: false } });
-        const recommendation = screen.getByRole('button', { name: 'Recommendation' });
+        const adjustable = screen.getByRole('button', { name: 'Adjustable' });
         const requirement = screen.getByRole('button', { name: 'Requirement' });
-        expect(recommendation).toHaveAttribute('aria-pressed', 'true');
+        expect(adjustable).toHaveAttribute('aria-pressed', 'true');
         await user.click(requirement);
         expect(requirement).toHaveAttribute('aria-pressed', 'true');
         await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -133,20 +133,20 @@ describe('platform admin', () => {
 });
 
 describe('Träger admin', () => {
-    it('has no Requirement/Recommendation switch and saves as a recommendation', async () => {
+    it('has no Requirement/Adjustable switch and saves as adjustable', async () => {
         const { user, onSave } = setup({
             level: 'tenant',
             policy: { value: 'AGENCY', mode: 'SUGGESTED', inherited: true },
         });
         expect(screen.queryByRole('button', { name: 'Requirement' })).not.toBeInTheDocument();
-        await user.click(radio(/Träger-wide/));
+        await user.click(radio(/Provider-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
         expect(onSave).toHaveBeenCalledWith({ value: 'TENANT', mode: 'SUGGESTED' });
     });
 
     it('sees the choice locked when the platform made it a requirement', () => {
         setup({ level: 'tenant', policy: { value: 'TENANT', mode: 'ENFORCED', inherited: true } });
-        expect(radio(/Träger-wide/)).toBeChecked();
+        expect(radio(/Provider-wide/)).toBeChecked();
         screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
         expect(
@@ -173,14 +173,14 @@ describe('saving', () => {
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent(
             'Not saved. The previous setting still applies; your choice stays here until you try again or reload the page.',
         );
         expect(radio(/Platform-wide/)).toBeChecked();
         expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
 
         await user.click(screen.getByRole('button', { name: 'Save' }));
-        await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument());
         expect(onSave).toHaveBeenCalledTimes(2);
     });
 
@@ -197,20 +197,20 @@ describe('saving', () => {
         const user = userEvent.setup();
         render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
 
-        await user.click(radio(/Träger-wide/));
+        await user.click(radio(/Provider-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
         screen.getAllByRole('radio').forEach((option) => expect(option).toBeDisabled());
         expect(screen.getByRole('button', { name: 'Requirement' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Recommendation' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Adjustable' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-        expect(radio(/Träger-wide/)).toBeChecked();
+        expect(radio(/Provider-wide/)).toBeChecked();
         expect(onSave).toHaveBeenCalledTimes(1);
 
         finish();
         await waitFor(() => expect(radio(/Platform-wide/)).toBeEnabled());
         expect(screen.getByRole('button', { name: 'Requirement' })).toBeEnabled();
-        expect(radio(/Träger-wide/)).toBeChecked();
+        expect(radio(/Provider-wide/)).toBeChecked();
     });
 
     it('releases the controls after a failed save and keeps the edit', async () => {
@@ -221,7 +221,7 @@ describe('saving', () => {
         await user.click(radio(/Platform-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
 
-        expect(await screen.findByRole('alert')).toBeInTheDocument();
+        expect(await screen.findByTestId('snackbar')).toBeInTheDocument();
         screen.getAllByRole('radio').forEach((option) => expect(option).toBeEnabled());
         expect(radio(/Platform-wide/)).toBeChecked();
         // Focus returns to Save, so a keyboard user can retry without searching for their place.
@@ -239,7 +239,7 @@ describe('saving', () => {
         const user = userEvent.setup();
         const { rerender } = render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
 
-        await user.click(radio(/Träger-wide/));
+        await user.click(radio(/Provider-wide/));
         await user.click(screen.getByRole('button', { name: 'Save' }));
         // The server answered: the policy now equals the draft, so Save is no longer needed.
         rerender(
@@ -251,7 +251,7 @@ describe('saving', () => {
         );
         finish();
 
-        await waitFor(() => expect(radio(/Träger-wide/)).toHaveFocus());
+        await waitFor(() => expect(radio(/Provider-wide/)).toHaveFocus());
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     });
 
@@ -259,7 +259,7 @@ describe('saving', () => {
         const user = userEvent.setup();
         const onSave = vi.fn().mockResolvedValue(undefined);
         const { rerender } = render(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={onSave} />);
-        await user.click(radio(/Träger-wide/));
+        await user.click(radio(/Provider-wide/));
         rerender(
             <RecipientScopeControl
                 level="platform"
@@ -267,7 +267,7 @@ describe('saving', () => {
                 onSave={onSave}
             />,
         );
-        expect(radio(/Träger-wide/)).toBeChecked();
+        expect(radio(/Provider-wide/)).toBeChecked();
         expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     });
 });

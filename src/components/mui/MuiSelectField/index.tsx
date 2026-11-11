@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { KeyboardArrowDownIcon } from '../../CustomIcons/EditorIcons';
 import { muiFieldSx } from '../fieldSx';
 import { flattenChildren } from '../flattenChildren';
 
@@ -113,6 +114,7 @@ const MuiSelectControl = ({
     className,
     confirmEnable,
 }: MuiSelectControlProps) => {
+    const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
@@ -180,6 +182,7 @@ const MuiSelectControl = ({
             multiple={isMulti}
             disableCloseOnSelect={isMulti}
             options={resolvedOptions}
+            popupIcon={<KeyboardArrowDownIcon />}
             value={selected as any}
             onChange={handleChange}
             onBlur={onBlur}
@@ -217,7 +220,9 @@ const MuiSelectControl = ({
                             ...params.slotProps.input,
                             endAdornment: (
                                 <>
-                                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                                    {loading ? (
+                                        <CircularProgress aria-label={t('loading')} color="inherit" size={18} />
+                                    ) : null}
                                     {params.slotProps.input.endAdornment}
                                 </>
                             ),

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { buildListQueryString, inviteLinkHeaders, normalizeListResponse } from './inviteLinkApiShared';
 
 const mocks = vi.hoisted(() => ({
@@ -33,6 +33,15 @@ describe('invite link API shared helpers', () => {
 
     it('builds pagination query strings', () => {
         expect(buildListQueryString(2, 50)).toBe('page=2&size=50');
+    });
+
+    it('adds the server-side filters it is given and skips empty ones', () => {
+        expect(buildListQueryString(0, 20, { linkKind: 'EXTERNAL_INBOUND', status: 'ACTIVE' })).toBe(
+            'page=0&size=20&linkKind=EXTERNAL_INBOUND&status=ACTIVE',
+        );
+        expect(buildListQueryString(0, 20, { linkKind: 'EXTERNAL_INBOUND', status: undefined })).toBe(
+            'page=0&size=20&linkKind=EXTERNAL_INBOUND',
+        );
     });
 
     it('normalizes array responses into paged responses', () => {

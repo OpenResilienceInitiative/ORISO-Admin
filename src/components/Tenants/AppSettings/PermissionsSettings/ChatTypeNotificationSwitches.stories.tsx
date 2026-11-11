@@ -25,10 +25,9 @@ const TENANT_PUBLIC = '*/service/tenant/public/*';
 const TENANT_PUBLIC_BY_ID = '*/service/tenant/:id';
 const HANDOVER_REASON_POLICIES = '*/service/users/case-handover/reason-policies';
 
-// Stored like on dev: TenantService defaults, live-chat email off.
+// Stored like on dev: TenantService defaults.
 const STORED: Record<string, Policy> = {
     featureAskerEmailAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
-    featureAskerEmailLiveChatEnabled: { value: false, mode: 'SUGGESTED' },
     featureAskerEmailSelfHelpEnabled: { value: true, mode: 'SUGGESTED' },
     featureAskerBrowserAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
     featureAskerBrowserLiveChatEnabled: { value: true, mode: 'SUGGESTED' },
@@ -65,7 +64,8 @@ const View = ({ excludeCardKeys }: { excludeCardKeys?: ChatTypeCardKey[] }): Rea
 );
 
 const meta = {
-    title: 'Organisms/Permissions/ChatTypeNotificationSwitches',
+    title: 'Settings/Einstellungen/Funktionszugriff/ChatTypeNotificationSwitches',
+    id: 'organisms-permissions-chattypenotificationswitches',
     component: View,
     parameters: { layout: 'fullscreen' },
     decorators: [
@@ -84,7 +84,14 @@ const literal = (key: string) => new RegExp(t(key).replace(/[.*+?^${}()|[\]\\]/g
 const trigger = (root: HTMLElement, field: string) => {
     const wrapper = root.querySelector<HTMLElement>(`[data-feature-policy="${field}"]`);
     if (!wrapper) throw new Error(`no control for ${field}`);
-    return within(wrapper).getByRole('button', { name: literal('tenants.permissions.policy.openMenu') });
+    // The round on/off button; the requirement lock is a second button of the same setting.
+    return within(wrapper).getByRole('button', {
+        name: new RegExp(
+            `: (${literal('tenants.permissions.policy.activated').source}|${
+                literal('tenants.permissions.policy.deactivated').source
+            })`,
+        ),
+    });
 };
 const tile = async (root: HTMLElement, key: ChatTypeCardKey) => {
     await waitFor(() => expect(root.querySelector(`[data-testid="chat-type-card-${key}"]`)).not.toBeNull(), {
@@ -93,16 +100,12 @@ const tile = async (root: HTMLElement, key: ChatTypeCardKey) => {
     return root.querySelector(`[data-testid="chat-type-card-${key}"]`) as HTMLElement;
 };
 
-/** Träger admin: every type tile carries its own switches; live-chat email saves and stays on. */
+/** Träger admin: every type tile carries its own switches; live chat has no e-mail switch. */
 export const SwitchesOnTiles: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const liveChat = await tile(canvasElement, 'liveChat');
-        await waitFor(() =>
-            expect(trigger(liveChat, 'featureAskerEmailLiveChatEnabled')).toHaveAccessibleName(
-                literal('tenants.permissions.policy.deactivationSuggested'),
-            ),
-        );
+        await expect(liveChat.querySelector('[data-feature-policy*="AskerEmail"]')).toBeNull();
         const [counselling, circles] = await Promise.all([
             tile(canvasElement, 'oneOnOne'),
             tile(canvasElement, 'group'),
@@ -113,14 +116,11 @@ export const SwitchesOnTiles: Story = {
         await expect(trigger(circles, 'featureAskerBrowserSelfHelpEnabled')).toBeEnabled();
         await expect(within(canvasElement).queryByText(t('tenants.permissions.asker.channels.title'))).toBeNull();
 
-        await userEvent.click(trigger(liveChat, 'featureAskerEmailLiveChatEnabled'));
-        await userEvent.click(
-            within(document.body).getByRole('button', { name: t('tenants.permissions.policy.activationSuggested') }),
-        );
-        await waitFor(() => expect(writes.at(-1)?.policies.featureAskerEmailLiveChatEnabled?.value).toBe(true));
+        await userEvent.click(trigger(circles, 'featureAskerEmailSelfHelpEnabled'));
+        await waitFor(() => expect(writes.at(-1)?.policies.featureAskerEmailSelfHelpEnabled?.value).toBe(false));
         await waitFor(() =>
-            expect(trigger(liveChat, 'featureAskerEmailLiveChatEnabled')).toHaveAccessibleName(
-                literal('tenants.permissions.policy.activationSuggested'),
+            expect(trigger(circles, 'featureAskerEmailSelfHelpEnabled')).toHaveAccessibleName(
+                new RegExp(`: ${literal('tenants.permissions.policy.deactivated').source}`),
             ),
         );
     },
@@ -134,7 +134,7 @@ export const InternalGroupChatsSave: Story = {
         await expect(within(card).getByText(t('tenants.permissions.card.notifications.consultantTitle'))).toBeTruthy();
         await waitFor(() =>
             expect(trigger(card, 'featureConsultantEmailInternalGroupEnabled')).toHaveAccessibleName(
-                literal('tenants.permissions.policy.activationSuggested'),
+                new RegExp(`: ${literal('tenants.permissions.policy.activated').source}`),
             ),
         );
         // Open product question: the browser switch has no effect yet, so it cannot be changed.
@@ -142,9 +142,6 @@ export const InternalGroupChatsSave: Story = {
         await expect(within(card).getByText(t('tenants.permissions.card.notifications.notYetEffective'))).toBeTruthy();
 
         await userEvent.click(trigger(card, 'featureConsultantEmailInternalGroupEnabled'));
-        await userEvent.click(
-            within(document.body).getByRole('button', { name: t('tenants.permissions.policy.deactivationSuggested') }),
-        );
         await waitFor(() =>
             expect(writes.at(-1)?.policies.featureConsultantEmailInternalGroupEnabled).toEqual({
                 value: false,
@@ -153,7 +150,7 @@ export const InternalGroupChatsSave: Story = {
         );
         await waitFor(() =>
             expect(trigger(card, 'featureConsultantEmailInternalGroupEnabled')).toHaveAccessibleName(
-                literal('tenants.permissions.policy.deactivationSuggested'),
+                new RegExp(`: ${literal('tenants.permissions.policy.deactivated').source}`),
             ),
         );
     },
@@ -169,7 +166,11 @@ export const HiddenLiveChatTile: Story = {
         await expect(await canvas.findByText(t('tenants.permissions.asker.channels.title'))).toBeTruthy();
         await expect(
             canvas.getByRole('button', {
-                name: (name) => name.startsWith(`${t('tenants.permissions.asker.channels.emailLiveChat')}:`),
+                // The round on/off button; the requirement lock of the same setting shares the label.
+                name: (name) =>
+                    name.startsWith(`${t('tenants.permissions.asker.channels.browserLiveChat')}: `) &&
+                    (name.includes(`: ${t('tenants.permissions.policy.activated')}`) ||
+                        name.includes(`: ${t('tenants.permissions.policy.deactivated')}`)),
             }),
         ).toBeEnabled();
     },

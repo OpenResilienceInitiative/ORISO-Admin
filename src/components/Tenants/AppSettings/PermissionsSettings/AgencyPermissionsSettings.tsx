@@ -1,6 +1,8 @@
-import { notification } from 'antd';
+import type { ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
+import { Notify } from '../../../Notify';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
@@ -14,11 +16,14 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 
 type AgencyPermissionsSettingsProps = {
     agencyId: string;
     excludeCardKeys?: Array<ChatTypeCardKey>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
 };
 
 /**
@@ -27,18 +32,22 @@ type AgencyPermissionsSettingsProps = {
  * response) only constrain the form — forced-off and enforced-on fields render disabled, never
  * hidden — and are stripped from every save payload at the API layer.
  */
-export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyPermissionsSettingsProps) => {
+export const AgencyPermissionsSettings = ({
+    agencyId,
+    excludeCardKeys,
+    liveChatLinks,
+}: AgencyPermissionsSettingsProps) => {
     const { t } = useTranslation();
     const { data: agencyData, isLoading, isPending } = useAgencyData({ id: agencyId });
     const { mutateAsync: updateAgency } = useAgencyUpdate(agencyId);
     // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
     // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
     const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
-    const { data: traegerPolicies, status: traegerPoliciesQueryStatus } = useTenantPermissionPolicies(
-        traegerId,
-        Boolean(traegerId),
-        { silent: true },
-    );
+    const {
+        data: traegerPolicies,
+        status: traegerPoliciesQueryStatus,
+        refetch: refetchTraegerPolicies,
+    } = useTenantPermissionPolicies(traegerId, Boolean(traegerId), { silent: true });
     let traegerPoliciesStatus = traegerPoliciesQueryStatus;
     if (isPending) traegerPoliciesStatus = 'pending';
     else if (!traegerId) traegerPoliciesStatus = 'error';
@@ -79,10 +88,10 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
             try {
                 // A field patch lets the agency mutation queue merge into its latest confirmed response.
                 const saved = await updateAgency({ settings: { [field]: policy.value } });
-                notification.success({ message: t('message.agency.updated'), duration: 3 });
+                snackbar.success({ message: t('message.agency.updated'), duration: 3 });
                 return agencyPermissionPolicies(saved.settings);
             } catch (error) {
-                notification.error({ message: t('tenants.permissions.policy.saveError') });
+                snackbar.error({ message: t('tenants.permissions.policy.saveError') });
                 throw error;
             }
         },
@@ -102,24 +111,39 @@ export const AgencyPermissionsSettings = ({ agencyId, excludeCardKeys }: AgencyP
     );
 
     return (
-        <PermissionsSettingsView
-            tenantId={`agency-${agencyId}`}
-            caseHandoverTenantId={agencyData?.tenantId}
-            caseHandoverTenantPending={isPending}
-            channelsSetOnTraeger
-            traegerChannelPolicies={traegerPolicies?.policies}
-            traegerChannelPoliciesStatus={traegerPoliciesStatus}
-            traegerDirectInvitePolicies={traegerPolicies?.policies}
-            excludeCardKeys={excludeCardKeys}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            formStateKey={formStateKey}
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            policyLevel="agency"
-            permissionPolicies={policies}
-            onPolicyChange={changePolicy}
-            pendingPolicyFields={pendingFields}
-        />
+        <>
+            {/* One outage, one pop-up: the tiles that depend on the Träger's values each say so in quiet text. */}
+            {traegerId && traegerPoliciesQueryStatus === 'error' && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.permissions')}
+                    causeKey={`agency:${agencyId}:traeger-policies`}
+                    jump={`[${TRAEGER_UNAVAILABLE_ATTRIBUTE}]`}
+                    actions={[{ label: t('notify.retry'), onClick: () => refetchTraegerPolicies() }]}
+                >
+                    {t('tenants.permissions.traegerUnavailable')}
+                </Notify>
+            )}
+            <PermissionsSettingsView
+                tenantId={`agency-${agencyId}`}
+                caseHandoverTenantId={agencyData?.tenantId}
+                caseHandoverTenantPending={isPending}
+                channelsSetOnTraeger
+                traegerChannelPolicies={traegerPolicies?.policies}
+                traegerChannelPoliciesStatus={traegerPoliciesStatus}
+                traegerDirectInvitePolicies={traegerPolicies?.policies}
+                excludeCardKeys={excludeCardKeys}
+                liveChatLinks={liveChatLinks}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                formStateKey={formStateKey}
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                policyLevel="agency"
+                permissionPolicies={policies}
+                onPolicyChange={changePolicy}
+                pendingPolicyFields={pendingFields}
+            />
+        </>
     );
 };

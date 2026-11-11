@@ -59,10 +59,5 @@ export interface AppConfigInterface {
     globalSmtpPassword?: string;
     globalSmtpFrom?: string;
     globalSmtpEmailThemeColor?: string;
-    tenantAdminControls?: {
-        allowedPermissionToggles?: {
-            appearance?: boolean;
-        };
-    };
     serverSettingsMeta?: Record<string, { readOnly?: boolean }>;
 }

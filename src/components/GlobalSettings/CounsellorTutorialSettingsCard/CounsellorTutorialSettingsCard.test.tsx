@@ -1,7 +1,8 @@
 import '@ant-design/v5-patch-for-react-19';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { CounsellorTutorialSettingsCard, CounsellorTutorialSettingsCardContainer } from '.';
 
@@ -13,10 +14,6 @@ const state = vi.hoisted(() => ({
     mutation: { isPending: false, variables: undefined as unknown },
     messageError: vi.fn(),
 }));
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return { ...actual, message: { ...actual.message, error: state.messageError } };
-});
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin }) }));
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: state.settings, setManualSettings: state.setManualSettings }),
@@ -27,6 +24,7 @@ vi.mock('../../../hooks/useSettingsAdminMutation.hook', () => ({
 const status = (label: string) => within(screen.getByText(label).closest('div')!).getByRole('definition');
 
 beforeEach(async () => {
+    vi.spyOn(snackbar, 'error').mockImplementation(state.messageError as never);
     state.settings = {};
     state.mutateSettings.mockClear();
     state.setManualSettings.mockClear();
@@ -52,7 +50,7 @@ describe('Counsellor tutorial settings preview', () => {
                 'checked',
                 toursEnabled,
             );
-            expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten' })).toHaveProperty(
+            expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toHaveProperty(
                 'checked',
                 practiceEnabled,
             );
@@ -71,7 +69,7 @@ describe('Counsellor tutorial settings preview', () => {
         rerender(<CounsellorTutorialSettingsCard toursEnabled practiceEnabled />);
         expect(status('Rundgänge')).toHaveTextContent('Verfügbar');
         expect(screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' })).toBeChecked();
-        expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten' })).toBeChecked();
+        expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toBeChecked();
     });
 
     it('uses the exact public master key rather than the legacy Admin spelling', () => {
@@ -90,7 +88,10 @@ describe('Counsellor tutorial settings preview', () => {
         state.settings = { enableWalkthrough: true, releaseToggles: { enablePracticeArea: flag } };
         render(<CounsellorTutorialSettingsCardContainer />);
         expect(status('Übungsbereich')).toHaveTextContent(expectedStatus);
-        expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten' })).toHaveProperty('checked', checked);
+        expect(screen.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' })).toHaveProperty(
+            'checked',
+            checked,
+        );
     });
 
     it('does not mutate server or local settings when the unavailable controls are clicked or used by keyboard', async () => {
@@ -102,7 +103,7 @@ describe('Counsellor tutorial settings preview', () => {
         expect(controls).toHaveLength(3);
         const before = controls.map((control) => (control as HTMLInputElement).checked);
         controls.forEach((control) => expect(control).toBeDisabled());
-        const practice = screen.getByRole('switch', { name: 'Übungsbereich anbieten' });
+        const practice = screen.getByRole('switch', { name: 'Übungsbereich anbieten (kommt bald)' });
         await userEvent.click(practice.closest('label')!);
         practice.focus();
         await userEvent.keyboard(' {Enter}');
@@ -110,7 +111,10 @@ describe('Counsellor tutorial settings preview', () => {
         expect(controls.map((control) => (control as HTMLInputElement).checked)).toEqual(before);
         expect(state.mutateSettings).not.toHaveBeenCalled();
         expect(state.setManualSettings).not.toHaveBeenCalled();
-        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+        // The info button is the only button: no edit, save or other control may appear.
+        const buttons = screen.getAllByRole('button');
+        expect(buttons).toHaveLength(1);
+        expect(buttons[0]).toHaveAccessibleName(/Erklärung öffnen/);
         expect(screen.getByText('Kommt bald')).toBeVisible();
     });
 
@@ -162,7 +166,7 @@ describe('Counsellor tutorial settings preview', () => {
         render(<CounsellorTutorialSettingsCardContainer />);
         const tours = screen.getByRole('switch', { name: 'Rundgänge in Hilfe anzeigen' });
         expect(tours).toBeChecked();
-        expect(tours).toBeDisabled();
+        expect(tours).toHaveAttribute('aria-disabled', 'true');
         await userEvent.click(tours.closest('label')!);
         expect(state.mutateSettings).not.toHaveBeenCalled();
     });

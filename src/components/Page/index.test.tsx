@@ -1,28 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { expect, it, vi } from 'vite-plus/test';
 import { MemoryRouter } from 'react-router-dom';
 import { Page } from './index';
-import { useRegisterCardDeckNav } from '../CardDeck/CardDeckNavContext';
-
-const scrollCards = vi.fn();
-const cardNav = {
-    controlsId: 'cards',
-    canScrollBackward: false,
-    canScrollForward: true,
-    previousLabel: 'Previous card',
-    nextLabel: 'Next card',
-    scroll: scrollCards,
-};
-const CardNav = () => {
-    useRegisterCardDeckNav('cards', cardNav);
-    return null;
-};
 
 vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: () => true }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('antd', () => ({ Spin: () => <span>Loading</span> }));
 // Icon rendering is covered by Storybook; avoid loading the entire MUI icon
-// catalog while exercising the header's scroll behavior in jsdom.
+// catalog while exercising the header in jsdom.
 vi.mock('@mui/icons-material', () => {
     const Icon = () => <svg />;
     return {
@@ -39,81 +24,7 @@ vi.mock('@mui/icons-material', () => {
     };
 });
 
-beforeEach(() => {
-    scrollCards.mockClear();
-    Element.prototype.scrollIntoView = vi.fn();
-    Element.prototype.scrollBy = vi.fn();
-});
-
-const renderTabsWithDeck = (Deck: () => null) =>
-    render(
-        <MemoryRouter>
-            <Page>
-                <Page.Title
-                    tabs={[
-                        { to: '/one', titleKey: 'One' },
-                        { to: '/two', titleKey: 'Two' },
-                    ]}
-                />
-                <Deck />
-            </Page>
-        </MemoryRouter>,
-    );
-
-const overflowTabs = (container: HTMLElement) => {
-    const row = container.querySelector('[data-admin-page-tabs]') as HTMLElement;
-    Object.defineProperty(row, 'clientWidth', { configurable: true, value: 500 });
-    Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 1200 });
-    fireEvent.resize(window);
-    return row;
-};
-
-// #1248: zoomed in, the tabs overflowed and took the arrows, and the deck hides its scrollbar,
-// so the cards beyond the fold could not be reached with a mouse.
-it('keeps the arrows on a deck that can scroll, even when the tabs overflow', () => {
-    const { container } = renderTabsWithDeck(CardNav);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
-    expect(scrollCards).toHaveBeenCalledWith(1);
-    scrollCards.mockClear();
-
-    overflowTabs(container);
-    expect(screen.queryByRole('button', { name: 'page.tabs.next' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Next card' }));
-    expect(scrollCards).toHaveBeenCalledWith(1);
-});
-
-it('gives overflowing tabs the arrows when every card fits (#193)', () => {
-    // Stable like the real deck's memoised registration: a fresh object per render re-registers,
-    // re-renders this context consumer and loops until the worker runs out of memory.
-    const fittingNav = { ...cardNav, canScrollForward: false };
-    const FittingDeck = () => {
-        useRegisterCardDeckNav('cards', fittingNav);
-        return null;
-    };
-    const { container } = renderTabsWithDeck(FittingDeck);
-    const row = overflowTabs(container);
-
-    fireEvent.click(screen.getByRole('button', { name: 'page.tabs.next' }));
-    expect(row.scrollBy).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
-    expect(scrollCards).not.toHaveBeenCalled();
-});
-
-it('pans overflowing tabs with the mouse wheel while the deck owns the arrows', () => {
-    const { container } = renderTabsWithDeck(CardNav);
-    const row = overflowTabs(container);
-
-    fireEvent.wheel(row, { deltaY: 120 });
-    expect(row.scrollLeft).toBe(120);
-
-    // At the end the wheel is left to the page.
-    row.scrollLeft = 700;
-    const atEnd = fireEvent.wheel(row, { deltaY: 120 });
-    expect(atEnd).toBe(true);
-    expect(row.scrollLeft).toBe(700);
-});
-
-it.each(['title', 'back'])('scrolls overflowing tabs and disables arrows at the edges (%s)', (header) => {
+it.each(['title', 'back'])('shows every tab in the shared sub-navigation bar, without arrows (%s)', (header) => {
     const tabs = [
         { to: '/global', titleKey: 'Global Configs' },
         { to: '/notices', titleKey: 'System notices' },
@@ -123,25 +34,11 @@ it.each(['title', 'back'])('scrolls overflowing tabs and disables arrows at the 
             <Page>{header === 'title' ? <Page.Title tabs={tabs} /> : <Page.Back path="/" tabs={tabs} />}</Page>
         </MemoryRouter>,
     );
-    const row = container.querySelector('[data-admin-page-tabs]') as HTMLElement;
-    Object.defineProperty(row, 'clientWidth', { configurable: true, value: 500 });
-    Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 1200 });
-    fireEvent.resize(window);
-    const previous = screen.getByRole('button', { name: 'page.tabs.previous' });
-    const next = screen.getByRole('button', { name: 'page.tabs.next' });
-    expect(previous).toBeDisabled();
-    expect(next).toBeEnabled();
-    expect(next).toHaveAttribute('aria-controls', row.id);
-    fireEvent.click(next);
-    expect(row.scrollBy).toHaveBeenCalledWith({ left: 400, behavior: 'smooth' });
-    row.scrollLeft = 700;
-    fireEvent.scroll(row);
-    expect(next).toBeDisabled();
-    expect(previous).toBeEnabled();
-    fireEvent.click(previous);
-    expect(row.scrollBy).toHaveBeenLastCalledWith({ left: -400, behavior: 'smooth' });
-    Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 500 });
-    row.scrollLeft = 0;
-    fireEvent.resize(window);
-    expect(screen.getAllByRole('button').every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+
+    // ORISO-Admin#1374: one tab bar for every sub-navigation, with tab semantics.
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'System notices' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: 'Global Configs' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('button', { name: 'page.tabs.next' })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-admin-page-deck-nav]')).not.toBeInTheDocument();
 });

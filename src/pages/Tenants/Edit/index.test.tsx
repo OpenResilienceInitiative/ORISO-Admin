@@ -1,6 +1,6 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantEditOrAdd } from './index';
 
 const mocks = vi.hoisted(() => ({
@@ -55,5 +55,47 @@ describe('Träger edit page tabs (#134)', () => {
         render(<TenantEditOrAdd />);
 
         expect(tabTargets().slice(0, 2)).toEqual(['/admin/tenants/7/general', '/admin/tenants/7/theme-settings']);
+    });
+
+    // ORISO-Admin#1312: the Erstantwort tile lived only under the Träger admin's own settings, so a
+    // platform admin editing a Träger had no way to reach it. Same place as in the settings menu:
+    // after Rechtliches, before the mail server.
+    it('offers the Erstantwort texts between Rechtliches and Email Server', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
+        expect(tabTargets().slice(2, 5)).toEqual([
+            '/admin/tenants/7/legal-settings',
+            '/admin/tenants/7/erstantwort',
+            '/admin/tenants/7/smtp',
+        ]);
+    });
+
+    // Same tab structure as the Träger admin's own settings (settingsTabs.ts): Stammdaten,
+    // Erscheinungsbild, Rechtliches, Erstantwort, Email Server, Funktionszugriff, Funktionalitäten.
+    // The tab labelled "Email Server" used to open a page that also held the functionality tiles.
+    it('lists the tabs in the order of the Träger admin settings, Email Server and Funktionalitäten apart', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
+        expect(tabTargets()).toEqual([
+            '/admin/tenants/7/general',
+            '/admin/tenants/7/theme-settings',
+            '/admin/tenants/7/legal-settings',
+            '/admin/tenants/7/erstantwort',
+            '/admin/tenants/7/smtp',
+            '/admin/tenants/7/global-settings',
+            '/admin/tenants/7/functionalities',
+        ]);
+    });
+
+    it('labels the tabs with the same keys as the Träger admin settings', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+        render(<TenantEditOrAdd />);
+
+        const titleOf = (to: string) => (mocks.tabs || []).filter(Boolean).find((tab) => tab.to === to)?.titleKey;
+        expect(titleOf('/admin/tenants/7/general')).toBe('settings.subhead.masterData');
+        expect(titleOf('/admin/tenants/7/smtp')).toBe('settings.subhead.smtp');
+        expect(titleOf('/admin/tenants/7/functionalities')).toBe('tenants.edit.tabs.appSettings');
     });
 });

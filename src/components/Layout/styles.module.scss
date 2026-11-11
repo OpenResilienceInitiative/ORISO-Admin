@@ -1,17 +1,34 @@
 .content {
     height: 100vh;
     overflow: auto;
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 
     :global(.ant-layout-content) {
-        background: var(--admin-workspace-background, #e4e2e2);
+        background: var(--admin-workspace-background, #fcf9f9);
     }
 }
 
 .mainContent {
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 
     :global(.ant-layout) {
-        background: var(--admin-workspace-background, #e4e2e2);
+        background: var(--admin-workspace-background, #fcf9f9);
     }
+}
+
+// Slim row with the search bar, centred. The page below keeps the rest of the height.
+$top-bar-height: 56px;
+
+.topBar {
+    display: flex;
+    height: $top-bar-height;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0 24px;
+    background: var(--admin-workspace-background, #fcf9f9);
+}
+
+.contentWithTopBar {
+    height: calc(100vh - #{$top-bar-height});
 }

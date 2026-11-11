@@ -4,7 +4,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import authLogout from '../../api/auth/logout';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import routePathNames from '../../appConfig';
@@ -194,6 +194,6 @@ describe('deliberate logout from centre setup', () => {
 
         await user.click(screen.getByRole('button', { name: 'logout' }));
 
-        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login);
+        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login, 'explicit');
     });
 });

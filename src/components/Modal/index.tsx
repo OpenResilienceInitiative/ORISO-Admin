@@ -167,7 +167,7 @@ export const Modal = ({
                 ) : null
             }
             open
-            destroyOnClose
+            destroyOnHidden
             centered
             maskClosable={maskClosable}
             keyboard={keyboard}

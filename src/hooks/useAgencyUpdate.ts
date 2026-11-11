@@ -27,6 +27,10 @@ export const useAgencyUpdate = (id: string) => {
 
             // Geographic coverage belongs to this card submission, not the merged agency
             // snapshot. Do not replay a previous registration save during a delayed refetch.
+            // Existing centres change availability only through the narrow status command.
+            // Drop a legacy cached registration flag before any unrelated metadata save.
+            delete mergedAgencyData.online;
+            delete mergedAgencyData.offline;
             mergedAgencyData.postCodes = data.postCodes;
             mergedAgencyData.postCodeRangesActive = data.postCodeRangesActive;
 
@@ -48,8 +52,17 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
+            // Switching the centre offline must not echo the stored data protection contact:
+            // AgencyService validates any contact it receives and rejected an incomplete stored one,
+            // so the centre could not be paused (#1243). Omitted, the service keeps the stored
+            // contact. Going online still sends it, so the service keeps checking it there.
+            const requestData =
+                data.online === false && data.dataProtection === undefined
+                    ? { ...mergedAgencyData, dataProtection: undefined }
+                    : mergedAgencyData;
+
             // Cache the accepted main write at once so a queued save uses what the server holds.
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, (saved) => {
+            const response = await updateAgencyData(latestAgencyData, requestData, (saved) => {
                 if (saved) queryClient.setQueryData(['AGENCY', id], saved);
             });
 

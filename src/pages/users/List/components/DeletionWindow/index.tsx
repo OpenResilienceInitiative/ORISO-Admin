@@ -1,8 +1,8 @@
-import { message } from 'antd';
 import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
 import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../../../components/Snackbar';
 import { FETCH_ERRORS } from '../../../../../api/fetchData';
 import { Modal } from '../../../../../components/Modal';
 import {
@@ -50,7 +50,7 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
 
     const onError = (error: unknown) => {
         const key = errorKeyFor(error);
-        if (key) message.error({ content: t(key), duration: 5 });
+        if (key) snackbar.error({ content: t(key) });
     };
 
     const cancelMutation = useCancelConsultantDeletion();
@@ -67,7 +67,7 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
         send({
             onSuccess: () => {
                 inFlight.current = false;
-                message.success({ content: t(successKey), duration: 3 });
+                snackbar.success({ content: t(successKey), duration: 3 });
                 onClose();
             },
             onError: (error) => {
@@ -128,18 +128,20 @@ export const DeletionWindowModal = ({ mode, consultantId, onClose }: DeletionWin
             </div>
             <div className={styles.field}>
                 <label htmlFor={monthsId}>{t('deletionWindow.pause.months')}</label>
-                <select
-                    id={monthsId}
-                    className={styles.control}
-                    value={months}
-                    onChange={(event) => setMonths(Number(event.target.value))}
-                >
-                    {MONTH_CHOICES.map((choice) => (
-                        <option key={choice} value={choice}>
-                            {choice}
-                        </option>
-                    ))}
-                </select>
+                <span className={styles.selectFrame}>
+                    <select
+                        id={monthsId}
+                        className={styles.control}
+                        value={months}
+                        onChange={(event) => setMonths(Number(event.target.value))}
+                    >
+                        {MONTH_CHOICES.map((choice) => (
+                            <option key={choice} value={choice}>
+                                {choice}
+                            </option>
+                        ))}
+                    </select>
+                </span>
             </div>
         </Modal>
     );

@@ -1,6 +1,8 @@
+import PublicOutlinedIcon from '@mui/icons-material/PublicOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiFormField } from '../../mui/MuiFormField';
 import { useAppConfigContext } from '../../../context/useAppConfig';
@@ -46,6 +48,7 @@ export const SupportEmailSettingsCard = ({ value = '', isLoading, onSave, disabl
             allowEdit={!isLoading && !disabled}
             editButtonPlacement="footer"
             formProp={form}
+            note={{ icon: <PublicOutlinedIcon />, text: t('globalSettings.supportEmail.help') }}
             onSave={(values: { supportEmail?: string }, options) => onSave((values.supportEmail ?? '').trim(), options)}
         >
             <MuiFormField
@@ -53,7 +56,6 @@ export const SupportEmailSettingsCard = ({ value = '', isLoading, onSave, disabl
                 name="supportEmail"
                 type="email"
                 autoComplete="off"
-                helpText={t('globalSettings.supportEmail.help')}
                 rules={[{ type: 'email', whitespace: false, message: t('message.error.email.incorrect') }]}
                 inputProps={{ maxLength: SUPPORT_EMAIL_MAX_LENGTH }}
             />
@@ -77,7 +79,7 @@ export const SupportEmailSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({ content: t('globalSettings.supportEmail.error.generic'), duration: 5 });
+                            snackbar.error({ content: t('globalSettings.supportEmail.error.generic') });
                             options?.onError?.();
                         },
                     },

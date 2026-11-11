@@ -1,10 +1,14 @@
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import svgrPlugin from 'vite-plugin-svgr';
 import eslintPlugin from 'vite-plugin-eslint';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { existsSync, readFileSync } from 'node:fs';
 import { authBffDevPlugin } from './vite.authBffPlugin';
+import { checkFieldFormBackport } from './scripts/field-form-backport.mjs';
+
+// Check only: preparation is explicit via project postinstall or prepare:runtime.
+checkFieldFormBackport();
 
 // All React-dependent libraries must share one chunk. Splitting them (e.g. vendor-antd,
 // vendor-draftjs, vendor-mui) causes init-order bugs: those bundles call React.createElement
@@ -87,6 +91,9 @@ export default ({ mode }) => {
                 }),
         ].filter(Boolean),
         css: {
+            // Less imports call back into Vite's resolver; keep that work in
+            // one thread to avoid worker-to-parent handshake timeouts.
+            preprocessorMaxWorkers: 0,
             preprocessorOptions: {
                 less: {
                     javascriptEnabled: true,

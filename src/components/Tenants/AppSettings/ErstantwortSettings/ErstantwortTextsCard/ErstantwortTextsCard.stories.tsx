@@ -1,7 +1,8 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { ErstantwortTextsCard, ErstantwortContentMap } from './index';
 import type { ErstantwortBausteinKey } from '../erstantwortBausteine';
 
@@ -14,14 +15,15 @@ import type { ErstantwortBausteinKey } from '../erstantwortBausteine';
  *   text or *derived*. A derived Baustein has no field on purpose — a typed claim
  *   about the system can contradict the configuration, a rendered one cannot. That
  *   is why the deadline **number** is editable and its **sentence** is not.
- * - **One German variant.** A formal tenant is asked for "Sie" only, an informal
+ * - **One German variant.** A formal tenant is asked for "Sie" only, an Informal
  *   one for "Du" only. Nobody writes both; only platform texts carry both axes.
  * - **No toggles.** The two safety-bearing Bausteine — "send us no personal data"
  *   and the emergency numbers — carry none at all (ADR-018 §6), so there is
  *   nothing here to switch off.
  */
 const meta = {
-    title: 'Tenants/Erstantwort/ErstantwortTextsCard',
+    title: 'Settings/Einstellungen/Einführung Ratsuchende/ErstantwortTextsCard',
+    id: 'tenants-erstantwort-erstantworttextscard',
     component: ErstantwortTextsCard,
     tags: ['autodocs'],
     parameters: { layout: 'padded' },
@@ -154,4 +156,9 @@ export const PlatformDefaultNotAvailable: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByText(/Standard kann hier noch nicht geladen werden/i)).toBeInTheDocument();
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...Empty,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import type {
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
@@ -103,9 +103,57 @@ describe('statisticDashboardData', () => {
         expect(stats.suppressed).toBe(true);
         expect(stats.metrics.cases).toBeNull();
         expect(stats.metrics.oneToOne).toBeNull();
-        expect(stats.metrics.counselors).toBe(1);
+        // an old backend still sends the exact count of a hidden row: it must not reach the screen
+        expect(stats.metrics.counselors).toBeNull();
         expect(stats.metrics.topicsByMonth[0].label).toBe(NO_DATA_LABEL);
         expect(data.targetsByScope.agency[0].detail).toBe(SUPPRESSED_DETAIL);
+    });
+
+    it('shows no count for a hidden row, whether the backend sends 0 (new) or the real number (old)', () => {
+        const hiddenWithZero = agencyTarget({ agencyId: 12, counselorCount: 0, suppressed: true, metrics: null });
+        // an old backend sends the real count of a row that is hidden because of a small neighbour
+        const hiddenBigRow = agencyTarget({ agencyId: 13, counselorCount: 12, suppressed: true, metrics: null });
+
+        const data = buildStatisticData(tenantScopeResponse([hiddenWithZero, hiddenBigRow]), emptyLookups, now);
+
+        expect(data.statisticsById['agency-12'].metrics.counselors).toBeNull();
+        expect(data.statisticsById['agency-13'].metrics.counselors).toBeNull();
+    });
+
+    it('keeps the count of a visible row', () => {
+        const data = buildStatisticData(
+            tenantScopeResponse([agencyTarget({ agencyId: 12, counselorCount: 6 })]),
+            emptyLookups,
+            now,
+        );
+
+        expect(data.statisticsById['agency-12'].metrics.counselors).toBe(6);
+    });
+
+    it('marks a hidden platform total as hidden and uses it for the platform view', () => {
+        const data = buildStatisticData(
+            {
+                generatedAt: '2026-07-11T10:00:00Z',
+                scope: 'PLATFORM',
+                targets: [
+                    agencyTarget({
+                        targetType: 'PLATFORM',
+                        tenantId: null,
+                        agencyId: null,
+                        counselorCount: 0,
+                        suppressed: true,
+                        metrics: null,
+                    }),
+                    agencyTarget({ targetType: 'TENANT', tenantId: 1, agencyId: null, counselorCount: 8 }),
+                ],
+            },
+            emptyLookups,
+            now,
+        );
+
+        expect(data.statisticsById['platform-total'].suppressed).toBe(true);
+        expect(data.statisticsById['platform-total'].metrics.counselors).toBeNull();
+        expect(data.fallbackIdsByScope.platform).toEqual(['platform-total']);
     });
 
     it('buckets daily session counts into calendar weeks', () => {

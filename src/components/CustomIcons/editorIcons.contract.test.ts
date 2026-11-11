@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const versionHistorySvg = readFileSync(resolve(__dirname, '../../resources/img/svg/clock-arrow-down.svg'), 'utf8');
 const editorModuleStyles = readFileSync(resolve(__dirname, '../FormPluginEditor/M3RichTextEditor.module.scss'), 'utf8');

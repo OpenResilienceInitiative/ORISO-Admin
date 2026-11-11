@@ -36,6 +36,8 @@ export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
+export const accountStatusEndpoint = (accountId: string) =>
+    `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
@@ -108,6 +110,8 @@ export const XHRheader = { AcceptLanguage: 'de' };
  */
 const routePathNames = {
     root: '/admin',
+    /** Start page for every role (ORISO-Admin#1323). */
+    home: '/admin/home',
     login: '/admin/login',
     passwordReset: '/admin/password-reset',
     passwordResetConfirm: '/admin/password-reset/confirm',
@@ -152,6 +156,7 @@ const routePathNames = {
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',
+    /** Old address of the live-chat links; redirects to Funktionszugriff (ORISO-Admin#1321). */
     linksExternalInbounds: '/admin/links/external-inbounds',
 };
 

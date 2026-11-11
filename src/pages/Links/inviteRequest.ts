@@ -1,9 +1,14 @@
-import { acceptBaseUrlForRole, type CreateAccountInviteRequest } from '../../api/accountInvites/accountInvites';
+import {
+    acceptBaseUrlForRole,
+    listAccountInvites,
+    type AccountInviteDTO,
+    type CreateAccountInviteRequest,
+} from '../../api/accountInvites/accountInvites';
 import type { IdFieldMode } from '../../components/IdAllocationField';
 import type { InviteSuggestion } from '../../components/OnboardingDesign/InviteSuggestionDialog';
 import { normaliseAvatarValue } from '../../utils/counsellorAvatar';
 import type { InviteRole, InviteSendMode, InviteViewerScope, TopicPermission } from './inviteModel';
-import { allocationModeOf, fieldsForRole, type InviteTab } from './inviteRules';
+import { allocationModeOf, fieldsForRole, OPEN_STATUSES, type InviteTab } from './inviteRules';
 
 export interface InviteUnit {
     mode: IdFieldMode;
@@ -49,7 +54,7 @@ export interface InviteCsvCreateRow {
     recipientEmail: string;
     firstName?: string;
     lastName?: string;
-    /** The file's id, or the batch-assigned one on the Träger tab. */
+    /** The explicit file ID; omitted IDs use authoritative server AUTO allocation. */
     id?: number;
     target: 'NEW' | 'EXISTING';
     role: InviteRole;
@@ -138,4 +143,28 @@ export const toCreateInviteRequest = (
         topicPermission: fields.topics ? source.topicPermission : undefined,
         templateId: direct ? source.templateId : undefined,
     };
+};
+
+/** Recover only this recipient's open operation, independently of table query, phase and page. */
+export const findStoredCsvInvite = async (row: InviteCsvCreateRow): Promise<AccountInviteDTO | undefined> => {
+    const email = row.recipientEmail.trim().toLowerCase();
+    let page = 0;
+    let totalPages = 1;
+    while (page < totalPages) {
+        // eslint-disable-next-line no-await-in-loop -- each response supplies the page bound
+        const result = await listAccountInvites({
+            query: email,
+            tab: row.role === 'TENANT_ADMIN' ? 'TENANT' : 'UNIT',
+            targetRole: row.role,
+            page,
+            size: 100,
+        });
+        const stored = result.content.find(
+            (invite) => OPEN_STATUSES.has(invite.inviteStatus) && invite.recipientEmail.trim().toLowerCase() === email,
+        );
+        if (stored) return stored;
+        totalPages = result.totalPages;
+        page += 1;
+    }
+    return undefined;
 };

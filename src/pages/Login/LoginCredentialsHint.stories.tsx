@@ -18,6 +18,8 @@ const meta = {
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
                 <div style={{ width: 'min(400px, 92vw)' }}>
+                    {/* The field "Ansehen" takes the person back to (it lives in the login form in the app). */}
+                    <input autoComplete="username" aria-label="Benutzername" style={{ width: '100%', height: 48 }} />
                     <Story />
                 </div>
             </ThemeProvider>

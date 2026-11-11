@@ -12,8 +12,11 @@ import {
     setSessionTokens,
 } from '../../../../../api/auth/tokenSessionStore';
 import i18n from '../../../../../i18n';
+import { CardEditable } from '../../../../../components/CardEditable';
+import { findPopup } from '../../../../../test/storyPopups';
 import { MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { RegistrationSettings } from '.';
+import { PostCodeRanges } from './PostCodeRanges';
 
 /**
  * #953: the counsellor picker of a new counselling centre offers only people of the centre's own
@@ -94,7 +97,8 @@ const SwitchingHarness = () => (
 );
 
 const meta = {
-    title: 'Organisms/Agency/RegistrationSettingsCounsellors',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/RegistrationSettingsCounsellors',
+    id: 'organisms-agency-registrationsettingscounsellors',
     component: Harness,
     parameters: { msw: { handlers: [http.get('*/service/users/consultants/search*', search)] } },
     beforeEach: async () => {
@@ -165,7 +169,7 @@ export const NoCounsellorsInTheTenantEnglish: Story = {
     play: async ({ canvasElement }) => {
         await i18n.changeLanguage('en');
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/No further counsellors of this tenant/)).toBeInTheDocument();
+        await expect(await canvas.findByText(/No further counsellors of this provider/)).toBeInTheDocument();
     },
 };
 
@@ -177,9 +181,10 @@ export const CounsellorSearchFailed: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Die Berater:innen konnten nicht geladen werden.')).toBeInTheDocument();
+        const popup = await findPopup(canvasElement, 'Die Berater:innen konnten nicht geladen werden.', 'error');
+        await expect(canvas.getByText('Dieser Bereich konnte nicht geladen werden.')).toBeInTheDocument();
         await expect(canvas.queryByText(/keine weiteren Berater:innen/)).not.toBeInTheDocument();
-        await expect(canvas.getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
+        await expect(within(popup).getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
     },
 };
 
@@ -204,5 +209,30 @@ export const ChangingTheTenantDropsThePick: Story = {
 
         // The new Träger's search never answers, so only the change itself can have cleared the pick.
         await waitFor(() => expect(canvas.queryByText(/Erika Beispiel/)).not.toBeInTheDocument());
+    },
+};
+
+export const InvalidPostcodeRange: Story = {
+    render: () => (
+        <CardEditable
+            initialValues={{ postCodes: [{ from: '10551', until: '10551' }] }}
+            titleKey="agency.form.registrationSettings.title"
+            variant="dialog"
+            editButtonPlacement="footer"
+        >
+            <PostCodeRanges />
+        </CardEditable>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
+        const postcode = canvas.getByRole('textbox', { name: 'Von' });
+        await userEvent.clear(postcode);
+        await userEvent.type(postcode, '1055');
+        await userEvent.click(canvas.getByRole('button', { name: 'Speichern' }));
+
+        const explanation = 'Die Postleitzahl muss aus 5 Ziffern bestehen.';
+        await expect(await canvas.findByText(explanation)).toBeVisible();
+        await expect(postcode).toHaveAccessibleDescription(explanation);
     },
 };

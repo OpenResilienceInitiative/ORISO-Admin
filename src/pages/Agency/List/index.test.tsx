@@ -1,10 +1,13 @@
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AgencyList } from './index';
 
 const mocks = vi.hoisted(() => ({
     agencies: [] as any[],
+    // Optional server pages by page number, with their total, for the phone "load more" flow.
+    agencyPages: undefined as Record<number, any[]> | undefined,
+    agencyTotal: undefined as number | undefined,
     navigate: vi.fn(),
     refetch: vi.fn(),
     // Arguments of the latest agencies query (sort, page, search).
@@ -21,11 +24,12 @@ const mocks = vi.hoisted(() => ({
 
 const translations: Record<string, string> = {
     agency: 'Agency',
-    'agency.list.searchPlaceholder': 'Search by name or city',
+    'agency.list.searchPlaceholder': 'Search by name, postcode or city',
     'agency.noTopics': 'No topics assigned',
-    'agency.status.online': 'Visible',
-    'agency.status.offline': 'Hidden',
-    'agency.teamAgency': 'Team centre',
+    'entityStatus.active': 'Active',
+    'entityStatus.inactive': 'Inactive',
+    'entityStatus.unknown': 'Unknown',
+    'teamFunctions.counselling.name': 'Team counselling',
     'agency.list.id': 'ID',
     'agency.list.address': 'Address',
     'agency.list.contact': 'Contact',
@@ -87,16 +91,17 @@ vi.mock('../../../components/GlobalSearch', () => ({
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
-    useAgenciesData: (query: { search?: string }) => {
+    useAgenciesData: (query: { search?: string; current?: number }) => {
         mocks.lastQuery = query;
         const { search } = query;
-        const agencies = search
+        const matching = search
             ? mocks.agencies.filter((agency) =>
                   `${agency.name} ${agency.city}`.toLowerCase().includes(search.toLowerCase()),
               )
             : mocks.agencies;
+        const agencies = mocks.agencyPages ? mocks.agencyPages[query.current ?? 1] ?? [] : matching;
         return {
-            data: mocks.isError ? undefined : { total: agencies.length, data: agencies },
+            data: mocks.isError ? undefined : { total: mocks.agencyTotal ?? agencies.length, data: agencies },
             isLoading: mocks.isLoading,
             isError: mocks.isError,
             refetch: mocks.refetch,
@@ -149,6 +154,8 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>, overrid
         description: 'Description',
         offline: false,
         online: true,
+        // The list shows the effective status (`active`), not the raw visibility flag.
+        active: true,
         postcode: '10115',
         street: 'Musterstraße',
         houseNumber: '12a',
@@ -185,6 +192,8 @@ const withDesktopLayout = () => {
 
 const resetMocks = () => {
     mocks.agencies = [];
+    mocks.agencyPages = undefined;
+    mocks.agencyTotal = undefined;
     mocks.isLoading = false;
     mocks.isError = false;
     mocks.lastQuery = undefined;
@@ -213,19 +222,21 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         expect(within(row).getByText('42')).toBeInTheDocument();
         expect(within(row).getByText('Musterstraße 12a')).toBeInTheDocument();
         expect(within(row).getByText('10115 Berlin')).toBeInTheDocument();
-        expect(within(row).getByText('Visible')).toBeInTheDocument();
+        expect(within(row).getByText('Active')).toBeInTheDocument();
         expect(within(row).getByRole('button', { name: 'Edit Beratungsstelle Nord' })).toBeEnabled();
         expect(within(row).getByRole('button', { name: 'Delete Beratungsstelle Nord' })).toBeEnabled();
     });
 
     it('marks team centres and hidden centres', () => {
-        mocks.agencies = [buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true })];
+        mocks.agencies = [
+            buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true, active: false }),
+        ];
 
         render(<AgencyList />);
 
         const row = rowOf('Team Süd');
-        expect(within(row).getByText('Team centre')).toBeInTheDocument();
-        expect(within(row).getByText('Hidden')).toBeInTheDocument();
+        expect(within(row).getByText('Team counselling')).toBeInTheDocument();
+        expect(within(row).getByText('Inactive')).toBeInTheDocument();
     });
 
     it('shows the first topic and how many more there are', () => {
@@ -380,16 +391,40 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         setWidth(390);
         mocks.agencies = [
             buildAgency([], { id: 1, name: 'North centre' }),
-            buildAgency([], { id: 2, name: 'South centre', offline: true }),
+            buildAgency([], { id: 2, name: 'South centre', offline: true, active: false }),
         ];
 
         render(<AgencyList />);
 
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
         const south = screen.getByRole('article', { name: 'South centre' });
-        expect(within(south).getByText('Hidden')).toBeInTheDocument();
+        expect(within(south).getByText('Inactive')).toBeInTheDocument();
         expect(within(south).getByRole('button', { name: 'Edit South centre' })).toBeInTheDocument();
         expect(screen.getByRole('article', { name: 'North centre' })).toBeInTheDocument();
+    });
+
+    // CodeRabbit on #1285: the phone list appends the next page and never shows a centre twice when
+    // the server order shifts between two page requests.
+    it('appends the next page on a phone without showing a centre twice', () => {
+        setWidth(390);
+        mocks.agencyTotal = 4;
+        mocks.agencyPages = {
+            1: [buildAgency([], { id: 1, name: 'North centre' }), buildAgency([], { id: 2, name: 'South centre' })],
+            2: [buildAgency([], { id: 2, name: 'South centre' }), buildAgency([], { id: 3, name: 'West centre' })],
+        };
+
+        const { rerender } = render(<AgencyList />);
+        expect(screen.getAllByRole('article')).toHaveLength(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Weitere laden' }));
+        expect(mocks.lastQuery).toMatchObject({ current: 2 });
+        rerender(<AgencyList />);
+
+        expect(screen.getAllByRole('article').map((card) => card.getAttribute('aria-label'))).toEqual([
+            'North centre',
+            'South centre',
+            'West centre',
+        ]);
     });
 
     // #240: a failed agencies load must degrade to an error message, never hang on the spinner.

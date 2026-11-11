@@ -88,7 +88,7 @@
     text-overflow: ellipsis;
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 1px;
     }
 }
@@ -145,7 +145,7 @@
     padding: 16px;
     border: 1px solid var(--m3-outline-variant, #c4c7c8);
     border-radius: 12px;
-    background: var(--m3-surface-container-low, #f7f3f3);
+    background: var(--m3-surface-container-low, #f6f3f3);
 }
 
 .plainMeta {

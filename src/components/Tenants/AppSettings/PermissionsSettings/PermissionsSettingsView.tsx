@@ -1,26 +1,30 @@
 import { Form, Skeleton, type FormInstance } from 'antd';
-import { useCallback, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useCallback, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
-import { CardDeck } from '../../../CardDeck';
+import { CardGrid } from '../../../CardGrid';
 import { CardEditable } from '../../../CardEditable';
 import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
-import { DirectInviteCard } from './DirectInviteCard';
+import { DirectInviteSection } from './DirectInviteSection';
+import { OPTION_ICONS } from './optionIcons';
+import { PolicyOptionCard } from './PolicyOptionCard';
+import { CONVERSATION_HELP } from './tileHelpTopics';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
-import { ReactComponent as InfoIcon } from '../../../../resources/img/svg/i.svg';
 import type {
+    ChatTypeCardDef,
     ChatTypeCardKey,
-    ChatTypeNotificationToggle,
+    ChatTypeParticipantToggle,
     PermissionToggleCapability,
     ToggleAfterChangeHandler,
 } from './types';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
+import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
 
 /**
@@ -38,6 +42,9 @@ const unavailableCapabilityHintKey = (capability: PermissionToggleCapability | u
     }
     return null;
 };
+
+// Long tiles get width instead of height, so a short neighbour is not stretched into an empty field.
+const TILE_SPAN: Partial<Record<ChatTypeCardKey, 2 | 3>> = { oneOnOne: 3, liveChat: 3, group: 3, groupInternal: 2 };
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
@@ -65,6 +72,8 @@ export type PermissionsSettingsViewProps = {
     traegerDirectInvitePolicies?: Record<string, PolicyValue<boolean>>;
     /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
     recipientScope?: Omit<RecipientScopeControlProps, 'level' | 'disabled'>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
 };
 
 export const PermissionsSettingsView = ({
@@ -86,9 +95,9 @@ export const PermissionsSettingsView = ({
     onPolicyChange,
     recipientScope,
     traegerDirectInvitePolicies,
+    liveChatLinks,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
-    const [openPolicyMenu, setOpenPolicyMenu] = useState<string | null>(null);
     const cardsToRender = excludeCardKeys?.length
         ? CHAT_TYPE_CARDS.filter((card) => !excludeCardKeys.includes(card.key))
         : CHAT_TYPE_CARDS;
@@ -106,6 +115,9 @@ export const PermissionsSettingsView = ({
                   defaultValue: toggle.defaultValue,
               })),
           );
+
+    // Without a Träger the handover tile holds one switch and a sentence; its rules need the room.
+    const showsHandoverRules = caseHandoverTenantPending || Boolean(caseHandoverTenantId);
 
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
@@ -135,43 +147,58 @@ export const PermissionsSettingsView = ({
     // One row for every switch on a tile: feature toggles and notification channels alike.
     const toggleRow = (
         form: FormInstance,
-        row: { setting: string; label: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
+        row: { setting: string; labelKey: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
     ) => (
-        <div key={row.setting} className={styles.toggleRow}>
-            <PermissionPolicyControl
-                featureKey={row.setting}
-                label={row.label}
-                level={policyLevel}
-                policy={row.policy}
-                open={openPolicyMenu === row.setting}
-                pending={policyPending(row.setting)}
-                disabled={row.disabled}
-                supportingText={row.note}
-                onOpenChange={(open) => setOpenPolicyMenu(open ? row.setting : null)}
-                onChange={(next) => changePolicy(row.setting, next, form)}
-            />
-        </div>
+        <PolicyOptionCard
+            key={row.setting}
+            Icon={OPTION_ICONS[row.labelKey]}
+            featureKey={row.setting}
+            label={t(row.labelKey)}
+            level={policyLevel}
+            policy={row.policy}
+            pending={policyPending(row.setting)}
+            disabled={row.disabled}
+            supportingText={row.note}
+            onChange={(next) => changePolicy(row.setting, next, form)}
+        />
     );
 
-    const channelRow = (form: FormInstance, toggle: ChatTypeNotificationToggle, storedValue: unknown) =>
-        toggleRow(form, {
+    const participantRow = (
+        form: FormInstance,
+        toggle: ChatTypeParticipantToggle,
+        getFieldValue: FormInstance['getFieldValue'],
+    ) => {
+        const isOn = (setting: string) => policyFor(setting, getFieldValue(['settings', setting])).value !== false;
+        const accountEmailOff = Boolean(toggle.requiresAskerEmail) && !isOn('featureAskerEmailEnabled');
+        const deliveryOff = toggle.worksWithDelivery && !isOn(toggle.worksWithDelivery);
+        const nameEditingAllowed = channelsSetOnTraeger
+            ? traegerChannelPolicies?.featureDisplayNameEditable?.value !== false
+            : isOn('featureDisplayNameEditable');
+        const accountNameEditingOff = toggle.requiresAskerNameEditing && !nameEditingAllowed;
+        let note;
+        if (toggle.notYetEffective) note = t('tenants.permissions.card.notifications.notYetEffective');
+        else if (accountNameEditingOff) note = t('tenants.permissions.asker.displayName.masterOff');
+        else if (accountEmailOff) note = t('tenants.permissions.asker.collection.masterOff');
+        else if (deliveryOff) note = t('tenants.permissions.card.notifications.askNeedsDelivery');
+        return toggleRow(form, {
             setting: toggle.setting,
-            label: t(toggle.labelKey),
+            labelKey: toggle.labelKey,
             policy: channelsSetOnTraeger
                 ? traegerChannelPolicies?.[toggle.setting] ?? {
                       value: toggle.defaultValue ?? true,
                       mode: 'SUGGESTED',
                   }
-                : policyFor(toggle.setting, storedValue ?? toggle.defaultValue),
-            disabled: channelsSetOnTraeger || toggle.notYetEffective,
-            note: toggle.notYetEffective ? t('tenants.permissions.card.notifications.notYetEffective') : undefined,
+                : policyFor(toggle.setting, getFieldValue(['settings', toggle.setting]) ?? toggle.defaultValue),
+            disabled: channelsSetOnTraeger || toggle.notYetEffective || accountEmailOff || accountNameEditingOff,
+            note,
         });
+    };
 
     // Centre page: until the Träger's values are read, show a loader or say they are unavailable,
     // never defaults passed off as the Träger's.
-    const channelSwitches = (
+    const participantSwitches = (
         form: FormInstance,
-        toggles: Array<ChatTypeNotificationToggle>,
+        card: ChatTypeCardDef,
         getFieldValue: FormInstance['getFieldValue'],
     ) => {
         if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'pending') {
@@ -183,14 +210,20 @@ export const PermissionsSettingsView = ({
         }
         if (channelsSetOnTraeger && traegerChannelPoliciesStatus === 'error') {
             return (
-                <p className={styles.cardDescriptionSecondary} role="status">
+                <p
+                    className={styles.cardDescriptionSecondary}
+                    role="status"
+                    {...{ [TRAEGER_UNAVAILABLE_ATTRIBUTE]: '' }}
+                >
                     {t('tenants.permissions.card.notifications.traegerUnavailable')}
                 </p>
             );
         }
+        const namePolicy = card.askerNamePolicy;
         return (
             <div className={styles.togglesList}>
-                {toggles.map((toggle) => channelRow(form, toggle, getFieldValue(['settings', toggle.setting])))}
+                {namePolicy && participantRow(form, namePolicy, getFieldValue)}
+                {card.notifications?.toggles.map((toggle) => participantRow(form, toggle, getFieldValue))}
             </div>
         );
     };
@@ -208,43 +241,32 @@ export const PermissionsSettingsView = ({
         >
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
-                    <CardDeck
-                        ariaLabel={t('tenants.permissions.title')}
-                        className={styles.permissionsCardDeck}
-                        deckClassName={styles.cardGrid}
-                        previousLabel={t('permissions.cardDeck.previous')}
-                        nextLabel={t('permissions.cardDeck.next')}
-                    >
-                        {/* ORISO-Admin#602: first card under Berechtigungen. These two
-                            settings govern the advice seeker's own account, so they come
-                            before the per-chat-type feature cards. */}
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <AskerPermissionsCard
-                                restrictedFields={restrictedFields}
-                                policyLevel={policyLevel}
-                                permissionPolicies={permissionPolicies}
-                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
-                                pendingPolicyFields={pendingPolicyFields}
-                                openPolicyMenu={openPolicyMenu}
-                                onOpenPolicyMenu={setOpenPolicyMenu}
-                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
-                                channelToggles={hiddenTileChannelToggles}
-                            />
-                        </CardDeck.Item>
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
+                    <CardGrid raster>
+                        {/* ORISO-Admin#602: these two settings govern the account and the handover, so they
+                            come before the per-chat-type feature cards. */}
+                        <CardGrid.Item span={showsHandoverRules ? 3 : 1}>
                             <CaseHandoverCard
                                 tenantId={caseHandoverTenantId}
                                 tenantPending={caseHandoverTenantPending}
                                 policyLevel={policyLevel}
                                 permissionPolicies={permissionPolicies}
                                 pendingPolicyFields={pendingPolicyFields}
-                                openPolicyMenu={openPolicyMenu}
-                                onOpenPolicyMenu={setOpenPolicyMenu}
                                 onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                             />
-                        </CardDeck.Item>
+                        </CardGrid.Item>
+                        <CardGrid.Item span={showsHandoverRules ? 3 : 2}>
+                            <AskerPermissionsCard
+                                restrictedFields={restrictedFields}
+                                policyLevel={policyLevel}
+                                permissionPolicies={permissionPolicies}
+                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
+                                pendingPolicyFields={pendingPolicyFields}
+                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                channelToggles={hiddenTileChannelToggles}
+                            />
+                        </CardGrid.Item>
                         {cardsToRender.map((card) => (
-                            <CardDeck.Item key={card.key} className={styles.chatTypeCardSlot}>
+                            <CardGrid.Item key={card.key} span={TILE_SPAN[card.key]}>
                                 <Form.Item
                                     noStyle
                                     shouldUpdate={(prev, curr) => {
@@ -259,150 +281,184 @@ export const PermissionsSettingsView = ({
                                             ? policyFor(masterField[1], getFieldValue(masterField)).value
                                             : true;
                                         const CardIcon = card.Icon;
+                                        const showLinks = card.key === 'liveChat' && Boolean(liveChatLinks);
                                         return (
                                             <Card
                                                 headerIcon={<CardIcon width={40} height={40} />}
                                                 titleKey={card.titleKey}
+                                                help={CONVERSATION_HELP[card.key]}
                                                 dataTestId={`chat-type-card-${card.key}`}
                                             >
-                                                <p className={styles.cardDescription}>
-                                                    <InfoIcon
-                                                        aria-hidden="true"
-                                                        className={styles.cardDescriptionInfo}
-                                                        focusable="false"
-                                                    />
-                                                    <Trans
-                                                        i18nKey={card.descriptionKey}
-                                                        components={{
-                                                            strong: <strong />,
-                                                            small: <span className={styles.cardDescriptionSecondary} />,
-                                                        }}
-                                                    />
-                                                </p>
-
-                                                <div className={styles.masterRow}>
-                                                    {masterField ? (
-                                                        <PermissionPolicyControl
-                                                            featureKey={masterField[1]}
-                                                            label={t('tenants.permissions.card.activated')}
-                                                            level={policyLevel}
-                                                            policy={policyFor(
-                                                                masterField[1],
-                                                                getFieldValue(masterField),
+                                                <div className={showLinks ? styles.tileColumns : styles.tileBody}>
+                                                    <div className={showLinks ? undefined : styles.tileBody}>
+                                                        <div className={styles.masterRow}>
+                                                            {masterField ? (
+                                                                <PermissionPolicyControl
+                                                                    featureKey={masterField[1]}
+                                                                    label={t('tenants.permissions.card.activated')}
+                                                                    level={policyLevel}
+                                                                    policy={policyFor(
+                                                                        masterField[1],
+                                                                        getFieldValue(masterField),
+                                                                    )}
+                                                                    pending={policyPending(masterField[1])}
+                                                                    onChange={(next) =>
+                                                                        changePolicy(masterField[1], next, form)
+                                                                    }
+                                                                />
+                                                            ) : (
+                                                                <>
+                                                                    <span className={styles.masterLabel}>
+                                                                        {t('tenants.permissions.card.activated')}
+                                                                    </span>
+                                                                    <span
+                                                                        className={styles.masterRowPlaceholder}
+                                                                        aria-hidden
+                                                                    >
+                                                                        —
+                                                                    </span>
+                                                                </>
                                                             )}
-                                                            open={openPolicyMenu === masterField[1]}
-                                                            pending={policyPending(masterField[1])}
-                                                            onOpenChange={(open) =>
-                                                                setOpenPolicyMenu(open ? masterField[1] : null)
-                                                            }
-                                                            onChange={(next) =>
-                                                                changePolicy(masterField[1], next, form)
-                                                            }
-                                                        />
-                                                    ) : (
-                                                        <>
-                                                            <span className={styles.masterLabel}>
-                                                                {t('tenants.permissions.card.activated')}
-                                                            </span>
-                                                            <span className={styles.masterRowPlaceholder} aria-hidden>
-                                                                —
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </div>
-
-                                                {card.key === 'groupInternal' &&
-                                                    recipientScope &&
-                                                    policyLevel !== 'agency' && (
-                                                        <RecipientScopeControl
-                                                            {...recipientScope}
-                                                            level={policyLevel}
-                                                            disabled={!masterEnabled}
-                                                        />
-                                                    )}
-
-                                                {card.toggles.length > 0 && (
-                                                    <>
-                                                        <div className={styles.cardDivider} />
-
-                                                        <div className={styles.togglesSectionLabel}>
-                                                            {t('tenants.permissions.card.configurableFeatures')}
                                                         </div>
-                                                    </>
-                                                )}
 
-                                                <div className={styles.togglesList}>
-                                                    {card.toggles.map((toggle) => {
-                                                        const unavailableHintKey = unavailableCapabilityHintKey(
-                                                            toggle.requiresCapability,
-                                                        );
-                                                        const disabledByMaster = isSubToggleDisabled(
-                                                            card,
-                                                            toggle.field,
-                                                            masterEnabled,
-                                                        );
-                                                        const disabledHintKey =
-                                                            unavailableHintKey ||
-                                                            (disabledByMaster
-                                                                ? 'tenants.permissions.feature.requiresMaster'
-                                                                : null);
-                                                        return toggleRow(form, {
-                                                            setting: toggle.field[1],
-                                                            label: t(toggle.labelKey),
-                                                            policy: policyFor(
-                                                                toggle.field[1],
-                                                                getFieldValue(toggle.field),
+                                                        {card.key === 'groupInternal' &&
+                                                            recipientScope &&
+                                                            policyLevel !== 'agency' && (
+                                                                <RecipientScopeControl
+                                                                    {...recipientScope}
+                                                                    level={policyLevel}
+                                                                    disabled={!masterEnabled}
+                                                                />
+                                                            )}
+
+                                                        {showLinks && (
+                                                            <>
+                                                                <div className={styles.cardDivider} />
+                                                                <div className={styles.togglesSectionLabel}>
+                                                                    {t('liveChatLinks.title')}
+                                                                </div>
+                                                                {liveChatLinks}
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <div className={showLinks ? undefined : styles.tileBody}>
+                                                        {card.toggles.length > 0 && (
+                                                            <>
+                                                                {!showLinks && <div className={styles.cardDivider} />}
+
+                                                                <div className={styles.togglesSectionLabel}>
+                                                                    {t('tenants.permissions.card.configurableFeatures')}
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        <div className={styles.togglesList}>
+                                                            {card.toggles.map((toggle) => {
+                                                                const unavailableHintKey = unavailableCapabilityHintKey(
+                                                                    toggle.requiresCapability,
+                                                                );
+                                                                const disabledByMaster = isSubToggleDisabled(
+                                                                    card,
+                                                                    toggle.field,
+                                                                    masterEnabled,
+                                                                );
+                                                                const disabledHintKey =
+                                                                    unavailableHintKey ||
+                                                                    (disabledByMaster
+                                                                        ? 'tenants.permissions.feature.requiresMaster'
+                                                                        : null);
+                                                                return toggleRow(form, {
+                                                                    setting: toggle.field[1],
+                                                                    labelKey: toggle.labelKey,
+                                                                    policy: policyFor(
+                                                                        toggle.field[1],
+                                                                        getFieldValue(toggle.field),
+                                                                    ),
+                                                                    disabled:
+                                                                        Boolean(unavailableHintKey) || disabledByMaster,
+                                                                    note: disabledHintKey
+                                                                        ? t(
+                                                                              unavailableHintKey
+                                                                                  ? 'tenants.permissions.feature.notYetAvailable'
+                                                                                  : disabledHintKey,
+                                                                          )
+                                                                        : undefined,
+                                                                });
+                                                            })}
+                                                        </div>
+                                                        {/* The reason is long: below the cards, so one card does not stretch the row. */}
+                                                        {[
+                                                            ...new Set(
+                                                                card.toggles.map((toggle) =>
+                                                                    unavailableCapabilityHintKey(
+                                                                        toggle.requiresCapability,
+                                                                    ),
+                                                                ),
                                                             ),
-                                                            disabled: Boolean(unavailableHintKey) || disabledByMaster,
-                                                            note: disabledHintKey ? t(disabledHintKey) : undefined,
-                                                        });
-                                                    })}
-                                                </div>
+                                                        ]
+                                                            .filter(Boolean)
+                                                            .map((hintKey) => (
+                                                                <p
+                                                                    key={hintKey}
+                                                                    className={styles.cardDescriptionSecondary}
+                                                                >
+                                                                    {t(hintKey as string)}
+                                                                </p>
+                                                            ))}
 
-                                                {card.notifications && (
-                                                    <>
-                                                        <div className={styles.cardDivider} />
-                                                        <div className={styles.togglesSectionLabel}>
-                                                            {t(
-                                                                `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
-                                                            )}
-                                                        </div>
-                                                        {channelsSetOnTraeger && (
-                                                            <p className={styles.cardDescriptionSecondary}>
-                                                                {t(
-                                                                    'tenants.permissions.card.notifications.setOnTraeger',
+                                                        {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
+                                                        {card.key === 'oneOnOne' && (
+                                                            <>
+                                                                <div className={styles.cardDivider} />
+                                                                <div className={styles.togglesSectionLabel}>
+                                                                    {t('tenants.permissions.directInvite.title')}
+                                                                </div>
+                                                                <DirectInviteSection
+                                                                    restrictedFields={restrictedFields}
+                                                                    policyLevel={policyLevel}
+                                                                    permissionPolicies={permissionPolicies}
+                                                                    fallbackValues={
+                                                                        initialValues.settings as
+                                                                            | Record<string, unknown>
+                                                                            | undefined
+                                                                    }
+                                                                    traegerPolicies={traegerDirectInvitePolicies}
+                                                                    traegerPoliciesStatus={traegerChannelPoliciesStatus}
+                                                                    pendingPolicyFields={pendingPolicyFields}
+                                                                    onPolicyChange={(fieldKey, next) =>
+                                                                        changePolicy(fieldKey, next, form)
+                                                                    }
+                                                                />
+                                                            </>
+                                                        )}
+
+                                                        {card.notifications && (
+                                                            <>
+                                                                <div className={styles.cardDivider} />
+                                                                <div className={styles.togglesSectionLabel}>
+                                                                    {t(
+                                                                        `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
+                                                                    )}
+                                                                </div>
+                                                                {channelsSetOnTraeger && (
+                                                                    <p className={styles.cardDescriptionSecondary}>
+                                                                        {t(
+                                                                            'tenants.permissions.card.notifications.setOnTraeger',
+                                                                        )}
+                                                                    </p>
                                                                 )}
-                                                            </p>
+                                                                {participantSwitches(form, card, getFieldValue)}
+                                                            </>
                                                         )}
-                                                        {channelSwitches(
-                                                            form,
-                                                            card.notifications.toggles,
-                                                            getFieldValue,
-                                                        )}
-                                                    </>
-                                                )}
+                                                    </div>
+                                                </div>
                                             </Card>
                                         );
                                     }}
                                 </Form.Item>
-                            </CardDeck.Item>
+                            </CardGrid.Item>
                         ))}
-                        {/* ORISO-Admin#1242: direct links per chat type, after the conversation types they open. */}
-                        <CardDeck.Item className={styles.chatTypeCardSlot}>
-                            <DirectInviteCard
-                                restrictedFields={restrictedFields}
-                                policyLevel={policyLevel}
-                                permissionPolicies={permissionPolicies}
-                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
-                                traegerPolicies={traegerDirectInvitePolicies}
-                                traegerPoliciesStatus={traegerChannelPoliciesStatus}
-                                pendingPolicyFields={pendingPolicyFields}
-                                openPolicyMenu={openPolicyMenu}
-                                onOpenPolicyMenu={setOpenPolicyMenu}
-                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
-                            />
-                        </CardDeck.Item>
-                    </CardDeck>
+                    </CardGrid>
                 </div>
             )}
         </CardEditable>

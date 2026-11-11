@@ -26,13 +26,3 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
     args: { switchLabel: 'Benachrichtigungen' },
 };
-
-/** Legacy antd Switch rendering. */
-export const AntdVariant: Story = {
-    args: { switchVariant: 'antd' },
-};
-
-/** Explicit M3-styled switch rendering. */
-export const M3Variant: Story = {
-    args: { switchVariant: 'm3', switchLabel: 'Benachrichtigungen' },
-};

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import translationDe from '../../../locales/de/translation.json';
 import translationEn from '../../../locales/en/translation.json';
 
@@ -21,9 +21,9 @@ describe('accounts section wording (ORISO-Admin#676)', () => {
 
     it('names the four role pills in English', () => {
         expect(en['users.sectionPills.platformAdmins']).toBe('Platform Admins');
-        expect(en['users.sectionPills.tenantAdmins']).toBe('Tenant Admins');
-        expect(en['users.sectionPills.counsellorAdmins']).toBe('Agency Admins');
-        expect(en['users.sectionPills.counsellors']).toBe('Counselors');
+        expect(en['users.sectionPills.tenantAdmins']).toBe('Provider Admins');
+        expect(en['users.sectionPills.counsellorAdmins']).toBe('Counselling centre Admins');
+        expect(en['users.sectionPills.counsellors']).toBe('Counsellors');
     });
 
     it('names the accounts and agencies menu entries', () => {
@@ -33,6 +33,6 @@ describe('accounts section wording (ORISO-Admin#676)', () => {
 
         expect(en['sidebar.users']).toBe('Accounts');
         expect(en['users.allUsers']).toBe('Accounts');
-        expect(en['sidebar.agency']).toBe('Agencies');
+        expect(en['sidebar.agency']).toBe('Counselling centres');
     });
 });

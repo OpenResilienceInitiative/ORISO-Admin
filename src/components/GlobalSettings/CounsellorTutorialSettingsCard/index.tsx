@@ -1,11 +1,15 @@
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import { Card } from '../../Card';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
+import { TileSections } from '../../TileSections';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../../hooks/useSettingsAdminMutation.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { tutorialsHelp } from './help';
 import styles from './styles.module.scss';
 
 interface Props {
@@ -47,12 +51,12 @@ export const CounsellorTutorialSettingsCard = ({
             autoHeight
             dialogContentPadding
             headerIcon={<ExploreOutlinedIcon />}
+            help={tutorialsHelp}
             titleKey="globalSettings.tutorials.title"
             subTitleKey="globalSettings.tutorials.description"
         >
-            <div className={styles.content}>
-                <section aria-label={t('globalSettings.tutorials.current')}>
-                    <h6 className={styles.heading}>{t('globalSettings.tutorials.current')}</h6>
+            <TileSections>
+                <TileSections.Section id="tutorials-current" title={t('globalSettings.tutorials.current')}>
                     <dl className={styles.availability}>
                         <div>
                             <dt>{t('globalSettings.tutorials.tours')}</dt>
@@ -63,26 +67,30 @@ export const CounsellorTutorialSettingsCard = ({
                             <dd>{availability(practiceAvailable)}</dd>
                         </div>
                     </dl>
-                    <Form
-                        layout="vertical"
-                        disabled={!onToursChange || toursSaving}
-                        className={styles.toursControl}
-                        fields={[{ name: 'tours', value: toursEnabled === true }]}
-                        onValuesChange={(changed: { tours?: boolean }) => {
-                            if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
-                        }}
-                    >
-                        <MuiSwitchField
-                            name="tours"
-                            label={t('globalSettings.tutorials.showTours')}
-                            helpText={t('globalSettings.tutorials.showToursHelp')}
-                        />
-                    </Form>
-                </section>
-                <section aria-label={t('globalSettings.tutorials.planned')}>
-                    <h6 className={styles.heading}>{t('globalSettings.tutorials.planned')}</h6>
+                    <ReadOnlyTileContext.Provider value={!onToursChange && !toursSaving}>
+                        <Form
+                            layout="vertical"
+                            disabled={!onToursChange || toursSaving}
+                            className={styles.toursControl}
+                            fields={[{ name: 'tours', value: toursEnabled === true }]}
+                            onValuesChange={(changed: { tours?: boolean }) => {
+                                if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
+                            }}
+                        >
+                            <MuiSwitchField
+                                name="tours"
+                                label={t('globalSettings.tutorials.showTours')}
+                                helpText={t('globalSettings.tutorials.showToursHelp')}
+                            />
+                        </Form>
+                    </ReadOnlyTileContext.Provider>
+                </TileSections.Section>
+                <TileSections.Section
+                    id="tutorials-planned"
+                    title={t('globalSettings.tutorials.planned')}
+                    note={t('globalSettings.tutorials.previewHelp')}
+                >
                     <p className={styles.notice}>{t('globalSettings.tutorials.comingSoon')}</p>
-                    <p className={styles.description}>{t('globalSettings.tutorials.previewHelp')}</p>
                     <Form
                         layout="vertical"
                         disabled
@@ -97,23 +105,23 @@ export const CounsellorTutorialSettingsCard = ({
                             name="practice"
                             label={t('globalSettings.tutorials.enablePractice')}
                             helpText={t('globalSettings.tutorials.enablePracticeHelp')}
-                            disabled
+                            unavailable
                         />
                         <MuiSwitchField
                             name="newAccountDefault"
                             label={t('globalSettings.tutorials.newAccountDefault')}
                             helpText={t('globalSettings.tutorials.newAccountDefaultHelp')}
-                            disabled
+                            unavailable
                         />
                         <MuiSwitchField
                             name="individualTours"
                             label={t('globalSettings.tutorials.individualTours')}
                             helpText={t('globalSettings.tutorials.individualToursHelp')}
-                            disabled
+                            unavailable
                         />
                     </Form>
-                </section>
-            </div>
+                </TileSections.Section>
+            </TileSections>
         </Card>
     );
 };
@@ -144,9 +152,8 @@ export const CounsellorTutorialSettingsCardContainer = () => {
                               {
                                   // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                                   onError: () =>
-                                      message.error({
+                                      snackbar.error({
                                           content: t('globalSettings.tutorials.error.generic'),
-                                          duration: 5,
                                       }),
                               },
                           )

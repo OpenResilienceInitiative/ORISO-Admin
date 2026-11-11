@@ -4,16 +4,18 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import i18n from '../../../i18n';
+import { CardGrid } from '../../CardGrid';
 import { SupportEmailSettingsCard } from '.';
 
 /** ORISO-Frontend#1915: fallback support address when a counselling centre has no chat-reachable admin. */
 const meta = {
-    title: 'Organisms/GlobalSettings/SupportEmailSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/SupportEmailSettingsCard',
+    id: 'organisms-globalsettings-supportemailsettingscard',
     component: SupportEmailSettingsCard,
     decorators: [
-        (Story) => (
+        (Story, { parameters }) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ maxWidth: 400 }}>
+                <div style={{ maxWidth: parameters.tileWidth ?? 400 }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -64,4 +66,19 @@ export const InvalidAddress: Story = {
         await expect(await canvas.findByText('Die E-Mail-Adresse ist nicht gültig.')).toBeVisible();
         await expect(args.onSave).not.toHaveBeenCalled();
     },
+};
+
+/** As it sits on the page, beside a taller tile, so the free space shows. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item>
+                <SupportEmailSettingsCard {...args} />
+            </CardGrid.Item>
+            <CardGrid.Item>
+                <div style={{ height: 640 }} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
 };

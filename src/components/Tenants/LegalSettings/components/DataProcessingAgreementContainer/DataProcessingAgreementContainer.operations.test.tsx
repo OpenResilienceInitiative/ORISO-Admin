@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -14,6 +14,21 @@ import { DataProcessingAgreementContainer } from './index';
 import { DpaBlockerGate } from '../../../../DpaBlocker/DpaBlockerGate';
 
 const version = '2026-07-01T12:00:00';
+// Error and success texts are pop-ups with a lead line before the text, so match the text inside.
+const containing = (text: string) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+// Pop-ups share one channel and show one after the other. A notice raised earlier (for example the
+// "contract confirmed" hint) can still be up; the person closes it and the queued one follows.
+const findNotice = async (text: string) => {
+    await waitFor(() => {
+        if (screen.queryByText(containing(text))) return;
+        const close = within(screen.getByTestId('snackbar-host')).queryByRole('button', {
+            name: i18n.t('snackbar.close'),
+        });
+        if (close) fireEvent.click(close);
+        throw new Error(`notice not shown yet: ${text}`);
+    });
+    return screen.findByText(containing(text));
+};
 const snapshot = {
     activationDate: version,
     signingDeadlineAt: '2099-10-30T14:30:00Z',
@@ -183,13 +198,13 @@ it('keeps contract recovery available when signature details fail and displays t
         ),
     );
     renderLegal();
-    expect(await screen.findByText(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
+    expect(await findNotice(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
     expect(screen.getByRole('button', { name: i18n.t('legal.dpa.sign.sendLink') })).toBeVisible();
     expect(screen.queryByText(i18n.t('legal.dpa.sign.previousRetained'))).not.toBeInTheDocument();
     unavailable = false;
     await userEvent.click(screen.getByRole('button', { name: i18n.t('tenants.legal.version.retry') }));
     expect(await screen.findByText(/Recovered signatory/)).toBeVisible();
-    expect(screen.queryByText(i18n.t('legal.dpa.sign.detailsLoadError'))).not.toBeInTheDocument();
+    expect(screen.queryByText(containing(i18n.t('legal.dpa.sign.detailsLoadError')))).not.toBeInTheDocument();
 });
 
 it('keeps a late signature response from the previous tenant out of the new tenant view', async () => {
@@ -423,7 +438,7 @@ it('does not show a previous signature-load error beside a different governing p
     );
     renderLegal();
     try {
-        expect(await screen.findByText(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
+        expect(await findNotice(i18n.t('legal.dpa.sign.detailsLoadError'))).toBeVisible();
         renewed = true;
         now.mockReturnValue(initialTime + 31_000);
         const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
@@ -432,7 +447,7 @@ it('does not show a previous signature-load error beside a different governing p
         fireEvent(window, new Event('visibilitychange'));
         await waitFor(() => expect(reloadStarted).toBe(true));
         expect(screen.getByText('Current contract')).toBeVisible();
-        expect(screen.queryByText(i18n.t('legal.dpa.sign.detailsLoadError'))).not.toBeInTheDocument();
+        expect(screen.queryByText(containing(i18n.t('legal.dpa.sign.detailsLoadError')))).not.toBeInTheDocument();
     } finally {
         finishReload();
     }
@@ -521,7 +536,7 @@ it.each(['cancel', 'failure'])('retains generated translations in the editor aft
             target: { value: '2099-11-01T12:00' },
         });
         await user.click(within(deadline).getByRole('button', { name: 'Veröffentlichen' }));
-        expect(await screen.findByText(i18n.t('tenants.legal.version.publishError'))).toBeVisible();
+        expect(await findNotice(i18n.t('tenants.legal.version.publishError'))).toBeVisible();
     }
     await user.click(screen.getByRole('button', { name: /Sprachen: Deutsch/ }));
     await user.click(await screen.findByRole('menuitem', { name: /Englisch/ }));

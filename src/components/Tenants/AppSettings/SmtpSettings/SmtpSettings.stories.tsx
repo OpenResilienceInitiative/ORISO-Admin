@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
@@ -46,7 +47,8 @@ const handlers = (mode: 'OWN' | 'PLATFORM' = 'OWN') => [
 ];
 
 const meta = {
-    title: 'Organisms/Tenants/Settings/Smtp',
+    title: 'Settings/Einstellungen/Email Server/Smtp',
+    id: 'organisms-tenants-settings-smtp',
     component: SmtpSettings,
     args: { tenantId: '42' },
     render: () => <StoredSettingsExample />,
@@ -81,6 +83,11 @@ export const SavedOwnServer: Story = {
         ).toBeInTheDocument();
         await expect(host).toHaveValue('unsaved.smtp.example');
     },
+};
+
+export const HelpSlideshow: Story = {
+    ...SavedOwnServer,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
 };
 
 export const PlatformHasNoOwnServerTest: Story = {

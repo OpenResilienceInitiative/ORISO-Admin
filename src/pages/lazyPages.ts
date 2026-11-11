@@ -3,6 +3,7 @@ import { lazyNamed } from './lazyNamed';
 export const LazyTenantSettingsLayout = lazyNamed(() => import('./TenantSettings'), 'TenantSettingsLayout');
 export const LazyTopicList = lazyNamed(() => import('./Topics/List/TopicList'), 'TopicList');
 export const LazyStatistic = lazyNamed(() => import('./Statistic'), 'Statistic');
+export const LazyHomePage = lazyNamed(() => import('./Home/HomePage'), 'HomePage');
 export const LazyUserProfile = lazyNamed(() => import('./Profile/UserProfile'), 'UserProfile');
 export const LazyAgencySetupPage = lazyNamed(() => import('./Agency/AgencySetupPage'), 'AgencySetupPage');
 export const LazyAgencyList = lazyNamed(() => import('./Agency/List'), 'AgencyList');
@@ -20,6 +21,11 @@ export const LazyTenantEditOrAdd = lazyNamed(() => import('./Tenants/Edit'), 'Te
 export const LazyTenantAdminEditOrAdd = lazyNamed(() => import('./users/TenantAdminEdit'), 'TenantAdminEditOrAdd');
 export const LazyGeneralTenantSettings = lazyNamed(() => import('./Tenants/Edit/General'), 'GeneralTenantSettings');
 export const LazyTenantThemeSettings = lazyNamed(() => import('./Tenants/Edit/ThemeSettings'), 'TenantThemeSettings');
+export const LazyTenantErstantwortSettings = lazyNamed(
+    () => import('./Tenants/Edit/ErstantwortSettings'),
+    'TenantErstantwortSettings',
+);
+export const LazyTenantSmtpSettings = lazyNamed(() => import('./Tenants/Edit/SmtpSettings'), 'TenantSmtpSettings');
 export const LazyTenantAppSettings = lazyNamed(() => import('./Tenants/Edit/AppSettings'), 'TenantAppSettings');
 export const LazyTenantGlobalSettings = lazyNamed(
     () => import('./Tenants/Edit/GlobalSettings'),
@@ -51,5 +57,4 @@ export const LazyLinksPage = lazyNamed(() => import('./Links'), 'LinksPage');
 export const LazyLinksIndexRedirect = lazyNamed(() => import('./Links'), 'LinksIndexRedirect');
 export const LazyTenantInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'TenantInvitesTab');
 export const LazyCounsellorInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'CounsellorInvitesTab');
-export const LazyExternalInboundsTab = lazyNamed(() => import('./Links/ExternalInboundsTab'), 'ExternalInboundsTab');
 export const LazyGlobalLoginSettingsPage = lazyNamed(() => import('./GlobalSettings'), 'GlobalLoginSettingsPage');

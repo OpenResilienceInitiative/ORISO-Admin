@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import type { CounselorData } from '../../../types/counselor';
 import { UserDataTable, type UserDataTableProps } from './UserDataTable';

@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { CaseHandoverConsentPolicyControl } from './CaseHandoverConsentPolicyControl';
 
 vi.mock('react-i18next', () => ({
@@ -8,7 +8,7 @@ vi.mock('react-i18next', () => ({
 }));
 
 describe('CaseHandoverConsentPolicyControl', () => {
-    it('offers the five Figma consent policies plus information in their canonical order', async () => {
+    it('offers the five Figma consent policies, and nothing else, in their canonical order', async () => {
         render(
             <CaseHandoverConsentPolicyControl
                 label="tenants.permissions.card.caseHandover.consentClient"
@@ -26,7 +26,6 @@ describe('CaseHandoverConsentPolicyControl', () => {
             'tenants.permissions.consent.noneSuggested',
             'tenants.permissions.consent.optInSuggested',
             'tenants.permissions.consent.optOutSuggested',
-            'tenants.permissions.policy.moreInformation',
         ];
         const buttons = within(screen.getByRole('list')).getAllByRole('button');
         expect(buttons).toHaveLength(expectedNames.length);
@@ -65,5 +64,28 @@ describe('CaseHandoverConsentPolicyControl', () => {
 
         await userEvent.click(screen.getByRole('button', { name: 'tenants.permissions.consent.optOutEnforced' }));
         expect(onChange).toHaveBeenCalledWith({ value: 'OPT_OUT', mode: 'ENFORCED' });
+    });
+
+    it('shows an inherited requirement as a disabled button with no menu and no information entry', async () => {
+        const onChange = vi.fn();
+        const onOpenChange = vi.fn();
+        render(
+            <CaseHandoverConsentPolicyControl
+                label="Consent"
+                policy={{ value: 'OPT_IN', mode: 'ENFORCED', inherited: true }}
+                open={false}
+                onOpenChange={onOpenChange}
+                onChange={onChange}
+            />,
+        );
+
+        const button = screen.getByRole('button', { name: 'Consent: tenants.permissions.consent.optInEnforced' });
+        expect(button).toBeDisabled();
+        expect(screen.getAllByRole('button')).toHaveLength(1);
+
+        await userEvent.click(button);
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(onOpenChange).not.toHaveBeenCalled();
+        expect(onChange).not.toHaveBeenCalled();
     });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildTenantRequestBody } from './useAddOrUpdateTenant.hook';
 import { TenantAdminData } from '../types/TenantAdminData';
 
@@ -79,5 +79,32 @@ describe('buildTenantRequestBody — Träger DPO (Admin#1067)', () => {
         const stored = { ...STORED, dataProtectionOfficer: dpo } as TenantAdminData;
         const body = buildTenantRequestBody(stored, form(), 'musterstadt');
         expect(body.dataProtectionOfficer).toEqual(dpo);
+    });
+});
+
+describe('buildTenantRequestBody — stored settings', () => {
+    const stored = {
+        ...STORED,
+        settings: { featureStatisticsEnabled: true, smtp: { enabled: true } },
+    } as unknown as TenantAdminData;
+    const formWithoutSettings = {
+        name: 'Caritas Musterstadt',
+        licensing: { allowedNumberOfUsers: 5 },
+    } as TenantAdminData;
+
+    it('keeps the stored settings when the saving form has no settings fields', () => {
+        const body = buildTenantRequestBody(stored, formWithoutSettings, 'musterstadt');
+
+        expect(body.settings).toEqual(stored.settings);
+    });
+
+    it('lets the settings a form does carry win over the stored ones', () => {
+        const body = buildTenantRequestBody(
+            stored,
+            form({ settings: { featureStatisticsEnabled: false } }),
+            'musterstadt',
+        );
+
+        expect(body.settings).toEqual({ featureStatisticsEnabled: false, smtp: { enabled: true } });
     });
 });

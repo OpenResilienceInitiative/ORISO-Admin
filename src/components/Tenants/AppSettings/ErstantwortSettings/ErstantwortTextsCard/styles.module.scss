@@ -7,9 +7,18 @@
  */
 
 .card {
+    /* The dialog-variant card follows the colour scheme (dark in the inverted one), so the editor's language and
+       version chips follow it too: text and border get the scheme's roles instead of the fixed light-card greys. */
+    --editor-chip-text: var(--m3-on-surface-variant, #444748);
+    --editor-chip-border: var(--m3-outline, #747878);
+    --editor-chip-hover: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+
     width: 100%;
     min-width: 0;
-    max-width: 960px;
+
+    /* The introduction card takes the whole width of its tile, like the legal documents; the text boxes keep a page's
+       line length. */
+    max-width: none;
     box-sizing: border-box;
 }
 
@@ -65,7 +74,7 @@
 
     &:focus-visible {
         border-radius: mui.$mui-unit;
-        outline: 2px solid var(--m3-primary, #005cbb);
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -90,8 +99,8 @@
 .mandatoryChip {
     padding: 2px mui.$mui-unit;
     border-radius: mui.$mui-unit * 1.5;
-    background: var(--m3-secondary-container, #dae2f9);
-    color: var(--m3-on-secondary-container, #131c2b);
+    background: var(--m3-secondary-container, #646d78);
+    color: var(--m3-on-secondary-container, #e7effc);
     font-size: 12px;
     font-weight: 500;
 }

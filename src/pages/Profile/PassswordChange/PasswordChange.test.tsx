@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../../components/Snackbar';
 import { PasswordChange } from './index';
 import { PasswordChangeCounsellorNotice } from './PasswordChangeCounsellorNotice';
 
@@ -25,11 +26,6 @@ vi.mock('../../../hooks/useUpdateUserPassword.hook', () => ({
     },
 }));
 
-vi.mock('antd', async (importOriginal) => {
-    const antd = await importOriginal<typeof import('antd')>();
-    return { ...antd, notification: { success: mocks.success, error: vi.fn() } };
-});
-
 const openForm = async () => {
     render(<PasswordChange />);
     await userEvent.click(screen.getByText('profile.passwordChange.editButton'));
@@ -37,6 +33,8 @@ const openForm = async () => {
 
 describe('PasswordChange counsellor notice', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'success').mockImplementation(mocks.success as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(vi.fn() as never);
         mocks.isCounsellor = false;
         mocks.success.mockReset();
     });

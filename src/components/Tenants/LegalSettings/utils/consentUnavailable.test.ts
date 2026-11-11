@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
     CONSENT_DISCLAIMER_BY_LANGUAGE,
     CONSENT_DISCLAIMER_FALLBACK_LANGUAGE,

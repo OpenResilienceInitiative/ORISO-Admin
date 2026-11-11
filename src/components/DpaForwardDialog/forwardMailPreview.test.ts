@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import deTranslation from '../../locales/de/translation.json';
 import enTranslation from '../../locales/en/translation.json';
 import { buildForwardMailPreview } from './forwardMailPreview';

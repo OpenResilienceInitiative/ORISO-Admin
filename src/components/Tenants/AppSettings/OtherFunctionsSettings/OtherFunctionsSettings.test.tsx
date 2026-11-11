@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -43,11 +43,11 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 describe('OtherFunctionsSettings', () => {
-    it('renders the Team-Besprechung toggle bound to featureTeamDiscussionEnabled', () => {
+    it('renders the Team-Chat toggle bound to featureTeamDiscussionEnabled', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getByText('tenants.appSettings.otherFunctions.teamDiscussion.title')).toBeInTheDocument();
-        expect(screen.getByText('tenants.appSettings.otherFunctions.teamDiscussion.description')).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'teamFunctions.chat.name' })).toBeInTheDocument();
+        expect(screen.getByText('teamFunctions.chat.description')).toBeInTheDocument();
     });
 
     /**

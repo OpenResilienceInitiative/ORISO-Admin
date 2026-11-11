@@ -5,7 +5,8 @@ import { DpaPublishDeadlineDialog } from './index';
 
 /** Empty required date/time field for both initial publication and renewal. */
 const meta = {
-    title: 'Organisms/Legal/DpaPublishDeadlineDialog',
+    title: 'Settings/Einstellungen/Rechtliches/DpaPublishDeadlineDialog',
+    id: 'organisms-legal-dpapublishdeadlinedialog',
     component: DpaPublishDeadlineDialog,
     args: { onConfirm: fn(), onCancel: fn() },
 } satisfies Meta<typeof DpaPublishDeadlineDialog>;

@@ -1,6 +1,7 @@
 import { ReactComponent as CounselingGlyph } from '../../resources/img/svg/nav-glyphs/counseling.svg';
 import { ReactComponent as DisplaySettingsGlyph } from '../../resources/img/svg/nav-glyphs/display_settings.svg';
-import { ReactComponent as LinksGlyph } from '../../resources/img/svg/nav-glyphs/links.svg';
+import { ReactComponent as HomeGlyph } from '../../resources/img/svg/nav-glyphs/home.svg';
+import { ReactComponent as InviteGlyph } from '../../resources/img/svg/nav-glyphs/invite.svg';
 import { ReactComponent as LogoutGlyph } from '../../resources/img/svg/nav-glyphs/logout.svg';
 import { ReactComponent as LogsGlyph } from '../../resources/img/svg/nav-glyphs/logs.svg';
 import { ReactComponent as ProfileGlyph } from '../../resources/img/svg/nav-glyphs/profile.svg';
@@ -23,7 +24,9 @@ import { ReactComponent as UsersGlyph } from '../../resources/img/svg/nav-glyphs
 export const NAV_GLYPHS = {
     counseling: CounselingGlyph,
     displaySettings: DisplaySettingsGlyph,
-    links: LinksGlyph,
+    home: HomeGlyph,
+    /** The invite area (route `links`): an envelope, since inviting means sending a mail (#1374). */
+    links: InviteGlyph,
     logout: LogoutGlyph,
     logs: LogsGlyph,
     profile: ProfileGlyph,

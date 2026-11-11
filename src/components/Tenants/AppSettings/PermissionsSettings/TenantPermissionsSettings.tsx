@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, notification } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
@@ -15,11 +15,16 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
-import { toRecipientScopeWrite, withoutInternalGroupChat } from './RecipientScope/recipientScopePolicy';
+import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
+import { Notify } from '../../../Notify';
 
-export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+export const TenantPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    liveChatLinks,
+}: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const {
@@ -156,8 +161,8 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                 const confirmed = confirmedPolicyData.current;
                 if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
-                    ...withoutInternalGroupChat(confirmed),
-                    policies: { ...confirmed.policies, [fieldKey]: policy },
+                    tenantId: confirmed.tenantId,
+                    policies: { [fieldKey]: policy },
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
@@ -201,13 +206,14 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
                     throw new Error('Permission policies of this Träger are not loaded');
                 }
                 const saved = await updateRecipientScope.mutateAsync({
-                    ...withoutInternalGroupChat(confirmed),
+                    tenantId: confirmed.tenantId,
+                    policies: {},
                     ...toRecipientScopeWrite({ ...next, inherited: false }),
                 });
                 if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
                 confirmedPolicyData.current = saved;
                 rebuildEffectivePolicyData();
-                notification.success({
+                snackbar.success({
                     message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
                     duration: 3,
                 });
@@ -222,7 +228,11 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
     );
 
     if (policiesError) {
-        return <Alert type="error" message={t('error.loading')} showIcon role="alert" />;
+        return (
+            <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
+                {t('error.loading')}
+            </Notify>
+        );
     }
 
     return (
@@ -230,6 +240,7 @@ export const TenantPermissionsSettings = ({ tenantId, excludeCardKeys }: Permiss
             tenantId={tenantId}
             caseHandoverTenantId={Number(tenantId) || undefined}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}

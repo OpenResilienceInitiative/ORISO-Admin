@@ -5,7 +5,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vite-plus/test';
+import { SnackbarHost } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import { UseAppConfigProvider, useAppConfigContext } from '../../../context/useAppConfig';
@@ -23,6 +24,8 @@ afterEach(() => {
     clearSessionTokens();
 });
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     savedBodies = [];
     setSessionTokens(
         `header.${btoa(

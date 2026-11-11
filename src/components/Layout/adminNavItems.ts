@@ -3,6 +3,7 @@ import { canOpenTenantLegalSettings } from '../../constants/agencyAdminLanding';
 import {
     canReadCaseHandoverAdmin,
     canSeeDeletionAuditLogsFor,
+    canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
     type CanFn,
     type HasRoleFn,
@@ -16,6 +17,7 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 export interface AdminNavLabels {
     account: string;
     agency: string;
+    home: string;
     links: string;
     logs: string;
     settings: string;
@@ -90,13 +92,17 @@ export const buildAdminNavItems = ({
     labels,
     settingsPath,
 }: AdminNavContext): AdminSidebarNavItem[] => {
-    const items: AdminSidebarNavItem[] = [];
+    // Home is the start page for every admin (ORISO-Admin#1323): an overview of
+    // the areas below, so it needs no permission of its own.
+    const items: AdminSidebarNavItem[] = [
+        { key: 'home', to: routePathNames.home, label: labels.home, iconPath: routePathNames.home },
+    ];
 
     const canSeeSettingsMenu =
         can(PermissionAction.Read, Resource.Tenant) ||
         canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
-    const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
+    const canSeeInactiveAuditLogs = canSeeInactiveAuditLogsFor(isSuperAdmin, can);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const logsPage = resolveLogsPage(
         canSeeCounsellorLogs,

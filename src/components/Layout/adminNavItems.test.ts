@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildAdminNavItems, resolveLogsPage, type AdminNavLabels } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
 import routePathNames from '../../appConfig';
@@ -9,6 +9,7 @@ import { UserRole } from '../../enums/UserRole';
 const labels: AdminNavLabels = {
     account: 'Account',
     agency: 'Agencies',
+    home: 'Home',
     links: 'Links',
     logs: 'Logs',
     settings: 'Settings',
@@ -40,6 +41,17 @@ describe('resolveLogsPage', () => {
 });
 
 describe('buildAdminNavItems', () => {
+    // ORISO-Admin#1323: every admin starts at Home, whatever else they may open.
+    it.each([
+        ['platform admin', true, hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin), canFor(Resource.Tenant)],
+        ['Träger admin', false, hasRoleFor(UserRole.TenantAdmin), canFor(Resource.Tenant, Resource.Agency)],
+        ['admin without any section', false, hasRoleFor(), canFor()],
+    ])('puts Home first for the %s', (_label, isSuperAdmin, hasRole, can) => {
+        const items = build({ isSuperAdmin, hasRole, can, labels, settingsPath: '/admin/theme-settings/legal' });
+
+        expect(items[0]).toMatchObject({ key: 'home', to: routePathNames.home, label: 'Home' });
+    });
+
     it('never renders two nav entries with the same label', () => {
         // A tenant admin who also holds `user-admin` — the role mix the duplicate "Logs"
         // menu was reported with (ORISO-Admin#84).

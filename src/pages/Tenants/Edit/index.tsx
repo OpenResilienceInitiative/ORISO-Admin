@@ -1,4 +1,5 @@
 import { Outlet, useLocation, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Page } from '../../../components/Page';
 import routePathNames from '../../../appConfig';
 import { useSingleTenantData } from '../../../hooks/useSingleTenantData';
@@ -11,6 +12,7 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 
 export const TenantEditOrAdd = () => {
+    const { t } = useTranslation();
     const { settings } = useAppConfigContext();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
@@ -37,13 +39,24 @@ export const TenantEditOrAdd = () => {
         <Page isLoading={isLoading}>
             <Page.BackWithActions
                 path={routePathNames.tenants}
+                parentKey="sidebar.tenants"
                 titleKey={title}
+                meta={
+                    isEditing && data
+                        ? [
+                              data.subdomain,
+                              typeof data.beraterCount === 'number'
+                                  ? t('page.meta.counsellors', { count: data.beraterCount })
+                                  : undefined,
+                          ]
+                        : undefined
+                }
                 tabs={
                     canSeeTenantEditTabs &&
                     canSeeConfigTabs && [
                         {
                             to: `/admin/tenants/${id}/general`,
-                            titleKey: 'tenants.edit.tabs.general',
+                            titleKey: 'settings.subhead.masterData',
                             iconName: 'master_data',
                         },
                         {
@@ -57,7 +70,12 @@ export const TenantEditOrAdd = () => {
                             iconName: 'legal',
                         },
                         {
-                            to: `/admin/tenants/${id}/app-settings`,
+                            to: `/admin/tenants/${id}/erstantwort`,
+                            titleKey: 'settings.subhead.erstantwort',
+                            iconName: 'erstantwort',
+                        },
+                        {
+                            to: `/admin/tenants/${id}/smtp`,
                             titleKey: 'settings.subhead.smtp',
                             iconName: 'email_server',
                         },
@@ -65,6 +83,11 @@ export const TenantEditOrAdd = () => {
                             to: `/admin/tenants/${id}/global-settings`,
                             titleKey: 'settings.subhead.functionAccess',
                             iconName: 'functionality_access',
+                        },
+                        {
+                            to: `/admin/tenants/${id}/functionalities`,
+                            titleKey: 'tenants.edit.tabs.appSettings',
+                            iconName: 'functionalities',
                         },
                     ]
                 }

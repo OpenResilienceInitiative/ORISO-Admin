@@ -1,3 +1,5 @@
+@use '../../../../../styles/nativeSelectChevron';
+
 .field {
     display: flex;
     flex-direction: column;
@@ -13,4 +15,8 @@
     background: var(--m3-surface, #fcf9f8);
     color: var(--m3-on-surface, #1b1b1c);
     font: 400 14px/20px var(--m3-body-font-family);
+}
+
+.selectFrame {
+    @include nativeSelectChevron.native-select-chevron(20px, 8px);
 }

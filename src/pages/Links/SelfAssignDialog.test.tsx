@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { message } from 'antd';
+import { snackbar as message } from '../../components/Snackbar';
 import type { SelfAssignments } from '../../api/accountInvites/selfAssignments';
 import { SelfAssignDialog } from './SelfAssignDialog';
 

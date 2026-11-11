@@ -1,8 +1,8 @@
-import { message } from 'antd';
 import i18next from 'i18next';
 import { getAccessTokenForRequests, tryRefreshAccessToken } from './auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
+import { captureTransportFeedback, type TransportFeedback } from './transportFeedback';
 
 import logout from './auth/logout';
 import { CSRF_WHITELIST_HEADER } from '../appConfig';
@@ -45,6 +45,10 @@ export const FETCH_ERRORS = {
     EMPTY: 'EMPTY',
     FORBIDDEN: 'FORBIDDEN',
     NO_MATCH: 'NO_MATCH',
+    // Opt-in: reject a 503 locally so the caller can say "temporarily unavailable". The
+    // statistics dashboard answers 503 when its settings cannot be read (UserService#1568);
+    // without this code it was indistinguishable from any other failure.
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
     TIMEOUT: 'TIMEOUT',
     // The auth server refused because a limit was hit, not because the credentials
     // were wrong: Keycloak answers 429 both for "too many codes requested" and for
@@ -107,7 +111,7 @@ interface FetchDataProps {
     retriedAfterRefresh?: boolean;
 }
 
-const executeFetchData = (props: FetchDataProps): Promise<any> =>
+const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Promise<any> =>
     new Promise((resolve, reject) => {
         const accessToken = getAccessTokenForRequests();
         // Check if manual authorization header is provided in headersData
@@ -218,6 +222,11 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         // (see BAD_GATEWAY_WITH_RESPONSE above). No toast here — the
                         // caller renders the specific one.
                         reject(response);
+                    } else if (
+                        response.status === 503 &&
+                        props.responseHandling.includes(FETCH_ERRORS.SERVICE_UNAVAILABLE)
+                    ) {
+                        reject(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
                     } else if (response.status === 401) {
                         // Don't force a logout here. fetchData()'s wrapper attempts a single
                         // token refresh + retry before falling back to logout, so a lapsed or
@@ -228,7 +237,7 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
                         // Reject without showing a toast so the caller can decide how to handle it.
                         reject(response);
                     } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
-                        message.error({
+                        report({
                             content: i18next.t([
                                 `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
                                 'message.error.default',
@@ -265,18 +274,18 @@ const executeFetchData = (props: FetchDataProps): Promise<any> =>
  * valid session to refresh — do we fall back to logging the user out. This stops
  * the "logged out while creating an agency" forced-logout.
  */
-export const fetchData = async (props: FetchDataProps): Promise<any> => {
+const fetchWithFeedback = async (props: FetchDataProps, report: TransportFeedback): Promise<any> => {
     try {
-        return await executeFetchData(props);
+        return await executeFetchData(props, report);
     } catch (error) {
         const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
 
         if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
             const refreshed = await tryRefreshAccessToken();
             if (refreshed) {
-                // Retry once through fetchData (not executeFetchData) so a retry that
+                // Retry once through this private wrapper (not executeFetchData) so a retry that
                 // is still unauthorized also runs the logout fallback below.
-                return fetchData({ ...props, retriedAfterRefresh: true });
+                return fetchWithFeedback({ ...props, retriedAfterRefresh: true }, report);
             }
         }
 
@@ -285,9 +294,9 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
             // a dead session ended an in-progress action (e.g. sending a Träger-admin
             // invite) with nothing but a spinner and a silent redirect.
             // Stable key: concurrent 401s (a page with many active queries) all reach
-            // this fallback once the shared refresh has failed — antd collapses repeats
-            // with the same key into ONE toast instead of stacking identical ones.
-            message.error({
+            // this fallback once the shared refresh has failed — the snackbar channel collapses
+            // repeats with the same key into ONE snackbar instead of stacking identical ones.
+            report({
                 content: i18next.t('message.error.sessionExpired') as string,
                 duration: 8,
                 key: 'session-expired',
@@ -298,3 +307,6 @@ export const fetchData = async (props: FetchDataProps): Promise<any> => {
         throw error;
     }
 };
+
+// Capture at the public request boundary, once for the original and its private retry.
+export const fetchData = (props: FetchDataProps): Promise<any> => fetchWithFeedback(props, captureTransportFeedback());

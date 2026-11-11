@@ -49,6 +49,9 @@ export interface ListTopicInviteLinksParams {
     page?: number;
     size?: number;
     tenantId?: number;
+    /** Without it the server returns every link kind, account invites included. */
+    linkKind?: TopicInviteLinkKind;
+    status?: TopicInviteLinkStatus;
 }
 
 export const buildTopicInviteLinkUrl = (token: string, topicName?: string | null): string => {
@@ -60,6 +63,23 @@ export const buildTopicInviteLinkUrl = (token: string, topicName?: string | null
     return `${base}/invite/${token}/${encodeURIComponent(name)}`;
 };
 
+export interface LiveChatLinkTopic {
+    id: number;
+    name: string;
+}
+
+export const listLiveChatLinkTopics = async (tenantId: number, signal?: AbortSignal): Promise<LiveChatLinkTopic[]> => {
+    const topics = await fetchData({
+        url: `${invitelinksEndpoint}/topics`,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        headersData: inviteLinkHeaders(tenantId),
+        responseHandling: [FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL_SILENT],
+        signal,
+    });
+    return Array.isArray(topics) ? topics : [];
+};
+
 /** invite-link-apis.json #5 — GET ?page=0&size=20 + Authorization + X-Tenant-Id */
 export const listTopicInviteLinks = async (
     params: ListTopicInviteLinksParams = {},
@@ -67,7 +87,10 @@ export const listTopicInviteLinks = async (
     const page = params.page ?? 0;
     const size = params.size ?? 20;
     const raw = await fetchData({
-        url: `${invitelinksEndpoint}?${buildListQueryString(page, size)}`,
+        url: `${invitelinksEndpoint}?${buildListQueryString(page, size, {
+            linkKind: params.linkKind,
+            status: params.status,
+        })}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         headersData: inviteLinkHeaders(params.tenantId),
@@ -117,6 +140,29 @@ export const deactivateTopicInviteLink = async (linkId: number, tenantId?: numbe
         responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     });
     return withUtcInstants(await response.json());
+};
+
+/** POST /useradmin/invitelinks/{id}/reactivate — switches a DISABLED live-chat link back on. */
+export const reactivateTopicInviteLink = async (linkId: number, tenantId?: number): Promise<TopicInviteLinkDTO> => {
+    const response = await fetchData({
+        url: `${invitelinksEndpoint}/${linkId}/reactivate`,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        headersData: inviteLinkHeaders(tenantId),
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
+    return withUtcInstants(await response.json());
+};
+
+/** DELETE /useradmin/invitelinks/{id} — removes a live-chat link for good. */
+export const deleteTopicInviteLink = async (linkId: number, tenantId?: number): Promise<void> => {
+    await fetchData({
+        url: `${invitelinksEndpoint}/${linkId}`,
+        method: FETCH_METHODS.DELETE,
+        skipAuth: false,
+        headersData: inviteLinkHeaders(tenantId),
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    });
 };
 
 export const CHAT_TYPE_OPTIONS: { value: TopicInviteLinkChatType; label: string }[] = [

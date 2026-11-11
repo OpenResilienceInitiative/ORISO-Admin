@@ -1,8 +1,9 @@
-import { Alert, Button, Space } from 'antd';
 import { useTranslation } from 'react-i18next';
-import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 export interface TenantLegalDraftNoticeProps {
+    /** Element id of the editor card this notice is about; the pop-up offers "Ansehen" to go there. */
+    jumpTarget?: string;
     savedAt?: string;
     localSavedAt?: string;
     collision: boolean;
@@ -24,6 +25,12 @@ export interface TenantLegalDraftNoticeProps {
      * for a decision: a load failure, a conflict, or two drafts to choose between.
      */
     showInfo?: boolean;
+    /**
+     * The person closed the decision pop-up. It stays closed (the tile shows a quiet line with a
+     * button, see `TenantLegalDraftStatus`) until the state changes or the button re-raises it.
+     */
+    dismissed?: boolean;
+    onDismiss?: () => void;
 }
 
 export const TenantLegalDraftNotice = ({
@@ -43,6 +50,9 @@ export const TenantLegalDraftNotice = ({
     onDiscard,
     pending = false,
     showInfo = true,
+    jumpTarget,
+    dismissed = false,
+    onDismiss,
 }: TenantLegalDraftNoticeProps) => {
     const { t, i18n } = useTranslation();
     const rawSavedAt = localSavedAt ?? savedAt;
@@ -51,98 +61,78 @@ export const TenantLegalDraftNotice = ({
         parsedSavedAt && !Number.isNaN(parsedSavedAt.getTime())
             ? parsedSavedAt.toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })
             : rawSavedAt;
+    if (dismissed && (unavailable || conflict || collision)) return null;
     if (unavailable) {
         return (
-            <Alert
-                className={styles.notice}
-                type="error"
-                showIcon
-                data-testid="tenant-draft-unavailable"
-                message={t('legal.serverDraft.unavailable.title')}
-                description={t('legal.serverDraft.unavailable.description')}
-                action={
-                    <Button disabled={pending} onClick={retry}>
-                        {t('legal.serverDraft.retry')}
-                    </Button>
-                }
-            />
+            <Notify
+                jump={jumpTarget}
+                testId="tenant-draft-unavailable"
+                onClose={onDismiss}
+                severity="error"
+                title={t('legal.serverDraft.unavailable.title')}
+                actions={[{ label: t('legal.serverDraft.retry'), onClick: retry, disabled: pending }]}
+            >
+                {t('legal.serverDraft.unavailable.description')}
+            </Notify>
         );
     }
     if (conflict) {
-        const conflictAction = () => {
+        const conflictActions = () => {
             if (conflictRefreshing) return undefined;
             if (conflictRefreshFailed) {
-                return (
-                    <Button disabled={pending} onClick={retryConflict}>
-                        {t('legal.serverDraft.retry')}
-                    </Button>
-                );
+                return [{ label: t('legal.serverDraft.retry'), onClick: retryConflict, disabled: pending }] as const;
             }
-            return (
-                <Space wrap>
-                    <Button disabled={pending} onClick={reloadConflict}>
-                        {t('legal.serverDraft.conflict.reload')}
-                    </Button>
-                    <Button type="primary" disabled={pending} onClick={keepEditing}>
-                        {t('legal.serverDraft.conflict.keepEditing')}
-                    </Button>
-                </Space>
-            );
+            return [
+                { label: t('legal.serverDraft.conflict.reload'), onClick: reloadConflict, disabled: pending },
+                { label: t('legal.serverDraft.conflict.keepEditing'), onClick: keepEditing, disabled: pending },
+            ] as const;
         };
         return (
-            <Alert
-                className={styles.notice}
-                type="warning"
-                showIcon
-                data-testid="tenant-draft-conflict"
-                message={t('legal.serverDraft.conflict.title')}
-                description={t('legal.serverDraft.conflict.description')}
-                action={conflictAction()}
-            />
+            <Notify
+                jump={jumpTarget}
+                testId="tenant-draft-conflict"
+                onClose={onDismiss}
+                severity="warning"
+                title={t('legal.serverDraft.conflict.title')}
+                actions={conflictActions()}
+            >
+                {t('legal.serverDraft.conflict.description')}
+            </Notify>
         );
     }
     if (collision) {
         return (
-            <Alert
-                className={styles.notice}
-                type="warning"
-                showIcon
-                data-testid="tenant-draft-source-choice"
-                message={t('legal.serverDraft.collision.title')}
-                description={t('legal.serverDraft.collision.description')}
-                action={
-                    <Space wrap>
-                        <Button disabled={pending} onClick={loadServer}>
-                            {t('legal.serverDraft.collision.server')}
-                        </Button>
-                        <Button disabled={pending} onClick={keepLocal}>
-                            {t('legal.serverDraft.collision.local')}
-                        </Button>
-                    </Space>
-                }
-            />
+            <Notify
+                jump={jumpTarget}
+                testId="tenant-draft-source-choice"
+                onClose={onDismiss}
+                severity="warning"
+                title={t('legal.serverDraft.collision.title')}
+                actions={[
+                    { label: t('legal.serverDraft.collision.server'), onClick: loadServer, disabled: pending },
+                    { label: t('legal.serverDraft.collision.local'), onClick: keepLocal, disabled: pending },
+                ]}
+            >
+                {t('legal.serverDraft.collision.description')}
+            </Notify>
         );
     }
     if (!showInfo || (!savedAt && !localSavedAt)) return null;
     return (
-        <Alert
-            className={`${styles.notice} ${styles.info}`}
-            type="info"
-            showIcon
-            role="status"
-            data-testid="tenant-server-draft-notice"
-            message={t(localSavedAt ? 'legal.serverDraft.local.title' : 'legal.serverDraft.saved.title')}
-            description={t(
-                localSavedAt ? 'legal.serverDraft.local.description' : 'legal.serverDraft.saved.description',
-                { savedAt: savedAtLabel },
-            )}
-            action={
-                onDiscard ? (
-                    <Button disabled={pending} onClick={onDiscard}>
-                        {t('legal.serverDraft.discard')}
-                    </Button>
-                ) : undefined
+        <Notify
+            jump={jumpTarget}
+            testId="tenant-server-draft-notice"
+            severity="info"
+            title={t(localSavedAt ? 'legal.serverDraft.local.title' : 'legal.serverDraft.saved.title')}
+            actions={
+                onDiscard
+                    ? [{ label: t('legal.serverDraft.discard'), onClick: onDiscard, disabled: pending }]
+                    : undefined
             }
-        />
+        >
+            {t(localSavedAt ? 'legal.serverDraft.local.description' : 'legal.serverDraft.saved.description', {
+                savedAt: savedAtLabel,
+            })}
+        </Notify>
     );
 };
