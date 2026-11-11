@@ -1,6 +1,7 @@
 import FormatSizeOutlinedIcon from '@mui/icons-material/FormatSizeOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiNumberFormField } from '../../mui/MuiFormField';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
@@ -186,7 +187,7 @@ export const ChatMessageSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({ content: t('globalSettings.chatMessages.error.generic'), duration: 5 });
+                            snackbar.error({ content: t('globalSettings.chatMessages.error.generic') });
                             options?.onError?.();
                         },
                     },
