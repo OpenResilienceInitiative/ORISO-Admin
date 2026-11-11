@@ -13,6 +13,15 @@ const mocks = vi.hoisted(() => ({
     settings: { multitenancyWithSingleDomainEnabled: true },
 }));
 
+// The subdomain switch is read through this mock, so each test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
     useParams: () => ({ id: 'add' }),
@@ -50,6 +59,7 @@ describe('Neuen Träger anlegen — Save (Admin#1206)', () => {
         mocks.createTenantAdmin.mockReset();
         mocks.navigate.mockReset();
         mocks.settings = { multitenancyWithSingleDomainEnabled: true };
+        subdomainFeature.finished = false;
     });
 
     it('has no subdomain field, also on a multi-domain installation (subdomains are not finished)', () => {
@@ -59,6 +69,15 @@ describe('Neuen Träger anlegen — Save (Admin#1206)', () => {
 
         expect(screen.getByLabelText(/tenants\.add\.form\.name\.placeholder/)).toBeInTheDocument();
         expect(screen.queryByLabelText(/tenants\.add\.form\.subdomain\.placeholder/)).not.toBeInTheDocument();
+    });
+
+    it('asks for the subdomain on a multi-domain installation once subdomains are technically finished', () => {
+        subdomainFeature.finished = true;
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+
+        render(<GeneralTenantSettings />);
+
+        expect(screen.getByLabelText(/tenants\.add\.form\.subdomain\.placeholder/)).toBeInTheDocument();
     });
 
     it('sends one create request for a double click and shows Save as busy while it runs', async () => {
