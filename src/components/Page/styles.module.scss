@@ -141,36 +141,6 @@
     max-width: calc(100% - var(--admin-subnav-inset, 0%));
 }
 
-// 40px tonal icon button instead of the 88px dark pill.
-.backButton {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--m3-surface-container-high, #eae7e8);
-    color: var(--m3-on-surface, #1b1b1c);
-    transition: background-color 160ms ease;
-
-    &:hover,
-    &:focus-visible {
-        background: var(--m3-surface-container-highest, #e4e2e2);
-        color: var(--m3-on-surface, #1b1b1c);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--admin-focus-ring-color);
-        outline-offset: 2px;
-    }
-
-    > svg {
-        width: 24px;
-        height: 24px;
-    }
-}
-
 .backText {
     display: flex;
     min-width: 0;
