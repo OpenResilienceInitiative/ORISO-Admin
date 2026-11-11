@@ -948,6 +948,9 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         assignedSupervisorId: storedSupervisorId || undefined,
+                        // The search row carries the server's list; the form holds a map by centre id,
+                        // filled once the centres are known. Never let the list in (#1302).
+                        topicsByAgency: {},
                         ...storedPublicSlug,
                         rejectPendingPublicSlug: false,
                         tenantId:
