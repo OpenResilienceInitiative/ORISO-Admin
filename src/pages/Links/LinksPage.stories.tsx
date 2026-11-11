@@ -166,6 +166,8 @@ export const AgencyAdmin: Story = {
         await expect(canvas.getByRole('combobox', { name: /^(Träger|Provider)$/ })).toBeDisabled();
         // One role on offer: „Rolle" is a fixed value row on „Berater:in".
         await expect(canvas.getByRole('button', { name: /^(Rolle bearbeiten|Edit Role)/ })).toBeDisabled();
+        await expect(canvas.getByRole('columnheader', { name: /^(Auswahl|Selection)$/ })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Themen & Fachbereiche|Topics & departments/ })).toBeEnabled();
         await expect(canvas.getByRole('tab', { name: /Beratende-Einladungen|Counsellor invitations/ })).toBeVisible();
         await expect(canvas.getByRole('tab', { name: /Träger-Einladungen|Organisation invitations/ })).toBeVisible();
         // Platform-only: never shown to a Beratungsstellen admin.
