@@ -161,10 +161,17 @@ export const AgencyLegalTextContainer = ({
     const agencyContentKey = AGENCY_CONTENT_KEY[field];
     const traegerContent = tenantData?.content?.[agencyContentKey] as Record<string, string> | undefined;
     const agencyOwnContent = agencyData?.content?.[agencyContentKey] as Record<string, string> | undefined;
-    const agencyWideContent = useMemo<Record<string, string>>(
-        () => ({ ...(traegerContent || {}), ...(agencyOwnContent || {}) }),
-        [traegerContent, agencyOwnContent],
-    );
+    // A language the Beratungsstelle has no visible wording for (never written, emptied to `{"de": ""}`
+    // or left as an empty paragraph) keeps following the Träger. Spreading the raw own map would let
+    // that empty entry hide the Träger text and open the editor blank (#132).
+    const agencyWideContent = useMemo<Record<string, string>>(() => {
+        const ownWording = Object.fromEntries(
+            Object.entries(agencyOwnContent || {}).filter(
+                ([key, value]) => key.includes('__meta') || !isEmptyLegalContent(value),
+            ),
+        );
+        return { ...(traegerContent || {}), ...ownWording };
+    }, [traegerContent, agencyOwnContent]);
     // Which level the agency-wide text really comes from: "Veröffentlicht" belongs to a text this
     // Beratungsstelle published itself, never to the Träger text it merely inherits (#1066, H3).
     let agencyWideStatus: DepartmentPublicationStatus | undefined;

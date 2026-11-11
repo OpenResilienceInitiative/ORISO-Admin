@@ -10,6 +10,7 @@ import frFR from 'antd/es/locale/fr_FR';
 import ruRU from 'antd/es/locale/ru_RU';
 import trTR from 'antd/es/locale/tr_TR';
 import ukUA from 'antd/es/locale/uk_UA';
+import { MuiSelectChevron } from '../../../components/M3Select/MuiSelectChevron';
 import { SUPPORTED_LANGUAGE_CODES, type SupportedLanguageCode } from '../../../constants/supportedLanguages';
 import { muiFieldSx } from '../../../components/mui/fieldSx';
 import { Modal } from '../../../components/Modal';
@@ -102,7 +103,7 @@ const TopicSelection = ({
             onChange={(event) => {
                 i18n.changeLanguage(event.target.value);
             }}
-            slotProps={{ select: { native: true } }}
+            slotProps={{ select: { native: true, IconComponent: MuiSelectChevron } }}
             sx={muiFieldSx()}
         >
             {SUPPORTED_LANGUAGE_CODES.map((code) => (

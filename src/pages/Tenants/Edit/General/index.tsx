@@ -1,15 +1,16 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Form, notification } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useForm } from 'antd/lib/form/Form';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { deleteTenantData } from '../../../../api/tenant/deleteTenantData';
 import { getDomain } from '../../../../utils/getDomain';
 import { CardEditable } from '../../../../components/CardEditable';
 import { Card } from '../../../../components/Card';
-import { CardDeck } from '../../../../components/CardDeck';
 import { CardGrid } from '../../../../components/CardGrid';
+import { GeneralSettings } from '../../../../components/Tenants/GeneralSettings';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useAddOrUpdateTenant } from '../../../../hooks/useAddOrUpdateTenant.hook';
@@ -47,7 +48,23 @@ export const GeneralTenantSettings = () => {
     const { settings } = useAppConfigContext();
     const { t } = useTranslation();
     const { data, isLoading } = useSingleTenantData({ id, enabled: isEditing });
+    // Name & Slogan edits the same name in the neighbouring tile. Without this, saving this card would
+    // send the name it loaded with and undo the rename.
+    useEffect(() => {
+        if (isEditing && data?.name !== undefined) {
+            form.setFieldValue('name', data.name);
+        }
+    }, [isEditing, data?.name, form]);
     const { mutate: createTenantAdmin } = useAddOrUpdateTenantAdmin({});
+    // Creating a Träger is two requests (tenant, then its first admin). A second Save while they run
+    // would create a second tenant whose admin call fails with "e-mail already taken" (Admin#1206).
+    // The ref blocks the second submit synchronously; the state drives the button's busy look.
+    const savingRef = useRef(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const finishSaving = () => {
+        savingRef.current = false;
+        setIsSaving(false);
+    };
 
     const extractTenantAdminPayload = (formData?: Record<string, any>) => {
         if (!formData) return null;
@@ -78,6 +95,13 @@ export const GeneralTenantSettings = () => {
 
     const shouldShowSubdomainField = !settings.multitenancyWithSingleDomainEnabled;
 
+    const saveErrorHandler = createTenantSaveErrorHandler({
+        t,
+        setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
+        notifyError: (message) => notification.error({ message }),
+        canShowSubdomainError: shouldShowSubdomainField,
+    });
+
     const { mutate: update } = useAddOrUpdateTenant({
         id: isEditing ? id : null,
         onSuccess: (rData, submittedFormData) => {
@@ -89,6 +113,7 @@ export const GeneralTenantSettings = () => {
                         tenantId: String(rData.id),
                     } as any;
                     const completeSuccess = () => {
+                        finishSaving();
                         notification.success({ message: t('tenants.created.modal.title') });
                         navigate(routePathNames.tenants);
                     };
@@ -99,6 +124,7 @@ export const GeneralTenantSettings = () => {
                         deleteTenantData(rData.id)
                             .catch(() => undefined)
                             .finally(() => {
+                                finishSaving();
                                 notification.error({ message: conflictMessage });
                                 navigate(routePathNames.tenants);
                             });
@@ -109,6 +135,7 @@ export const GeneralTenantSettings = () => {
                         onError: rollbackAndExit,
                     });
                 } else {
+                    finishSaving();
                     notification.success({ message: t('tenants.created.modal.title') });
                     navigate(routePathNames.tenants);
                 }
@@ -122,17 +149,20 @@ export const GeneralTenantSettings = () => {
             }
             navigate(routePathNames.tenants);
         },
-        onError: createTenantSaveErrorHandler({
-            t,
-            setFieldError: (name, error) => form.setFields([{ name, errors: [error] }]),
-            notifyError: (message) => notification.error({ message }),
-            canShowSubdomainError: shouldShowSubdomainField,
-        }),
+        onError: (error) => {
+            finishSaving();
+            saveErrorHandler(error);
+        },
     });
 
     const handleSave = (formData: Record<string, any>) => {
         // `topic` is frontend-only — strip it before it reaches the mutation.
         const { topic, ...rest } = formData;
+        if (!isEditing) {
+            if (savingRef.current) return;
+            savingRef.current = true;
+            setIsSaving(true);
+        }
         update(rest as unknown as TenantAdminData);
     };
 
@@ -146,71 +176,70 @@ export const GeneralTenantSettings = () => {
     if (isEditing) {
         return (
             <ThemeProvider theme={orisoMuiTheme}>
-                <CardDeck
-                    ariaLabel={t('tenants.add.mainTenantTitle')}
-                    className={styles.tenantCardDeck}
-                    deckClassName={styles.tenantCardDeckScroll}
-                    previousLabel={t('agency.cardDeck.previous')}
-                    nextLabel={t('agency.cardDeck.next')}
-                >
-                    <CardDeck.Item className={styles.tenantCardDeckItem}>
-                        <CardEditable
-                            isLoading={isLoading}
-                            editMode={false}
-                            titleKey="tenants.add.mainTenantTitle"
-                            variant="dialog"
-                            editButtonPlacement="footer"
-                            initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
-                            formProp={form}
-                            onSave={handleSave}
-                            className={styles.tenantInfoCard}
-                        >
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="name"
-                                    label={t('tenants.add.form.name.placeholder')}
-                                    required
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            {shouldShowSubdomainField && (
+                <GeneralSettings
+                    tenantId={id}
+                    section="masterData"
+                    leadingTiles={
+                        <CardGrid.Item>
+                            <CardEditable
+                                isLoading={isLoading}
+                                editMode={false}
+                                titleKey="tenants.add.mainTenantTitle"
+                                headerIcon={<BusinessOutlinedIcon />}
+                                variant="dialog"
+                                editButtonPlacement="footer"
+                                initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
+                                formProp={form}
+                                onSave={handleSave}
+                                className={styles.tenantInfoCard}
+                            >
                                 <div className={styles.fieldGroup}>
                                     <MuiFormField
-                                        name="subdomain"
-                                        label={t('tenants.add.form.subdomain.placeholder')}
-                                        disabled
-                                        endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
+                                        name="name"
+                                        label={t('tenants.add.form.name.placeholder')}
+                                        required
+                                        rules={[requiredRule]}
                                     />
                                 </div>
-                            )}
-                            <div className={styles.fieldGroup}>
-                                <MuiNumberFormField
-                                    name={['licensing', 'allowedNumberOfUsers']}
-                                    label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
-                                    required
-                                    min={1}
-                                    rules={[requiredRule]}
-                                />
-                            </div>
-                            <div className={styles.fieldGroup}>
-                                <MuiFormField
-                                    name="address"
-                                    label={t('tenants.add.form.address.label')}
-                                    placeholder={t('tenants.add.form.address.placeholder')}
-                                />
-                            </div>
-                            <TraegerSenderFields wrapField={wrapInFieldGroup} />
-                            <div className={styles.fieldGroup}>
-                                <MuiMultilineFormField
-                                    name="description"
-                                    label={t('tenants.add.form.description.label')}
-                                    placeholder={t('tenants.add.form.description.placeholder')}
-                                />
-                            </div>
-                            <TraegerDpoFields wrapField={wrapInFieldGroup} />
-                        </CardEditable>
-                    </CardDeck.Item>
-                </CardDeck>
+                                {shouldShowSubdomainField && (
+                                    <div className={styles.fieldGroup}>
+                                        <MuiFormField
+                                            name="subdomain"
+                                            label={t('tenants.add.form.subdomain.placeholder')}
+                                            disabled
+                                            endAdornment={<span className={styles.domainSuffix}>.{getDomain()}</span>}
+                                        />
+                                    </div>
+                                )}
+                                <div className={styles.fieldGroup}>
+                                    <MuiNumberFormField
+                                        name={['licensing', 'allowedNumberOfUsers']}
+                                        label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
+                                        required
+                                        min={1}
+                                        rules={[requiredRule]}
+                                    />
+                                </div>
+                                <div className={styles.fieldGroup}>
+                                    <MuiFormField
+                                        name="address"
+                                        label={t('tenants.add.form.address.label')}
+                                        placeholder={t('tenants.add.form.address.placeholder')}
+                                    />
+                                </div>
+                                <TraegerSenderFields wrapField={wrapInFieldGroup} />
+                                <div className={styles.fieldGroup}>
+                                    <MuiMultilineFormField
+                                        name="description"
+                                        label={t('tenants.add.form.description.label')}
+                                        placeholder={t('tenants.add.form.description.placeholder')}
+                                    />
+                                </div>
+                                <TraegerDpoFields wrapField={wrapInFieldGroup} />
+                            </CardEditable>
+                        </CardGrid.Item>
+                    }
+                />
             </ThemeProvider>
         );
     }
@@ -287,10 +316,12 @@ export const GeneralTenantSettings = () => {
                         className={styles.createCard}
                         footer={
                             <>
-                                <M3Button onClick={() => navigate(routePathNames.tenants)}>
+                                <M3Button onClick={() => navigate(routePathNames.tenants)} disabled={isSaving}>
                                     {t('card.edit.cancel')}
                                 </M3Button>
-                                <M3Button onClick={() => form.submit()}>{t('card.edit.save')}</M3Button>
+                                <M3Button onClick={() => form.submit()} loading={isSaving}>
+                                    {t('card.edit.save')}
+                                </M3Button>
                             </>
                         }
                     >

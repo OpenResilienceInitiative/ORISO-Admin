@@ -22,10 +22,18 @@ export const inviteLinkHeaders = (tenantIdOverride?: number): Record<string, str
     return { 'X-Tenant-Id': String(resolvedTenantId) };
 };
 
-export const buildListQueryString = (page: number, size: number): string => {
+/** Server-side filters of `GET /useradmin/invitelinks`; empty ones are left out. */
+export type InviteLinkListFilters = Partial<Record<'linkKind' | 'status' | 'chatType', string | undefined>>;
+
+export const buildListQueryString = (page: number, size: number, filters: InviteLinkListFilters = {}): string => {
     const search = new URLSearchParams();
     search.set('page', String(page));
     search.set('size', String(size));
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value) {
+            search.set(key, value);
+        }
+    });
     return search.toString();
 };
 

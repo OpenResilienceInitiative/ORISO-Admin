@@ -9,7 +9,7 @@
     border-radius: 100px;
     appearance: none;
     background: transparent;
-    color: #273270;
+    color: var(--m3-secondary, #4c555f);
     cursor: pointer;
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -27,7 +27,7 @@
     }
 
     &:hover:not(:disabled) {
-        background: rgb(39 50 112 / 8%);
+        background: color-mix(in srgb, var(--m3-secondary, #4c555f) 8%, transparent);
     }
 
     &:active:not(:disabled) {

@@ -6,8 +6,12 @@ export interface TutorialStatisticsCount {
     surface: string;
     tourId: string;
     tourVersion: number;
-    status: 'not_started' | 'in_progress' | 'completed' | 'skipped';
+    /** Null on a hidden group: no split by status is sent. */
+    status: 'not_started' | 'in_progress' | 'completed' | 'skipped' | null;
+    /** 0 on a hidden group. */
     total: number;
+    /** True when the group has fewer people than `smallCellMinimum`. Missing from older backends. */
+    suppressed?: boolean;
 }
 
 export interface TutorialStatisticsTenant {
@@ -18,6 +22,8 @@ export interface TutorialStatisticsTenant {
 export interface TutorialStatisticsResponse {
     generatedAt: string;
     scope: 'PLATFORM' | 'TENANT';
+    /** The group size below which a group is hidden. Missing from older backends. */
+    smallCellMinimum?: number;
     tenants: TutorialStatisticsTenant[];
 }
 

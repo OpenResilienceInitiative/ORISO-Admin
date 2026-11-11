@@ -35,6 +35,15 @@ describe('invite link API shared helpers', () => {
         expect(buildListQueryString(2, 50)).toBe('page=2&size=50');
     });
 
+    it('adds the server-side filters it is given and skips empty ones', () => {
+        expect(buildListQueryString(0, 20, { linkKind: 'EXTERNAL_INBOUND', status: 'ACTIVE' })).toBe(
+            'page=0&size=20&linkKind=EXTERNAL_INBOUND&status=ACTIVE',
+        );
+        expect(buildListQueryString(0, 20, { linkKind: 'EXTERNAL_INBOUND', status: undefined })).toBe(
+            'page=0&size=20&linkKind=EXTERNAL_INBOUND',
+        );
+    });
+
     it('normalizes array responses into paged responses', () => {
         expect(normalizeListResponse([{ id: 1 }, { id: 2 }], 3, 10)).toEqual({
             content: [{ id: 1 }, { id: 2 }],

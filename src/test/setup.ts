@@ -20,7 +20,7 @@ if (typeof window !== 'undefined') {
 
     installMemoryStorage();
 
-    // jsdom does not implement scrolling; CardDeck calls scrollTo on its deck element.
+    // jsdom does not implement scrolling.
     if (!Element.prototype.scrollTo) {
         Element.prototype.scrollTo = vi.fn() as unknown as Element['scrollTo'];
     }

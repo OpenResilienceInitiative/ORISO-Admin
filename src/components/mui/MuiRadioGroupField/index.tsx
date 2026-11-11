@@ -87,7 +87,7 @@ const MuiRadioControl = ({
                 {options.map((option) => (
                     <FormControlLabel
                         key={encode(option.value)}
-                        className={styles.option}
+                        className={classNames(styles.option, { [styles.optionUnavailable]: option.disabled })}
                         value={encode(option.value)}
                         label={option.children}
                         disabled={isDisabled || option.disabled}

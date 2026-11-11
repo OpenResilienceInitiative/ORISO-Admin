@@ -3,15 +3,17 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import { CardGrid } from '../../CardGrid';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { AccountInactivitySettingsCard } from '.';
 
 const meta = {
     title: 'Organisms/GlobalSettings/AccountInactivitySettingsCard',
     component: AccountInactivitySettingsCard,
     decorators: [
-        (Story) => (
+        (Story, { parameters }) => (
             <ThemeProvider theme={orisoMuiTheme}>
-                <div style={{ maxWidth: 400 }}>
+                <div style={{ maxWidth: parameters.tileWidth ?? 400 }}>
                     <Story />
                 </div>
             </ThemeProvider>
@@ -50,4 +52,25 @@ export const SavePeriod: Story = {
             expect.anything(),
         );
     },
+};
+
+/** As it sits on the page, beside a taller tile, so the free space shows. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item>
+                <AccountInactivitySettingsCard {...args} />
+            </CardGrid.Item>
+            <CardGrid.Item>
+                <div style={{ height: 760 }} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
+};
+
+/** The explanation behind the info button, one slide after the other. */
+export const HelpSlideshow: Story = {
+    ...InTheRaster,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Form } from 'antd';
-import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
-import { MuiPasswordFormField } from '../../components/mui/MuiFormField';
+import { M3Button } from '../../components/M3Button';
+import { LocalizedPasswordInput } from '../../components/OnboardingDesign/LocalizedPasswordInput';
+import { LocalizedPasswordRuleChips } from '../../components/OnboardingDesign/LocalizedPasswordRuleChips';
+import { OnboardingLeadArt } from '../../components/OnboardingDesign/OnboardingLeadArt';
+import { OnboardingPageHeader } from '../../components/OnboardingDesign/OnboardingPageHeader';
 import { confirmAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import { validatePasswordCriteria } from '../../utils/validateInputValue';
 import routePathNames from '../../appConfig';
@@ -15,6 +18,7 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     const [searchParams] = useSearchParams();
     const token = tokenOverride === undefined ? searchParams.get('token')?.trim() || '' : tokenOverride.trim();
     const [form] = Form.useForm();
+    const watchedPassword = Form.useWatch('newPassword', form) ?? '';
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [succeeded, setSucceeded] = useState(false);
@@ -35,12 +39,11 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     if (!token) {
         return (
             <div className="loginForm">
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('passwordReset.invalidTitle')}
-                </Typography>
-                <Typography role="alert" sx={{ mb: 4 }}>
-                    {t('passwordReset.invalidDescription')}
-                </Typography>
+                <OnboardingPageHeader
+                    lead={<OnboardingLeadArt variant="clock" />}
+                    title={t('passwordReset.invalidTitle')}
+                    intro={t('passwordReset.invalidDescription')}
+                />
                 <Link to={routePathNames.passwordReset} className="forgotPW">
                     {t('passwordReset.requestNewLink')}
                 </Link>
@@ -51,10 +54,12 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     if (succeeded) {
         return (
             <div className="loginForm">
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('passwordReset.successTitle')}
-                </Typography>
-                <Typography sx={{ mb: 4 }}>{t('passwordReset.successDescription')}</Typography>
+                <OnboardingPageHeader
+                    lead={<OnboardingLeadArt variant="check" />}
+                    title={t('passwordReset.successTitle')}
+                    intro={t('passwordReset.successDescription')}
+                />
+                <Typography sx={{ mb: 4 }}>{t('passwordReset.successDescription.counsellorHint')}</Typography>
                 <Link to={routePathNames.login} className="forgotPW">
                     {t('passwordReset.backToLogin')}
                 </Link>
@@ -65,14 +70,13 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     return (
         <div className="loginForm">
             <Form className="passwordResetForm" form={form} onFinish={onFinish} layout="vertical" requiredMark={false}>
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
-                    {t('passwordReset.confirmTitle')}
-                </Typography>
-                <Typography sx={{ mb: 3 }}>{t('passwordReset.passwordCriteria')}</Typography>
-                <MuiPasswordFormField
+                <OnboardingPageHeader
+                    lead={<OnboardingLeadArt variant="refresh" />}
+                    title={t('passwordReset.confirmTitle')}
+                />
+                <Form.Item
                     name="newPassword"
-                    label={t('passwordReset.newPassword')}
-                    autoComplete="new-password"
+                    style={{ marginBottom: 0 }}
                     rules={[
                         { required: true, message: t('passwordReset.passwordRequired') },
                         {
@@ -83,11 +87,13 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                             },
                         },
                     ]}
-                />
-                <MuiPasswordFormField
+                >
+                    <LocalizedPasswordInput label={t('passwordReset.newPassword')} />
+                </Form.Item>
+                <LocalizedPasswordRuleChips password={watchedPassword} />
+                <Form.Item
                     name="repeatPassword"
-                    label={t('passwordReset.repeatPassword')}
-                    autoComplete="new-password"
+                    style={{ marginBottom: 0 }}
                     dependencies={['newPassword']}
                     rules={[
                         { required: true, message: t('passwordReset.passwordRequired') },
@@ -99,23 +105,25 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                             },
                         },
                     ]}
-                />
+                >
+                    <LocalizedPasswordInput label={t('passwordReset.repeatPassword')} />
+                </Form.Item>
                 {failed && (
-                    <Typography role="alert" color="error" sx={{ mb: 2 }}>
+                    <Typography role="alert" color="error" sx={{ mt: 2 }}>
                         {t('passwordReset.confirmError')}
                     </Typography>
                 )}
-                <Button
-                    type="submit"
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    disabled={loading}
-                    startIcon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
-                    sx={{ mt: 2, borderRadius: '100px', textTransform: 'none' }}
-                >
-                    {t('passwordReset.setPassword')}
-                </Button>
+                <div style={{ marginTop: 24 }}>
+                    <M3Button
+                        type="submit"
+                        variant="filled"
+                        block
+                        disabled={loading}
+                        icon={loading ? <CircularProgress size={18} color="inherit" /> : undefined}
+                    >
+                        {t('passwordReset.setPassword')}
+                    </M3Button>
+                </div>
             </Form>
         </div>
     );

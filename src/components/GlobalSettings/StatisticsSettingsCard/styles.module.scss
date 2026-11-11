@@ -1,0 +1,61 @@
+@use '../../../styles/muiSpacing' as mui;
+
+.card {
+    width: 100%;
+}
+
+.sections {
+    margin-top: mui.$mui-unit * 2;
+}
+
+.note {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.field {
+    display: grid;
+    margin-top: mui.$mui-unit;
+    gap: mui.$mui-unit;
+
+    label {
+        color: var(--m3-on-surface, #1b1b1b);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+    }
+
+    :global(.MuiFormControl-root .MuiFormHelperText-root) {
+        margin-inline: 0;
+    }
+}
+
+.defaultOption {
+    font-weight: 700;
+}
+
+.protocol {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+}
+
+.protocolPreview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-block: 24px;
+    gap: 12px;
+    text-align: center;
+
+    p {
+        max-width: 48ch;
+        margin: 0;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 14px;
+        line-height: 20px;
+    }
+}

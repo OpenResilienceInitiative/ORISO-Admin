@@ -66,12 +66,6 @@
             align-items: center;
         }
 
-        &-placeholder {
-            &-tooltip .ant-tooltip-inner {
-                color: #000000;
-            }
-        }
-
         &-image > *,
         &-link > * {
             display: flex;

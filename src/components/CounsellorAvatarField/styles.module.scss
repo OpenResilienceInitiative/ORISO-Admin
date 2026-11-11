@@ -40,7 +40,7 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    color: var(--m3-on-surface-variant, #44474a);
+    color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     transition: background-color 120ms ease, opacity 120ms ease;
 }
@@ -83,7 +83,7 @@
 
 .hint {
     margin: 0;
-    color: var(--m3-on-surface-variant, #44474a);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
     line-height: 16px;
 }
