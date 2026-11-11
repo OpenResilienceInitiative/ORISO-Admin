@@ -836,7 +836,14 @@ export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
         ...WIDTHS,
         msw: {
             handlers: withDefaults([
-                http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS)),
+                http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+                    const url = new URL(request.url);
+                    return consultantsResponse(
+                        url.searchParams.get('field') === 'UPDATE_DATE' && url.searchParams.get('order') === 'ASC'
+                            ? [...CONSULTANTS].reverse()
+                            : CONSULTANTS,
+                    );
+                }),
                 http.get(PREFERENCES_ENDPOINT, () =>
                     HttpResponse.json({ sorts: { consultants: { field: 'UPDATE_DATE', order: 'ASC' } } }),
                 ),
@@ -846,6 +853,9 @@ export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
+        const bodyRows = canvas.getAllByRole('row').slice(1);
+        await expect(within(bodyRows[0]).getByText(/Beispiel/)).toBeVisible();
+        await expect(within(bodyRows[1]).getByText(/Muster/)).toBeVisible();
         const datePill = await canvas.findByRole('button', {
             name: 'Sortiert nach Zuletzt aktualisiert älteste zuerst',
         });
