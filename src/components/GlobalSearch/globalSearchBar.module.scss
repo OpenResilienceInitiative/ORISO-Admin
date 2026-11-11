@@ -144,7 +144,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: -4px;
     }
 
@@ -172,6 +172,10 @@
     min-width: 0;
     flex: 1 1 auto;
     animation: global-search-input-in 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    &::-webkit-search-cancel-button {
+        appearance: none;
+    }
 
     &:global(.ant-input) {
         padding: 0 8px;

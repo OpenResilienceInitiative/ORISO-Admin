@@ -26,9 +26,10 @@ const translations: Record<string, string> = {
     agency: 'Agency',
     'agency.list.searchPlaceholder': 'Search by name, postcode or city',
     'agency.noTopics': 'No topics assigned',
-    'agency.status.online': 'Visible',
-    'agency.status.offline': 'Hidden',
-    'agency.teamAgency': 'Team centre',
+    'entityStatus.active': 'Active',
+    'entityStatus.inactive': 'Inactive',
+    'entityStatus.unknown': 'Unknown',
+    'teamFunctions.counselling.name': 'Team counselling',
     'agency.list.id': 'ID',
     'agency.list.address': 'Address',
     'agency.list.contact': 'Contact',
@@ -153,6 +154,8 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>, overrid
         description: 'Description',
         offline: false,
         online: true,
+        // The list shows the effective status (`active`), not the raw visibility flag.
+        active: true,
         postcode: '10115',
         street: 'Musterstraße',
         houseNumber: '12a',
@@ -219,19 +222,21 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         expect(within(row).getByText('42')).toBeInTheDocument();
         expect(within(row).getByText('Musterstraße 12a')).toBeInTheDocument();
         expect(within(row).getByText('10115 Berlin')).toBeInTheDocument();
-        expect(within(row).getByText('Visible')).toBeInTheDocument();
+        expect(within(row).getByText('Active')).toBeInTheDocument();
         expect(within(row).getByRole('button', { name: 'Edit Beratungsstelle Nord' })).toBeEnabled();
         expect(within(row).getByRole('button', { name: 'Delete Beratungsstelle Nord' })).toBeEnabled();
     });
 
     it('marks team centres and hidden centres', () => {
-        mocks.agencies = [buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true })];
+        mocks.agencies = [
+            buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true, active: false }),
+        ];
 
         render(<AgencyList />);
 
         const row = rowOf('Team Süd');
-        expect(within(row).getByText('Team centre')).toBeInTheDocument();
-        expect(within(row).getByText('Hidden')).toBeInTheDocument();
+        expect(within(row).getByText('Team counselling')).toBeInTheDocument();
+        expect(within(row).getByText('Inactive')).toBeInTheDocument();
     });
 
     it('shows the first topic and how many more there are', () => {
@@ -386,14 +391,14 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         setWidth(390);
         mocks.agencies = [
             buildAgency([], { id: 1, name: 'North centre' }),
-            buildAgency([], { id: 2, name: 'South centre', offline: true }),
+            buildAgency([], { id: 2, name: 'South centre', offline: true, active: false }),
         ];
 
         render(<AgencyList />);
 
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
         const south = screen.getByRole('article', { name: 'South centre' });
-        expect(within(south).getByText('Hidden')).toBeInTheDocument();
+        expect(within(south).getByText('Inactive')).toBeInTheDocument();
         expect(within(south).getByRole('button', { name: 'Edit South centre' })).toBeInTheDocument();
         expect(screen.getByRole('article', { name: 'North centre' })).toBeInTheDocument();
     });

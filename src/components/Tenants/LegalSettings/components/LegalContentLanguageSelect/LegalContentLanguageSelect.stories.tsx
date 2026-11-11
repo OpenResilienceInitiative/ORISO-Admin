@@ -9,7 +9,8 @@ const StatefulLanguageSelect = (args: ComponentProps<typeof LegalContentLanguage
 };
 
 const meta = {
-    title: 'Molecules/LegalContentLanguageSelect',
+    title: 'Settings/Einstellungen/Rechtliches/LegalContentLanguageSelect',
+    id: 'molecules-legalcontentlanguageselect',
     component: LegalContentLanguageSelect,
     parameters: { layout: 'padded' },
     args: {

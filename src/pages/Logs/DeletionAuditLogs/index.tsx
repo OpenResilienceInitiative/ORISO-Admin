@@ -1,4 +1,4 @@
-import { Alert, Button, Tag } from 'antd';
+import { Button, Tag } from 'antd';
 import classNames from 'classnames';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import { useDeletionAuditLogsData } from '../../../hooks/useDeletionAuditLogsDat
 import { DeletionAuditLogEntry } from '../../../types/deletionAuditLogs';
 import { useDeletionLogLayout } from './useDeletionLogLayout';
 import styles from './deletionAuditLogs.module.scss';
+import { Notify } from '../../../components/Notify';
 
 const TARGET_TYPES = ['CONSULTANT', 'AGENCY_ADMIN', 'TENANT_ADMIN', 'AGENCY', 'TENANT'];
 const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'PARTIAL_FAILURE', 'CANCELLED'];
@@ -133,7 +134,11 @@ export const DeletionAuditLogsPage = () => {
 
     return (
         <div ref={containerRef} className={styles.list} data-testid="deletion-log" data-layout={layout}>
-            {isError && <Alert className={styles.alert} type="error" message={t('error.loading')} showIcon />}
+            {isError && (
+                <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.logs')} severity="error">
+                    {t('error.loading')}
+                </Notify>
+            )}
             {/* Chrome leaves a control that is only partly visible where it is; reveal it whole (and its outline). */}
             <div
                 className={styles.toolbar}

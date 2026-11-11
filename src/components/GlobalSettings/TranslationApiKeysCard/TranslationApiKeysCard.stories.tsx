@@ -4,7 +4,8 @@ import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { TranslationApiKeysCard } from './index';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/TranslationApiKeysCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/TranslationApiKeysCard',
+    id: 'organisms-globalsettings-translationapikeyscard',
     component: TranslationApiKeysCard,
     parameters: { layout: 'padded' },
     args: { keys: { openrouter: 'sk-or-…abcd' }, onSave: () => undefined },

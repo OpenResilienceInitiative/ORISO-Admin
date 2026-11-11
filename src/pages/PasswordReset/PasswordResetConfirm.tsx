@@ -12,6 +12,7 @@ import { OnboardingPageHeader } from '../../components/OnboardingDesign/Onboardi
 import { confirmAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import { validatePasswordCriteria } from '../../utils/validateInputValue';
 import routePathNames from '../../appConfig';
+import { Notify } from '../../components/Notify';
 
 export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: string }) => {
     const { t } = useTranslation();
@@ -22,6 +23,11 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
     const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [succeeded, setSucceeded] = useState(false);
+    const requestNewLink = (
+        <Link to={routePathNames.passwordReset} className="forgotPW">
+            {t('passwordReset.requestNewLink')}
+        </Link>
+    );
 
     const onFinish = async ({ newPassword }: { newPassword: string }) => {
         setLoading(true);
@@ -44,9 +50,7 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                     title={t('passwordReset.invalidTitle')}
                     intro={t('passwordReset.invalidDescription')}
                 />
-                <Link to={routePathNames.passwordReset} className="forgotPW">
-                    {t('passwordReset.requestNewLink')}
-                </Link>
+                {requestNewLink}
             </div>
         );
     }
@@ -109,9 +113,12 @@ export const PasswordResetConfirmForm = ({ tokenOverride }: { tokenOverride?: st
                     <LocalizedPasswordInput label={t('passwordReset.repeatPassword')} />
                 </Form.Item>
                 {failed && (
-                    <Typography role="alert" color="error" sx={{ mt: 2 }}>
-                        {t('passwordReset.confirmError')}
-                    </Typography>
+                    <>
+                        <Notify title={t('notify.title.passwordReset')} severity="error">
+                            {t('passwordReset.confirmError')}
+                        </Notify>
+                        {requestNewLink}
+                    </>
                 )}
                 <div style={{ marginTop: 24 }}>
                     <M3Button

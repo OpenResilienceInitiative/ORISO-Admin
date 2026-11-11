@@ -3,14 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../../components/AdminMobileNav/MobileNavContext';
-import { TabScroller } from '../../../components/UserTable/TabScroller';
 import { getUserSections } from '../../../constants/userSections';
 import { useIsDesktopLayout } from '../../../hooks/useIsDesktopLayout.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { ReactComponent as AllUsersFilledIcon } from '../../../resources/img/svg/user-management/all_users_filled.svg';
 import { ReactComponent as AllUsersIcon } from '../../../resources/img/svg/user-management/all_users.svg';
-import styles from './UserSectionPills.module.scss';
 
 type SectionPill = {
     id: string;
@@ -76,9 +74,6 @@ export const UserSectionPills = () => {
         activeIcon: <AllUsersFilledIcon />,
     }));
 
-    return (
-        <TabScroller>
-            <AdminSegmentedTabs className={styles.container} items={tabItems} ariaLabel={t('users.allUsers')} />
-        </TabScroller>
-    );
+    // Sections that do not fit move behind „Mehr (n)“ (ORISO-Admin#1374).
+    return <AdminSegmentedTabs items={tabItems} ariaLabel={t('users.allUsers')} />;
 };

@@ -65,6 +65,7 @@ import { TrailingParagraph } from './trailingParagraph';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
+import { EditorJumpContext } from './EditorJumpContext';
 import { EditorSnackbarQueue, editorSnackbarItems } from './EditorSnackbarQueue';
 import AnchorChips from './AnchorChips';
 import { useHeadingAnchorNav } from './useHeadingAnchorNav';
@@ -908,6 +909,8 @@ export const M3RichTextEditor = ({
         [flatVersions, versionSections],
     );
     const publishTemplateReasonId = useId();
+    const editorDomId = useId();
+    const titleDomId = `${editorDomId}-title`;
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
     const [templateMaximized, setTemplateMaximized] = useState(false);
@@ -978,7 +981,13 @@ export const M3RichTextEditor = ({
         versionSnackbar && { key: `viewing-version:${viewingVersionId}`, node: versionSnackbar },
         ...editorSnackbarItems(snackbarSlot, 'editor-hint'),
     ];
-    const editorNotices = noticeItems.some(Boolean) ? <EditorSnackbarQueue items={noticeItems} /> : null;
+    // "Ansehen" of a notice raised inside the editor lands on the editor's own heading (or its card
+    // when the header is hidden): a visible, non-empty target, not the wrapper the pop-up marker sits in.
+    const editorNotices = noticeItems.some(Boolean) ? (
+        <EditorJumpContext.Provider value={hideHeader ? editorDomId : titleDomId}>
+            <EditorSnackbarQueue items={noticeItems} />
+        </EditorJumpContext.Provider>
+    ) : null;
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
     // Editable only when not read-only AND not looking at an old version.
@@ -1326,12 +1335,15 @@ export const M3RichTextEditor = ({
             className={`${styles.module} ${comparisonOpen && comparison ? styles.moduleComparing : ''} ${
                 maximized ? styles.inDialog : ''
             } ${readMode ? styles.readMode : ''} ${fluid ? styles.fluid : ''}`}
+            id={editorDomId}
             data-testid="m3-editor"
         >
             {!hideHeader && (
                 <div className={styles.header}>
                     <IconComponent className={styles.headerIcon} />
-                    <h2 className={styles.title}>{title}</h2>
+                    <h2 id={titleDomId} className={styles.title}>
+                        {title}
+                    </h2>
                     {headerAction}
                 </div>
             )}

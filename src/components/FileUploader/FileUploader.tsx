@@ -1,7 +1,8 @@
-import { message, Form, Upload } from 'antd';
+import { Form, Upload } from 'antd';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import getBase64 from '../../utils/getBase64';
 import { UploadFileProps } from '../../types/uploadFiles';
 
@@ -29,13 +30,13 @@ const FileUploader = ({
             file.type === 'image/png' ||
             (name === 'favicon' && (file.type === 'image/x-icon' || file.type === 'image/vnd.microsoft.icon'));
         if (!isJpgOrPng) {
-            message.error(t('message.error.upload.filetype'));
+            snackbar.error(t('message.error.upload.filetype'));
             return false;
         }
         const isLarger500kb = file.size / 1024 > 512;
 
         if (isLarger500kb) {
-            message.error(t('message.error.upload.filesize'));
+            snackbar.error(t('message.error.upload.filesize'));
             return false;
         }
 

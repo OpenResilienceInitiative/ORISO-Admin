@@ -1,6 +1,6 @@
-import { Alert } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { getCounsellingAppUrl } from './counsellingAppUrl';
+import { HintText } from '../../../components/HintText';
 
 /**
  * Shown above the password form for accounts that also counsel. The counselling app seals the chat
@@ -14,18 +14,12 @@ export const PasswordChangeCounsellorNotice = ({
 }) => {
     const { t } = useTranslation();
     return (
-        <Alert
-            type="info"
-            showIcon
-            className="mb-m"
-            message={t('profile.passwordChange.counsellorNotice')}
-            description={
-                counsellingAppUrl ? (
-                    <a href={counsellingAppUrl} target="_blank" rel="noopener noreferrer">
-                        {t('profile.passwordChange.counsellorNotice.link')}
-                    </a>
-                ) : undefined
-            }
-        />
+        <HintText title={t('profile.passwordChange.counsellorNotice')} className="mb-m">
+            {counsellingAppUrl ? (
+                <a href={counsellingAppUrl} target="_blank" rel="noopener noreferrer">
+                    {t('profile.passwordChange.counsellorNotice.link')}
+                </a>
+            ) : undefined}
+        </HintText>
     );
 };

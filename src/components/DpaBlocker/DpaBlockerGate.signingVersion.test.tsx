@@ -77,7 +77,7 @@ it('signs the displayed version and reloads a stale contract before accepting ag
     await user.click(screen.getByRole('button', { name: i18n.t('dpaBlocker.sign.submit') }));
     await waitFor(() => expect(signedVersions).toEqual([oldVersion]));
     expect(screen.queryByText('Ongoing admin work')).not.toBeInTheDocument();
-    await screen.findByRole('alert');
+    expect(await screen.findByRole('alert')).toHaveTextContent(i18n.t('dpaBlocker.sign.staleVersion'));
     await user.click(screen.getByRole('button', { name: i18n.t('dpaBlocker.retry') }));
     await screen.findByText(`Vertrag ${newVersion}`);
     expect(screen.getByRole('checkbox', { name: i18n.t('tenantOnboarding.dpa.accept') })).not.toBeChecked();

@@ -28,7 +28,8 @@ const handlers = (settings: Record<string, unknown> = {}) => {
 };
 
 const meta = {
-    title: 'Organisms/AppSettings/OtherFunctionsSettings',
+    title: 'Settings/Einstellungen/Funktionalitäten/OtherFunctionsSettings',
+    id: 'organisms-appsettings-otherfunctionssettings',
     component: OtherFunctionsSettings,
     parameters: { layout: 'fullscreen' },
     args: { tenantId: '7' },

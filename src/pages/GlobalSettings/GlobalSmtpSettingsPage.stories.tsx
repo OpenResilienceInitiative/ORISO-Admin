@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { findPopup } from '../../test/storyPopups';
 import { walkThroughTileHelp } from '../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
@@ -76,7 +77,8 @@ const savedSettingsHandlers = (pendingAfterSave = false) => {
 };
 
 const meta = {
-    title: 'Organisms/Pages/Settings/PlatformSmtp',
+    title: 'Settings/Einstellungen/Email Server/PlatformSmtp',
+    id: 'organisms-pages-settings-platformsmtp',
     component: GlobalSmtpSettingsPage,
     render: () => <SavedSettingsExample />,
     parameters: { layout: 'fullscreen' },
@@ -143,7 +145,11 @@ export const Unavailable: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('alert')).toBeInTheDocument();
+        // The tile cannot load: one error pop-up with retry, quiet text in the tile and no sync status line.
+        const popup = await findPopup(canvasElement, 'Globale Einstellungen', 'error');
+        await expect(within(popup).getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
+        await expect(canvas.getByText('Dieser Bereich konnte nicht geladen werden.')).toBeInTheDocument();
+        await expect(canvas.queryByText(/Das Anmeldesystem verwendet jetzt/)).toBeNull();
         await expect(canvas.getByRole('button', { name: 'Test-E-Mail senden' })).toBeDisabled();
     },
 };

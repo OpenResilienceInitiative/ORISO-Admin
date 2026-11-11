@@ -9,6 +9,7 @@ import { EnforceModeSwitch } from '../EnforceModeSwitch';
 import type { PermissionPolicyMode, RecipientScope, RecipientScopePolicy } from '../../../../../types/permissionPolicy';
 import { RECIPIENT_SCOPES, isRecipientScopeLocked, resolveRecipientScopePolicy } from './recipientScopePolicy';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 const KEY = 'tenants.permissions.card.groupInternal.recipientScope';
 
@@ -163,9 +164,9 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
             )}
 
             {failed && (
-                <p role="alert" className={styles.error}>
+                <Notify title={t('notify.title.permissions')} severity="error">
                     {t(`${KEY}.saveFailed`)}
-                </p>
+                </Notify>
             )}
 
             {!locked && (

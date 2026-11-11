@@ -140,7 +140,8 @@ const handlers = ({ proposals = [template], draft = null as TenantLegalDraft | n
 };
 
 const meta = {
-    title: 'Organisms/Legal/LegalText/Received template (Träger)',
+    title: 'Settings/Einstellungen/Rechtliches/LegalText/Received template (Träger)',
+    id: 'organisms-legal-legaltext-received-template-träger',
     component: TraegerLegalText,
     parameters: { layout: 'fullscreen' },
     decorators: [
@@ -178,8 +179,14 @@ export const TraegerWithNewTemplate: Story = {
     parameters: { msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const preview = await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD);
-        await expect(canvas.getByText(/25\.09\.2026, 16:31/)).toBeVisible();
+        const preview = await within(canvasElement.ownerDocument.body).findByRole(
+            'button',
+            { name: 'Vorschau anzeigen' },
+            LOAD,
+        );
+        await waitFor(() =>
+            expect(within(canvasElement.ownerDocument.body).getByText(/25\.09\.2026, 16:31/)).toBeVisible(),
+        );
         await userEvent.click(preview);
         await expect(
             canvas.getByRole('complementary', { name: /Vorlage des Plattformbetreibers · Impressum/ }),
@@ -195,14 +202,20 @@ export const PlatformInspectsExistingTraeger: Story = {
     parameters: { platformInspector: true, msw: { handlers: handlers() } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: /Vorschau anzeigen|Show preview/ }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole(
+                'button',
+                { name: /Vorschau anzeigen|Show preview/ },
+                LOAD,
+            ),
+        );
         const region = await canvas.findByRole(
             'complementary',
             { name: /Vorlage des Plattformbetreibers · Impressum|Template from the platform operator · Imprint/ },
             LOAD,
         );
         await expect(
-            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this tenant/),
+            within(region).getByText(/an diesen Träger gesendete Vorlage|template sent to this provider/),
         ).toBeVisible();
         await expect(within(region).getByRole('button', { name: /Vorlage übernehmen|Adopt template/ })).toBeDisabled();
         await expect(within(region).getByRole('button', { name: /Verwerfen|Dismiss/ })).toBeDisabled();
@@ -218,7 +231,9 @@ export const TraegerAdoptsIntoEmptyDraft: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -235,7 +250,9 @@ export const TraegerReplaceConfirmation: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -292,7 +309,9 @@ export const TraegerMobile390: Story = {
     parameters: { msw: { handlers: handlers({ draft: ownDraft }) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const reference = await canvas.findByRole(
             'complementary',
             { name: /Vorlage des Plattformbetreibers · Impressum/ },

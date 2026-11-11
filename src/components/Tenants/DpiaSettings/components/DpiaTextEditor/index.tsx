@@ -29,6 +29,8 @@ export interface DpiaTextEditorProps {
     saving?: boolean;
     /** Read-only mode for roles that may look at the DSFA but not author it. */
     readOnly?: boolean;
+    /** Element id of the card root, so a pop-up about this editor can take the person there ("Ansehen"). */
+    anchorId?: string;
 }
 
 /**
@@ -52,6 +54,7 @@ export const DpiaTextEditor = ({
     onSave,
     saving,
     readOnly,
+    anchorId,
 }: DpiaTextEditorProps) => {
     const { t } = useTranslation();
     const [sectionId, setSectionId] = useState(defaultSectionId);
@@ -114,7 +117,7 @@ export const DpiaTextEditor = ({
     const published = status === 'PUBLISHED';
 
     return (
-        <div className={styles.card}>
+        <div id={anchorId} className={styles.card}>
             <M3RichTextEditor
                 title={section ? `${t('dpia.editor.title')} — ${t(section.titleKey)}` : t('dpia.editor.title')}
                 icon={DpiaIcon}
