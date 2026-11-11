@@ -263,7 +263,10 @@ export const HiddenRowNextToShownRow: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        fireEvent.click(await canvas.findByRole('tab', { name: 'Beratungsstellen' }));
+        // Admin#1510: the level is chosen in the one "Ansicht" scope picker.
+        fireEvent.click(await canvas.findByRole('button', { name: /^Ansicht:/ }));
+        fireEvent.click(await canvas.findByRole('button', { name: 'Beratungsstellen' }));
+        fireEvent.keyDown(canvasElement.ownerDocument, { key: 'Escape' });
         const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
         // The long reason waits behind "Warum?" in the one info row.
         await expect(notice).not.toBeVisible();

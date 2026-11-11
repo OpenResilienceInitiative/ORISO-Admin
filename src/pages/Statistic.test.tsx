@@ -106,6 +106,13 @@ beforeEach(() => {
     })) as unknown as typeof window.matchMedia;
 });
 
+// Level and Träger/Beratungsstelle are picked in one control (Admin#1510).
+const openScopePicker = () => fireEvent.click(screen.getByRole('button', { name: /^(Ansicht|View):/ }));
+const pickLevel = (name: string) => {
+    openScopePicker();
+    fireEvent.click(screen.getByRole('button', { name }));
+};
+
 describe('Statistic page', () => {
     it('initialises i18n with German translations', async () => {
         await i18n.changeLanguage('de');
@@ -257,7 +264,7 @@ describe('Statistic page', () => {
             await screen.findByText(/^Stand 03\.11\.2026/);
             expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
 
-            fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
+            pickLevel('Beratungsstellen');
 
             await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
         });
@@ -543,7 +550,7 @@ describe('Statistic page', () => {
                 groupChatCountsByPeriod: null,
             });
         const tenantResponse = (targets: AdminDashboardStatisticsResponse['targets']) => ({ ...response, targets });
-        const openAgencyLevel = () => fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
+        const openAgencyLevel = () => pickLevel('Beratungsstellen');
         const rowNotice = /kann auch einen größeren Bereich treffen/;
         const totalNotice = /Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/;
 
@@ -615,7 +622,7 @@ describe('Statistic page', () => {
             renderStatistic();
             await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
 
-            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            openScopePicker();
             fireEvent.click(await screen.findByRole('option', { name: /Beratungsstelle 12/ }));
 
             await expectPrivacyReason(rowNotice);
@@ -654,7 +661,7 @@ describe('Statistic page', () => {
             });
             renderStatistic();
             await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
-            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            openScopePicker();
             fireEvent.click(await screen.findByRole('option', { name: /Träger 6/ }));
 
             await expectPrivacyReason(rowNotice);

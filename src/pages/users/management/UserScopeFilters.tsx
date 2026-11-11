@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FilterDisclosure } from '../../../components/FilterDisclosure';
 import { GlobalSearchBar, type GlobalSearchBarProps } from '../../../components/GlobalSearch';
 import { ScopeContextBar } from '../../../components/UserTable/ScopeContextBar';
 import { ScopeFilter, type ScopeFilterOption } from '../../../components/UserTable/ScopeFilter';
@@ -37,7 +38,11 @@ export interface UserScopeFiltersProps {
     actions?: ReactNode;
 }
 
-/** One searchable, horizontally scrollable scope row; actions and active context remain reachable below it. */
+/**
+ * The list search with one "Filter" button beside it; the Träger and Beratungsstelle pickers fold out
+ * below (Admin#1510). The active filters stay visible as context bars, so a closed panel never hides
+ * why the list is shorter.
+ */
 export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions }: UserScopeFiltersProps) => {
     const { t } = useTranslation();
     const available = useScopeFilterAvailability(sectionId);
@@ -66,8 +71,14 @@ export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions
     // A picked centre stays shown even when the list has only that one left.
     const nothingToChoose = agencyOptions.length < 2 && !centres.length;
 
+    // A choice of one is no choice: the Beratungsstelle picker only appears when it can narrow the list.
+    const showAgencyPicker =
+        available.agency && available.canListAgencies && (agenciesQuery.isLoading || !nothingToChoose);
+    const hasPickers = available.tenant || showAgencyPicker;
+    const activeCount = (filters.tenantId ? 1 : 0) + (centres.length > 0 ? 1 : 0);
+
     const pickers = (
-        <div className={styles.pickers}>
+        <>
             {available.tenant && (
                 <ScopeFilter
                     kind="tenant"
@@ -78,32 +89,39 @@ export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions
                     onChange={([tenantId]) => onChange({ tenantId, agencyIds: [] })}
                 />
             )}
-            {available.agency && (
+            {showAgencyPicker && (
                 <ScopeFilter
                     kind="agency"
                     multiple
                     options={agencyOptions}
                     loading={agenciesQuery.isLoading}
-                    disabled={!available.canListAgencies || (!agenciesQuery.isLoading && nothingToChoose)}
                     value={filters.agencyIds ?? []}
                     onChange={(agencyIds) => onChange({ ...filters, agencyIds })}
                 />
             )}
-        </div>
+        </>
+    );
+    const searchBar = search && (
+        <GlobalSearchBar {...search} expandedWidth={280} scrollButtons className={styles.searchRow} />
     );
 
     return (
         <div className={styles.wrapper}>
-            <div className={styles.toolbar} role="group" aria-label={t('userTable.filter.label', 'Liste filtern')}>
-                {search ? (
-                    <GlobalSearchBar {...search} expandedWidth={280} scrollButtons className={styles.searchRow}>
-                        {pickers}
-                    </GlobalSearchBar>
-                ) : (
-                    pickers
-                )}
-                {actions}
-            </div>
+            {hasPickers ? (
+                <FilterDisclosure
+                    groupLabel={t('userTable.filter.label', 'Liste filtern')}
+                    activeCount={activeCount}
+                    leading={searchBar}
+                    trailing={actions}
+                >
+                    {pickers}
+                </FilterDisclosure>
+            ) : (
+                <div className={styles.toolbar}>
+                    {searchBar}
+                    {actions}
+                </div>
+            )}
             {filters.tenantId && (
                 <ScopeContextBar
                     kind="tenant"
