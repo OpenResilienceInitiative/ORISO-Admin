@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
 import { MemoryRouter } from 'react-router-dom';
-import { MobileNavProvider, useMobileNav } from '../AdminMobileNav/MobileNavContext';
+import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
+import { AdminMobileNavBar } from '../Layout/AdminMobileNavBar';
 import { Page } from './index';
 
 vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: () => true }));
@@ -48,40 +49,32 @@ it.each(['title', 'back'])('shows every tab in the shared sub-navigation bar, wi
     expect(container.querySelector('[data-admin-page-deck-nav]')).not.toBeInTheDocument();
 });
 
-// ORISO-Admin#1404: the back button names the list it returns to. A Beratungsstelle leads back to
-// the Beratungsstellen list, never to "Träger".
-it('names the list the back button returns to, on desktop and in the mobile bottom bar', () => {
-    let mobileBackLabel: string | undefined;
-    const MobileBarProbe = () => {
-        mobileBackLabel = useMobileNav()?.backLabel;
-        return null;
-    };
+// ORISO-Admin#1404: the back button names the list it returns to, on desktop and in the mobile
+// bottom bar. A Beratungsstelle leads back to the Beratungsstellen list, never to "Träger".
+const renderWithMobileBar = (back: JSX.Element) =>
     render(
         <MemoryRouter initialEntries={['/admin/agency/1/general']}>
             <MobileNavProvider>
-                <Page>
-                    <Page.Back path="/admin/agency" parentKey="sidebar.agency" title="Beratungsstelle Mitte" />
-                </Page>
-                <MobileBarProbe />
+                <Page>{back}</Page>
+                <AdminMobileNavBar items={[]} logout={{ label: 'logout', onLogout: () => {} }} currentPath="/" />
             </MobileNavProvider>
         </MemoryRouter>,
     );
 
+it('names the list the back button returns to, on desktop and in the mobile bottom bar', () => {
+    renderWithMobileBar(<Page.Back path="/admin/agency" parentKey="sidebar.agency" title="Beratungsstelle Mitte" />);
+
     const back = screen.getByRole('link', { name: 'page.back.to(sidebar.agency)' });
     expect(back).toHaveAttribute('href', '/admin/agency');
     expect(back).toHaveAttribute('data-admin-back-button', 'tonal');
+    expect(screen.getByRole('button', { name: 'page.back.to(sidebar.agency)' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /sidebar\.tenants/ })).not.toBeInTheDocument();
-    expect(mobileBackLabel).toBe('page.back.to(sidebar.agency)');
+    expect(screen.queryByRole('button', { name: 'Beratungsstelle Mitte' })).not.toBeInTheDocument();
 });
 
-it('says plain "back" when the page names no list', () => {
-    render(
-        <MemoryRouter>
-            <Page>
-                <Page.Back path="/" title="Irgendwas" />
-            </Page>
-        </MemoryRouter>,
-    );
+it('says plain "back" when the page names no list, on desktop and in the mobile bottom bar', () => {
+    renderWithMobileBar(<Page.Back path="/" title="Irgendwas" />);
 
     expect(screen.getByRole('link', { name: 'page.back.label' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('button', { name: 'page.back.label' })).toBeInTheDocument();
 });
