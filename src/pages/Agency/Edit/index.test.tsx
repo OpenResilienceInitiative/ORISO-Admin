@@ -1,9 +1,13 @@
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Form, notification } from 'antd';
+import { Form } from 'antd';
+import { snackbar as notification } from '../../../components/Snackbar';
+import { PermissionAction } from '../../../enums/PermissionAction';
+import { Resource } from '../../../enums/Resource';
+import { UserRole } from '../../../enums/UserRole';
 import { AgencyPageEdit } from './index';
 
 // Render AgencyPageEdit inside a QueryClientProvider so child components that use
@@ -11,7 +15,9 @@ import { AgencyPageEdit } from './index';
 // "No QueryClient set". Retries are off so a missing queryFn never hangs the test.
 const renderWithClient = (ui: React.ReactElement<any>) => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+    return render(ui, {
+        wrapper: ({ children }) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+    });
 };
 
 // Every test here mounts the whole agency edit page and drives it through real antd
@@ -22,22 +28,27 @@ vi.setConfig({ testTimeout: 60_000 });
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    statusHttp: vi.fn(),
+    statusOwnActive: null as boolean | null,
     mutateAsync: vi.fn(),
     isAgencySaving: false,
     navigate: vi.fn(),
     searchTenantData: vi.fn(),
+    canCreateAgency: true,
     userRoles: {
         hasRole: () => true,
         isSuperAdmin: true,
         isTechnicalAccount: false,
         isTenantScopedAdmin: false,
-        roles: [],
+        roles: [] as UserRole[],
         tenantId: 0,
     },
     dpaGate: { dpaPublished: true, dpaSigned: true },
     routeId: 'add',
     agencyData: undefined as any,
     createConsultantProps: undefined as any,
+    tenantTopicsLoading: false,
+    tenantTopicsError: false,
     tenantTopics: [] as Array<{ id: number; name: string; status: string }>,
     consultants: [] as Array<{ id: number; firstname: string; lastname: string; email: string }>,
     hasConsultants: false,
@@ -64,6 +75,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 beforeEach(() => {
+    mocks.canCreateAgency = true;
     mocks.consultantSearchFilters = [];
     mocks.consultantSearchCalls = [];
     mocks.consultantSearchFailed = false;
@@ -111,11 +123,55 @@ const translations: Record<string, string> = {
     'form.errors.required': 'Bitte füllen Sie das markierte Feld aus.',
     plsSelect: 'Bitte wählen',
     save: 'Speichern',
+    edit: 'Bearbeiten',
+    'entityStatus.control': 'Aktiv (eigener Status)',
+    'entityStatus.error.assignCounsellor': 'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+    'entityStatus.error.save': 'Die Änderung wurde nicht bestätigt. Bitte den Status prüfen und erneut versuchen.',
     'agency.dpaGate.title': 'AVV-Unterschrift erforderlich',
     'agency.dpaGate.description': 'Unterschreiben Sie zuerst den AVV.',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string) => translations[key] || key;
+// Exercise the real status client; only the remote HTTP transport is replaced.
+vi.mock('../../../api/fetchData', async (original) => ({
+    ...(await original<typeof import('../../../api/fetchData')>()),
+    fetchData: (...args: unknown[]) => mocks.statusHttp(...args),
+}));
+beforeEach(() => {
+    mocks.statusOwnActive = null;
+    mocks.tenantTopicsLoading = false;
+    mocks.tenantTopicsError = false;
+    mocks.statusHttp
+        .mockReset()
+        .mockImplementation(async ({ url, method, bodyData }: { url: string; method: string; bodyData?: string }) => {
+            const id = /agencies\/([^/]+)\/status/.exec(url)?.[1];
+            if (!id) throw new Error('Unexpected status authority route');
+            if (method === 'PUT') {
+                const command = JSON.parse(bodyData ?? '{}');
+                if (Object.keys(command).join(',') !== 'active') throw new Error('Status command must stay narrow');
+                if (command.active && mocks.hasConsultants === false)
+                    return Promise.reject(
+                        new Response(null, {
+                            status: 400,
+                            headers: { 'X-Reason': 'AGENCY_CONTAINS_NO_CONSULTANTS' },
+                        }),
+                    );
+                if (command.active && mocks.hasConsultants === undefined)
+                    return Promise.reject(new Response(null, { status: 502 }));
+                mocks.statusOwnActive = command.active;
+            }
+            const active = mocks.statusOwnActive ?? !mocks.agencyData?.offline;
+            return { agencyId: id, active, ownActive: active, restrictions: [] };
+        });
+});
+const statusWrites = () => mocks.statusHttp.mock.calls.filter(([request]) => request.method === 'PUT');
+const startStatusActivation = async (user: ReturnType<typeof userEvent.setup>) => {
+    await waitFor(() => expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'));
+    await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+    await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+    await user.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+};
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => Object.assign([t], { t, i18n: { language: 'de' } }),
@@ -155,11 +211,23 @@ vi.mock('../../../components/Page', () => {
 });
 
 vi.mock('../../../components/Card', () => ({
-    Card: function Card({ children, titleKey }: { children: React.ReactNode; titleKey: string }) {
+    Card: function Card({
+        children,
+        titleKey,
+        cardTitleChildren,
+        footer,
+    }: {
+        children: React.ReactNode;
+        titleKey: string;
+        cardTitleChildren?: React.ReactNode;
+        footer?: React.ReactNode;
+    }) {
         return (
             <section>
                 <h2>{t(titleKey)}</h2>
+                {cardTitleChildren}
                 {children}
+                {footer}
             </section>
         );
     },
@@ -272,7 +340,11 @@ vi.mock('../../../hooks/useAgencyHasConsultants', () => ({
 }));
 
 vi.mock('../../../hooks/useTenantTopics', () => ({
-    useTenantTopics: () => ({ data: mocks.tenantTopics, isLoading: false }),
+    useTenantTopics: () => ({
+        data: mocks.tenantTopicsLoading ? undefined : mocks.tenantTopics,
+        isLoading: mocks.tenantTopicsLoading,
+        isError: mocks.tenantTopicsError,
+    }),
 }));
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
@@ -305,6 +377,15 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => mocks.userRoles,
+}));
+
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: PermissionAction, resource: Resource) =>
+            // The status block checks Update on the centre; creating one stays gated by `canCreateAgency`.
+            resource === Resource.Agency &&
+            (action === PermissionAction.Update || (action === PermissionAction.Create && mocks.canCreateAgency)),
+    }),
 }));
 
 vi.mock('../../../hooks/useDpaGate.hook', () => ({
@@ -372,6 +453,33 @@ describe('AgencyPageEdit create flow', () => {
         expect(mocks.searchTenantData).toHaveBeenCalledWith({ perPage: 1000 });
     });
 
+    it('denies the direct add route without the agency creation permission', () => {
+        mocks.canCreateAgency = false;
+        mocks.userRoles = {
+            ...mocks.userRoles,
+            isSuperAdmin: false,
+            roles: [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin],
+            tenantId: 2,
+        };
+
+        renderWithClient(<AgencyPageEdit />);
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('keeps an existing agency readable without the agency creation permission', async () => {
+        mocks.canCreateAgency = false;
+        mocks.routeId = '2';
+        mocks.agencyData = { id: 2, name: 'Springfield QA Dev Beratungsstelle', tenantId: 2 };
+
+        await act(async () => renderWithClient(<AgencyPageEdit />));
+
+        expect(screen.getByRole('heading', { name: 'Springfield QA Dev Beratungsstelle' })).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Schade!' })).not.toBeInTheDocument();
+    });
+
     it('does not submit a new agency without a selected tenant', async () => {
         renderWithClient(<AgencyPageEdit />);
 
@@ -406,7 +514,6 @@ describe('AgencyPageEdit create flow', () => {
                     message:
                         'Die Beratungsstelle wurde nicht gespeichert. Bitte füllen Sie die markierten Pflichtfelder aus:',
                     description: 'Trägerzuordnung',
-                    duration: 8,
                 }),
             { timeout: 5000 },
         );
@@ -540,7 +647,7 @@ describe('AgencyPageEdit create flow', () => {
         await expect(
             mocks.agencyLegalProps.onSaveAgencyWide({ content: { privacy: { de: '<p>x</p>' } } }),
         ).rejects.toBe(rejection);
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 
@@ -594,7 +701,7 @@ describe('AgencyPageEdit create flow', () => {
             }),
         );
 
-        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default', duration: 8 });
+        expect(notificationSpy).toHaveBeenCalledWith({ message: 'message.error.default' });
         notificationSpy.mockRestore();
     });
 });
@@ -730,6 +837,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
             postcode: '86161',
             city: 'Augsburg',
             offline: false,
@@ -760,69 +868,164 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics,
             tenantId: 7,
         };
-        renderWithClient(<AgencyPageEdit />);
+        return renderWithClient(<AgencyPageEdit />);
     };
 
-    const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
-    };
-
-    it('shows the confirm dialog when an existing offline agency goes live without a topic', async () => {
+    it('shows the no-topic dialog before a dedicated status command', async () => {
         const user = setupUser();
         renderOfflineAgencyEdit();
-
-        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        saveRegistrationCard();
-
-        const dialog = await screen.findByRole('dialog');
-        expect(within(dialog).getByText('Kein Thema ausgewählt')).toBeInTheDocument();
+        await startStatusActivation(user);
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(statusWrites()).toHaveLength(0);
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('keeps the registration card in edit mode when the no-topic dialog is cancelled', async () => {
+    it('keeps status editing and sends no PUT when no-topic activation is cancelled', async () => {
         const user = setupUser();
         renderOfflineAgencyEdit();
-
-        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        saveRegistrationCard();
+        await startStatusActivation(user);
         const dialog = await screen.findByRole('dialog');
-        fireEvent.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
-
+        await user.click(within(dialog).getByRole('button', { name: 'Abbrechen' }));
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        expect(statusWrites()).toHaveLength(0);
         expect(mocks.mutate).not.toHaveBeenCalled();
-        expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        expect(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' })).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' })).toBeChecked();
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+        expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled();
     });
 
-    it('saves the registration card online when the no-topic dialog is confirmed', async () => {
+    it('confirms no-topic activation through a narrow status PUT and authoritative readback', async () => {
         const user = setupUser();
         renderOfflineAgencyEdit();
-
-        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        saveRegistrationCard();
+        await startStatusActivation(user);
         const dialog = await screen.findByRole('dialog');
-        fireEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
-
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: true }));
-        expect(mocks.cardSaveOnError).not.toHaveBeenCalled();
+        await user.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        expect(statusWrites()).toHaveLength(1);
+        expect(JSON.parse(statusWrites()[0][0].bodyData)).toEqual({ active: true });
+        expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('saves without a dialog when an existing agency has a persisted topic', async () => {
+    it('defers activation while offered topics load, then requires confirmation before any status PUT', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsLoading = true;
+        const page = renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        const save = within(screen.getByTestId('entity-status-save')).getByRole('button');
+        expect(save).toBeDisabled();
+        expect(screen.getByTestId('entity-status-activation-blocked')).toHaveTextContent(
+            'entityStatus.activationTopicsLoading',
+        );
+        await user.click(save);
+        expect(statusWrites()).toHaveLength(0);
+        mocks.tenantTopicsLoading = false;
+        page.rerender(<AgencyPageEdit />);
+        await waitFor(() => expect(save).toBeEnabled());
+        await user.click(save);
+        const dialog = await screen.findByRole('dialog');
+        expect(statusWrites()).toHaveLength(0);
+        await user.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        expect(statusWrites()).toHaveLength(1);
+    });
+
+    it('keeps activation blocked with an explicit topics error until the lookup recovers', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsError = true;
+        const page = renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeDisabled();
+        expect(screen.getByTestId('entity-status-activation-blocked')).toHaveTextContent(
+            'entityStatus.activationTopicsError',
+        );
+        expect(statusWrites()).toHaveLength(0);
+        mocks.tenantTopicsError = false;
+        page.rerender(<AgencyPageEdit />);
+        await waitFor(() => expect(within(screen.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled());
+    });
+
+    it('allows pausing an active centre while topics are still loading', async () => {
+        const user = setupUser();
+        mocks.tenantTopicsLoading = true;
+        mocks.statusOwnActive = true;
+        mocks.tenantTopicsLoading = true;
+        renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(screen.getByRole('switch', { name: 'Aktiv (eigener Status)' }));
+        await user.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false'),
+        );
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(JSON.parse(statusWrites()[0][0].bodyData)).toEqual({ active: false });
+    });
+
+    it('does not ask again for an unchanged active own status even when ordinary metadata is stale', async () => {
+        const user = setupUser();
+        mocks.statusOwnActive = true;
+        mocks.tenantTopicsLoading = true;
+        renderOfflineAgencyEdit();
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        expect(mocks.agencyData.offline).toBe(true);
+        await user.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
+        await user.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+        await waitFor(() => expect(screen.getByTestId('entity-status-edit')).toBeInTheDocument());
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+        expect(statusWrites()).toHaveLength(1);
+        expect(JSON.parse(statusWrites()[0][0].bodyData)).toEqual({ active: true });
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('cancels approval when navigation selects another centre and never sends a stale status command', async () => {
+        const user = setupUser();
+        const page = renderOfflineAgencyEdit();
+        await startStatusActivation(user);
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        mocks.routeId = '283';
+        mocks.agencyData = { ...mocks.agencyData, id: 283, name: 'Andere Stelle' };
+        page.rerender(<AgencyPageEdit />);
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+        await waitFor(() => expect(screen.getByTestId('entity-status-context')).toHaveTextContent('Andere Stelle'));
+        expect(statusWrites()).toHaveLength(0);
+        expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+    });
+
+    it('writes status without a dialog when the centre already has a persisted topic', async () => {
         const user = setupUser();
         renderOfflineAgencyEdit([{ id: 7, name: 'Debt counselling' }]);
-
-        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        saveRegistrationCard();
-
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        await startStatusActivation(user);
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: true }));
+        expect(statusWrites()).toHaveLength(1);
+        expect(JSON.parse(statusWrites()[0][0].bodyData)).toEqual({ active: true });
+        expect(mocks.mutate).not.toHaveBeenCalled();
     });
 });
 
@@ -831,7 +1034,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         'Wählen Sie mindestens eine:n Berater:in aus, bevor Sie die Beratungsstelle in der Registrierung sichtbar machen.';
 
     const saveRegistrationCard = () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
     };
 
     const renderAgencyWithoutAssignedConsultants = () => {
@@ -842,6 +1045,9 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics: [TOPIC],
             tenantId: 7,
@@ -871,50 +1077,48 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.cardSaveOnError.mockReset();
     });
 
-    it('lets the switch move and names the missing counsellor on save', async () => {
+    it('lets status be requested and explains the authoritative missing-counsellor refusal', async () => {
         const user = setupUser();
         renderAgencyWithoutAssignedConsultants();
-
-        // The switch used to be disabled here, which stated no reason at all.
-        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
-        expect(toggle).not.toBeDisabled();
-        await user.click(toggle);
-        saveRegistrationCard();
-
-        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        await startStatusActivation(user);
+        expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+        );
+        expect(statusWrites()).toHaveLength(1);
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('refuses to activate an offline agency while the lookup has not answered', async () => {
+    it('does not claim activation when the owning prerequisite authority has not answered', async () => {
         const user = setupUser();
-        mocks.routeId = '282';
-        mocks.tenantTopics = [TOPIC];
-        mocks.consultants = [CONSULTANT];
+        renderAgencyWithoutAssignedConsultants();
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
-        renderWithClient(<AgencyPageEdit />);
-
-        await user.click(await screen.findByRole('switch', { name: 'Sichtbar stellen' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
-
-        expect(await screen.findByText(NEEDS_CONSULTANT)).toBeInTheDocument();
+        await startStatusActivation(user);
+        expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
+            translations['entityStatus.error.save'],
+        );
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
         expect(mocks.mutate).not.toHaveBeenCalled();
     });
 
-    it('still saves the card when the counsellor lookup did not answer', async () => {
+    it('still saves registration metadata when lookup is unknown without issuing a status command', async () => {
         mocks.routeId = '282';
         mocks.tenantTopics = [TOPIC];
         mocks.consultants = [CONSULTANT];
-        // The HAS_CONSULTANTS request failed, so react-query leaves the flag undefined. The
-        // agency is online and staffed; a postcode-only edit must not be rejected for it.
         mocks.hasConsultants = undefined;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: false, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
-
-        expect(await screen.findByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
-
+        fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(statusWrites()).toHaveLength(0);
         expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
     });
 
@@ -1057,6 +1261,9 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: true,
             topics: [TOPIC],
             tenantId: 7,
@@ -1090,7 +1297,15 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         // The platform admin's consultant search spans tenants; the agency belongs to tenant 7.
         mocks.consultants = [CONSULTANT, FOREIGN_CONSULTANT];
         mocks.hasConsultants = false;
-        mocks.agencyData = { id: 282, name: 'Bestehende Stelle', offline: true, topics: [TOPIC], tenantId: 7 };
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: true,
+            topics: [TOPIC],
+            tenantId: 7,
+        };
         renderWithClient(<AgencyPageEdit />);
 
         await user.click(await screen.findByRole('combobox', { name: 'Berater:innen hinzufügen' }));
@@ -1099,46 +1314,48 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
         expect(screen.queryByRole('option', { name: /Fremd Mandant/ })).not.toBeInTheDocument();
     });
 
-    it('warns when the card saved but the counsellor could not be assigned', async () => {
+    it('warns on failed assignment and still refuses a separate status activation', async () => {
         const user = setupUser();
         const warn = vi.spyOn(notification, 'warning').mockImplementation(() => undefined as never);
         const success = vi.spyOn(notification, 'success').mockImplementation(() => undefined as never);
-        // The card save path reports success on its own; without forwarding the flag the
-        // admin would be told the agency saved while the counsellor stayed unassigned.
         mocks.mutate.mockImplementation((_data, options) =>
             options?.onSuccess?.({ id: 282, consultantAssignmentFailed: true }),
         );
         renderAgencyWithoutAssignedConsultants();
-
-        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
         await assignConsultant(user);
-        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
         saveRegistrationCard();
-
         await waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
         expect(warn.mock.calls[0][0]).toEqual(
             expect.objectContaining({ message: 'message.agency.consultantAssignmentFailed' }),
         );
         expect(success).toHaveBeenCalledTimes(1);
+        await startStatusActivation(user);
+        expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+        );
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
         warn.mockRestore();
         success.mockRestore();
     });
 
-    it('goes live once a counsellor is picked, although the backend reports none yet', async () => {
+    it('saves the assignment first and activates only after the owning backend confirms staffing', async () => {
         const user = setupUser();
         renderAgencyWithoutAssignedConsultants();
-
-        await screen.findByRole('switch', { name: 'Sichtbar stellen' });
         await assignConsultant(user);
-        await user.click(screen.getByRole('switch', { name: 'Sichtbar stellen' }));
         saveRegistrationCard();
-
         await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        expect(screen.queryByText(NEEDS_CONSULTANT)).not.toBeInTheDocument();
-        const saved = mocks.mutate.mock.calls[0][0] as { online?: boolean; consultantIds?: unknown[] };
-        expect(saved.online).toBe(true);
-        // The selection must reach the save, otherwise updateAgencyData has nothing to assign.
-        expect(saved.consultantIds).toHaveLength(1);
+        expect(mocks.mutate.mock.calls[0][0].consultantIds).toHaveLength(1);
+        await startStatusActivation(user);
+        expect(await screen.findByTestId('entity-status-error')).toHaveTextContent(
+            'Ordnen Sie der Beratungsstelle zuerst mindestens eine beratende Person zu.',
+        );
+        expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
+        mocks.hasConsultants = true;
+        await user.click(within(screen.getByTestId('entity-status-save')).getByRole('button'));
+        await waitFor(() =>
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'true'),
+        );
+        expect(JSON.parse(statusWrites()[1][0].bodyData)).toEqual({ active: true });
     });
 });
 
@@ -1162,6 +1379,9 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         mocks.agencyData = {
             id: 282,
             name: 'Bestehende Stelle',
+            // The tile saves all three topics together, so its required address fields must be filled.
+            postcode: '10115',
+            city: 'Berlin',
             offline: false,
             topics: [TOPIC],
             tenantId: 7,
@@ -1170,7 +1390,6 @@ describe('AgencyPageEdit registration card service validation errors', () => {
     });
 
     it('names a data protection error that has no field on the registration card', async () => {
-        const user = setupUser();
         const notificationSpy = vi.spyOn(notification, 'error').mockImplementation(() => undefined as never);
         mocks.mutate.mockImplementation((_data, options) =>
             options?.onError?.(
@@ -1182,13 +1401,12 @@ describe('AgencyPageEdit registration card service validation errors', () => {
         );
         renderWithClient(<AgencyPageEdit />);
 
-        const toggle = await screen.findByRole('switch', { name: 'Sichtbar stellen' });
-        expect(toggle).toBeChecked();
-        await user.click(toggle);
-        fireEvent.click(screen.getByRole('button', { name: 'Sichtbarkeit in der Registrierung save' }));
+        // A persisted centre's visibility is switched in the status block, not on this card any more; the
+        // card's own save still has to name a service error that belongs to no field on it.
+        expect(screen.queryByRole('switch', { name: 'Sichtbar stellen' })).not.toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: 'Allgemeine Informationen save' }));
 
-        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED, duration: 8 }));
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ online: false }));
+        await waitFor(() => expect(notificationSpy).toHaveBeenCalledWith({ message: OFFICER_REQUIRED }));
         expect(mocks.cardSaveOnError).toHaveBeenCalledTimes(1);
         notificationSpy.mockRestore();
     });

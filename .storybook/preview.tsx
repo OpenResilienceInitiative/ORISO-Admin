@@ -11,8 +11,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
 import { getWorker, initialize, mswLoader } from 'msw-storybook-addon';
-import { adminMessageConfig } from '../src/constants/adminMessageConfig';
-import { TransportFeedbackBridge } from '../src/components/TransportFeedbackBridge';
 import { beginStoryVerification, recordUnexpectedRequest } from './verification';
 import { isProductRequest } from './verificationIntegrity';
 import { a11yVerification } from './a11yVerification';
@@ -27,6 +25,7 @@ import '../src/styles/App.less';
 import '../src/app.css';
 // Preview-only override: re-enable scrolling for stories taller than the iframe.
 import './preview.css';
+import { SnackbarHost, snackbar } from '../src/components/Snackbar';
 // Initialise the shared i18next instance (side-effect import).
 import '../src/i18n';
 
@@ -43,6 +42,12 @@ initialize(
     },
     createSharedStoryHandlers(),
 );
+
+/** The app-level snackbar host. A story that raises a pop-up shows it; leaving the story clears it. */
+const StorySnackbarHost = () => {
+    React.useEffect(() => () => snackbar.clear(), []);
+    return <SnackbarHost />;
+};
 
 const StoryProviders = ({ children }: { children: React.ReactNode }) => {
     const [queryClient] = React.useState(createStoryQueryClient);
@@ -79,15 +84,37 @@ const preview: Preview = {
             },
         },
         options: {
-            // Pages/Profile follows the tiles of Mein Account from top to bottom.
             storySort: {
                 order: [
-                    'Atoms',
-                    'Molecules',
-                    'Organisms',
-                    'Pages',
+                    'Settings',
                     [
-                        'Profile',
+                        'Einstellungen',
+                        [
+                            'Globale Konfigurationen',
+                            'Stammdaten & Mehr',
+                            'Erscheinungsbild',
+                            'Rechtliches',
+                            'Einführung Ratsuchende',
+                            'Email Server',
+                            'Systemhinweise',
+                            'Funktionszugriff',
+                            'Funktionalitäten',
+                            '*',
+                        ],
+                        'Träger',
+                        [
+                            'Stammdaten & Mehr',
+                            'Erscheinungsbild',
+                            'Rechtliches',
+                            'Einführung Ratsuchende',
+                            'Email Server',
+                            'Funktionszugriff',
+                            'Funktionalitäten',
+                            '*',
+                        ],
+                        'Beratungsstellen',
+                        ['Stammdaten & Mehr', 'Rechtliches', 'Funktionszugriff', '*'],
+                        'Mein Account',
                         [
                             'UserProfile',
                             'PrivateData',
@@ -104,6 +131,10 @@ const preview: Preview = {
                         ],
                         '*',
                     ],
+                    'Atoms',
+                    'Molecules',
+                    'Organisms',
+                    'Pages',
                     '*',
                 ],
             },
@@ -116,6 +147,13 @@ const preview: Preview = {
             const errors: unknown[] = [];
             try {
                 await storyRenderCleanup.finish();
+            } catch (error) {
+                errors.push(error);
+            }
+            try {
+                // The snackbar channel is module-level state: without this the persistent messages of one
+                // story keep the four visible slots and the next story's toast waits in the queue.
+                snackbar.clear();
             } catch (error) {
                 errors.push(error);
             }
@@ -138,14 +176,14 @@ const preview: Preview = {
         });
     },
     decorators: [
-        (Story) => (
+        (Story, context) => (
             <StoryProviders>
                 <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <AntdApp component={false} message={adminMessageConfig}>
-                        <TransportFeedbackBridge />
+                    <AntdApp component={false}>
                         <MemoryRouter>
                             <Story />
                         </MemoryRouter>
+                        {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}
                     </AntdApp>
                 </ConfigProvider>
             </StoryProviders>

@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../components/Snackbar';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { caseHandoverReasonPoliciesEndpoint } from '../appConfig';
 import { CaseHandoverReasonPolicy } from '../types/caseHandoverReasonPolicy';
@@ -65,7 +65,7 @@ export const useCaseHandoverReasonPoliciesMutation = (tenantId?: number) => {
             ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: [CASE_HANDOVER_REASON_POLICIES_QUERY_KEY, tenantId] });
-            message.success({
+            snackbar.success({
                 content: t('caseHandoverLogs.policy.saveSuccess'),
                 duration: 3,
             });

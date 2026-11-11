@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DepartmentDataProtectionCard } from './index';
 
 const meta = {
-    title: 'Organisms/Legal/DepartmentDataProtectionCard',
+    title: 'Settings/Einstellungen/Rechtliches/DepartmentDataProtectionCard',
+    id: 'organisms-legal-departmentdataprotectioncard',
     component: DepartmentDataProtectionCard,
     parameters: { layout: 'padded' },
     args: { onSave: () => undefined },

@@ -5,40 +5,11 @@
     color: var(--m3-on-surface-variant, #444748);
 }
 
-.pageHeader {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-
-    /* 12px breathing room around the pill row on every side (design baseline),
-       keeping the larger gap to the content below. */
-    padding: 12px 12px 20px;
-    flex-wrap: wrap;
-}
-
 /* The M3 select needs a width of its own — the inline form gives it none, and
    a floating label needs room for the longest topic name. */
 
 .inboundField {
     min-width: 220px;
-}
-
-/* Role-change snackbar: the sentence plus one text action ("Erneut senden"). */
-.snackbar {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
-.snackbarAction {
-    padding: 0 4px;
-    border: 0;
-    background: transparent;
-    color: var(--m3-primary, #a5000a);
-    cursor: pointer;
-    font: 500 14px/20px var(--m3-body-font-family);
 }
 
 /* Invite tabs (#1117): the invite card left, the table card right; stacked below 1200px of page width. */

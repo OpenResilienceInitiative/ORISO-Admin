@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { resolvePermissionPolicy } from '../permissionsSettingsUtils';
 import { PolicyOptionCard } from '../PolicyOptionCard';
+import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from '../traegerUnavailable';
 import styles from './styles.module.scss';
 
 /**
@@ -91,7 +92,7 @@ export const DirectInviteSection = ({
         }
         if (isAgency && traegerPoliciesStatus === 'error') {
             return (
-                <p className={styles.callsNote} role="status">
+                <p className={styles.callsNote} role="status" {...{ [TRAEGER_UNAVAILABLE_ATTRIBUTE]: '' }}>
                     {t('tenants.permissions.directInvite.traegerUnavailable')}
                 </p>
             );

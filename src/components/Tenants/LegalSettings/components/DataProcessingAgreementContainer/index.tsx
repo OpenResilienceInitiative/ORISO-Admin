@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Space, Spin } from 'antd';
+import { Button, Space, Spin } from 'antd';
 import Check from '@mui/icons-material/Check';
 import { useTranslation } from 'react-i18next';
 import { useDpaVersions } from '../../../../../hooks/useDpaVersions.hook';
@@ -25,11 +25,17 @@ import { useDpaOperationScope } from '../../../../../hooks/useDpaOperationScope.
 import { UserRole } from '../../../../../enums/UserRole';
 import { resolveDpaGateSubject } from '../../../../../utils/dpaBlockerGate';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
+import { HintText } from '../../../../HintText';
 
 interface DataProcessingAgreementContainerProps {
     tenantId: string | number;
     /** Read-only view (agency page): the DPA is managed at tenant (Träger) level. */
     readOnly?: boolean;
+    /** Shows the agreement as a tile that folds up to its header. */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
 }
 
 /**
@@ -38,10 +44,17 @@ interface DataProcessingAgreementContainerProps {
  * the publish mutation. The card submits the complete merged map, so publishing in one UI
  * language never drops the other languages (or unknown keys) any more.
  */
-export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataProcessingAgreementContainerProps) => {
+export const DataProcessingAgreementContainer = ({
+    tenantId,
+    readOnly,
+    collapsible,
+    defaultOpen,
+}: DataProcessingAgreementContainerProps) => {
     const { t, i18n } = useTranslation();
     const id = Number(tenantId);
     const lang = i18n.language?.split('-')[0] || 'de';
+    // The card below is rebuilt after a publish and when a stored draft appears; the tile keeps its fold state here.
+    const [tileOpen, setTileOpen] = useState(!!defaultOpen);
 
     const versionsEnabled = Number.isFinite(id) && id > 0;
     const {
@@ -280,16 +293,14 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
     // withhold the editor and offer a retry instead.
     if (versionsError) {
         return (
-            <Alert
-                type="error"
-                showIcon
-                message={t('tenants.legal.version.loadError')}
-                action={
-                    <Button size="small" onClick={() => refetchVersions()}>
-                        {t('tenants.legal.version.retry')}
-                    </Button>
-                }
-            />
+            <Notify
+                quietText={t('notify.tile.notLoaded')}
+                title={t('notify.title.dpa')}
+                severity="error"
+                actions={[{ label: t('tenants.legal.version.retry'), onClick: () => refetchVersions() }]}
+            >
+                {t('tenants.legal.version.loadError')}
+            </Notify>
         );
     }
 
@@ -302,6 +313,9 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 key={`${id}|${latestVersionId ?? ''}|${draft?.savedAt ?? ''}`}
                 initialContentByLanguage={editorContentByLanguage}
                 languages={languages}
+                collapsible={collapsible}
+                defaultOpen={tileOpen}
+                onOpenChange={setTileOpen}
                 versions={mapped}
                 onPublish={(contentByLanguage) => {
                     setPublishError(undefined);
@@ -369,53 +383,47 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 />
             )}
             {isDpaRecipient && dpaGateError && (
-                <Alert
-                    type="error"
-                    showIcon
-                    message={t('legal.dpa.sign.gateLoadError')}
-                    action={
-                        <Button size="small" onClick={() => refetchDpaGate()}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    }
-                />
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.dpa')}
+                    severity="error"
+                    actions={[{ label: t('tenants.legal.version.retry'), onClick: () => refetchDpaGate() }]}
+                >
+                    {t('legal.dpa.sign.gateLoadError')}
+                </Notify>
             )}
             {isDpaRecipient && gateForDocument?.dpaPublished && !gateForDocument.dpaSigned && (
                 <>
-                    <Alert
-                        type="warning"
-                        showIcon
-                        message={t('legal.dpa.sign.required')}
-                        description={
-                            <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 520 }}>
-                                <span>{t('legal.dpa.sign.description')}</span>
-                                {inviteEmailSentTo && (
-                                    <Alert type="success" showIcon message={t('legal.dpa.sign.sent')} />
-                                )}
-                                <Space wrap className={styles.recoveryActions}>
-                                    {/* Opens the SHARED forward dialog (#723): copyable
+                    <HintText title={t('legal.dpa.sign.required')}>
+                        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 520 }}>
+                            <span>{t('legal.dpa.sign.description')}</span>
+                            {inviteEmailSentTo && (
+                                <Notify title={t('notify.title.dpa')} severity="success">
+                                    {t('legal.dpa.sign.sent')}
+                                </Notify>
+                            )}
+                            <Space wrap className={styles.recoveryActions}>
+                                {/* Opens the SHARED forward dialog (#723): copyable
                                         link plus optional e-mail send with the actual
                                         DPA_FORWARD mail preview. */}
+                                <Button
+                                    type="primary"
+                                    className={styles.recoveryButton}
+                                    onClick={() => setForwardDialogOpen(true)}
+                                >
+                                    {t('legal.dpa.sign.sendLink')}
+                                </Button>
+                                {signLink && (
                                     <Button
-                                        type="primary"
                                         className={styles.recoveryButton}
-                                        onClick={() => setForwardDialogOpen(true)}
+                                        onClick={() => window.location.assign(signLink)}
                                     >
-                                        {t('legal.dpa.sign.sendLink')}
+                                        {t('legal.dpa.sign.openLink')}
                                     </Button>
-                                    {signLink && (
-                                        <Button
-                                            className={styles.recoveryButton}
-                                            onClick={() => window.location.assign(signLink)}
-                                        >
-                                            {t('legal.dpa.sign.openLink')}
-                                        </Button>
-                                    )}
-                                </Space>
+                                )}
                             </Space>
-                        }
-                        action={null}
-                    />
+                        </Space>
+                    </HintText>
                     {forwardDialogOpen && (
                         <DpaForwardDialog
                             forward={forward}
@@ -434,16 +442,14 @@ export const DataProcessingAgreementContainer = ({ tenantId, readOnly }: DataPro
                 </>
             )}
             {signatureStatusEnabled && gateForDocument && signatureStatusError && (
-                <Alert
-                    type="error"
-                    showIcon
-                    message={t('legal.dpa.sign.detailsLoadError')}
-                    action={
-                        <Button size="small" onClick={() => refetchSignatureStatus()}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    }
-                />
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.dpa')}
+                    severity="error"
+                    actions={[{ label: t('tenants.legal.version.retry'), onClick: () => refetchSignatureStatus() }]}
+                >
+                    {t('legal.dpa.sign.detailsLoadError')}
+                </Notify>
             )}
         </>
     );

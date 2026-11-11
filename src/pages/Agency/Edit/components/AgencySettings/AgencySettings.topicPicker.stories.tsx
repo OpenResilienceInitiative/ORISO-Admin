@@ -27,7 +27,8 @@ const SeedSwitch = ({ on }: { on: boolean }) => {
 };
 
 const meta: Meta<typeof AgencySettings> = {
-    title: 'Organisms/Agency/AgencySettings/TopicPicker',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/TopicPicker',
+    id: 'organisms-agency-agencysettings-topicpicker',
     component: AgencySettings,
     args: { isEditMode: true },
     parameters: {
@@ -95,9 +96,9 @@ export const SwitchOnLegacyMultiTopicAgency: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('alert')).toHaveTextContent(
-            /2 Themen\. .*nur ein Thema \(Fachbereich\) pro Beratungsstelle/,
-        );
+        await expect(
+            await canvas.findByText(/2 Themen\. .*nur ein Thema \(Fachbereich\) pro Beratungsstelle/),
+        ).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Allgemeine Sozialberatung' })).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Schuldnerberatung' })).toBeVisible();
         await userEvent.click(canvas.getByRole('combobox', { name: TOPIC_PICKER }));

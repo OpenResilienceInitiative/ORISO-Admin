@@ -10,7 +10,8 @@ import { UserProfile } from './UserProfile';
  * Check it at Laptop 1280 and Phone 390: tiles share the rows, nothing scrolls sideways.
  */
 const meta = {
-    title: 'Pages/Profile/UserProfile',
+    title: 'Settings/Mein Account/UserProfile',
+    id: 'pages-profile-userprofile',
     component: UserProfile,
     parameters: { layout: 'fullscreen', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin', 'user-admin'])],

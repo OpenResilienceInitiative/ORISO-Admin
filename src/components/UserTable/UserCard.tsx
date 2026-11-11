@@ -17,6 +17,8 @@ export interface UserCardProps {
     username?: string;
     /** Account status; omit it when `badge` shows a different kind of state. */
     status?: DisplayStatus;
+    /** Authoritative status metadata when this card represents a managed account list row. */
+    accountStatus?: { id: string; active?: boolean | null };
     /** Replaces the account status badge, e.g. a Beratungsstelle's visibility. */
     badge?: ReactNode;
     /** Target of the „Eingeladen" link. */
@@ -40,6 +42,7 @@ export const UserCard = ({
     email,
     username,
     status,
+    accountStatus,
     badge,
     inviteTo,
     children,
@@ -62,7 +65,10 @@ export const UserCard = ({
                     <span className={styles.name} title={displayName}>
                         {displayName}
                     </span>
-                    {badge ?? (status !== undefined && <StatusBadge status={status} inviteTo={inviteTo} />)}
+                    {badge ??
+                        (status !== undefined && (
+                            <StatusBadge status={status} inviteTo={inviteTo} accountStatus={accountStatus} />
+                        ))}
                 </div>
                 <div className={styles.actions}>
                     <IconButton

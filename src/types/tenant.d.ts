@@ -113,6 +113,7 @@ export interface TenantDataProtectionOfficer {
 }
 
 export interface BasicTenantData {
+    active?: boolean | null;
     id: number | null;
     key?: number | null;
     name: string;

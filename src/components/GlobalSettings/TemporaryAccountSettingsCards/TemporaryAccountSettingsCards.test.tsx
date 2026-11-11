@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
+import { SnackbarHost } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import type { TemporaryAccountSettings } from '../../../types/TemporaryAccountSettings';
@@ -34,6 +35,8 @@ const signInAs = (tenantId: number) =>
         null,
     );
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     signInAs(0);
     await i18n.changeLanguage('de');
 });
@@ -171,12 +174,12 @@ it('is not shown to a Träger admin and asks the server nothing', async () => {
     expect(requests).toEqual([]);
 });
 
-it('shows a load failure in both cards without making defaults editable', async () => {
+it('reports a load failure as a pop-up (one shared channel, one at a time) without making defaults editable', async () => {
     server.use(http.get(ENDPOINT, () => new HttpResponse(null, { status: 503 })));
     showCards();
-    expect(
-        await screen.findAllByText('Die Einstellungen für temporäre Konten konnten nicht geladen werden.'),
-    ).toHaveLength(2);
+    const popup = await screen.findByTestId('snackbar');
+    expect(popup).toHaveTextContent('Die Einstellungen für temporäre Konten konnten nicht geladen werden.');
+    expect(screen.getByRole('alert')).toContainElement(popup);
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
 });
 

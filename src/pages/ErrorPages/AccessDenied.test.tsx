@@ -16,7 +16,7 @@ describe('AccessDenied', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'logout' }));
 
-        expect(logoutMock).toHaveBeenCalledWith(true);
+        expect(logoutMock).toHaveBeenCalledWith(true, undefined, 'explicit');
         expect(screen.getByRole('link', { name: 'toHomePage' })).toHaveAttribute('href', '/app');
     });
 });

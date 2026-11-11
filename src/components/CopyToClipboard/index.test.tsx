@@ -1,23 +1,13 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../Snackbar';
 import { CopyToClipboard } from './index';
 
 const mocks = vi.hoisted(() => ({
     notificationSuccess: vi.fn(),
 }));
-
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        notification: {
-            ...actual.notification,
-            success: mocks.notificationSuccess,
-        },
-    };
-});
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => `translated:${key}` }),
@@ -52,4 +42,8 @@ describe('CopyToClipboard', () => {
             message: 'translated:custom.copy.success',
         });
     });
+});
+
+beforeEach(() => {
+    vi.spyOn(snackbar, 'success').mockImplementation(mocks.notificationSuccess as never);
 });
