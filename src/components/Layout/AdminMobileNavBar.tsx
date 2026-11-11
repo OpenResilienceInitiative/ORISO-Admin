@@ -69,7 +69,7 @@ export const AdminMobileNavBar = ({ account, currentPath, items, logout, tree = 
             items.map((item) => ({
                 key: item.key,
                 label: item.label,
-                tabLabel: t(`mobileNav.tab.${item.key}`, { defaultValue: '' }) || undefined,
+                tabLabel: t(`mobileNav.tab.${item.key}`, { defaultValue: item.label }),
                 to: item.to,
                 description: t(`mobileNav.section.${item.key}.description`, { defaultValue: '' }) || undefined,
                 icon: SECTION_GLYPHS[item.key] ? <NavGlyph name={SECTION_GLYPHS[item.key]} /> : undefined,
