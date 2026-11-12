@@ -282,6 +282,17 @@ const sumTracked = (first: TrackedMetricValue, second: TrackedMetricValue): Trac
     return first + second;
 };
 
+/**
+ * Combines one communication count across targets: a metric no target tracks stays untracked,
+ * and a count one target withholds (null) keeps the whole sum withheld instead of reading as 0.
+ */
+export const addTrackedMetricValues = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === undefined) return second;
+    if (second === undefined) return first;
+    if (first === null || second === null) return null;
+    return first + second;
+};
+
 interface TimeWindows {
     chartWeeks: number;
     topicMonths: number;

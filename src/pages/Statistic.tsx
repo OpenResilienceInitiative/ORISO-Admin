@@ -55,6 +55,7 @@ import {
     DEFAULT_TOPIC_MONTHS,
     emptyCaseCharts,
     getTodayDayCode,
+    addTrackedMetricValues,
     NO_DATA_LABEL,
     noDataTopics,
     topicMenuKeyForMonth,
@@ -915,12 +916,24 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
 const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
     first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
-/** Like addMetricValues, but a metric no target tracks stays untracked instead of turning into "withheld". */
-const addTrackedMetricValues = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
-    if (first === undefined) return second;
-    if (second === undefined) return first;
-    return addMetricValues(first, second);
-};
+const communicationMetricKeys = new Set<NumericFilterMetricKey>([
+    'liveChat',
+    'messagesCounselors',
+    'messagesSeekers',
+    'phoneCalls',
+    'textMessagesTotal',
+    'videoCalls',
+    'voiceMessages',
+]);
+
+const combineFilterMetric = (
+    metricKey: NumericFilterMetricKey,
+    first: TrackedMetricValue,
+    second: TrackedMetricValue,
+): TrackedMetricValue =>
+    communicationMetricKeys.has(metricKey)
+        ? addTrackedMetricValues(first, second)
+        : addMetricValues(first ?? null, second ?? null);
 
 const aggregateFilterTargetStatistics = (
     targetIds: string[],
@@ -939,7 +952,11 @@ const aggregateFilterTargetStatistics = (
         const metrics = numericFilterMetricKeys.reduce<FilterTargetMetricStats>(
             (nextMetrics, metricKey) => ({
                 ...nextMetrics,
-                [metricKey]: addTrackedMetricValues(aggregatedStats.metrics[metricKey], targetStats.metrics[metricKey]),
+                [metricKey]: combineFilterMetric(
+                    metricKey,
+                    aggregatedStats.metrics[metricKey],
+                    targetStats.metrics[metricKey],
+                ),
             }),
             {
                 ...aggregatedStats.metrics,

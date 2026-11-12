@@ -7,6 +7,7 @@ import {
     buildCaseChartDateLabels,
     buildCasePeriodOptions,
     buildCaseWeekOverview,
+    addTrackedMetricValues,
     buildStatisticData,
     emptyStatisticData,
     getIsoWeek,
@@ -208,6 +209,17 @@ describe('statisticDashboardData', () => {
         // not sent at all: no data source
         expect(metrics.voiceMessages).toBeUndefined();
         expect(metrics.liveChat).toBeUndefined();
+    });
+
+    it('keeps a communication count withheld when one target withholds it', () => {
+        // one target reports 5 messages, another withholds its count: the sum is not 5
+        expect(addTrackedMetricValues(5, null)).toBeNull();
+        expect(addTrackedMetricValues(null, 5)).toBeNull();
+        expect(addTrackedMetricValues(5, 3)).toBe(8);
+        // untracked contributors are skipped, all-untracked stays untracked
+        expect(addTrackedMetricValues(undefined, 5)).toBe(5);
+        expect(addTrackedMetricValues(null, undefined)).toBeNull();
+        expect(addTrackedMetricValues(undefined, undefined)).toBeUndefined();
     });
 
     it('treats a backend without communication counts as not tracking them', () => {

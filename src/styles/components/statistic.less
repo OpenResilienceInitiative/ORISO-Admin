@@ -638,6 +638,8 @@
 // A topic name in place of a number: smaller type that wraps onto two lines instead of
 // being cut to "Schwan…" after a few letters.
 .statisticDashboard .statisticDashboard__cardValueRow strong.statisticDashboard__cardValue--text {
+    /* -webkit-box is the cross-browser line-clamp idiom (see the donut label below). */
+    /* stylelint-disable-next-line value-no-vendor-prefix */
     display: -webkit-box;
     -webkit-box-orient: vertical;
     font-size: 24px;
