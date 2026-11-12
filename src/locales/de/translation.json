@@ -3601,7 +3601,7 @@
     "adminSearch.level.agency": "Beratungsstelle",
     "adminSearch.level.personal": "Persönlich",
     "adminSearch.filter.label": "Ergebnisse filtern",
-    "adminSearch.filter.type": "Art",
+    "adminSearch.filter.type": "Nur zeigen",
     "adminSearch.filter.level": "Ebene",
     "adminSearch.filter.reset": "Filter zurücksetzen",
     "adminSearch.empty.title": "Nichts gefunden für „{{query}}“",
@@ -3797,5 +3797,8 @@
     "inactiveAudit.role.CONSULTANT": "Beratende",
     "inactiveAudit.role.ADMIN": "Admin",
     "statistic.dashboard.scope.picker": "Ansicht",
-    "statistic.dashboard.scope.noMatch": "Kein Träger und keine Beratungsstelle gefunden"
+    "statistic.dashboard.scope.noMatch": "Kein Träger und keine Beratungsstelle gefunden",
+    "listSearch.caption": "Gefiltert nach Suche",
+    "listSearch.clear": "Ganze Liste zeigen",
+    "adminSearch.group.inList": "Alle Treffer in der Liste zeigen"
 }

@@ -3601,7 +3601,7 @@
     "adminSearch.level.agency": "Agency",
     "adminSearch.level.personal": "Personal",
     "adminSearch.filter.label": "Filter results",
-    "adminSearch.filter.type": "Type",
+    "adminSearch.filter.type": "Show only",
     "adminSearch.filter.level": "Level",
     "adminSearch.filter.reset": "Reset filters",
     "adminSearch.empty.title": "Nothing found for “{{query}}”",
@@ -3797,5 +3797,8 @@
     "inactiveAudit.role.CONSULTANT": "Counsellors",
     "inactiveAudit.role.ADMIN": "Admin",
     "statistic.dashboard.scope.picker": "View",
-    "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found"
+    "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found",
+    "listSearch.caption": "Filtered by search",
+    "listSearch.clear": "Show the whole list",
+    "adminSearch.group.inList": "Show all matches in the list"
 }

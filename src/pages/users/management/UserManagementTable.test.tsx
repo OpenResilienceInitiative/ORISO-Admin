@@ -86,9 +86,8 @@ vi.mock('../../../hooks/useAdminListPreferences', () => ({
     useSaveAdminListSort: () => vi.fn(),
 }));
 vi.mock('./UserScopeFilters', () => ({
-    UserScopeFilters: ({ actions, search }: UserScopeFiltersProps) => (
+    UserScopeFilters: ({ actions }: UserScopeFiltersProps) => (
         <div role="group" aria-label="account toolbar">
-            {search && <input aria-label={search.searchPlaceholder} />}
             {actions}
         </div>
     ),
@@ -112,9 +111,9 @@ describe('UserManagementTable section authorization', () => {
         state.canManage = true;
         state.navigate.mockClear();
     });
-    const show = () =>
+    const show = (entry = '/admin/users') =>
         render(
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[entry]}>
                 <UserManagementTable />
             </MemoryRouter>,
         );
@@ -139,12 +138,17 @@ describe('UserManagementTable section authorization', () => {
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
     });
 
-    it('renders search and permitted actions together exactly once', () => {
+    it('renders permitted actions exactly once and no search field of its own (⌘K is the one search)', () => {
         show();
         const toolbar = within(screen.getByRole('group', { name: 'account toolbar' }));
-        expect(toolbar.getByRole('textbox')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
         expect(toolbar.getByRole('button', { name: /new$/ })).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /new$/ })).toHaveLength(1);
+    });
+
+    it('says when the list is narrowed by a search from the admin search (?q=)', () => {
+        show('/admin/users?q=simpson');
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„simpson“');
     });
 
     it('labels invitations as navigation and points to the invitations section', () => {

@@ -140,6 +140,64 @@ describe('AdminSearchView', () => {
         await waitFor(() => expect(screen.getByRole('button', { name: /^Providers\s*1/ })).toBeTruthy());
     });
 
+    describe('one search for the whole admin (lists have no search field of their own)', () => {
+        const tenantDoc = {
+            id: 'tenant:1',
+            kind: 'tenant' as const,
+            title: 'Springfield QA',
+            breadcrumb: ['Tenants', 'Springfield QA'],
+            to: '/admin/tenants/1/general',
+            level: 'tenant' as const,
+            terms: { title: ['Springfield QA'], fields: [], synonyms: [], description: [], context: [] },
+        };
+
+        it('offers one chip row only: the type, no second "level" row that repeats Träger', async () => {
+            const { user, input } = setup({ entityDocs: [tenantDoc] });
+
+            await user.type(input, 'springfield');
+
+            await waitFor(() => expect(screen.getByRole('button', { name: /^Providers\s*1/ })).toBeTruthy());
+            expect(screen.queryByText('Level')).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Platform' })).toBeNull();
+            expect(screen.getByText('Show only')).toBeTruthy();
+        });
+
+        it('opens the Träger list narrowed to the query from "Show all matches in the list"', async () => {
+            const onOpenList = vi.fn();
+            const { user, input, onClose } = setup({ entityDocs: [tenantDoc], onOpenList });
+
+            await user.type(input, 'springfield');
+            await user.click(await screen.findByRole('option', { name: 'Show all matches in the list' }));
+
+            expect(onOpenList).toHaveBeenCalledWith('tenants', 'springfield');
+            expect(onClose).toHaveBeenCalled();
+        });
+
+        it('reaches the list row with the arrow keys and opens it with Enter', async () => {
+            const onOpenList = vi.fn();
+            const { user, input } = setup({ entityDocs: [tenantDoc], onOpenList });
+
+            await user.type(input, 'springfield');
+            await screen.findByRole('option', { name: 'Show all matches in the list' });
+            const options = screen.getAllByRole('option');
+            const listIndex = options.findIndex((option) => option.dataset.listRow === 'tenants');
+            const activeIndex = options.findIndex((option) => option.getAttribute('aria-selected') === 'true');
+            for (let step = activeIndex; step < listIndex; step += 1) await user.keyboard('{ArrowDown}');
+            await user.keyboard('{Enter}');
+
+            expect(onOpenList).toHaveBeenCalledWith('tenants', 'springfield');
+        });
+
+        it('shows no list row without a list handler', async () => {
+            const { user, input } = setup({ entityDocs: [tenantDoc] });
+
+            await user.type(input, 'springfield');
+
+            await screen.findByRole('option', { name: /Springfield QA/ });
+            expect(screen.queryByRole('option', { name: 'Show all matches in the list' })).toBeNull();
+        });
+    });
+
     // Found in review: the entity fetch trails the typing, so the rows of the previous query were still
     // offered as "matched by the server" for the new one.
     describe('rows the server matched by something the index does not hold', () => {

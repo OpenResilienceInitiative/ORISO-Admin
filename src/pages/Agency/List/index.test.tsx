@@ -5,6 +5,8 @@ import { AgencyList } from './index';
 
 const mocks = vi.hoisted(() => ({
     agencies: [] as any[],
+    // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
+    query: '',
     // Optional server pages by page number, with their total, for the phone "load more" flow.
     agencyPages: undefined as Record<number, any[]> | undefined,
     agencyTotal: undefined as number | undefined,
@@ -60,6 +62,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
+    useSearchParams: () => [new URLSearchParams(mocks.query ? { q: mocks.query } : {}), vi.fn()],
     Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
     Navigate: ({ to, replace }: { to: string; replace?: boolean }) => (
         <div data-testid="navigate" data-to={to} data-replace={String(Boolean(replace))} />
@@ -75,20 +78,6 @@ vi.mock('../../../components/Page', () => {
     Page.Title = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
     return { Page };
 });
-
-vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children, onSearch }: { children?: React.ReactNode; onSearch?: (query: string) => void }) => (
-        <div data-testid="global-search">
-            <input
-                aria-label="Search agencies"
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter') onSearch?.(event.currentTarget.value);
-                }}
-            />
-            {children}
-        </div>
-    ),
-}));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
     useAgenciesData: (query: { search?: string; current?: number }) => {
@@ -191,6 +180,7 @@ const withDesktopLayout = () => {
 };
 
 const resetMocks = () => {
+    mocks.query = '';
     mocks.agencies = [];
     mocks.agencyPages = undefined;
     mocks.agencyTotal = undefined;
@@ -508,15 +498,12 @@ describe('AgencyList landing for a Beratungsstellen-Admin (ORISO-Admin#917)', ()
             buildAgency([], { id: 42, name: 'North centre' }),
             buildAgency([], { id: 43, name: 'South centre' }),
         ];
+        // The search arrives as ?q= from the admin search (⌘K); the list has no field of its own.
+        mocks.query = 'North';
         render(<AgencyList />);
-        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
-        expect(screen.getByText('North centre')).toBeInTheDocument();
-        expect(screen.getByText('South centre')).toBeInTheDocument();
 
-        const search = screen.getByRole('textbox', { name: 'Search agencies' });
-        fireEvent.change(search, { target: { value: 'North' } });
-        fireEvent.keyDown(search, { key: 'Enter' });
-
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„North“');
         expect(screen.getByText('North centre')).toBeInTheDocument();
         expect(screen.queryByText('South centre')).not.toBeInTheDocument();
         expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FilterDisclosure } from '../../../components/FilterDisclosure';
-import { GlobalSearchBar, type GlobalSearchBarProps } from '../../../components/GlobalSearch';
 import { ScopeContextBar } from '../../../components/UserTable/ScopeContextBar';
 import { ScopeFilter, type ScopeFilterOption } from '../../../components/UserTable/ScopeFilter';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -34,16 +33,15 @@ export interface UserScopeFiltersProps {
     sectionId: TypeOfUser;
     filters: UserSearchFilters;
     onChange: (filters: UserSearchFilters) => void;
-    search?: Pick<GlobalSearchBarProps, 'onSearch' | 'onSearchChange' | 'searchPlaceholder' | 'value'>;
     actions?: ReactNode;
 }
 
 /**
- * The list search with one "Filter" button beside it; the Träger and Beratungsstelle pickers fold out
+ * One "Filter" button (no search field: the admin search, ⌘K, is the one place to type); the Träger and Beratungsstelle pickers fold out
  * below (Admin#1510). The active filters stay visible as context bars, so a closed panel never hides
  * why the list is shorter.
  */
-export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions }: UserScopeFiltersProps) => {
+export const UserScopeFilters = ({ sectionId, filters, onChange, actions }: UserScopeFiltersProps) => {
     const { t } = useTranslation();
     const available = useScopeFilterAvailability(sectionId);
 
@@ -62,7 +60,7 @@ export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions
             detail: [agency.postcode, agency.city].filter(Boolean).join(' '),
         }));
 
-    if (!available.tenant && !available.agency && !search && !actions) return null;
+    if (!available.tenant && !available.agency && !actions) return null;
 
     const tenant = tenantOptions.find((option) => option.id === filters.tenantId);
     const centres = (filters.agencyIds ?? []).map(
@@ -101,9 +99,6 @@ export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions
             )}
         </>
     );
-    const searchBar = search && (
-        <GlobalSearchBar {...search} expandedWidth={280} scrollButtons className={styles.searchRow} />
-    );
 
     return (
         <div className={styles.wrapper}>
@@ -111,16 +106,12 @@ export const UserScopeFilters = ({ sectionId, filters, onChange, search, actions
                 <FilterDisclosure
                     groupLabel={t('userTable.filter.label', 'Liste filtern')}
                     activeCount={activeCount}
-                    leading={searchBar}
                     trailing={actions}
                 >
                     {pickers}
                 </FilterDisclosure>
             ) : (
-                <div className={styles.toolbar}>
-                    {searchBar}
-                    {actions}
-                </div>
+                <div className={styles.toolbar}>{actions}</div>
             )}
             {filters.tenantId && (
                 <ScopeContextBar

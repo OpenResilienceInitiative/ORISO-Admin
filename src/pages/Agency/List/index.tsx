@@ -1,8 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddIcon from '@mui/icons-material/Add';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { useDebouncedCallback } from 'use-debounce';
 import type { DataTableSort } from '../../../components/DataTable';
 import { M3Button } from '../../../components/M3Button';
 import { AgencyData } from '../../../types/agency';
@@ -16,7 +15,8 @@ import { Resource } from '../../../enums/Resource';
 import { Page } from '../../../components/Page';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
+import { ListSearchBar } from '../../../components/ListSearchBar';
+import { useListQuery } from '../../../hooks/useListQuery';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
@@ -29,11 +29,14 @@ import styles from './styles.module.scss';
 
 export const AgencyList = () => {
     const { t } = useTranslation();
+    // The admin search (⌘K) is the one place to type; "Show all matches in the list" opens this page with ?q=.
+    const { query, clear: clearQuery } = useListQuery();
     const [tableState, setTableState] = useState<TableState>({
         current: 1,
         sortBy: undefined,
         order: undefined,
         pageSize: 10,
+        search: query || undefined,
     });
     const { data, isLoading, isError, refetch } = useAgenciesData({ ...tableState });
     const { can } = useUserPermissions();
@@ -67,10 +70,11 @@ export const AgencyList = () => {
         refetch();
     }, []);
 
-    const updateSearch = useCallback((search?: string) => {
-        setTableState((tmpData) => ({ ...tmpData, current: 1, search }));
-    }, []);
-    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
+    useEffect(() => {
+        setTableState((state) =>
+            (state.search ?? '') === query ? state : { ...state, current: 1, search: query || undefined },
+        );
+    }, [query]);
     const tenantNameById = new Map(
         (tenantsData?.data || []).map((tenant) => [Number(tenant.id), String(tenant.name || '')]),
     );
@@ -94,46 +98,38 @@ export const AgencyList = () => {
             <Page.Title titleKey="agency" subTitleKey={`agency.title.text${canCreate ? '' : '.self'}`}>
                 <PageMobileActions
                     id="agencies"
-                    search={{
-                        label: t('agency.list.searchPlaceholder'),
-                        placeholder: t('agency.list.searchPlaceholder'),
-                        onSearch: updateSearch,
-                    }}
                     add={
                         canCreate && !isAgencyCreationDpaBlocked
                             ? { label: t('new'), onAdd: () => navigate(routePathNames.agencyAdd) }
                             : undefined
                     }
                 >
-                    <div className={styles.toolbar}>
-                        <GlobalSearchBar
-                            className={styles.searchField}
-                            expandedWidth={499}
-                            onSearch={updateSearch}
-                            onSearchChange={setSearchDebounced}
-                            searchPlaceholder={t('agency.list.searchPlaceholder')}
-                        >
-                            {canCreate && (
-                                // The title explains a disabled button; a disabled button gets no hover itself.
-                                <span
-                                    className={styles.toolbarActions}
-                                    title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
+                    {canCreate && (
+                        <div className={styles.toolbar}>
+                            {/* The title explains a disabled button; a disabled button gets no hover itself. */}
+                            <span
+                                className={styles.toolbarActions}
+                                title={isAgencyCreationDpaBlocked ? t('agency.dpaGate.title') : undefined}
+                            >
+                                <M3Button
+                                    variant="filled"
+                                    icon={<AddIcon />}
+                                    className={styles.createButton}
+                                    disabled={isAgencyCreationDpaBlocked}
+                                    onClick={() => navigate(routePathNames.agencyAdd)}
                                 >
-                                    <M3Button
-                                        variant="filled"
-                                        icon={<AddIcon />}
-                                        className={styles.createButton}
-                                        disabled={isAgencyCreationDpaBlocked}
-                                        onClick={() => navigate(routePathNames.agencyAdd)}
-                                    >
-                                        {t('new')}
-                                    </M3Button>
-                                </span>
-                            )}
-                        </GlobalSearchBar>
-                    </div>
+                                    {t('new')}
+                                </M3Button>
+                            </span>
+                        </div>
+                    )}
                 </PageMobileActions>
             </Page.Title>
+            {query && (
+                <div className={styles.toolbar}>
+                    <ListSearchBar query={query} onClear={clearQuery} />
+                </div>
+            )}
 
             {isError && (
                 <Notify
