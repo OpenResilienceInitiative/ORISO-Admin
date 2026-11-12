@@ -22,6 +22,7 @@ export const resolveUserSaveErrorMessageKey = (
             // else has to be pointed at an admin, so the two cases read differently.
             return `${canReassignExistingEmail ? '' : 'notAllowed.'}message.error.${X_REASON.EMAIL_NOT_AVAILABLE}`;
         case X_REASON.USERNAME_NOT_AVAILABLE:
+        case X_REASON.USERNAME_IN_DELETION:
         case X_REASON.NUMBER_OF_LICENSES_EXCEEDED:
         case X_REASON.TENANT_LICENSING_NOT_CONFIGURED:
         case X_REASON.PASSWORD_NOT_VALID:
