@@ -18,8 +18,19 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({ data: { settings: {} }, isLoading: false }),
 }));
 
+const mutate = vi.fn();
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: vi.fn() }),
+    useTenantAdminDataMutation: () => ({ mutate }),
+}));
+
+// ORISO-TenantService#363: the effective value comes from the Träger's permission policies.
+const policies: Record<string, { value: boolean; mode: 'SUGGESTED' | 'ENFORCED'; inherited?: boolean }> = {
+    featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
+};
+const savePolicies = vi.fn(async (next: unknown) => next);
+vi.mock('../../../../hooks/useTenantPermissionPolicies', () => ({
+    useTenantPermissionPolicies: () => ({ data: { tenantId: 1, policies }, isLoading: false }),
+    useTenantPermissionPoliciesMutation: () => ({ mutateAsync: savePolicies }),
 }));
 
 vi.mock('../../../../context/useAppConfig', () => ({
@@ -97,5 +108,26 @@ describe('OtherFunctionsSettings', () => {
 
         expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
         expect(master).not.toBeChecked();
+    });
+
+    // Single writer: a supervision switch saved here becomes the Träger's own policy, never a raw setting.
+    it('saves a feature switch as an own permission policy, not as a raw setting', async () => {
+        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
+        expect(master).toBeChecked();
+        await user.click(master);
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
+        expect(savePolicies).toHaveBeenCalledWith({
+            tenantId: 1,
+            policies: { featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: false } },
+        });
+        expect(mutate.mock.calls[0][0].settings).not.toHaveProperty('featureSupervisionEnabled');
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
     });
 });

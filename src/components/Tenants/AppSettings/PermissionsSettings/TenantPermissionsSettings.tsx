@@ -248,6 +248,7 @@ export const TenantPermissionsSettings = ({
             onToggleUpdate={handleToggleUpdate}
             policyLevel="tenant"
             permissionPolicies={effectivePolicyData?.policies}
+            ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
             recipientScope={{

@@ -4,20 +4,35 @@ import type { TenantSettings } from '../../../../types/tenant';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
 
+/** Where the value a tile shows comes from (ORISO-TenantService#363). */
+export type PermissionPolicySource = 'own' | 'suggested' | 'enforced' | 'forbidden';
+
+/**
+ * The effective value of one feature at this level (ORISO-TenantService#363):
+ * 1. a requirement from above (enforced on / forbidden) always wins and is locked;
+ * 2. otherwise this level's own stored choice wins — a policy with `inherited: false`, or
+ *    `ownValue`, the boolean this level stored itself;
+ * 3. only while this level never chose does the suggestion from above count (`inherited: true`).
+ * A suggestion never overrides a stored own choice.
+ */
 export const resolvePermissionPolicy = (
     permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
     fieldKey: string,
     currentValue: unknown,
     restrictedFields: ReadonlySet<string>,
+    ownValue?: unknown,
 ): PolicyValue<boolean> => {
-    const restricted = restrictedFields.has(fieldKey);
-    return (
-        permissionPolicies?.[fieldKey] ?? {
-            value: currentValue !== false,
-            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
-            inherited: restricted,
-        }
-    );
+    const policy = permissionPolicies?.[fieldKey];
+    if (policy?.mode === 'ENFORCED') return policy;
+    if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
+    if (policy && policy.inherited === false) return policy;
+    if (typeof ownValue === 'boolean') return { value: ownValue, mode: 'SUGGESTED', inherited: false };
+    return policy ?? { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
+};
+
+export const permissionPolicySource = (policy: PolicyValue<boolean>): PermissionPolicySource => {
+    if (policy.mode === 'ENFORCED') return policy.value ? 'enforced' : 'forbidden';
+    return policy.inherited === true ? 'suggested' : 'own';
 };
 
 /**

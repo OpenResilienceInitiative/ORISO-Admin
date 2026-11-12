@@ -208,6 +208,27 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         expect(within(master).queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
     });
 
+    // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
+    it.each([
+        [false, 'deactivated', 'own'],
+        [undefined, 'activated', 'suggested'],
+    ])('stored own value %s with a suggestion "on" shows %s with source %s', (own, state, source) => {
+        renderOneOnOne(vi.fn(), {
+            permissionPolicies: {
+                featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
+                featureVideoCallsOneOnOneChatsEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            },
+            ownSettings: { featureVideoCallsOneOnOneChatsEnabled: own },
+        });
+        const control = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        expect(
+            within(control).getByRole('button', { name: new RegExp(`tenants.permissions.policy.${state}`) }),
+        ).toBeInTheDocument();
+        expect(within(control).getByText(`tenants.permissions.policy.source.${source}`)).toBeInTheDocument();
+    });
+
     it('uses false form values when an asker policy is absent from a partial response', () => {
         render(
             <PermissionsSettingsView
