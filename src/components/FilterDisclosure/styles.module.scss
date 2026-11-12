@@ -1,0 +1,117 @@
+@use '../../styles/muiSpacing' as mui;
+
+.root {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+.row {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.leading {
+    min-width: 0;
+    // Small basis: on a 360px phone the search and the "Filter" button still share one row;
+    // only the trailing actions wrap below them.
+    flex: 1 1 120px;
+
+    > * {
+        max-width: 100%;
+    }
+}
+
+.trailing {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    margin-left: auto;
+    gap: mui.$mui-unit;
+}
+
+/* Same pill as the Einladungen "Filter" button, the model for this pattern. */
+.toggle {
+    display: inline-flex;
+    height: 40px;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 0 12px 0 14px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    border-radius: 20px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+    gap: 6px;
+    letter-spacing: 0.1px;
+
+    &:hover {
+        background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 8%, transparent);
+    }
+
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset, 2px);
+    }
+}
+
+.toggleActive {
+    border-color: var(--m3-primary, #a5000a);
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.count {
+    display: inline-flex;
+    min-width: 20px;
+    height: 20px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.chevron {
+    transition: transform 150ms ease;
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.panel {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: mui.$mui-unit;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chevron {
+        transition: none;
+    }
+}

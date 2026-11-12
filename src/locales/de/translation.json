@@ -3787,5 +3787,15 @@
     "entityStatus.twoFactor.title": "Zwei-Faktor-Authentifizierung",
     "entityStatus.twoFactor.short.required": "Erforderlich",
     "entityStatus.twoFactor.short.configured": "Eingerichtet",
-    "entityStatus.twoFactor.short.active": "Aktiv"
+    "entityStatus.twoFactor.short.active": "Aktiv",
+    "filterDisclosure.button": "Filter",
+    "filterDisclosure.activeCount_one": "{{count}} Filter aktiv",
+    "filterDisclosure.activeCount_other": "{{count}} Filter aktiv",
+    "logs.filters.label": "Protokoll filtern",
+    "logs.filters.reset": "Filter zurücksetzen",
+    "inactiveAudit.role.ASKER": "Ratsuchende",
+    "inactiveAudit.role.CONSULTANT": "Beratende",
+    "inactiveAudit.role.ADMIN": "Admin",
+    "statistic.dashboard.scope.picker": "Ansicht",
+    "statistic.dashboard.scope.noMatch": "Kein Träger und keine Beratungsstelle gefunden"
 }

@@ -3787,5 +3787,15 @@
     "entityStatus.twoFactor.title": "Two-factor authentication",
     "entityStatus.twoFactor.short.required": "Required",
     "entityStatus.twoFactor.short.configured": "Configured",
-    "entityStatus.twoFactor.short.active": "Active"
+    "entityStatus.twoFactor.short.active": "Active",
+    "filterDisclosure.button": "Filter",
+    "filterDisclosure.activeCount_one": "{{count}} filter active",
+    "filterDisclosure.activeCount_other": "{{count}} filters active",
+    "logs.filters.label": "Filter the log",
+    "logs.filters.reset": "Reset filters",
+    "inactiveAudit.role.ASKER": "Advice seekers",
+    "inactiveAudit.role.CONSULTANT": "Counsellors",
+    "inactiveAudit.role.ADMIN": "Admin",
+    "statistic.dashboard.scope.picker": "View",
+    "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found"
 }
