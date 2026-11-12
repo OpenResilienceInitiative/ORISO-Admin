@@ -179,7 +179,7 @@ describe('durable verification inventory', () => {
                 },
             },
             runtime: { node: process.version, platform: process.platform, arch: process.arch },
-            toolchain: { vitePlus: '1.3.0', vitest: '5.0.5', storybook: '10.6.3' },
+            toolchain: { vitePlus: '1.6.0', vitest: '5.1.0', storybook: '10.6.7' },
             invocation: { command: expect.any(Array), projects: ['storybook'] },
         });
         reporter.onTestCaseResult(test);
