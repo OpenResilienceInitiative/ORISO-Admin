@@ -26,7 +26,7 @@ export const installedAxeWitness = (root = process.cwd()) => {
     });
     const addon = { ...identity('@storybook/addon-a11y', runner), callsiteSignature };
     const axe = identity('axe-core', axePath);
-    assert.equal(addon.version, '10.6.3', 'Unreviewed addon version');
+    assert.equal(addon.version, '10.6.7', 'Unreviewed addon version');
     assert.equal(addon.sha256, pinnedAddonHash, 'Installed addon source changed');
     assert.equal(axe.version, '4.12.1', 'Unreviewed axe version');
     assert.equal(axe.sha256, pinnedAxeHash, 'Installed axe source changed');
