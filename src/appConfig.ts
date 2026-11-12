@@ -151,6 +151,7 @@ const routePathNames = {
     caseHandoverLogs: '/admin/logs/case-handover',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     deletionAuditLogs: '/admin/logs/deletions',
+    addonAuditLogs: '/admin/logs/addons',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
     imprint: '/impressum',

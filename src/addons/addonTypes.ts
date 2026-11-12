@@ -100,6 +100,37 @@ export interface AddonRegistry {
     addons: AvailableAddon[];
 }
 
+/** One entry of `GET /service/addons/admin/audit`, written by an add-on backend through the host API. */
+export interface AddonAuditEntry {
+    id: string | number;
+    createdAt: string;
+    addon: string;
+    appId?: string | null;
+    action: string;
+    summary?: LocalizedText;
+    actor?: { id?: string | null; username?: string | null; roles?: string[] | null } | null;
+    tenantId?: number | null;
+    agencyId?: number | null;
+    sessionId?: number | string | null;
+    subjectId?: string | null;
+}
+
+export interface AddonAuditPage {
+    items: AddonAuditEntry[];
+    page: number;
+    size: number;
+    total: number;
+}
+
+export interface AddonAuditQuery {
+    tenantId?: number | null;
+    addon?: string | null;
+    from?: string | null;
+    to?: string | null;
+    page: number;
+    size: number;
+}
+
 /** What every lifecycle function of an add-on bundle receives. */
 export interface AddonHostProps {
     contract: typeof ADDON_CONTRACT;

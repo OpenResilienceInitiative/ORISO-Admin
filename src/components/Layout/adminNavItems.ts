@@ -62,6 +62,7 @@ export const resolveLogsPage = (
     canReadCaseHandoverLogs: boolean,
     canReadInactiveAuditLogs: boolean,
     canReadDeletionAuditLogs = false,
+    canReadAddonAuditLogs = false,
 ): string | null => {
     if (canReadSupervisorLogs) {
         return routePathNames.logs;
@@ -74,6 +75,9 @@ export const resolveLogsPage = (
     }
     if (canReadDeletionAuditLogs) {
         return routePathNames.deletionAuditLogs;
+    }
+    if (canReadAddonAuditLogs) {
+        return routePathNames.addonAuditLogs;
     }
     return null;
 };
@@ -111,6 +115,7 @@ export const buildAdminNavItems = ({
         canSeeCaseHandoverLogs,
         canSeeInactiveAuditLogs,
         canSeeDeletionAuditLogsFor(isSuperAdmin, can),
+        canSeeAddonsSection({ isSuperAdmin, can }),
     );
 
     if (canSeeSettingsMenu) {

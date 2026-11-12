@@ -118,6 +118,7 @@ const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
         case routePathNames.caseHandoverLogs:
         case routePathNames.inactiveAccountAuditLogs:
         case routePathNames.deletionAuditLogs:
+        case routePathNames.addonAuditLogs:
             return selectIcon(iconState, {
                 active: <LogsActiveIcon />,
                 hover: <LogsHoverIcon />,

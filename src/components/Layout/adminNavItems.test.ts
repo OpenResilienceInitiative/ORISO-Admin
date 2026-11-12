@@ -37,6 +37,11 @@ describe('resolveLogsPage', () => {
         expect(resolveLogsPage(false, false, true, true)).toBe(routePathNames.inactiveAccountAuditLogs);
     });
 
+    it('lands on the add-on log last', () => {
+        expect(resolveLogsPage(false, false, false, false, true)).toBe(routePathNames.addonAuditLogs);
+        expect(resolveLogsPage(false, true, false, false, true)).toBe(routePathNames.caseHandoverLogs);
+    });
+
     it('returns null when the admin may read no log view', () => {
         expect(resolveLogsPage(false, false, false)).toBeNull();
     });

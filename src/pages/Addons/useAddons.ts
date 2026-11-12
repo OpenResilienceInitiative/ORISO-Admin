@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     clearAddonAgencyOverride,
     getAddonRegistry,
@@ -9,14 +9,16 @@ import {
     setAddonEnabledForAgency,
     setAddonEnabledForTenant,
 } from '../../api/addons/addonsApi';
+import { getAddonAuditEntries } from '../../api/addons/addonAuditApi';
 import getAgencyDataById from '../../api/agency/getAgencyById';
-import type { AddonSettingsValues } from '../../addons/addonTypes';
+import type { AddonAuditQuery, AddonSettingsValues } from '../../addons/addonTypes';
 import decodeHTML from '../../utils/decodeHTML';
 
 export const ADMIN_ADDONS_KEY = 'admin-addons';
 export const ADDON_REGISTRY_KEY = 'addon-registry';
 const ADDON_SETTINGS_KEY = 'addon-settings';
 const ADDON_STATS_KEY = 'addon-stats';
+const ADDON_AUDIT_KEY = 'addon-audit';
 
 export const useAdminAddons = (tenantId: number | null, enabled = true) =>
     useQuery({
@@ -48,6 +50,15 @@ export const useAddonStats = (name: string, tenantId: number, enabled: boolean) 
         queryFn: () => getAddonStats(name, tenantId),
         enabled,
         retry: false,
+    });
+
+export const useAddonAuditEntries = (params: AddonAuditQuery) =>
+    useQuery({
+        queryKey: [ADDON_AUDIT_KEY, params],
+        queryFn: () => getAddonAuditEntries(params),
+        placeholderData: keepPreviousData,
+        retry: false,
+        refetchOnWindowFocus: false,
     });
 
 export const useAgencyNames = (agencyIds: number[]) =>

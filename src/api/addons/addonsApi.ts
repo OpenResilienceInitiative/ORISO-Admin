@@ -15,7 +15,7 @@ const WRITE_HANDLING = [FETCH_ERRORS.FORBIDDEN, FETCH_ERRORS.NO_MATCH, FETCH_ERR
 const adminAddonsUrl = `${addonServiceEndpoint}/admin/addons`;
 const addonUrl = (name: string) => `${adminAddonsUrl}/${encodeURIComponent(name)}`;
 
-const query = (params: Record<string, number | string | null | undefined>) => {
+export const queryString = (params: Record<string, number | string | null | undefined>) => {
     const search = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== '') {
@@ -38,7 +38,7 @@ export class AddonSettingsValidationError extends Error {
 
 export const getAdminAddons = (tenantId?: number | null): Promise<AdminAddon[]> =>
     fetchData({
-        url: `${adminAddonsUrl}${query({ tenantId })}`,
+        url: `${adminAddonsUrl}${queryString({ tenantId })}`,
         method: FETCH_METHODS.GET,
         responseHandling: READ_HANDLING,
     }).then((result) => (Array.isArray(result) ? result : []));
@@ -73,7 +73,7 @@ export const clearAddonAgencyOverride = (name: string, tenantId: number, agencyI
 
 export const getAddonSettings = (name: string, tenantId: number, agencyId?: number | null): Promise<AddonSettings> =>
     fetchData({
-        url: `${addonUrl(name)}/settings${query({ tenantId, agencyId })}`,
+        url: `${addonUrl(name)}/settings${queryString({ tenantId, agencyId })}`,
         method: FETCH_METHODS.GET,
         responseHandling: READ_HANDLING,
     }).then((result) => ({ schema: result?.schema ?? null, values: result?.values ?? {} }));
@@ -95,7 +95,7 @@ export const saveAddonSettings = async (
 ): Promise<AddonSettingsValues> => {
     try {
         return await fetchData({
-            url: `${addonUrl(name)}/settings${query({ tenantId, agencyId })}`,
+            url: `${addonUrl(name)}/settings${queryString({ tenantId, agencyId })}`,
             method: FETCH_METHODS.PUT,
             bodyData: JSON.stringify(values),
             responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, ...WRITE_HANDLING],
@@ -110,7 +110,7 @@ export const saveAddonSettings = async (
 
 export const getAddonStats = (name: string, tenantId: number): Promise<AddonStats> =>
     fetchData({
-        url: `${addonUrl(name)}/stats${query({ tenantId })}`,
+        url: `${addonUrl(name)}/stats${queryString({ tenantId })}`,
         method: FETCH_METHODS.GET,
         responseHandling: READ_HANDLING,
     }).then((result) => ({ stats: Array.isArray(result?.stats) ? result.stats : [] }));
