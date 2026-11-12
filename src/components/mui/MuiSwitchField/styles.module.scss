@@ -24,6 +24,12 @@
         letter-spacing: 0.5px;
         line-height: 24px;
         white-space: normal;
+
+        /* A long German compound must wrap inside the label, not widen it: `anywhere` (unlike
+           `break-word`) also lowers the min-content width, so a grid track cannot be widened by
+           the word and push the switch over the next field. */
+        hyphens: auto;
+        overflow-wrap: anywhere;
     }
 }
 

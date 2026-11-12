@@ -50,6 +50,11 @@ export interface AdminSearchViewProps {
     onQueryChange?: (query: string) => void;
     onOpen: (doc: SearchDoc, query: string) => void;
     onClose: () => void;
+    /**
+     * Called when the view starts to close (before its shrink animation). From then on the search
+     * counts as closed: Ctrl/Cmd+K opens a new one instead of being swallowed by the leaving view.
+     */
+    onClosing?: () => void;
     initialQuery?: string;
     initialFilters?: SearchFilters;
     /** Controlled recent searches (stories); defaults to this browser's. */
@@ -128,6 +133,7 @@ export const AdminSearchView = ({
     onQueryChange,
     onOpen,
     onClose,
+    onClosing,
     initialQuery = '',
     initialFilters = {},
     recent: recentProp,
@@ -243,6 +249,7 @@ export const AdminSearchView = ({
         if (closing) {
             return;
         }
+        onClosing?.();
         if (!animated || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
             onClose();
             return;
@@ -280,6 +287,11 @@ export const AdminSearchView = ({
         // own meaning: activate the control, scroll.
         const fromField = event.target === inputRef.current;
 
+        if (closing) {
+            // Leaving already: keys are not this view's any more. Ctrl/Cmd+K bubbles up to the
+            // provider, which opens a fresh search (pressed right after Esc, e.g. in a demo).
+            return;
+        }
         if (event.key === 'Escape' || (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey))) {
             // Esc, and the shortcut that opened it, close it again (from anywhere in the dialog).
             event.preventDefault();
