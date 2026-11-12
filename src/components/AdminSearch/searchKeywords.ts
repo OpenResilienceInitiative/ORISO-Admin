@@ -64,17 +64,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
     ],
 
     // ── Settings › Configuration ─────────────────────────────────────────────
-    'global:login-function': [
-        'anonym',
-        'anonyme beratung',
-        'anonymous',
-        'anonymous counseling',
-        'anonymous chat',
-        'login',
-        'anmeldung',
-        'ohne konto',
-        'ohne registrierung',
-    ],
     'global:one-topic': [
         'fachbereiche',
         'themen',

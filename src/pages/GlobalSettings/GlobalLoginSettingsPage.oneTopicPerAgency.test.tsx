@@ -55,7 +55,7 @@ describe('GlobalLoginSettingsPage one-topic-per-agency switch access', () => {
         state.isSuperAdmin = true;
         showPage();
 
-        expect(screen.getByText('Fachbereiche')).toBeVisible();
+        expect(screen.getByText('Begrenzung der Beratungsstelle')).toBeVisible();
         await userEvent.click(oneTopicCard().getByRole('button', { name: 'Bearbeiten' }));
         expect(oneTopicSwitch()).toBeEnabled();
         expect(oneTopicCard().getByRole('button', { name: 'Speichern' })).toBeVisible();
@@ -66,7 +66,7 @@ describe('GlobalLoginSettingsPage one-topic-per-agency switch access', () => {
         state.isSuperAdmin = false;
         showPage();
 
-        expect(screen.getByText('Fachbereiche')).toBeVisible();
+        expect(screen.getByText('Begrenzung der Beratungsstelle')).toBeVisible();
         expect(oneTopicSwitch()).toHaveAttribute('aria-disabled', 'true');
         expect(oneTopicCard().queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
         expect(oneTopicCard().queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
