@@ -522,3 +522,48 @@ export const buildStatisticData = (
         ...windows,
     };
 };
+
+/**
+ * A platform admin's dashboard has no Beratungsstellen (the platform scope stops at Träger). Picking a
+ * Beratungsstelle loads its Träger's dashboard (`?tenantId=`); this puts that Träger's Beratungsstellen
+ * on the Beratungsstellen level and keeps everything else from the platform dashboard. Only agency
+ * rows are taken over: the Träger row of both answers has the same id, and the platform one stays.
+ */
+export const withAgencyDrill = (platform: StatisticData, tenant: StatisticData): StatisticData => {
+    const agencies = tenant.targetsByScope.agency;
+    const agencyStatistics: Record<string, FilterTargetStatistics> = {};
+    agencies.forEach((target) => {
+        if (tenant.statisticsById[target.id]) agencyStatistics[target.id] = tenant.statisticsById[target.id];
+    });
+
+    return {
+        ...platform,
+        targetsByScope: { ...platform.targetsByScope, agency: agencies },
+        fallbackIdsByScope: { ...platform.fallbackIdsByScope, agency: tenant.fallbackIdsByScope.agency },
+        statisticsById: { ...platform.statisticsById, ...agencyStatistics },
+    };
+};
+
+/** A Beratungsstelle as the platform admin can pick it before any of its numbers are loaded. */
+export interface StatisticAgencyEntry {
+    id: number;
+    name: string;
+    tenantId: number;
+}
+
+/**
+ * Which Träger a platform admin is looking into: the Träger of the picked Beratungsstelle, else the
+ * picked Träger. Undefined while nothing is picked (the platform dashboard alone is enough then).
+ */
+export const resolveDrillTenantId = (
+    selection: Partial<Record<ScopeKey, string[]>>,
+    directory: StatisticAgencyEntry[],
+): number | undefined => {
+    const agencyId = selection.agency?.[0];
+    const fromAgency = agencyId
+        ? directory.find((agency) => agencyTargetId(agency.id) === agencyId)?.tenantId
+        : undefined;
+    if (fromAgency != null) return fromAgency;
+    const tenantId = selection.tenant?.[0]?.match(/^tenant-(\d+)$/)?.[1];
+    return tenantId ? Number(tenantId) : undefined;
+};

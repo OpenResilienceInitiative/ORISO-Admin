@@ -4,7 +4,15 @@ import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import getDashboardStatistics from '../../api/statistic/getDashboardStatistics';
 import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint } from '../../appConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
-import { buildStatisticData, emptyStatisticData, StatisticData } from './statisticDashboardData';
+import {
+    buildStatisticData,
+    emptyStatisticData,
+    StatisticData,
+    type StatisticAgencyEntry,
+    withAgencyDrill,
+} from './statisticDashboardData';
+
+export type { StatisticAgencyEntry };
 
 const NAME_LOOKUP_PAGE_SIZE = 500;
 
@@ -17,6 +25,12 @@ interface StatisticDashboardDataResult {
      * `isError`, and `data` is empty then: figures from an earlier load must not stay on screen.
      */
     isUnavailable: boolean;
+    /**
+     * A platform admin's look into one Träger (`drillTenantId`): `loading` while its dashboard comes,
+     * `unsupported` when the backend answered without that Träger's Beratungsstellen (an older
+     * UserService ignores `?tenantId=`), `failed` on an error, `idle` when nothing was asked.
+     */
+    drill: 'idle' | 'loading' | 'ready' | 'unsupported' | 'failed';
 }
 
 /**
@@ -63,6 +77,36 @@ const fetchTenantNames = () =>
         `${tenantAdminEndpoint}/search?page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&query=&field=NAME&order=ASC`,
     );
 
+/** Every Beratungsstelle with its Träger (best effort, like the name lookups): what a platform admin can pick. */
+const fetchAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
+    try {
+        const result = await fetchData({
+            url: `${agencyEndpointBase}/?q=${encodeURIComponent('*')}&${listQuery}`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+        });
+        const rows: Array<{ id?: number | null; name?: string; tenantId?: number | null }> = Array.isArray(result)
+            ? result
+            : removeEmbedded(result || {})?.data || [];
+
+        return rows
+            .filter((row) => row && row.id != null && row.tenantId != null && row.name)
+            .map((row) => ({ id: Number(row.id), name: String(row.name), tenantId: Number(row.tenantId) }));
+    } catch {
+        return [];
+    }
+};
+
+/** The Beratungsstellen a platform admin can look into. Off for every other role (their dashboard has them). */
+export const useStatisticAgencyDirectory = (enabled: boolean) =>
+    useQuery({
+        queryKey: ['ADMIN_STATISTICS_AGENCY_DIRECTORY'],
+        queryFn: fetchAgencyDirectory,
+        enabled,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+
 const fetchTopicNames = () => fetchNameLookup(`${topicAdminEndpoint}/?${listQuery}`);
 
 /**
@@ -71,15 +115,29 @@ const fetchTopicNames = () => fetchNameLookup(`${topicAdminEndpoint}/?${listQuer
  * ids are shown as fallback labels instead. Only a failure of the dashboard endpoint
  * itself surfaces as an error state.
  */
-export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
+export const useStatisticDashboardData = ({
+    drillTenantId,
+}: { drillTenantId?: number } = {}): StatisticDashboardDataResult => {
     const dashboardQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_DASHBOARD'],
         queryFn: () => getDashboardStatistics(),
         staleTime: 60 * 1000,
     });
 
-    const hasAgencyTargets = Boolean(dashboardQuery.data?.targets.some((target) => target.targetType === 'AGENCY'));
     const isPlatformScope = dashboardQuery.data?.scope === 'PLATFORM';
+    const drillQuery = useQuery({
+        queryKey: ['ADMIN_STATISTICS_DASHBOARD', drillTenantId],
+        queryFn: () => getDashboardStatistics(drillTenantId),
+        enabled: isPlatformScope && drillTenantId != null,
+        staleTime: 60 * 1000,
+        retry: false,
+    });
+    const drillAnswered = drillQuery.data?.scope === 'TENANT';
+
+    const hasAgencyTargets = Boolean(
+        dashboardQuery.data?.targets.some((target) => target.targetType === 'AGENCY') ||
+            drillQuery.data?.targets.some((target) => target.targetType === 'AGENCY'),
+    );
 
     const agenciesQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_AGENCY_NAMES'],
@@ -116,17 +174,38 @@ export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
             return emptyStatisticData();
         }
 
-        return buildStatisticData(dashboardQuery.data, {
+        const lookups = {
             agencyNamesById: agenciesQuery.data || {},
             tenantNamesById: tenantsQuery.data || {},
             topicNamesById: topicsQuery.data || {},
-        });
-    }, [dashboardQuery.data, isUnavailable, agenciesQuery.data, tenantsQuery.data, topicsQuery.data]);
+        };
+        const platform = buildStatisticData(dashboardQuery.data, lookups);
+
+        return drillAnswered && drillQuery.data
+            ? withAgencyDrill(platform, buildStatisticData(drillQuery.data, lookups))
+            : platform;
+    }, [
+        dashboardQuery.data,
+        drillAnswered,
+        drillQuery.data,
+        isUnavailable,
+        agenciesQuery.data,
+        tenantsQuery.data,
+        topicsQuery.data,
+    ]);
+
+    let drill: StatisticDashboardDataResult['drill'] = 'idle';
+    if (isPlatformScope && drillTenantId != null) {
+        if (drillQuery.isError) drill = 'failed';
+        else if (drillQuery.isLoading) drill = 'loading';
+        else drill = drillAnswered ? 'ready' : 'unsupported';
+    }
 
     return {
         data,
         isLoading: dashboardQuery.isLoading,
         isError: dashboardQuery.isError && !isUnavailable,
         isUnavailable,
+        drill,
     };
 };

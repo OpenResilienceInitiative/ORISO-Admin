@@ -95,12 +95,17 @@ export interface AdminDashboardStatisticsResponse {
 /**
  * Retrieves real counselling statistics for the admin dashboard, scoped to the caller
  * (platform admin, tenant admin or agency admin). Served by the UserService from the
- * application-layer database only. A 503 means the settings could not be read: it rejects with
+ * application-layer database only. With `tenantId` a platform admin gets that Träger's dashboard
+ * (scope TENANT, with its Beratungsstellen); an older backend ignores it and answers PLATFORM. A 503 means the settings could not be read: it rejects with
  * {@link FETCH_ERRORS.SERVICE_UNAVAILABLE}, and the page shows no figures.
  */
-const getDashboardStatistics = (): Promise<AdminDashboardStatisticsResponse> => {
+const getDashboardStatistics = (tenantId?: number): Promise<AdminDashboardStatisticsResponse> => {
     return fetchData({
-        url: adminStatisticsDashboardEndpoint,
+        // A platform admin reads one Träger with its Beratungsstellen this way (UserService: `?tenantId=`).
+        url:
+            tenantId == null
+                ? adminStatisticsDashboardEndpoint
+                : `${adminStatisticsDashboardEndpoint}?tenantId=${tenantId}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],

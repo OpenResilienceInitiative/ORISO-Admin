@@ -47,9 +47,15 @@ const TENANTS = [
 ];
 
 const handlers = [
-    http.get('*/service/tenantadmin/search', () =>
-        HttpResponse.json({ _embedded: TENANTS.map((tenant) => ({ _embedded: tenant })), total: TENANTS.length }),
-    ),
+    http.get('*/service/tenantadmin/search', ({ request }) => {
+        // The server matches by name; `*` is "all".
+        const query = new URL(request.url).searchParams.get('query') ?? '*';
+        const rows =
+            query === '*'
+                ? TENANTS
+                : TENANTS.filter((tenant) => tenant.name.toLowerCase().includes(query.toLowerCase()));
+        return HttpResponse.json({ _embedded: rows.map((tenant) => ({ _embedded: tenant })), total: rows.length });
+    }),
 ];
 
 const Route = () => {
@@ -180,5 +186,39 @@ export const ListLoadErrorRetry: Story = {
         await waitFor(() => expect(listRequests).toBeGreaterThan(before));
         await expect(await within(canvasElement).findByText('Caritas Nord')).toBeVisible();
         await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+    },
+};
+
+/**
+ * One search for the whole admin: the list has no search field of its own any more (it used to sit
+ * beside the ⌘K search). ⌘K → "Alle Treffer in der Liste zeigen" opens the list with `?q=`; the bar
+ * says so and brings the whole list back.
+ */
+const narrowedPlay: Story['play'] = async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Caritas Nord')).toBeVisible();
+    await expect(canvas.queryByText('Neuer Träger')).toBeNull();
+    await expect(canvas.queryByRole('textbox')).toBeNull();
+    await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
+    const bar = canvas.getByTestId('list-search-bar');
+    await expect(bar).toHaveTextContent('„Caritas“');
+    await userEvent.click(within(bar).getByRole('button', { name: 'Ganze Liste zeigen' }));
+    await expect(await canvas.findByText('Neuer Träger')).toBeVisible();
+    await expect(canvas.queryByTestId('list-search-bar')).toBeNull();
+};
+
+export const NarrowedBySearch: Story = {
+    parameters: { route: '/admin/tenants?q=Caritas' },
+    play: narrowedPlay,
+};
+
+export const NarrowedBySearchPhone: Story = {
+    parameters: { route: '/admin/tenants?q=Caritas' },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Caritas Nord')).toBeVisible();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Caritas“');
+        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };

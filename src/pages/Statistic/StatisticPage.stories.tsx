@@ -431,3 +431,90 @@ export const TemporarilyUnavailable: Story = {
         await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
     },
 };
+
+/*
+ * Frank: "In Statistik the search did not work." The platform dashboard stops at Träger (scope
+ * PLATFORM: one platform row, one row per Träger), so no Beratungsstelle could ever be found. Now
+ * every Beratungsstelle is in the picker, and picking one loads its Träger's dashboard (`?tenantId=`).
+ */
+let drillRequests: string[] = [];
+const platformDirectoryHandlers = (answerTenant: boolean) => [
+    http.get(`${adminStatisticsDashboardEndpoint}*`, ({ request }) => {
+        const tenantId = new URL(request.url).searchParams.get('tenantId');
+        if (tenantId) drillRequests.push(tenantId);
+        if (tenantId && answerTenant) {
+            return HttpResponse.json({
+                ...statistics('LIVE', [
+                    target('TENANT', 2, null, 2),
+                    target('AGENCY', 2, 11, 1),
+                    target('AGENCY', 2, 12, 0.5),
+                ]),
+                scope: 'TENANT',
+            });
+        }
+        // An older backend ignores ?tenantId= and answers with the platform dashboard.
+        return HttpResponse.json(
+            statistics('LIVE', [
+                target('PLATFORM', null, null, 4),
+                target('TENANT', 2, null, 2),
+                target('TENANT', 3, null, 1),
+            ]),
+        );
+    }),
+    http.get(`${agencyEndpointBase}/*`, () =>
+        HttpResponse.json({
+            total: 3,
+            _embedded: [
+                { id: 11, name: 'Beratungsstelle Musterstadt', tenantId: 2 },
+                { id: 12, name: 'Beratungsstelle Beispielort', tenantId: 2 },
+                { id: 13, name: 'Beratungsstelle Testheim', tenantId: 3 },
+            ],
+        }),
+    ),
+    ...handlers(() => HttpResponse.json({})).slice(2),
+];
+
+const pickMusterstadt = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toBeVisible());
+    await userEvent.click(canvas.getByRole('button', { name: /^Ansicht:/ }));
+    await userEvent.type(await canvas.findByRole('combobox'), 'Muster');
+    await userEvent.click(await canvas.findByRole('option', { name: /Beratungsstelle Musterstadt/ }));
+};
+
+export const PlatformAdminFindsBeratungsstelle: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toHaveAccessibleName(/Musterstadt/),
+        );
+        await expect(canvas.queryByTestId('agency-level-hint')).toBeNull();
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+    },
+};
+
+export const PlatformAdminFindsBeratungsstellePhone: Story = {
+    ...PlatformAdminFindsBeratungsstelle,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/** Until the UserService knows `?tenantId=`, the page says so instead of showing an empty level. */
+export const PlatformAdminOlderBackend: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('erst mit dem nächsten Server-Update');
+    },
+};

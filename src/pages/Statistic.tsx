@@ -55,7 +55,10 @@ import {
     getTodayDayCode,
     NO_DATA_LABEL,
     noDataTopics,
+    resolveDrillTenantId,
+    tenantTargetId,
     topicMenuKeyForMonth,
+    agencyTargetId,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -63,12 +66,13 @@ import type {
     FilterTargetMetricStats,
     FilterTargetStatistics,
     MetricValue,
+    StatisticAgencyEntry,
     StatisticData,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
 import { StatisticInfoRow } from './Statistic/StatisticInfoRow';
-import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
+import { useStatisticAgencyDirectory, useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
     CardMenuOption,
@@ -407,6 +411,14 @@ const getAllowedStatisticScopes = (
 
     return ['agency'];
 };
+
+const NO_AGENCY_DIRECTORY: StatisticAgencyEntry[] = [];
+
+const AGENCY_LEVEL_HINTS = {
+    pick: 'Wählen Sie unter „Ansicht“ eine Beratungsstelle oder einen Träger. Dann sehen Sie die Zahlen seiner Beratungsstellen.',
+    unsupported: 'Zahlen je Beratungsstelle gibt es für Plattform-Admins erst mit dem nächsten Server-Update.',
+    failed: 'Die Zahlen dieser Beratungsstellen konnten nicht geladen werden. Bitte versuchen Sie es später noch einmal.',
+} as const;
 
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
     platform: {
@@ -1910,12 +1922,27 @@ export const Statistic = () => {
     });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
+    // The platform dashboard stops at Träger. A platform admin who picks a Beratungsstelle (or a Träger)
+    // gets that Träger's dashboard loaded on top, so its Beratungsstellen have numbers and can be found.
+    const { data: agencyDirectoryData } = useStatisticAgencyDirectory(isSuperAdmin);
+    const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
+    const drillTenantId = isSuperAdmin
+        ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
+        : undefined;
     const {
         data: statisticData,
         isError: hasStatisticLoadError,
-        isLoading: isStatisticLoading,
+        isLoading: isDashboardLoading,
         isUnavailable: isStatisticUnavailable,
-    } = useStatisticDashboardData();
+        drill,
+    } = useStatisticDashboardData({ drillTenantId });
+    const isStatisticLoading = isDashboardLoading || drill === 'loading';
+    // Platform admin on the Beratungsstellen level: nothing picked yet, or the Träger's numbers did not come.
+    let agencyLevelHint: 'pick' | 'unsupported' | 'failed' | null = null;
+    if (isSuperAdmin && activeScope === 'agency' && !isStatisticLoading) {
+        if (drillTenantId == null) agencyLevelHint = 'pick';
+        else if (drill === 'unsupported' || drill === 'failed') agencyLevelHint = drill;
+    }
     const navigate = useNavigate();
     // A fixed stand is read from its own time: its "this week" must not slide with today.
     const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
@@ -1982,6 +2009,7 @@ export const Statistic = () => {
         !isStatisticLoading &&
         !hasStatisticLoadError &&
         !isStatisticUnavailable &&
+        !agencyLevelHint &&
         !allTargetsSuppressed;
     // After a failed load the page says so; a preview would read as "not enough data yet".
     const showPreviewPanel = (showEmptyHero || allTargetsSuppressed) && !hasStatisticLoadError;
@@ -2093,12 +2121,34 @@ export const Statistic = () => {
     );
     const chartAnimationKey = `${activeScope}-${selectedCasePeriod}-${effectiveStatisticTargetIds.join('-')}`;
     const donutAnimationKey = `${activeScope}-${selectedConversationPeriod}-${effectiveStatisticTargetIds.join('-')}`;
+    // Beratungsstellen a platform admin can pick before their Träger's numbers are loaded.
+    const directoryTargets = useMemo<ScopePickerTarget[]>(() => {
+        const tenantNames = new Map(statisticData.targetsByScope.tenant.map((target) => [target.id, target.label]));
+        return agencyDirectory.map((agency) => ({
+            id: agencyTargetId(agency.id),
+            label: agency.name,
+            type: 'Beratungsstelle',
+            detail: tenantNames.get(tenantTargetId(agency.tenantId)) ?? '',
+            scope: 'agency',
+        }));
+    }, [agencyDirectory, statisticData.targetsByScope.tenant]);
     const selectedFilterTargets = useMemo(
         () =>
-            visibleFilterTargetIds
-                .map((targetId) => availableFilterTargets.find((target) => target.id === targetId))
+            (isSuperAdmin && activeScope === 'agency' ? selectedFilterTargetIds : visibleFilterTargetIds)
+                .map(
+                    (targetId) =>
+                        availableFilterTargets.find((target) => target.id === targetId) ??
+                        (isSuperAdmin ? directoryTargets.find((target) => target.id === targetId) : undefined),
+                )
                 .filter((target): target is FilterTarget => Boolean(target)),
-        [availableFilterTargets, visibleFilterTargetIds],
+        [
+            activeScope,
+            availableFilterTargets,
+            directoryTargets,
+            isSuperAdmin,
+            selectedFilterTargetIds,
+            visibleFilterTargetIds,
+        ],
     );
     const pickerLevels: ScopePickerLevel[] = allowedScopeKeys.map((scopeKey) => {
         const scope = scopeDefinitions[scopeKey];
@@ -2122,8 +2172,12 @@ export const Statistic = () => {
                 }
             });
         });
+        // A platform admin finds every Beratungsstelle, not only those of the Träger already loaded.
+        directoryTargets.forEach((target) => {
+            if (!byId.has(target.id)) byId.set(target.id, target);
+        });
         return [...byId.values()];
-    }, [allowedScopeKeys, statisticData.targetsByScope]);
+    }, [allowedScopeKeys, directoryTargets, statisticData.targetsByScope]);
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -2142,6 +2196,20 @@ export const Statistic = () => {
     const selectScopeTarget = (nextTarget: ScopePickerTarget) => {
         const levelTargets = statisticData.targetsByScope[nextTarget.scope];
         setActiveScope(nextTarget.scope);
+        if (isSuperAdmin && nextTarget.scope === 'agency') {
+            // One Träger's numbers are loaded at a time: Beratungsstellen of another Träger make way.
+            const tenantOf = (targetId: string) =>
+                agencyDirectory.find((agency) => agencyTargetId(agency.id) === targetId)?.tenantId;
+            setSelectedFilterTargetIdsByScope((currentSelection) => {
+                const sameTenant = (currentSelection.agency || []).filter(
+                    (targetId) => tenantOf(targetId) === tenantOf(nextTarget.id),
+                );
+                return sameTenant.includes(nextTarget.id)
+                    ? currentSelection
+                    : { ...currentSelection, agency: [...sameTenant, nextTarget.id] };
+            });
+            return;
+        }
         setSelectedFilterTargetIdsByScope((currentSelection) => {
             const sameType = (currentSelection[nextTarget.scope] || []).filter(
                 (targetId) => levelTargets.find((target) => target.id === targetId)?.type === nextTarget.type,
@@ -2293,6 +2361,15 @@ export const Statistic = () => {
                                         )}
                                     </HintText>
                                 )}
+                                {agencyLevelHint && (
+                                    <HintText className="statisticDashboard__caption" data-testid="agency-level-hint">
+                                        {translateDashboardKey(
+                                            translate,
+                                            `statistic.dashboard.agencyLevel.${agencyLevelHint}`,
+                                            AGENCY_LEVEL_HINTS[agencyLevelHint],
+                                        )}
+                                    </HintText>
+                                )}
                                 <StatisticInfoRow
                                     stand={
                                         statisticData.generatedAt &&
@@ -2367,49 +2444,51 @@ export const Statistic = () => {
                                 )}
                                 {/* All eight figures in one raster: four per row on a desktop, so the
                                     channel tiles line up under the key figures (ORISO-Admin#1374). */}
-                                <CardGrid
-                                    raster
-                                    fluid
-                                    minCardWidth={280}
-                                    className={`statisticDashboard__summaryGrid${
-                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
-                                    }`}
-                                >
-                                    {dashboard.topCards.map((card) => (
-                                        <CardGrid.Item key={card.key}>
-                                            <StatisticCard
-                                                card={localizeStatisticCard(
-                                                    getPersonalizedMetricCard(
-                                                        card,
-                                                        activeScope,
-                                                        metricOverrides,
-                                                        statisticData.topicMonths,
-                                                        isFixedStand,
-                                                    ),
-                                                    translate,
-                                                    locale,
-                                                )}
-                                                locale={locale}
-                                                menuValue={selectedCardMenuByScope[activeScope][card.key]}
-                                                onMenuChange={updateCardMenuSelection}
-                                                translate={translate}
-                                            />
-                                        </CardGrid.Item>
-                                    ))}
-                                    {dashboard.communicationCards.map((card) => (
-                                        <CardGrid.Item key={card.key}>
-                                            <StatisticCard
-                                                card={localizeStatisticCard(
-                                                    getDisplayMetricCard(card, metricOverrides),
-                                                    translate,
-                                                    locale,
-                                                )}
-                                                locale={locale}
-                                                translate={translate}
-                                            />
-                                        </CardGrid.Item>
-                                    ))}
-                                </CardGrid>
+                                {!agencyLevelHint && (
+                                    <CardGrid
+                                        raster
+                                        fluid
+                                        minCardWidth={280}
+                                        className={`statisticDashboard__summaryGrid${
+                                            showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                        }`}
+                                    >
+                                        {dashboard.topCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getPersonalizedMetricCard(
+                                                            card,
+                                                            activeScope,
+                                                            metricOverrides,
+                                                            statisticData.topicMonths,
+                                                            isFixedStand,
+                                                        ),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    menuValue={selectedCardMenuByScope[activeScope][card.key]}
+                                                    onMenuChange={updateCardMenuSelection}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                        {dashboard.communicationCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getDisplayMetricCard(card, metricOverrides),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                    </CardGrid>
+                                )}
 
                                 {/* Nothing to chart yet (no data, or every figure protected): say what will
                                     appear here instead of drawing empty charts (ORISO-Admin#1374). */}
@@ -2446,7 +2525,8 @@ export const Statistic = () => {
                                     />
                                 )}
                                 {/* hidden figures or a failed load: no chart, a chart of zeros would read as "nothing happened" */}
-                                {!showPreviewPanel && !hasStatisticLoadError && (
+                                {/* With a hint for the Beratungsstellen level there are no numbers to show: no empty cards. */}
+                                {!showPreviewPanel && !hasStatisticLoadError && !agencyLevelHint && (
                                     <CardGrid
                                         raster
                                         fillers={false}
