@@ -3,7 +3,11 @@
     align-items: stretch;
     gap: 16px;
     container-type: inline-size;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+
+    /* A panel holds form fields and switches with German labels. Below 280px a switch row leaves its
+       label ~150px, so long words ("Verbindungsbeginn") break one per line or push the switch into
+       the next panel. Panels stack instead. Keep the container query below in step with this value. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
 }
 
 .section {
@@ -91,8 +95,9 @@
     }
 }
 
-/* With three columns the short topics would leave two thirds of a row empty, so they fill it. */
-@container (min-width: 752px) and (max-width: 1007px) {
+/* With three columns the short topics would leave two thirds of a row empty, so they fill it.
+   Three 280px columns plus two 16px gaps start at 872px; a fourth column fits from 1168px. */
+@container (min-width: 872px) and (max-width: 1167px) {
     .stack:not(.stackColumn) {
         flex-direction: row;
         grid-column: 1 / -1;

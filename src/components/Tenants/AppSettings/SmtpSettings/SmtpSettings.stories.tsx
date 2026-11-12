@@ -7,6 +7,7 @@ import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
+import { expectPanelsFitAtEveryWidth, PanelLayoutFrame } from '../../../../test/panelLayoutGuard';
 import { SmtpSettings } from './index';
 
 const storedTenant = {
@@ -123,5 +124,19 @@ export const UnusualTransportConfirmation: Story = {
         await waitFor(() =>
             expect(within(dialog).getByRole('button', { name: /Trotzdem speichern|Save anyway/i })).toBeVisible(),
         );
+    },
+};
+
+/** At every laptop and desktop width the switches stay in their panel and keep room for their label. */
+export const PanelsFitAtLaptopWidths: Story = {
+    parameters: { msw: { handlers: handlers() } },
+    render: () => (
+        <PanelLayoutFrame>
+            <StoredSettingsExample />
+        </PanelLayoutFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        await within(canvasElement).findByRole('button', { name: /Testmail an mich senden|Send a test email to me/i });
+        await expectPanelsFitAtEveryWidth(canvasElement);
     },
 };

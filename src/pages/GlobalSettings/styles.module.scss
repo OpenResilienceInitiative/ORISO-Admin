@@ -41,6 +41,7 @@
 
 .switchCopy {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 8px;
     white-space: normal;
@@ -67,7 +68,9 @@
 .fieldGrid {
     display: grid;
     gap: mui.$mui-unit * 2;
-    grid-template-columns: 1fr;
+
+    /* `minmax(0, 1fr)`, not `1fr`: a plain `1fr` track grows to the longest word of a switch label. */
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .smtpReadStatus,

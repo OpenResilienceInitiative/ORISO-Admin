@@ -1419,6 +1419,7 @@
     "message.error.CONSULTANT_HAS_ACTIVE_OR_ARCHIVE_SESSIONS": "Berater hat noch aktive Beratungen und konnte nicht gelöscht werden.",
     "message.error.SUBDOMAIN_NOT_UNIQUE": "Diese Subdomain ist bereits vergeben.",
     "message.error.USERNAME_NOT_AVAILABLE": "Der Benutzername ist bereits vergeben.",
+    "message.error.USERNAME_IN_DELETION": "Dieser Benutzername gehört noch zu einer Beratungsperson, die gerade gelöscht wird. Er ist wieder frei, sobald die Löschung abgeschlossen ist, in der Regel innerhalb von drei Tagen.",
     "tenants.list.name": "Name",
     "tenants.list.adminEmails": "E-Mail Träger-Admin",
     "tenants.list.subdomain": "Subdomain",
