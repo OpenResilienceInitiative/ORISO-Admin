@@ -11,6 +11,7 @@ import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSes
 import { UseAppConfigProvider, useAppConfigContext } from '../../../context/useAppConfig';
 import { ChatMessageSettingsCardContainer } from '.';
 import { parseChatMessageSettings } from './chatMessageSettings';
+import { apiServerSettings } from '../../../api/settings/apiServerSettings';
 
 const SAVE_FAILED = 'Die Chat-Einstellungen konnten nicht gespeichert werden.';
 
@@ -51,6 +52,18 @@ const SeedSettings = ({ children }: { children: ReactNode }) => {
     return ready ? children : null;
 };
 
+/** Loads settings from the server before rendering, like `AppSettingsWrapper` in the app. */
+const LoadServerSettings = ({ children }: { children: ReactNode }) => {
+    const { setServerSettings } = useAppConfigContext();
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        apiServerSettings()
+            .then(setServerSettings)
+            .finally(() => setReady(true));
+    }, [setServerSettings]);
+    return ready ? children : null;
+};
+
 const renderContainer = () =>
     render(
         <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -79,6 +92,57 @@ describe('ChatMessageSettingsCardContainer', () => {
             chatMessageMaxWidthDesktop: 770,
             chatMessageCollapseThreshold: 300,
         });
+    });
+
+    it('reads back what it saved after a reload', async () => {
+        // Stateful backend: PATCH stores the fields, GET serves them as strings like the real service.
+        const stored: Record<string, unknown> = { chatComposerDisabledFormats: 'bold' };
+        server.use(
+            http.get('*/service/settings', () =>
+                HttpResponse.json(
+                    Object.fromEntries(
+                        Object.entries(stored).map(([key, value]) => [
+                            key,
+                            { value: Array.isArray(value) ? value.join(',') : String(value) },
+                        ]),
+                    ),
+                ),
+            ),
+            http.patch('*/service/settingsadmin', async ({ request }) => {
+                Object.assign(stored, (await request.json()) as Record<string, unknown>);
+                return new HttpResponse(null, { status: 200 });
+            }),
+        );
+        const renderUnseeded = () =>
+            render(
+                <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                    <UseAppConfigProvider>
+                        <LoadServerSettings>
+                            <ChatMessageSettingsCardContainer />
+                        </LoadServerSettings>
+                    </UseAppConfigProvider>
+                </QueryClientProvider>,
+            );
+
+        const first = renderUnseeded();
+        await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+        await waitFor(() => expect(screen.getByRole('switch', { name: 'Fett' })).not.toBeChecked());
+        await userEvent.click(screen.getByRole('switch', { name: 'Fett' }));
+        const width = screen.getByLabelText(/Maximale Breite in Pixeln/);
+        await userEvent.clear(width);
+        await userEvent.type(width, '900');
+        const threshold = screen.getByLabelText(/Einklappen ab so vielen Zeichen/);
+        await userEvent.clear(threshold);
+        await userEvent.type(threshold, '500');
+        await userEvent.click(screen.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(stored.chatMessageMaxWidthDesktop).toBe(900));
+        first.unmount();
+
+        renderUnseeded();
+        await userEvent.click(await screen.findByRole('button', { name: 'Bearbeiten' }));
+        await waitFor(() => expect(screen.getByRole('switch', { name: 'Fett' })).toBeChecked());
+        expect(screen.getByLabelText(/Maximale Breite in Pixeln/)).toHaveValue(900);
+        expect(screen.getByLabelText(/Einklappen ab so vielen Zeichen/)).toHaveValue(500);
     });
 
     it('tells the admin when the save fails', async () => {

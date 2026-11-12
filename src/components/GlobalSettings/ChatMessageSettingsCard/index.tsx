@@ -119,7 +119,7 @@ export const ChatMessageSettingsCard = ({
                     rules={[
                         {
                             required: true,
-                            type: 'number',
+                            type: 'integer',
                             min: CHAT_MAX_WIDTH_LIMITS.min,
                             max: CHAT_MAX_WIDTH_LIMITS.max,
                             message: t('globalSettings.chatMessages.maxWidth.invalid', CHAT_MAX_WIDTH_LIMITS),
@@ -151,7 +151,7 @@ export const ChatMessageSettingsCard = ({
                             rules={[
                                 {
                                     required: true,
-                                    type: 'number',
+                                    type: 'integer',
                                     min: CHAT_COLLAPSE_THRESHOLD_LIMITS.min,
                                     max: CHAT_COLLAPSE_THRESHOLD_LIMITS.max,
                                     message: t(
