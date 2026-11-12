@@ -70,7 +70,7 @@ const fetchNameLookup = async (url: string): Promise<Record<string, string>> => 
 
 const listQuery = `page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&order=ASC&field=NAME`;
 
-const fetchAgencyNames = () => fetchNameLookup(`${agencyEndpointBase}/?q=${encodeURIComponent('*')}&${listQuery}`);
+const fetchAgencyNames = () => fetchNameLookup(`${agencyEndpointBase}?q=${encodeURIComponent('*')}&${listQuery}`);
 
 const fetchTenantNames = () =>
     fetchNameLookup(
@@ -81,7 +81,7 @@ const fetchTenantNames = () =>
 const fetchAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
     try {
         const result = await fetchData({
-            url: `${agencyEndpointBase}/?q=${encodeURIComponent('*')}&${listQuery}`,
+            url: `${agencyEndpointBase}?q=${encodeURIComponent('*')}&${listQuery}`,
             method: FETCH_METHODS.GET,
             skipAuth: false,
         });

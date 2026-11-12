@@ -132,7 +132,7 @@ const named = (rows: { id: number; name: string }[]) => HttpResponse.json({ tota
 
 const handlers = (dashboard: () => Response | Promise<Response>) => [
     http.get(`${adminStatisticsDashboardEndpoint}*`, dashboard),
-    http.get(`${agencyEndpointBase}/*`, () =>
+    http.get(`${agencyEndpointBase}*`, () =>
         named([
             { id: 11, name: 'Beratungsstelle Musterstadt' },
             { id: 12, name: 'Beratungsstelle Beispielort' },
@@ -461,7 +461,7 @@ const platformDirectoryHandlers = (answerTenant: boolean) => [
             ]),
         );
     }),
-    http.get(`${agencyEndpointBase}/*`, () =>
+    http.get(`${agencyEndpointBase}*`, () =>
         HttpResponse.json({
             total: 3,
             _embedded: [

@@ -182,8 +182,7 @@ describe('AdminSearchView', () => {
             const options = screen.getAllByRole('option');
             const listIndex = options.findIndex((option) => option.dataset.listRow === 'tenants');
             const activeIndex = options.findIndex((option) => option.getAttribute('aria-selected') === 'true');
-            for (let step = activeIndex; step < listIndex; step += 1) await user.keyboard('{ArrowDown}');
-            await user.keyboard('{Enter}');
+            await user.keyboard(`${'{ArrowDown}'.repeat(listIndex - activeIndex)}{Enter}`);
 
             expect(onOpenList).toHaveBeenCalledWith('tenants', 'springfield');
         });
