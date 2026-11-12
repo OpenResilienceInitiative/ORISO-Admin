@@ -130,4 +130,29 @@ describe('OtherFunctionsSettings', () => {
         expect(mutate.mock.calls[0][0].settings).not.toHaveProperty('featureSupervisionEnabled');
         policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
     });
+
+    it('writes the settings only after the policy save succeeded, and reopens on failure', async () => {
+        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
+        mutate.mockClear();
+        let reject: (error: Error) => void = () => undefined;
+        savePolicies.mockImplementationOnce(
+            () =>
+                new Promise((_resolve, rejectPromise) => {
+                    reject = rejectPromise;
+                }),
+        );
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await vi.waitFor(() => expect(savePolicies).toHaveBeenCalled());
+        expect(mutate).not.toHaveBeenCalled();
+
+        reject(new Error('rejected'));
+        expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
+        expect(mutate).not.toHaveBeenCalled();
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
 });

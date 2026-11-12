@@ -16,7 +16,11 @@ import {
     useTenantPermissionPolicies,
     useTenantPermissionPoliciesMutation,
 } from '../../../../hooks/useTenantPermissionPolicies';
-import { getRestrictedFields, resolvePermissionPolicy } from '../PermissionsSettings/permissionsSettingsUtils';
+import {
+    applyPermissionConstraintsToSettings,
+    getRestrictedFields,
+    resolvePermissionPolicy,
+} from '../PermissionsSettings/permissionsSettingsUtils';
 import {
     PERMISSION_FEATURE_KEYS,
     splitPermissionFeatureWrites,
@@ -79,16 +83,22 @@ export const OtherFunctionsSettings = ({
     );
     const effective = useMemo(() => {
         const stored = (data?.settings ?? {}) as Record<string, unknown>;
+        // A lock's value follows its direction (enforced on / forced off), not the stored value.
+        const directed = (applyPermissionConstraintsToSettings(
+            stored,
+            controls?.allowedPermissionToggles,
+            controls?.enforcedPermissionToggles,
+        ) ?? stored) as Record<string, unknown>;
         return Object.fromEntries(
             [...PERMISSION_FEATURE_KEYS].map((field) => [
                 field,
                 // KI-Bildprüfung: no service runs the scan yet, so it is off whatever is stored.
                 field.startsWith('featureMediaAiScan') && !runtimeConfig.mediaAiScanAvailable
                     ? { value: false, mode: 'ENFORCED' as const, inherited: true }
-                    : resolvePermissionPolicy(policyData?.policies, field, stored[field], restricted, stored[field]),
+                    : resolvePermissionPolicy(policyData?.policies, field, directed[field], restricted, stored[field]),
             ]),
         );
-    }, [data, policyData, restricted]);
+    }, [data, controls, policyData, restricted]);
     const effectiveValues = useMemo(
         () => Object.fromEntries(Object.entries(effective).map(([field, policy]) => [field, policy.value])),
         [effective],

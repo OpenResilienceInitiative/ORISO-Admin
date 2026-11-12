@@ -1338,6 +1338,8 @@
     "tenants.permissions.policy.enforced": "Requirement",
     "tenants.permissions.policy.suggestion": "Adjustable",
     "tenants.permissions.policy.source.own": "Own choice",
+    "tenants.permissions.policy.source.ownSuggestedOn": "Own choice · suggestion: on",
+    "tenants.permissions.policy.source.ownSuggestedOff": "Own choice · suggestion: off",
     "tenants.permissions.policy.source.suggested": "Suggested from above",
     "tenants.permissions.policy.source.enforced": "Required: on",
     "tenants.permissions.policy.source.forbidden": "Not allowed",

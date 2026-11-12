@@ -31,7 +31,7 @@ export const splitPermissionFeatureWrites = (
         }
         if (typeof value === 'boolean' && value !== effectiveValues[field]) {
             const current = policies?.[field];
-            const mode = current && current.inherited === false ? current.mode : 'SUGGESTED';
+            const mode = current && current.inherited !== true ? current.mode : 'SUGGESTED';
             changed[field] = { value, mode, inherited: false };
         }
     });

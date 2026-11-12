@@ -54,8 +54,14 @@ describe.each(FEATURES)('effective value contract for %s', (field) => {
             expect(policy.value).toBe(false);
             expect(permissionPolicySource(policy)).toBe('own');
         });
-        it('raw stored off with an inherited suggestion on shows the suggestion (never chose)', () => {
+        it('Caritas Berlin: raw stored off with an inherited suggestion on stays off, with the hint', () => {
             const policy = resolve(suggestion(true), false);
+            expect(policy.value).toBe(false);
+            expect(permissionPolicySource(policy)).toBe('own');
+            expect(policy.suggestedValue).toBe(true);
+        });
+        it('without a stored value the suggestion is the value', () => {
+            const policy = resolve(suggestion(true), undefined);
             expect(policy.value).toBe(true);
             expect(permissionPolicySource(policy)).toBe('suggested');
         });
@@ -90,13 +96,14 @@ describe.each(FEATURES)('effective value contract for %s', (field) => {
             expect(policy.value).toBe(false);
             expect(permissionPolicySource(policy)).toBe('own');
         });
-        it('raw stored off with an inherited Träger suggestion on shows the suggestion', () => {
+        it('raw stored off with an inherited Träger suggestion on stays off, with the hint', () => {
             const policy = agencyPermissionPolicies({
                 [field]: false,
                 permissionPolicies: { [field]: suggestion(true) },
             } as never)[field];
-            expect(policy.value).toBe(true);
-            expect(permissionPolicySource(policy)).toBe('suggested');
+            expect(policy.value).toBe(false);
+            expect(permissionPolicySource(policy)).toBe('own');
+            expect(policy).toMatchObject({ suggestedValue: true });
         });
         it('without an own choice the Träger suggestion is the value', () => {
             const policy = agencyPermissionPolicies({ permissionPolicies: { [field]: suggestion(true) } } as never)[

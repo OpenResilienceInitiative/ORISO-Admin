@@ -209,10 +209,11 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
     });
 
     // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
-    // Caritas Berlin case: raw false + inherited suggestion on = never chose -> ON, "suggested".
+    // Caritas Berlin case: raw false + inherited suggestion on -> stays OFF, hint "Vorschlag: an".
     it.each([
         [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', 'own'],
-        [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'activated', 'suggested'],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'deactivated', 'ownSuggestedOn'],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', 'suggested'],
         [undefined, false, 'deactivated', 'own'],
     ] as const)('policy %o with raw %s shows %s with source %s', (videoPolicy, own, state, source) => {
         renderOneOnOne(vi.fn(), {

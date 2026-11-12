@@ -20,6 +20,10 @@ const TENANT_PUBLIC_BY_ID = '*/service/tenant/:id';
 const handlers = (settings: Record<string, unknown> = {}) => {
     const tenant = { id: 7, name: 'Träger Süd', settings };
     return [
+        // OtherFunctionsSettings reads the Träger's policies (ORISO-TenantService#363).
+        http.get('*/service/tenantadmin/:id/permission-policies', () =>
+            HttpResponse.json({ tenantId: 7, policies: {} }),
+        ),
         http.get(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.put(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.get(TENANT_PUBLIC, () => HttpResponse.json({ id: 7, settings: {} })),

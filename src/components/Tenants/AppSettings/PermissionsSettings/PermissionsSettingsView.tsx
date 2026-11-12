@@ -13,7 +13,19 @@ import { PolicyOptionCard } from './PolicyOptionCard';
 import { CONVERSATION_HELP } from './tileHelpTopics';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
-import { isSubToggleDisabled, permissionPolicySource, resolvePermissionPolicy } from './permissionsSettingsUtils';
+import {
+    type EffectivePolicy,
+    isSubToggleDisabled,
+    permissionPolicySource,
+    resolvePermissionPolicy,
+} from './permissionsSettingsUtils';
+
+/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
+const sourceHintKey = (policy: EffectivePolicy) => {
+    const source = permissionPolicySource(policy);
+    if (source !== 'own' || policy.suggestedValue === undefined) return source;
+    return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
+};
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type {
@@ -156,7 +168,7 @@ export const PermissionsSettingsView = ({
     // One row for every switch on a tile: feature toggles and notification channels alike.
     const toggleRow = (
         form: FormInstance,
-        row: { setting: string; labelKey: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
+        row: { setting: string; labelKey: string; policy: EffectivePolicy; disabled?: boolean; note?: string },
     ) => (
         <PolicyOptionCard
             key={row.setting}
@@ -171,7 +183,7 @@ export const PermissionsSettingsView = ({
                 row.note ??
                 (policyLevel === 'platform'
                     ? undefined
-                    : t(`tenants.permissions.policy.source.${permissionPolicySource(row.policy)}`))
+                    : t(`tenants.permissions.policy.source.${sourceHintKey(row.policy)}`))
             }
             onChange={(next) => changePolicy(row.setting, next, form)}
         />

@@ -1828,6 +1828,8 @@
     "tenants.permissions.policy.enforced": "Vorgabe",
     "tenants.permissions.policy.suggestion": "Anpassbar",
     "tenants.permissions.policy.source.own": "Eigene Auswahl",
+    "tenants.permissions.policy.source.ownSuggestedOn": "Eigene Auswahl · Vorschlag: an",
+    "tenants.permissions.policy.source.ownSuggestedOff": "Eigene Auswahl · Vorschlag: aus",
     "tenants.permissions.policy.source.suggested": "Vorschlag von oben",
     "tenants.permissions.policy.source.enforced": "Vorgegeben: aktiv",
     "tenants.permissions.policy.source.forbidden": "Vorgegeben: nicht erlaubt",
