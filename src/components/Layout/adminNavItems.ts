@@ -9,6 +9,7 @@ import {
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
 import { canSeeLinksSection } from '../../constants/linksAccess';
+import { canSeeAddonsSection } from '../../constants/addonsAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { AdminSidebarNavItem } from './AdminSidebar';
@@ -16,6 +17,7 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
     account: string;
+    addons: string;
     agency: string;
     home: string;
     links: string;
@@ -170,6 +172,15 @@ export const buildAdminNavItems = ({
             label: labels.links,
             iconPath: routePathNames.links,
             activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
+        });
+    }
+    if (canSeeAddonsSection({ isSuperAdmin, can })) {
+        items.push({
+            key: 'addons',
+            to: routePathNames.addons,
+            label: labels.addons,
+            iconPath: routePathNames.addons,
+            activeMatch: { paths: [routePathNames.addons], mode: 'startsWith' },
         });
     }
     // Every log view lives behind ONE "Logs" entry that opens a tabbed page (ORISO-Admin#84). The

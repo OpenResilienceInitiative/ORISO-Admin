@@ -75,6 +75,17 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'dashboard',
         'metrics',
     ],
+    addons: [
+        'erweiterung',
+        'erweiterungen',
+        'zusatzmodul',
+        'plugin',
+        'add-on',
+        'addon',
+        'extension',
+        'extensions',
+        'module',
+    ],
     links: [
         'einladen',
         'einladung',

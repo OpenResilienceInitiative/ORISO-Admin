@@ -1192,6 +1192,19 @@
         "usage": "app-used"
     },
     {
+        "id": "ui-icon:nav-glyphs:addons:base",
+        "family": "addons",
+        "state": "base",
+        "role": "default",
+        "kind": "ui-icon",
+        "size": null,
+        "fileName": "addons.svg",
+        "sourcePath": "src/resources/img/svg/nav-glyphs/addons.svg",
+        "exportNames": [],
+        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usage": "app-used"
+    },
+    {
         "id": "ui-icon:nav-glyphs:counseling:base",
         "family": "counseling",
         "state": "base",

@@ -1,0 +1,120 @@
+.overview {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 0 var(--admin-page-edge, 24px) 24px;
+}
+
+.intro {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.heading {
+    margin: 0;
+    color: var(--m3-on-surface);
+    font-family: var(--m3-body-font-family);
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.description,
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant);
+    font-family: var(--m3-body-font-family);
+}
+
+.tenantPicker,
+.scopeAgency,
+.addOverride {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.label {
+    color: var(--m3-on-surface);
+    font-weight: 500;
+}
+
+.select {
+    width: min(100%, 360px);
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.card {
+    border-color: var(--m3-outline-variant);
+}
+
+.cardTitle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.addonName {
+    font-weight: 600;
+}
+
+.switchRow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.apps {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-block: 12px;
+}
+
+.appList {
+    padding-left: 20px;
+    margin: 0;
+}
+
+.stats {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    margin-block: 12px;
+}
+
+.statTile {
+    border-color: var(--m3-outline-variant);
+
+    :global(.ant-statistic-title) {
+        color: var(--m3-on-surface-variant);
+    }
+}
+
+.statusActive {
+    border-color: var(--admin-status-success-border);
+    background: var(--admin-status-success-container);
+    color: var(--m3-on-surface);
+}
+
+.sections {
+    margin-top: 12px;
+}
+
+.overrides,
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.formAlert {
+    margin-bottom: 8px;
+}

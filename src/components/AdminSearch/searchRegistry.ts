@@ -634,6 +634,7 @@ export const NAV_TITLE_KEYS: Record<string, string> = {
     counselors: 'sidebar.users',
     statistics: 'sidebar.statistics',
     links: 'sidebar.links',
+    addons: 'sidebar.addons',
     logs: 'sidebar.logs',
     account: 'sidebar.account',
 };

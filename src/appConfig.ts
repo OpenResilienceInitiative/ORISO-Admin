@@ -15,6 +15,7 @@ const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
 export const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
 const consultingTypeServiceURL = runtimeConfig.consultingTypeServiceOrigin;
+export const addonServiceURL = runtimeConfig.addonServiceOrigin;
 
 export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
@@ -105,6 +106,7 @@ export const selfAssignmentsEndpoint = `${userServiceURL}/service/useradmin/self
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
 export const dpaInvitePreviewEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/preview`;
+export const addonServiceEndpoint = `${addonServiceURL}/service/addons`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
@@ -143,6 +145,7 @@ const routePathNames = {
     agencyAddGeneral: '/admin/agency/add/general',
     topics: '/admin/topics',
     statistic: '/admin/statistic',
+    addons: '/admin/addons',
     statisticPreview: '/admin/statistic-preview',
     logs: '/admin/logs',
     caseHandoverLogs: '/admin/logs/case-handover',

@@ -16,6 +16,7 @@ const PAGE_GLYPHS: Record<string, NavGlyphName> = {
     'page:counselors': 'users',
     'page:statistics': 'statistics',
     'page:links': 'links',
+    'page:addons': 'addons',
     'page:logs': 'logs',
     'page:account': 'profile',
     'page:topics': 'topics',

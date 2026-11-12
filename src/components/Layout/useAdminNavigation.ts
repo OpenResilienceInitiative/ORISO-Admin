@@ -35,6 +35,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
     const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));
     const labels = {
         account: navLabel('sidebar.account', 'profile.title'),
+        addons: navLabel('sidebar.addons', 'addons.title'),
         agency: navLabel('sidebar.agency', 'agency'),
         home: navLabel('sidebar.home', 'home.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
