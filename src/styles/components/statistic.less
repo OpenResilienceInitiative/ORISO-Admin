@@ -635,6 +635,18 @@
     }
 }
 
+// A topic name in place of a number: smaller type that wraps onto two lines instead of
+// being cut to "Schwan…" after a few letters.
+.statisticDashboard .statisticDashboard__cardValueRow strong.statisticDashboard__cardValue--text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    font-size: 24px;
+    -webkit-line-clamp: 2;
+    line-height: 30px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+}
+
 // Calm empty presentation: a muted dash instead of a shouty "Keine Daten" value,
 // with a one-line hint explaining when data will appear (or why it is withheld).
 .statisticDashboard__cardValueRow--empty {
@@ -670,8 +682,12 @@
 
     border-style: dashed;
 
+    // The icon echoes the card: an empty dashed ring with a quiet outlined glyph instead of
+    // a faded filled circle, so the slot reads as "planned", not as "disabled".
     .statisticDashboard__metricIcon {
-        opacity: 0.6;
+        border: 1px dashed var(--m3-outline);
+        background: transparent;
+        color: var(--m3-on-surface-variant);
     }
 }
 

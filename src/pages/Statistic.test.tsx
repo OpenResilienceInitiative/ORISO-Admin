@@ -121,9 +121,9 @@ describe('Statistic page', () => {
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         // previous month detail is computed from the real comparison value
         expect(screen.getAllByText(/Vormonat gesamt 10/).length).toBeGreaterThan(0);
-        // metrics without an application-layer source render a lighter "not tracked yet"
-        // card that says so in words, instead of a shouty "Keine Daten" value or a bare dash
-        expect(screen.getAllByText(/^Wird noch nicht erfasst/).length).toBeGreaterThan(0);
+        // metrics the backend does not send render a lighter dashed card that says in words that
+        // there is no data source, instead of a shouty "Keine Daten" value or a bare dash
+        expect(screen.getAllByText('Für diese Kennzahl gibt es noch keine Datenquelle.').length).toBeGreaterThan(0);
         const notTrackedCards = document.querySelectorAll('.statisticDashboard__metricCard--notTracked');
         expect(notTrackedCards.length).toBeGreaterThan(0);
         notTrackedCards.forEach((card) => expect(card.textContent).not.toContain('–'));
@@ -169,6 +169,30 @@ describe('Statistic page', () => {
         const topicCall = fetchDataMock.mock.calls.find(([props]) => props.url.includes('topicadmin'));
         expect(topicCall).toBeDefined();
         expect(topicCall?.[0].responseHandling).toBeUndefined();
+    });
+
+    it('names the top topic from the public topic list when the topic admin list is denied', async () => {
+        const topicId = 7;
+        const now = new Date();
+        const month = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}`;
+        dashboardMock.mockResolvedValue({
+            ...response,
+            targets: response.targets.map((target) => ({
+                ...target,
+                monthlyTopTopics: [{ month, topicId, sessionCount: 5, sharePercent: 60 }],
+            })),
+        });
+        fetchDataMock.mockImplementation(({ url }: { url: string }) => {
+            if (url.includes('topicadmin')) return Promise.reject(new Error('API call error: 403 Forbidden'));
+            if (url.includes('/service/topic/public'))
+                return Promise.resolve([{ id: topicId, name: 'Schuldnerberatung' }]);
+            return Promise.resolve({ total: 0, _embedded: [] });
+        });
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('Schuldnerberatung').length).toBeGreaterThan(0));
+        expect(screen.queryByText(`#${topicId}`)).toBeNull();
     });
 
     it('shows a warning banner when small-cell suppression is disabled', async () => {
