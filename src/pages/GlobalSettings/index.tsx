@@ -11,9 +11,6 @@ import { Card } from '../../components/Card';
 import { CardGrid } from '../../components/CardGrid';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
-import { useTenantData } from '../../hooks/useTenantData.hook';
-import { useTenantAdminDataMutation } from '../../hooks/useTenantAdminDataMutation.hook';
-import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
@@ -28,9 +25,7 @@ import { TilePicture } from '../../components/TileFill';
 import { TileSections } from '../../components/TileSections';
 import mailServerPicture from '../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
-import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
-import { LoginFunctionCard } from '../../components/GlobalSettings/LoginFunctionCard';
 import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
@@ -53,28 +48,12 @@ const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
 };
 
 export const GlobalLoginSettingsPage = () => {
-    const { data, isLoading } = useTenantData();
-    const tenantId = resolveTenantId(undefined, data?.id);
-    const seedTenantAdminData = useMemo(
-        () => (data?.id == null ? undefined : mapTenantDataToTenantAdminData(data)),
-        [data],
-    );
-    const { mutate } = useTenantAdminDataMutation({
-        id: tenantId,
-        seedTenantAdminData,
-        prefetchTenantAdminData: false,
-        successMessageKey: 'tenants.message.settingsUpdate',
-    });
-    const initialValues = useMemo(() => ({ ...data }), [data]);
     const { isSuperAdmin } = useUserRoles();
     const recoverySettings = useChatRecoverySettings(isSuperAdmin);
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <CardGrid raster>
-                <CardGrid.Item>
-                    <LoginFunctionCard isLoading={isLoading} initialValues={initialValues} onSave={mutate} />
-                </CardGrid.Item>
                 <CardGrid.Item>
                     <OneTopicPerAgencySettingsCardContainer />
                 </CardGrid.Item>
