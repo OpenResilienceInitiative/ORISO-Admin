@@ -10,10 +10,9 @@ export type PermissionPolicySource = 'own' | 'suggested' | 'enforced' | 'forbidd
 /**
  * The effective value of one feature at this level (ORISO-TenantService#363):
  * 1. a requirement from above (enforced on / forbidden) always wins and is locked;
- * 2. otherwise this level's own stored choice wins — a policy with `inherited: false`, or
- *    `ownValue`, the boolean this level stored itself;
- * 3. only while this level never chose does the suggestion from above count (`inherited: true`).
- * A suggestion never overrides a stored own choice.
+ * 2. otherwise a policy decides: `inherited: false` is this level's own choice, `inherited: true`
+ *    means it never chose, so the suggestion from above is the value — whatever raw setting is stored;
+ * 3. only without any policy does `ownValue`, the raw boolean this level stored, count as its choice.
  */
 export const resolvePermissionPolicy = (
     permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
@@ -25,9 +24,9 @@ export const resolvePermissionPolicy = (
     const policy = permissionPolicies?.[fieldKey];
     if (policy?.mode === 'ENFORCED') return policy;
     if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
-    if (policy && policy.inherited === false) return policy;
+    if (policy) return policy;
     if (typeof ownValue === 'boolean') return { value: ownValue, mode: 'SUGGESTED', inherited: false };
-    return policy ?? { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
+    return { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
 };
 
 export const permissionPolicySource = (policy: PolicyValue<boolean>): PermissionPolicySource => {

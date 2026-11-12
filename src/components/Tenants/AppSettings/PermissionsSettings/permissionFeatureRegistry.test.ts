@@ -49,8 +49,18 @@ describe.each(FEATURES)('effective value contract for %s', (field) => {
         const resolve = (policy: PolicyValue<boolean> | undefined, own: unknown, restricted = none) =>
             resolvePermissionPolicy(policy && { [field]: policy }, field, own ?? policy?.value, restricted, own);
 
-        it('stored own off beats an inherited suggestion on', () => {
+        it('an own policy off beats the suggestion', () => {
+            const policy = resolve({ value: false, mode: 'SUGGESTED', inherited: false }, true);
+            expect(policy.value).toBe(false);
+            expect(permissionPolicySource(policy)).toBe('own');
+        });
+        it('raw stored off with an inherited suggestion on shows the suggestion (never chose)', () => {
             const policy = resolve(suggestion(true), false);
+            expect(policy.value).toBe(true);
+            expect(permissionPolicySource(policy)).toBe('suggested');
+        });
+        it('without any policy the raw stored value is the own choice', () => {
+            const policy = resolve(undefined, false);
             expect(policy.value).toBe(false);
             expect(permissionPolicySource(policy)).toBe('own');
         });
@@ -72,13 +82,21 @@ describe.each(FEATURES)('effective value contract for %s', (field) => {
     });
 
     describe('Beratungsstelle level', () => {
-        it('stored own off beats the Träger suggestion on', () => {
+        it('an own policy off beats the Träger suggestion', () => {
+            const policy = agencyPermissionPolicies({
+                [field]: true,
+                permissionPolicies: { [field]: { value: false, mode: 'SUGGESTED', inherited: false } },
+            } as never)[field];
+            expect(policy.value).toBe(false);
+            expect(permissionPolicySource(policy)).toBe('own');
+        });
+        it('raw stored off with an inherited Träger suggestion on shows the suggestion', () => {
             const policy = agencyPermissionPolicies({
                 [field]: false,
                 permissionPolicies: { [field]: suggestion(true) },
             } as never)[field];
-            expect(policy.value).toBe(false);
-            expect(permissionPolicySource(policy)).toBe('own');
+            expect(policy.value).toBe(true);
+            expect(permissionPolicySource(policy)).toBe('suggested');
         });
         it('without an own choice the Träger suggestion is the value', () => {
             const policy = agencyPermissionPolicies({ permissionPolicies: { [field]: suggestion(true) } } as never)[
