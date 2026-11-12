@@ -24,6 +24,9 @@ const handlers = (settings: Record<string, unknown> = {}) => {
         http.get('*/service/tenantadmin/:id/permission-policies', () =>
             HttpResponse.json({ tenantId: 7, policies: {} }),
         ),
+        http.put('*/service/tenantadmin/:id/permission-policies', () =>
+            HttpResponse.json({ tenantId: 7, policies: {} }),
+        ),
         http.get(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.put(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.get(TENANT_PUBLIC, () => HttpResponse.json({ id: 7, settings: {} })),

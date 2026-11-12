@@ -27,9 +27,13 @@ vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
 const policies: Record<string, { value: boolean; mode: 'SUGGESTED' | 'ENFORCED'; inherited?: boolean }> = {
     featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
 };
+const policyState = { isError: false };
 const savePolicies = vi.fn(async (next: unknown) => next);
 vi.mock('../../../../hooks/useTenantPermissionPolicies', () => ({
-    useTenantPermissionPolicies: () => ({ data: { tenantId: 1, policies }, isLoading: false }),
+    useTenantPermissionPolicies: () =>
+        policyState.isError
+            ? { data: undefined, isLoading: false, isError: true }
+            : { data: { tenantId: 1, policies }, isLoading: false, isError: false },
     useTenantPermissionPoliciesMutation: () => ({ mutateAsync: savePolicies }),
 }));
 
@@ -154,5 +158,26 @@ describe('OtherFunctionsSettings', () => {
         expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
         expect(mutate).not.toHaveBeenCalled();
         policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
+
+    it.each([
+        [true, 'checked'],
+        [false, 'unchecked'],
+    ])('shows an inherited lock %s as %s and disabled', (value) => {
+        policies.featureSupervisionEnabled = { value, mode: 'ENFORCED', inherited: true };
+        render(<OtherFunctionsSettings tenantId="1" />);
+        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
+        if (value) expect(master).toBeChecked();
+        else expect(master).not.toBeChecked();
+        expect(master).toBeDisabled();
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
+
+    it('shows an error instead of editable switches when the policies cannot be read', () => {
+        policyState.isError = true;
+        render(<OtherFunctionsSettings tenantId="1" />);
+        expect(screen.getByRole('alert')).toHaveTextContent('error.loading');
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+        policyState.isError = false;
     });
 });

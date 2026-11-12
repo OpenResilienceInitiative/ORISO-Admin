@@ -20,12 +20,6 @@ import {
     resolvePermissionPolicy,
 } from './permissionsSettingsUtils';
 
-/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
-const sourceHintKey = (policy: EffectivePolicy) => {
-    const source = permissionPolicySource(policy);
-    if (source !== 'own' || policy.suggestedValue === undefined) return source;
-    return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
-};
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type {
@@ -38,6 +32,13 @@ import type {
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
+
+/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
+const sourceHintKey = (policy: EffectivePolicy) => {
+    const source = permissionPolicySource(policy);
+    if (source !== 'own' || policy.suggestedValue === undefined) return source;
+    return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
+};
 
 /**
  * Reason a toggle cannot control anything in this environment, or `null` when

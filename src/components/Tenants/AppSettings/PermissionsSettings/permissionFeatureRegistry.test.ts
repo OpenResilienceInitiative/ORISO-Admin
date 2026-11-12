@@ -141,6 +141,15 @@ describe('single writer for permission features', () => {
         expect(changed).toEqual({ featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: false } });
     });
 
+    // A feature key as a string ('featureX'), an object key (featureX:) or a form path counts.
+    const writesFeature = (source: string) =>
+        FEATURES.some((field) => new RegExp(`['"\`]${field}['"\`]|\\b${field}\\s*:`).test(source));
+
+    it('the guard detects a raw object-key write', () => {
+        expect(writesFeature('updateTenant({ settings: { featureSupervisionEnabled: false } });')).toBe(true);
+        expect(writesFeature('const x = 1;')).toBe(false);
+    });
+
     // Screens outside the permissions panel must not put a feature key into a raw settings save.
     it('no Admin screen writes a permission feature as a raw setting', () => {
         const root = join(__dirname, '../../../..');
@@ -163,7 +172,7 @@ describe('single writer for permission features', () => {
             const rel = relative(root, file);
             if (allowed.some((prefix) => rel.startsWith(prefix))) return false;
             const source = readFileSync(file, 'utf8');
-            if (!FEATURES.some((field) => source.includes(`'${field}'`))) return false;
+            if (!writesFeature(source)) return false;
             // A screen that shows a feature switch must route its save through the policy writer.
             return !source.includes('splitPermissionFeatureWrites');
         });

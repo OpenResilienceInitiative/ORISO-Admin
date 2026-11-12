@@ -25,7 +25,8 @@ export const resolvePermissionPolicy = (
     ownValue?: unknown,
 ): EffectivePolicy => {
     const policy = permissionPolicies?.[fieldKey];
-    if (policy?.mode === 'ENFORCED') return policy;
+    // Inherited lock first, then a restriction from above, and only then an own requirement.
+    if (policy?.mode === 'ENFORCED' && policy.inherited === true) return policy;
     if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
     if (policy && policy.inherited !== true) return policy;
     if (typeof ownValue === 'boolean') {

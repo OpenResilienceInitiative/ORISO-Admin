@@ -58,6 +58,7 @@ const TENANT = { id: 7, name: 'Träger Süd', settings: { featureTeamDiscussionE
 const handlers = [
     // OtherFunctionsSettings reads the Träger's policies (ORISO-TenantService#363).
     http.get('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 7, policies: {} })),
+    http.put('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 7, policies: {} })),
     http.get('*/service/tenantadmin/:id', () => HttpResponse.json(TENANT)),
     http.put('*/service/tenantadmin/:id', () => HttpResponse.json(TENANT)),
     http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 7, settings: {} })),

@@ -29,6 +29,9 @@ const meta = {
                 http.get('*/service/tenantadmin/:id/permission-policies', () =>
                     HttpResponse.json({ tenantId: 7, policies: {} }),
                 ),
+                http.put('*/service/tenantadmin/:id/permission-policies', () =>
+                    HttpResponse.json({ tenantId: 7, policies: {} }),
+                ),
                 http.get('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.put('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 7, settings: {} })),

@@ -17,6 +17,7 @@ import {
     useTenantPermissionPoliciesMutation,
 } from '../../../../hooks/useTenantPermissionPolicies';
 import {
+    DEFAULT_PERMISSION_SETTINGS,
     applyPermissionConstraintsToSettings,
     getRestrictedFields,
     resolvePermissionPolicy,
@@ -26,6 +27,7 @@ import {
     splitPermissionFeatureWrites,
 } from '../PermissionsSettings/permissionFeatureRegistry';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
+import { Notify } from '../../../Notify';
 import { useSupervisionPrivacyConfirm } from '../../../SupervisionPrivacyConfirm';
 /**
  * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
@@ -74,7 +76,11 @@ export const OtherFunctionsSettings = ({
 
     // ORISO-TenantService#363: feature switches here show the effective value and save as the
     // Träger's own policy — the same writer as "Funktionszugriff" — never as raw settings.
-    const { data: policyData, isLoading: policiesLoading } = useTenantPermissionPolicies(tenantId);
+    const {
+        data: policyData,
+        isLoading: policiesLoading,
+        isError: policiesError,
+    } = useTenantPermissionPolicies(tenantId);
     const updatePolicies = useTenantPermissionPoliciesMutation(tenantId);
     const controls = data?.settings?.tenantAdminControls;
     const restricted = useMemo(
@@ -95,7 +101,15 @@ export const OtherFunctionsSettings = ({
                 // KI-Bildprüfung: no service runs the scan yet, so it is off whatever is stored.
                 field.startsWith('featureMediaAiScan') && !runtimeConfig.mediaAiScanAvailable
                     ? { value: false, mode: 'ENFORCED' as const, inherited: true }
-                    : resolvePermissionPolicy(policyData?.policies, field, directed[field], restricted, stored[field]),
+                    : resolvePermissionPolicy(
+                          policyData?.policies,
+                          field,
+                          // Nothing stored or served: the registry default (AI scan is opt-in).
+                          directed[field] ??
+                              DEFAULT_PERMISSION_SETTINGS[field as keyof typeof DEFAULT_PERMISSION_SETTINGS],
+                          restricted,
+                          stored[field],
+                      ),
             ]),
         );
     }, [data, controls, policyData, restricted]);
@@ -128,6 +142,14 @@ export const OtherFunctionsSettings = ({
         },
         [effectiveValues, mutate, policyData, tenantId, updatePolicies],
     );
+    // Without the policies the locks and modes are unknown: no editable switches (as Funktionszugriff).
+    if (policiesError) {
+        return (
+            <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
+                {t('error.loading')}
+            </Notify>
+        );
+    }
     return (
         <CardEditable
             isLoading={isLoading || policiesLoading}
