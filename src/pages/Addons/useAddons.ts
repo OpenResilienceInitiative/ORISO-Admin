@@ -8,6 +8,7 @@ import {
     getAdminAddons,
     saveAddonSettings,
     setAddonEnabledForAgency,
+    setAddonEnabledGlobally,
     setAddonEnabledForTenant,
 } from '../../api/addons/addonsApi';
 import { getAddonAuditEntries } from '../../api/addons/addonAuditApi';
@@ -134,6 +135,20 @@ const useInvalidateAddons = (tenantId: number) => {
             queryClient.invalidateQueries({ queryKey: [ADDON_REGISTRY_KEY] }),
             queryClient.invalidateQueries({ queryKey: [ADDON_TENANTS_KEY] }),
         ]);
+};
+
+/** The global switch changes what every Träger sees, so every add-on query is refetched. */
+export const useSetGlobalEnabled = (name: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (enabled: boolean) => setAddonEnabledGlobally(name, enabled),
+        onSettled: () =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: [ADMIN_ADDONS_KEY] }),
+                queryClient.invalidateQueries({ queryKey: [ADDON_REGISTRY_KEY] }),
+                queryClient.invalidateQueries({ queryKey: [ADDON_TENANTS_KEY] }),
+            ]),
+    });
 };
 
 export const useSetTenantEnabled = (name: string, tenantId: number) => {

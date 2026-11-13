@@ -52,6 +52,15 @@ export const getAddonTenants = (name: string): Promise<AddonTenantState[]> =>
         responseHandling: READ_HANDLING,
     }).then((result) => (Array.isArray(result) ? result : []));
 
+/** Switches an add-on on or off for the whole platform; SuperAdmins only. */
+export const setAddonEnabledGlobally = (name: string, enabled: boolean): Promise<unknown> =>
+    fetchData({
+        url: `${addonUrl(name)}/global`,
+        method: FETCH_METHODS.PUT,
+        bodyData: JSON.stringify({ enabled }),
+        responseHandling: WRITE_HANDLING,
+    });
+
 export const setAddonEnabledForTenant = (name: string, tenantId: number, enabled: boolean): Promise<unknown> =>
     fetchData({
         url: `${addonUrl(name)}/tenants/${tenantId}`,

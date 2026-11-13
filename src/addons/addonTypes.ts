@@ -51,11 +51,22 @@ export interface AddonTenantState {
     agenciesDisabled: number;
 }
 
-/** One entry of `GET /service/addons/admin/addons`. */
+/** The platform-wide switch of an add-on; off until a SuperAdmin switches it on. */
+export interface AddonGlobalSwitch {
+    enabled: boolean;
+    updatedAt?: string | null;
+    updatedBy?: string | null;
+}
+
+/**
+ * One entry of `GET /service/addons/admin/addons`. `enabled` is the Träger switch alone; the
+ * add-on runs only while `global.enabled` is on too.
+ */
 export interface AdminAddon {
     manifest: AddonManifest;
     source?: string;
     discoveredAt?: string;
+    global?: AddonGlobalSwitch;
     tenantId: number;
     enabled: boolean;
     agencyOverrides: AgencyOverride[];

@@ -125,7 +125,8 @@ export const AddonsOverview = () => {
                         }))}
                     />
                 </div>
-                <AddonInfo manifest={selected.manifest} discoveredAt={selected.discoveredAt} />
+                <AddonInfo addon={selected} isSuperAdmin={isSuperAdmin} />
+                {!selected.global?.enabled && <Alert type="warning" showIcon message={t('addons.global.offHint')} />}
                 {isSuperAdmin ? (
                     <>
                         <AddonTenantsTable
