@@ -138,7 +138,7 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         showAgencyExpand: false,
         showStatus: true,
         editPathPrefix: routePathNames.adviceSeekers,
-        searchPlaceholderKey: 'adviceSeekers.searchPlaceholder',
+        searchPlaceholderKey: 'adviceSeekers.searchHint',
         emptyTextKey: 'adviceSeekers.empty',
         columns: [
             col('username', true, false, 220),

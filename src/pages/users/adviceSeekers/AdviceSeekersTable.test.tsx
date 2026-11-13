@@ -1,5 +1,6 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite-plus/test';
 import type { UserScopeFiltersProps } from '../management/UserScopeFilters';
@@ -10,8 +11,8 @@ const state = vi.hoisted(() => ({ canDelete: true, isSuperAdmin: false }));
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
-        t: (key: string, options?: Record<string, unknown>) =>
-            options && 'username' in options ? `${key}:${options.username}` : key,
+        t: (key: string, options?: Record<string, unknown> | string) =>
+            typeof options === 'object' && 'username' in options ? `${key}:${options.username}` : key,
     }),
 }));
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin }) }));
@@ -21,19 +22,7 @@ vi.mock('../../../hooks/useAgencysData', () => ({
 }));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({ data: { data: [] } }) }));
 vi.mock('../management/UserScopeFilters', () => ({
-    UserScopeFilters: ({ actions, search }: UserScopeFiltersProps) => (
-        <div>
-            <input
-                aria-label="username search"
-                value={search?.value}
-                onChange={(event) => search?.onSearchChange?.(event.target.value)}
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter') search?.onSearch?.((event.target as HTMLInputElement).value);
-                }}
-            />
-            {actions}
-        </div>
-    ),
+    UserScopeFilters: ({ actions }: UserScopeFiltersProps) => <div>{actions}</div>,
     useScopeFilterAvailability: () => ({ tenant: false, agency: true, canListAgencies: true }),
 }));
 vi.mock('../../../api/adviceSeeker/adviceSeekers', () => ({
@@ -57,11 +46,13 @@ const carl = {
     deleteDate: '2026-11-12T22:00:00',
 };
 
-const show = () =>
+const show = (path = '/admin/users/advice-seekers') =>
     render(
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-            <AdviceSeekersTable />
-        </QueryClientProvider>,
+        <MemoryRouter initialEntries={[path]}>
+            <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <AdviceSeekersTable />
+            </QueryClientProvider>
+        </MemoryRouter>,
     );
 
 const rowOf = (username: string) => screen.getByText(username).closest('tr') as HTMLElement;
@@ -95,17 +86,17 @@ describe('AdviceSeekersTable', () => {
         expect((within(rowOf('carl')).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
     });
 
-    it('searches the complete username from the first page', async () => {
-        show();
+    it('lists the username searched in the admin search and can show everybody again', async () => {
+        show('/admin/users/advice-seekers?q=anna');
         await screen.findByText('anna');
 
-        const search = screen.getByLabelText('username search');
-        fireEvent.change(search, { target: { value: ' anna ' } });
-        fireEvent.keyDown(search, { key: 'Enter' });
+        expect(mockedGet).toHaveBeenCalledWith({ page: 1, perPage: 20, username: 'anna', filters: {} });
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
 
         await waitFor(() =>
-            expect(mockedGet).toHaveBeenLastCalledWith({ page: 1, perPage: 20, username: 'anna', filters: {} }),
+            expect(mockedGet).toHaveBeenLastCalledWith({ page: 1, perPage: 20, username: '', filters: {} }),
         );
+        expect(screen.queryByTestId('list-search-bar')).toBeNull();
     });
 
     it('deletes the selected advice seekers after confirmation and lists who failed', async () => {

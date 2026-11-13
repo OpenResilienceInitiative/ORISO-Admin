@@ -5,16 +5,18 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined';
-import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAdviceSeekers, type AdviceSeekerData } from '../../../api/adviceSeeker/adviceSeekers';
+import type { AdviceSeekerData } from '../../../api/adviceSeeker/adviceSeekers';
+import { useAdviceSeekersData } from '../../../hooks/useAdviceSeekersData';
+import { ListSearchBar } from '../../../components/ListSearchBar';
 import { ToneBadge, type BadgeTone } from '../../../components/UserTable/StatusBadge';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAgenciesData } from '../../../hooks/useAgencysData';
 import { useTenantsData } from '../../../hooks/useTenantsData';
+import { useListQuery } from '../../../hooks/useListQuery';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import type { UserSearchFilters } from '../../../utils/userSearchFilters';
@@ -22,8 +24,6 @@ import { UserScopeFilters, useScopeFilterAvailability } from '../management/User
 import { adviceSeekerStatus, canMarkForDeletion, type AdviceSeekerStatus } from './adviceSeekerStatus';
 import { DeleteAdviceSeekersModal } from './DeleteAdviceSeekersModal';
 import styles from './adviceSeekers.module.scss';
-
-export const ADVICE_SEEKERS_QUERY_KEY = 'ADVICE_SEEKERS';
 
 // Agencies and Träger are small lists; one page is the whole set.
 const ALL = 10000;
@@ -51,18 +51,13 @@ export const AdviceSeekersTable = () => {
 
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(DEFAULT_PAGE_SIZE);
-    const [searchInput, setSearchInput] = useState('');
-    const [username, setUsername] = useState('');
+    // The username comes from the admin search (⌘K) as `?q=`; lists have no search field of their own.
+    const { query: username, clear: clearSearch } = useListQuery();
     const [filters, setFilters] = useState<UserSearchFilters>({});
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [toDelete, setToDelete] = useState<AdviceSeekerData[] | null>(null);
 
-    const query = useQuery({
-        queryKey: [ADVICE_SEEKERS_QUERY_KEY, page, perPage, username, filters],
-        queryFn: () => getAdviceSeekers({ page, perPage, username, filters }),
-        retry: false,
-        refetchOnWindowFocus: false,
-    });
+    const query = useAdviceSeekersData({ page, perPage, username, filters });
     const rows = useMemo(() => query.data?.data ?? [], [query.data]);
 
     const agencies = useAgenciesData({ pageSize: ALL, enabled: available.canListAgencies });
@@ -75,6 +70,14 @@ export const AdviceSeekersTable = () => {
         const names = new Map((tenants.data?.data ?? []).map((tenant) => [String(tenant.id), tenant.name]));
         return (id?: number) => (id == null ? '–' : names.get(String(id)) ?? String(id));
     }, [tenants.data]);
+
+    // A new search from ⌘K starts on the first page with nothing selected.
+    const [searchedFor, setSearchedFor] = useState(username);
+    if (searchedFor !== username) {
+        setSearchedFor(username);
+        setPage(1);
+        setSelectedIds([]);
+    }
 
     const resetToFirstPage = () => {
         setPage(1);
@@ -149,22 +152,6 @@ export const AdviceSeekersTable = () => {
                     setFilters(next);
                     resetToFirstPage();
                 }}
-                search={{
-                    value: searchInput,
-                    searchPlaceholder: t('adviceSeekers.searchPlaceholder'),
-                    onSearchChange: (value) => {
-                        setSearchInput(value);
-                        // Clearing the field shows everybody again without another Enter.
-                        if (!value.trim() && username) {
-                            setUsername('');
-                            resetToFirstPage();
-                        }
-                    },
-                    onSearch: (value) => {
-                        setUsername(value.trim());
-                        resetToFirstPage();
-                    },
-                }}
                 actions={
                     canDelete && (
                         <Button
@@ -178,6 +165,7 @@ export const AdviceSeekersTable = () => {
                     )
                 }
             />
+            <ListSearchBar query={username} onClear={clearSearch} />
             <p className={styles.hint}>{t('adviceSeekers.searchHint')}</p>
             {query.isError ? (
                 <p role="alert">{t('adviceSeekers.loadError')}</p>
