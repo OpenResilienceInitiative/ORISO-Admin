@@ -2264,12 +2264,19 @@ export const Statistic = () => {
                     ? agenciesOfTenant(currentSelection.agency || [], nextTarget.id, agencyDirectory)
                     : currentSelection.agency;
 
-            return sameType.includes(nextTarget.id) && agency === currentSelection.agency
+            // A re-picked Träger moves to the end, so the stored order always ends with the newest pick.
+            const movesToEnd = isSuperAdmin && nextTarget.type === 'Träger';
+            const alreadyLast = sameType[sameType.length - 1] === nextTarget.id;
+            const unchanged = sameType.includes(nextTarget.id) && (!movesToEnd || alreadyLast);
+
+            return unchanged && agency === currentSelection.agency
                 ? currentSelection
                 : {
                       ...currentSelection,
                       agency,
-                      [nextTarget.scope]: sameType.includes(nextTarget.id) ? sameType : [...sameType, nextTarget.id],
+                      [nextTarget.scope]: unchanged
+                          ? sameType
+                          : [...sameType.filter((targetId) => targetId !== nextTarget.id), nextTarget.id],
                   };
         });
     };
