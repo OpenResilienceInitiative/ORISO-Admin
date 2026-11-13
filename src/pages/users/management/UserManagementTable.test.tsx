@@ -148,7 +148,7 @@ describe('UserManagementTable section authorization', () => {
 
     it('says when the list is narrowed by a search from the admin search (?q=)', () => {
         show('/admin/users?q=simpson');
-        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„simpson“');
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('simpson');
     });
 
     it('labels invitations as navigation and points to the invitations section', () => {

@@ -25,7 +25,10 @@ export const ListSearchBar = ({ query, count, onClear }: ListSearchBarProps) => 
             <div className={styles.text}>
                 <span className={styles.caption}>{caption}</span>
                 <span className={styles.name}>
-                    „{query}“{count && <span className={styles.count}> · {count}</span>}
+                    {t('listSearch.quoteOpen', '„')}
+                    {query}
+                    {t('listSearch.quoteClose', '“')}
+                    {count && <span className={styles.count}> · {count}</span>}
                 </span>
             </div>
             <M3Button variant="text" onClick={onClear}>

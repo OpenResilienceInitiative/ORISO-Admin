@@ -3803,5 +3803,7 @@
     "statistic.dashboard.scope.noMatch": "Kein Träger und keine Beratungsstelle gefunden",
     "listSearch.caption": "Gefiltert nach Suche",
     "listSearch.clear": "Ganze Liste zeigen",
+    "listSearch.quoteOpen": "„",
+    "listSearch.quoteClose": "“",
     "adminSearch.group.inList": "Alle Treffer in der Liste zeigen"
 }

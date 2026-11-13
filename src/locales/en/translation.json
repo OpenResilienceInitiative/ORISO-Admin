@@ -3803,5 +3803,7 @@
     "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found",
     "listSearch.caption": "Filtered by search",
     "listSearch.clear": "Show the whole list",
+    "listSearch.quoteOpen": "“",
+    "listSearch.quoteClose": "”",
     "adminSearch.group.inList": "Show all matches in the list"
 }
