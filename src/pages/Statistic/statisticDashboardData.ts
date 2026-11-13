@@ -10,9 +10,8 @@ import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, P
 /**
  * Pure mapping from the UserService admin statistics response to the dashboard data
  * shapes. All numbers shown on the statistics dashboard originate here — there is no
- * mock data anymore. Metrics without an application-layer data source (messages, video
- * calls, voice messages, phone calls, live chat) are represented as `null` and rendered
- * as "Keine Daten".
+ * mock data anymore. Communication metrics the backend does not send are `undefined`
+ * ("not tracked"); live chat has no data source yet and is always `undefined`.
  */
 
 export type FilterTargetType = 'Träger' | 'Beratungsstelle';
@@ -30,6 +29,8 @@ export interface TopicStatistic {
 }
 
 export type MetricValue = number | null;
+/** `undefined` = the backend does not track this metric at all (shown as "not tracked"). */
+export type TrackedMetricValue = MetricValue | undefined;
 
 export interface FilterTargetMetricStats {
     activeAgencies: MetricValue;
@@ -38,14 +39,14 @@ export interface FilterTargetMetricStats {
     conversationsTotal: MetricValue;
     counselors: MetricValue;
     groups: MetricValue;
-    liveChat: MetricValue;
-    messagesCounselors: MetricValue;
-    messagesSeekers: MetricValue;
+    liveChat: TrackedMetricValue;
+    messagesCounselors: TrackedMetricValue;
+    messagesSeekers: TrackedMetricValue;
     oneToOne: MetricValue;
-    phoneCalls: MetricValue;
-    textMessagesTotal: MetricValue;
-    videoCalls: MetricValue;
-    voiceMessages: MetricValue;
+    phoneCalls: TrackedMetricValue;
+    textMessagesTotal: TrackedMetricValue;
+    videoCalls: TrackedMetricValue;
+    voiceMessages: TrackedMetricValue;
     /** Top topic per month of the topic window; index 0 = this month, 1 = last month, … */
     topicsByMonth: TopicStatistic[];
 }
@@ -255,7 +256,7 @@ const buildTopicStatistic = (
     }
 
     return {
-        label: topicNamesById[`${monthlyTopic.topicId}`] || `#${monthlyTopic.topicId}`,
+        label: topicNamesById[`${monthlyTopic.topicId}`] || `Thema ${monthlyTopic.topicId}`,
         share: monthlyTopic.sharePercent,
     };
 };
@@ -273,6 +274,24 @@ const buildConversationValues = (
         }),
         {} as Record<ConversationPeriodKey, ConversationValues>,
     );
+
+/** Both parts tracked → their sum; one withheld → withheld (even next to an untracked part); else untracked. */
+const sumTracked = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === null || second === null) return null;
+    if (first === undefined || second === undefined) return undefined;
+    return first + second;
+};
+
+/**
+ * Combines one communication count across targets: a metric no target tracks stays untracked,
+ * and a count one target withholds (null) keeps the whole sum withheld instead of reading as 0.
+ */
+export const addTrackedMetricValues = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === undefined) return second;
+    if (second === undefined) return first;
+    if (first === null || second === null) return null;
+    return first + second;
+};
 
 interface TimeWindows {
     chartWeeks: number;
@@ -326,14 +345,17 @@ const buildTargetStatistics = (
             conversationsTotal: target.sessionCountsByPeriod?.total ?? null,
             counselors: target.counselorCount,
             groups: target.groupChatCountsByPeriod?.total ?? null,
-            liveChat: null,
-            messagesCounselors: null,
-            messagesSeekers: null,
+            liveChat: undefined,
+            messagesCounselors: target.metrics?.messagesCounselorsCurrentMonth,
+            messagesSeekers: target.metrics?.messagesAdviceSeekersCurrentMonth,
             oneToOne: target.metrics?.enquiriesCurrentMonth ?? null,
-            phoneCalls: null,
-            textMessagesTotal: null,
-            videoCalls: null,
-            voiceMessages: null,
+            phoneCalls: target.metrics?.audioCallsCurrentMonth,
+            textMessagesTotal: sumTracked(
+                target.metrics?.messagesCounselorsCurrentMonth,
+                target.metrics?.messagesAdviceSeekersCurrentMonth,
+            ),
+            videoCalls: target.metrics?.videoCallsCurrentMonth,
+            voiceMessages: target.metrics?.voiceMessagesCurrentMonth,
             topicsByMonth: Array.from({ length: windows.topicMonths }, (unused, monthsAgo) =>
                 buildTopicStatistic(target, monthKeyWithOffset(now, monthsAgo), topicNamesById),
             ),

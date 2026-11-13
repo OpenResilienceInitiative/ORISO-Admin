@@ -53,6 +53,7 @@ import {
     DEFAULT_TOPIC_MONTHS,
     emptyCaseCharts,
     getTodayDayCode,
+    addTrackedMetricValues,
     NO_DATA_LABEL,
     noDataTopics,
     resolveDrillTenantId,
@@ -68,6 +69,7 @@ import type {
     MetricValue,
     StatisticAgencyEntry,
     StatisticData,
+    TrackedMetricValue,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
@@ -500,14 +502,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -614,14 +616,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -728,14 +730,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -874,14 +876,15 @@ const getEmptyFilterTargetStatistics = (
         conversationsTotal: null,
         counselors: null,
         groups: null,
-        liveChat: null,
-        messagesCounselors: null,
-        messagesSeekers: null,
+        // communication counts start as "not tracked"; the first target that sends one sets it
+        liveChat: undefined,
+        messagesCounselors: undefined,
+        messagesSeekers: undefined,
         oneToOne: null,
-        phoneCalls: null,
-        textMessagesTotal: null,
-        videoCalls: null,
-        voiceMessages: null,
+        phoneCalls: undefined,
+        textMessagesTotal: undefined,
+        videoCalls: undefined,
+        voiceMessages: undefined,
         topicsByMonth: noDataTopics(topicMonths),
     },
     caseCharts: emptyCaseCharts(chartWeeks),
@@ -920,6 +923,25 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
 const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
     first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
+const communicationMetricKeys = new Set<NumericFilterMetricKey>([
+    'liveChat',
+    'messagesCounselors',
+    'messagesSeekers',
+    'phoneCalls',
+    'textMessagesTotal',
+    'videoCalls',
+    'voiceMessages',
+]);
+
+const combineFilterMetric = (
+    metricKey: NumericFilterMetricKey,
+    first: TrackedMetricValue,
+    second: TrackedMetricValue,
+): TrackedMetricValue =>
+    communicationMetricKeys.has(metricKey)
+        ? addTrackedMetricValues(first, second)
+        : addMetricValues(first ?? null, second ?? null);
+
 const aggregateFilterTargetStatistics = (
     targetIds: string[],
     statisticsById: Record<string, FilterTargetStatistics>,
@@ -937,7 +959,11 @@ const aggregateFilterTargetStatistics = (
         const metrics = numericFilterMetricKeys.reduce<FilterTargetMetricStats>(
             (nextMetrics, metricKey) => ({
                 ...nextMetrics,
-                [metricKey]: addMetricValues(aggregatedStats.metrics[metricKey], targetStats.metrics[metricKey]),
+                [metricKey]: combineFilterMetric(
+                    metricKey,
+                    aggregatedStats.metrics[metricKey],
+                    targetStats.metrics[metricKey],
+                ),
             }),
             {
                 ...aggregatedStats.metrics,
@@ -1030,6 +1056,7 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 // German seed strings for the calm empty presentation (translated like every other
 // dashboard seed via dashboardTextKeyByValue).
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const THIS_MONTH_DETAIL = 'Dieser Monat';
 const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
 /** Width of the Träger/Beratungsstelle filter; the stylesheet reads it as --statistic-filter-width. */
@@ -1076,6 +1103,17 @@ const buildMetricOverridesFromFilterStats = (
     const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : pendingTopicHint;
     const metricEmptyState = (value: MetricValue): EmptyState =>
         value === null ? { emptyHint: emptyMetricHint, emptyKind } : noEmptyState;
+    /** A communication count of this month; a metric the backend does not track keeps the dashed card. */
+    const trackedOverride = (value: TrackedMetricValue): Partial<CardMenuOption> =>
+        // with every target withheld or the load failed, nobody knows whether it is tracked
+        value === undefined && !allTargetsSuppressed && !loadFailed
+            ? notTrackedOverride
+            : {
+                  value: formatMetricValue(value ?? null),
+                  ...metricEmptyState(value ?? null),
+                  detail: THIS_MONTH_DETAIL,
+                  trend: undefined,
+              };
     const topicEmptyState = (topic: TopicStatistic): EmptyState =>
         topic.label === NO_DATA_LABEL ? { emptyHint: emptyTopicHint, emptyKind } : noEmptyState;
     const topicOverride = (monthsAgo: number): Partial<CardMenuOption> => {
@@ -1147,24 +1185,24 @@ const buildMetricOverridesFromFilterStats = (
             trend: undefined,
         },
         liveChat: notTrackedOverride,
-        messagesCounselors: notTrackedOverride,
+        messagesCounselors: trackedOverride(stats.metrics.messagesCounselors),
         messagesPerSession: notTrackedOverride,
-        messagesSeekers: notTrackedOverride,
+        messagesSeekers: trackedOverride(stats.metrics.messagesSeekers),
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
             ...metricEmptyState(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: notTrackedOverride,
+        phoneShare: trackedOverride(stats.metrics.phoneCalls),
         previousMonth: topicOverride(1),
-        textMessagesTotal: notTrackedOverride,
+        textMessagesTotal: trackedOverride(stats.metrics.textMessagesTotal),
         threeMonthsAgo: topicOverride(3),
         topTopic: topicOverride(0),
         twoMonthsAgo: topicOverride(2),
-        videoCallCount: notTrackedOverride,
-        videoShare: notTrackedOverride,
-        voiceShare: notTrackedOverride,
+        videoCallCount: trackedOverride(stats.metrics.videoCalls),
+        videoShare: trackedOverride(stats.metrics.videoCalls),
+        voiceShare: trackedOverride(stats.metrics.voiceMessages),
         ...furtherTopicOverrides,
     };
 };

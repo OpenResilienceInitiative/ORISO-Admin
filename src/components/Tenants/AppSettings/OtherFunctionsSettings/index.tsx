@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { TileSections } from '../../../TileSections';
@@ -11,6 +12,22 @@ import styles from './styles.module.scss';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 
+import {
+    useTenantPermissionPolicies,
+    useTenantPermissionPoliciesMutation,
+} from '../../../../hooks/useTenantPermissionPolicies';
+import {
+    DEFAULT_PERMISSION_SETTINGS,
+    applyPermissionConstraintsToSettings,
+    getRestrictedFields,
+    resolvePermissionPolicy,
+} from '../PermissionsSettings/permissionsSettingsUtils';
+import {
+    PERMISSION_FEATURE_KEYS,
+    splitPermissionFeatureWrites,
+} from '../PermissionsSettings/permissionFeatureRegistry';
+import type { TenantAdminData } from '../../../../types/TenantAdminData';
+import { Notify } from '../../../Notify';
 import { useSupervisionPrivacyConfirm } from '../../../SupervisionPrivacyConfirm';
 /**
  * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
@@ -56,12 +73,89 @@ export const OtherFunctionsSettings = ({
     // OBP 2.1 #107: a supervisor reads along — ask about the privacy policy first.
     const confirmSupervision = useSupervisionPrivacyConfirm();
     const extraI18nTopicKey = settings.multitenancyWithSingleDomainEnabled ? '.mtsd' : '';
+
+    // ORISO-TenantService#363: feature switches here show the effective value and save as the
+    // Träger's own policy — the same writer as "Funktionszugriff" — never as raw settings.
+    const {
+        data: policyData,
+        isLoading: policiesLoading,
+        isError: policiesError,
+    } = useTenantPermissionPolicies(tenantId);
+    const updatePolicies = useTenantPermissionPoliciesMutation(tenantId);
+    const controls = data?.settings?.tenantAdminControls;
+    const restricted = useMemo(
+        () => getRestrictedFields(controls?.allowedPermissionToggles, controls?.enforcedPermissionToggles),
+        [controls],
+    );
+    const effective = useMemo(() => {
+        const stored = (data?.settings ?? {}) as Record<string, unknown>;
+        // A lock's value follows its direction (enforced on / forced off), not the stored value.
+        const directed = (applyPermissionConstraintsToSettings(
+            stored,
+            controls?.allowedPermissionToggles,
+            controls?.enforcedPermissionToggles,
+        ) ?? stored) as Record<string, unknown>;
+        return Object.fromEntries(
+            [...PERMISSION_FEATURE_KEYS].map((field) => [
+                field,
+                // KI-Bildprüfung: no service runs the scan yet, so it is off whatever is stored.
+                field.startsWith('featureMediaAiScan') && !runtimeConfig.mediaAiScanAvailable
+                    ? { value: false, mode: 'ENFORCED' as const, inherited: true }
+                    : resolvePermissionPolicy(
+                          policyData?.policies,
+                          field,
+                          // Nothing stored or served: the registry default (AI scan is opt-in).
+                          directed[field] ??
+                              DEFAULT_PERMISSION_SETTINGS[field as keyof typeof DEFAULT_PERMISSION_SETTINGS],
+                          restricted,
+                          stored[field],
+                      ),
+            ]),
+        );
+    }, [data, controls, policyData, restricted]);
+    const effectiveValues = useMemo(
+        () => Object.fromEntries(Object.entries(effective).map(([field, policy]) => [field, policy.value])),
+        [effective],
+    );
+    const lockedFromAbove = (field: string) =>
+        effective[field]?.mode === 'ENFORCED' && effective[field]?.inherited === true;
+    const initialValues = useMemo(
+        () => ({ ...data, settings: { ...data?.settings, ...effectiveValues } }),
+        [data, effectiveValues],
+    );
+    const save = useCallback(
+        async (formData: Partial<TenantAdminData>, options?: { onError?: () => void }) => {
+            const { rest, changed } = splitPermissionFeatureWrites(
+                formData.settings as Record<string, unknown> | undefined,
+                effectiveValues,
+                policyData?.policies,
+            );
+            if (Object.keys(changed).length > 0) {
+                try {
+                    await updatePolicies.mutateAsync({ tenantId: Number(tenantId), policies: changed });
+                } catch {
+                    options?.onError?.();
+                    return;
+                }
+            }
+            mutate({ ...formData, settings: rest } as Partial<TenantAdminData>, options);
+        },
+        [effectiveValues, mutate, policyData, tenantId, updatePolicies],
+    );
+    // Without the policies the locks and modes are unknown: no editable switches (as Funktionszugriff).
+    if (policiesError) {
+        return (
+            <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
+                {t('error.loading')}
+            </Notify>
+        );
+    }
     return (
         <CardEditable
-            isLoading={isLoading}
-            initialValues={{ ...data }}
+            isLoading={isLoading || policiesLoading}
+            initialValues={initialValues}
             titleKey="tenants.appSettings.otherFunctions.title"
-            onSave={mutate}
+            onSave={save as never}
             variant="dialog"
             editButtonPlacement="footer"
             help={otherFunctionsHelp}
@@ -102,6 +196,7 @@ export const OtherFunctionsSettings = ({
                                 <FormSwitchField
                                     labelKey="tenants.appSettings.otherFunctions.groupChat.title"
                                     name={['settings', 'featureGroupChatV2Enabled']}
+                                    disabled={lockedFromAbove('featureGroupChatV2Enabled')}
                                     inline
                                     disableLabels
                                 />
@@ -129,6 +224,7 @@ export const OtherFunctionsSettings = ({
                         <FormSwitchField
                             labelKey="tenants.appSettings.otherFunctions.supervision.title"
                             name={['settings', 'featureSupervisionEnabled']}
+                            disabled={lockedFromAbove('featureSupervisionEnabled')}
                             inline
                             disableLabels
                             confirmEnable={confirmSupervision.confirmEnable}
@@ -150,7 +246,7 @@ export const OtherFunctionsSettings = ({
                                         name={['settings', field]}
                                         inline
                                         disableLabels
-                                        disabled={capabilityUnavailable}
+                                        disabled={capabilityUnavailable || lockedFromAbove(field)}
                                     />
                                     {capabilityUnavailable && (
                                         <p className={styles.checkInfo}>

@@ -24,6 +24,7 @@ export interface SortPillProps<T extends SortPillValue = NameSortField> {
     compact?: boolean;
     /** Adds "Zuletzt aktualisiert" where the date column is hidden. */
     withDate?: boolean;
+    dateDirection?: 'asc' | 'desc';
 }
 
 /** Chooses what the name column sorts by: Nachname, Vorname or E-Mail (optionally the date). */
@@ -32,6 +33,7 @@ export const SortPill = <T extends SortPillValue = NameSortField>({
     onChange,
     compact = false,
     withDate = false,
+    dateDirection,
 }: SortPillProps<T>) => {
     const { t } = useTranslation();
     const menuId = useId();
@@ -40,6 +42,7 @@ export const SortPill = <T extends SortPillValue = NameSortField>({
     const label = (key: SortPillValue) =>
         t(`userTable.sortPill.${key}`, fields.find((field) => field.key === key)?.fallback ?? key);
     const byDate = value === 'lastUpdated';
+    const activeDateDirection = byDate && dateDirection;
 
     return (
         <>
@@ -56,7 +59,10 @@ export const SortPill = <T extends SortPillValue = NameSortField>({
                         ? t('userTable.sortPill.prefixAny', 'Sortiert nach')
                         : t('userTable.sortPill.prefix', 'Name nach')}
                 </span>
-                <strong className={styles.value}>{label(value)}</strong>
+                <strong className={activeDateDirection ? styles.dateValue : styles.value}>
+                    {label(value)}
+                    {activeDateDirection && <span>{t(`userTable.sortPill.lastUpdated.${activeDateDirection}`)}</span>}
+                </strong>
                 <ExpandMoreIcon className={styles.chevron} aria-hidden />
             </button>
             <Menu
