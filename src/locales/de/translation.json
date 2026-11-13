@@ -3888,5 +3888,6 @@
     "adviceSeekers.technicalOrphanHint": "Der Träger dieses technischen Kontos ist bereits gelöscht. Das Konto kann gelöscht werden.",
     "adviceSeekers.status.failedOn": "Letzter Versuch am {{date}}",
     "adviceSeekers.failureDetails": "Technische Details",
-    "adviceSeekers.delete.failure.technicalAccount": "technisches Konto eines bestehenden Trägers – wird zusammen mit dem Träger gelöscht"
+    "adviceSeekers.delete.failure.technicalAccount": "technisches Konto eines bestehenden Trägers – wird zusammen mit dem Träger gelöscht",
+    "adviceSeekers.noAccess": "Sie haben keinen Zugriff auf die Liste der Ratsuchenden."
 }

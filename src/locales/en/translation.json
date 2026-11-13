@@ -3888,5 +3888,6 @@
     "adviceSeekers.technicalOrphanHint": "The Träger of this technical account has already been deleted. The account can be deleted.",
     "adviceSeekers.status.failedOn": "Last attempt on {{date}}",
     "adviceSeekers.failureDetails": "Technical details",
-    "adviceSeekers.delete.failure.technicalAccount": "technical account of an existing Träger – deleted together with the Träger"
+    "adviceSeekers.delete.failure.technicalAccount": "technical account of an existing Träger – deleted together with the Träger",
+    "adviceSeekers.noAccess": "You have no access to the list of advice seekers."
 }

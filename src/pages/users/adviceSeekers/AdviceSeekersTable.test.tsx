@@ -7,7 +7,7 @@ import type { UserScopeFiltersProps } from '../management/UserScopeFilters';
 import { deleteAdviceSeekers, getAdviceSeekers } from '../../../api/adviceSeeker/adviceSeekers';
 import { AdviceSeekersTable } from './AdviceSeekersTable';
 
-const state = vi.hoisted(() => ({ canDelete: true, isSuperAdmin: false }));
+const state = vi.hoisted(() => ({ canRead: true, canDelete: true, isSuperAdmin: false }));
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -16,7 +16,11 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 vi.mock('../../../hooks/useUserRoles.hook', () => ({ useUserRoles: () => ({ isSuperAdmin: state.isSuperAdmin }) }));
-vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => state.canDelete }) }));
+vi.mock('../../../hooks/useUserPermission', () => ({
+    useUserPermissions: () => ({
+        can: (action: string) => (action === 'read' ? state.canRead : state.canDelete),
+    }),
+}));
 vi.mock('../../../hooks/useAgencysData', () => ({
     useAgenciesData: () => ({ data: { data: [{ id: 3, name: 'Schuldnerberatung Mitte' }] } }),
 }));
@@ -62,6 +66,7 @@ describe('AdviceSeekersTable', () => {
     const mockedDelete = deleteAdviceSeekers as unknown as Mock;
 
     beforeEach(() => {
+        state.canRead = true;
         state.canDelete = true;
         state.isSuperAdmin = false;
         mockedGet.mockReset().mockResolvedValue({ total: 3, data: [anna, bert, carl] });
@@ -124,9 +129,40 @@ describe('AdviceSeekersTable', () => {
         expect(within(failures).getByText('bert')).toBeTruthy();
         expect(within(failures).getByText(/adviceSeekers.delete.failure.failed/)).toBeTruthy();
 
-        const callsBefore = mockedGet.mock.calls.length;
+        // The list reloads: anna is now in deletion, bert (who failed) stays active and selectable.
+        mockedGet.mockResolvedValue({
+            total: 3,
+            data: [{ ...anna, deletionState: 'READ_ONLY_SAFEGUARD', deleteDate: '2026-11-13T15:00:00' }, bert, carl],
+        });
         fireEvent.click(screen.getByRole('button', { name: 'adviceSeekers.delete.close' }));
-        await waitFor(() => expect(mockedGet.mock.calls.length).toBeGreaterThan(callsBefore));
+
+        await waitFor(() => expect(within(rowOf('anna')).getByText('adviceSeekers.status.inDeletion')).toBeTruthy());
+        expect(within(rowOf('bert')).getByText('adviceSeekers.status.active')).toBeTruthy();
+        expect((within(rowOf('bert')).getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+        expect((within(rowOf('anna')).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+    });
+
+    it('cannot be closed while the deletion batch runs', async () => {
+        let finish: (value: unknown) => void = () => undefined;
+        mockedDelete.mockReturnValue(
+            new Promise((resolve) => {
+                finish = resolve;
+            }),
+        );
+        show();
+        await screen.findByText('anna');
+
+        fireEvent.click(within(rowOf('anna')).getByRole('button', { name: 'adviceSeekers.delete.one:anna' }));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'delete' }));
+
+        await waitFor(() => expect(mockedDelete).toHaveBeenCalled());
+        expect(within(dialog).queryByRole('button', { name: 'btn.cancel.uppercase' })).toBeNull();
+        fireEvent.keyDown(dialog, { key: 'Escape' });
+        expect(screen.getByRole('dialog')).toBeTruthy();
+
+        finish([{ id: 'a-1', result: 'marked' }]);
+        expect(await screen.findByRole('button', { name: 'adviceSeekers.delete.close' })).toBeTruthy();
     });
 
     it('shows why the nightly run kept an entry and keeps technical accounts of a live Träger', async () => {
@@ -170,6 +206,14 @@ describe('AdviceSeekersTable', () => {
             ).disabled,
         ).toBe(true);
         expect((within(technical).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+    });
+
+    it('asks for nothing and says so without the read permission', async () => {
+        state.canRead = false;
+        show();
+
+        expect(screen.getByRole('alert').textContent).toBe('adviceSeekers.noAccess');
+        expect(mockedGet).not.toHaveBeenCalled();
     });
 
     it('offers no deletion without the permission', async () => {

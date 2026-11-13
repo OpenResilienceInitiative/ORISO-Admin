@@ -47,7 +47,8 @@ export const AdviceSeekersTable = () => {
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
     const available = useScopeFilterAvailability(TypeOfUser.AdviceSeekers);
-    const canDelete = can(PermissionAction.Delete, Resource.AdviceSeeker);
+    const canRead = can(PermissionAction.Read, Resource.AdviceSeeker);
+    const canDelete = canRead && can(PermissionAction.Delete, Resource.AdviceSeeker);
 
     const [page, setPage] = useState(1);
     const [perPage, setPerPage] = useState(DEFAULT_PAGE_SIZE);
@@ -57,7 +58,8 @@ export const AdviceSeekersTable = () => {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [toDelete, setToDelete] = useState<AdviceSeekerData[] | null>(null);
 
-    const query = useAdviceSeekersData({ page, perPage, username, filters });
+    // Opened by direct URL without the permission: ask nothing, show that access is missing.
+    const query = useAdviceSeekersData({ page, perPage, username, filters, enabled: canRead });
     const rows = useMemo(() => query.data?.data ?? [], [query.data]);
 
     const agencies = useAgenciesData({ pageSize: ALL, enabled: available.canListAgencies });
@@ -172,6 +174,10 @@ export const AdviceSeekersTable = () => {
     ];
 
     const selected = rows.filter((seeker) => selectedIds.includes(seeker.id));
+
+    if (!canRead) {
+        return <p role="alert">{t('adviceSeekers.noAccess')}</p>;
+    }
 
     return (
         <div className={styles.wrapper}>

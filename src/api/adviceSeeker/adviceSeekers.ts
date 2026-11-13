@@ -65,6 +65,8 @@ export type AdviceSeekerDeletionResult =
 
 /** X-Reason of the 409 for a group-chat system account whose Träger still exists. */
 export const TECHNICAL_ACCOUNT_OF_EXISTING_TENANT = 'TECHNICAL_ACCOUNT_OF_EXISTING_TENANT';
+/** X-Reason of the 409 for an advice seeker who is already marked. */
+export const ASKER_ALREADY_MARKED_FOR_DELETION = 'ASKER_ALREADY_MARKED_FOR_DELETION';
 
 export interface AdviceSeekerDeletionOutcome {
     id: string;
@@ -95,11 +97,13 @@ export const deleteAdviceSeeker = async (id: string): Promise<AdviceSeekerDeleti
     } catch (error) {
         if (error instanceof Response) {
             const reason = error.headers.get(FETCH_ERRORS.X_REASON) ?? undefined;
-            if (error.status === 409) {
-                return {
-                    id,
-                    result: reason === TECHNICAL_ACCOUNT_OF_EXISTING_TENANT ? 'technicalAccount' : 'alreadyMarked',
-                };
+            // Only the server's own reasons count as "nothing to do"; any other 409 (e.g. a live-chat
+            // transition in progress) is a failure the admin has to see.
+            if (error.status === 409 && reason === ASKER_ALREADY_MARKED_FOR_DELETION) {
+                return { id, result: 'alreadyMarked' };
+            }
+            if (error.status === 409 && reason === TECHNICAL_ACCOUNT_OF_EXISTING_TENANT) {
+                return { id, result: 'technicalAccount' };
             }
             return { id, result: 'failed', status: error.status, ...(reason ? { reason } : {}) };
         }

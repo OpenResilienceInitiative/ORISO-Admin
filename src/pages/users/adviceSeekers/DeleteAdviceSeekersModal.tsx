@@ -84,13 +84,19 @@ export const DeleteAdviceSeekersModal = ({ seekers, onClose }: DeleteAdviceSeeke
             titleKey="adviceSeekers.delete.title"
             titleKeyOptions={{ count: seekers.length }}
             icon={<DeleteOutlineOutlinedIcon />}
+            // Once the batch runs, nothing closes the dialog: the result has to be seen, and closing
+            // early would hide which advice seekers could not be marked.
             closable={!running}
-            cancelLabelKey="btn.cancel.uppercase"
+            maskClosable={!running}
+            keyboard={!running}
+            cancelLabelKey={running ? undefined : 'btn.cancel.uppercase'}
             okLabelKey="delete"
             confirmLoading={running}
-            confirmDisabled={seekers.length === 0}
+            confirmDisabled={running || seekers.length === 0}
             onConfirm={confirm}
-            onClose={() => onClose(false)}
+            onClose={() => {
+                if (!running) onClose(false);
+            }}
         >
             <ul className={styles.nameList}>
                 {named.map((seeker) => (

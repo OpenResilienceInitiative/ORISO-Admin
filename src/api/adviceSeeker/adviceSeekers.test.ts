@@ -54,7 +54,9 @@ describe('adviceSeekers api', () => {
     it('marks each advice seeker in turn and reports every outcome', async () => {
         mockedFetchData
             .mockResolvedValueOnce({ status: 200 })
-            .mockRejectedValueOnce(new Response(null, { status: 409 }))
+            .mockRejectedValueOnce(
+                new Response(null, { status: 409, headers: { 'X-Reason': 'ASKER_ALREADY_MARKED_FOR_DELETION' } }),
+            )
             .mockRejectedValueOnce(new Error(FETCH_ERRORS.NO_MATCH))
             .mockRejectedValueOnce(new Response(null, { status: 500, headers: { 'X-Reason': 'KEYCLOAK_DOWN' } }));
 
@@ -92,5 +94,18 @@ describe('adviceSeekers api', () => {
 
         expect(outcome).toEqual({ id: 'group-chat-system-3', result: 'technicalAccount' });
         expect(mockedFetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.CONFLICT_WITH_RESPONSE);
+    });
+
+    it('reports any other conflict as a failure with its reason', async () => {
+        mockedFetchData
+            .mockRejectedValueOnce(new Response(null, { status: 409 }))
+            .mockRejectedValueOnce(new Response(null, { status: 409, headers: { 'X-Reason': 'SOMETHING_ELSE' } }));
+
+        const outcomes = await deleteAdviceSeekers(['a-1', 'a-2']);
+
+        expect(outcomes).toEqual([
+            { id: 'a-1', result: 'failed', status: 409 },
+            { id: 'a-2', result: 'failed', status: 409, reason: 'SOMETHING_ELSE' },
+        ]);
     });
 });

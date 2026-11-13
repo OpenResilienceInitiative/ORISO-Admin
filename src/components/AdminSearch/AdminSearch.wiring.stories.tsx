@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { getSessionAccessToken, getSessionRefreshToken, setSessionTokens } from '../../api/auth/tokenSessionStore';
 import {
+    adviceSeekerAdminEndpoint,
     agencyAdminsSearchEndpoint,
     agencyEndpointBase,
     tenantAdminEndpoint,
@@ -72,6 +73,8 @@ const handlers = [
     http.get(usersConsultantsSearchEndpoint, () => list([])),
     http.get(agencyAdminsSearchEndpoint, () => list([])),
     http.get(tenantAdminsSearchEndpoint, () => list([])),
+    // Advice seekers are found by their complete username only (ORISO-Admin#1521).
+    http.get(adviceSeekerAdminEndpoint, () => HttpResponse.json({ total: 0, _embedded: [] })),
 ];
 
 const FIXTURE_REFRESH_TOKEN = 'storybook-refresh-fixture';
