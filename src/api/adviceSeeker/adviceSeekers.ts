@@ -14,6 +14,14 @@ export interface AdviceSeekerData {
     deleteDate?: string;
     /** ACTIVE, READ_ONLY_SAFEGUARD, HARD_DELETE_PARTIAL_FAILURE, … */
     deletionState: string;
+    /** Why the last nightly run kept the entry: failed stores with their reasons. */
+    deletionFailureReason?: string;
+    /** ISO-8601, UTC, no offset. */
+    deletionFailedAt?: string;
+    /** A group-chat system account that owns a Träger's group chats, not a person. */
+    technical?: boolean;
+    /** False when the server would refuse marking it now (technical account of an existing Träger). */
+    deletable?: boolean;
 }
 
 export interface AdviceSeekerPage {
@@ -47,7 +55,16 @@ export const getAdviceSeekers = async ({ page, perPage, username, filters }: Adv
     return { total, data } as AdviceSeekerPage;
 };
 
-export type AdviceSeekerDeletionResult = 'marked' | 'alreadyMarked' | 'notFound' | 'forbidden' | 'failed';
+export type AdviceSeekerDeletionResult =
+    | 'marked'
+    | 'alreadyMarked'
+    | 'technicalAccount'
+    | 'notFound'
+    | 'forbidden'
+    | 'failed';
+
+/** X-Reason of the 409 for a group-chat system account whose Träger still exists. */
+export const TECHNICAL_ACCOUNT_OF_EXISTING_TENANT = 'TECHNICAL_ACCOUNT_OF_EXISTING_TENANT';
 
 export interface AdviceSeekerDeletionOutcome {
     id: string;
@@ -68,7 +85,7 @@ export const deleteAdviceSeeker = async (id: string): Promise<AdviceSeekerDeleti
             method: FETCH_METHODS.DELETE,
             skipAuth: false,
             responseHandling: [
-                FETCH_ERRORS.CONFLICT,
+                FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
                 FETCH_ERRORS.NO_MATCH,
                 FETCH_ERRORS.FORBIDDEN_SILENT,
                 FETCH_ERRORS.CATCH_ALL_SILENT,
@@ -78,11 +95,15 @@ export const deleteAdviceSeeker = async (id: string): Promise<AdviceSeekerDeleti
     } catch (error) {
         if (error instanceof Response) {
             const reason = error.headers.get(FETCH_ERRORS.X_REASON) ?? undefined;
+            if (error.status === 409) {
+                return {
+                    id,
+                    result: reason === TECHNICAL_ACCOUNT_OF_EXISTING_TENANT ? 'technicalAccount' : 'alreadyMarked',
+                };
+            }
             return { id, result: 'failed', status: error.status, ...(reason ? { reason } : {}) };
         }
         switch ((error as Error)?.message) {
-            case FETCH_ERRORS.CONFLICT:
-                return { id, result: 'alreadyMarked' };
             case FETCH_ERRORS.NO_MATCH:
                 return { id, result: 'notFound' };
             case FETCH_ERRORS.NOT_ALLOWED:

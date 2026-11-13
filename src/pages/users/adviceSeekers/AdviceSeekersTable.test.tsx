@@ -129,6 +129,49 @@ describe('AdviceSeekersTable', () => {
         await waitFor(() => expect(mockedGet.mock.calls.length).toBeGreaterThan(callsBefore));
     });
 
+    it('shows why the nightly run kept an entry and keeps technical accounts of a live Träger', async () => {
+        mockedGet.mockResolvedValue({
+            total: 2,
+            data: [
+                {
+                    id: 'a-5',
+                    username: 'eve',
+                    agencyIds: [],
+                    deletionState: 'HARD_DELETE_PARTIAL_FAILURE',
+                    deleteDate: '2026-11-10T21:30:00',
+                    deletionFailureReason:
+                        'DATABASE: Unable to delete user: still referenced by session (session_ibfk_1)',
+                    deletionFailedAt: '2026-11-13T03:00:12',
+                },
+                {
+                    id: 'group-chat-system-3',
+                    username: 'group-chat-system-3',
+                    agencyIds: [],
+                    deletionState: 'ACTIVE',
+                    technical: true,
+                    deletable: false,
+                },
+            ],
+        });
+        show();
+        await screen.findByText('eve');
+
+        expect(within(rowOf('eve')).getByText('adviceSeekers.status.deletionFailed')).toBeTruthy();
+        expect(within(rowOf('eve')).getByTestId('advice-seeker-failure-reason').textContent).toContain(
+            'still referenced by session (session_ibfk_1)',
+        );
+        const technical = rowOf('group-chat-system-3');
+        expect(within(technical).getByText('adviceSeekers.technical')).toBeTruthy();
+        expect(
+            (
+                within(technical).getByRole('button', {
+                    name: 'adviceSeekers.delete.one:group-chat-system-3',
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(true);
+        expect((within(technical).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
+    });
+
     it('offers no deletion without the permission', async () => {
         state.canDelete = false;
         show();

@@ -43,13 +43,36 @@ const SEEKERS: AdviceSeekerData[] = [
         deleteDate: '2026-11-12T21:30:00',
     },
     {
-        id: 'a-4',
-        username: 'group-chat-system-17',
+        id: 'a-5',
+        username: 'schuldenfrei_2026',
+        tenantId: 3,
+        agencyIds: [101],
+        deletionState: 'HARD_DELETE_PARTIAL_FAILURE',
+        createDate: '2026-07-14T11:20:00',
+        deleteDate: '2026-11-10T21:30:00',
+        deletionFailureReason: 'DATABASE: Unable to delete user: still referenced by session (session_ibfk_1)',
+        deletionFailedAt: '2026-11-13T03:00:12',
+    },
+    {
+        id: 'group-chat-system-3',
+        username: 'group-chat-system-3',
         tenantId: 3,
         agencyIds: [],
-        deletionState: 'HARD_DELETE_PARTIAL_FAILURE',
+        deletionState: 'ACTIVE',
+        createDate: '2026-05-02T08:00:00',
+        technical: true,
+        deletable: false,
+    },
+    {
+        id: 'group-chat-system-17',
+        username: 'group-chat-system-17',
+        tenantId: 17,
+        agencyIds: [],
+        deletionState: 'ACTIVE',
         createDate: '2026-08-01T10:00:00',
-        deleteDate: '2026-11-10T21:30:00',
+        technical: true,
+        // Its Träger 17 was deleted without it (Staging, Oct 2026): it may go now.
+        deletable: true,
     },
 ];
 
@@ -79,7 +102,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Active, in-deletion and failed advice seekers side by side. */
+/** Active, in-deletion and failed advice seekers, and technical group-chat accounts. */
 export const Overview: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);

@@ -3882,5 +3882,11 @@
     "adviceSeekers.delete.failedIntro": "Diese konnten nicht markiert werden:",
     "adviceSeekers.delete.failure.forbidden": "keine Berechtigung für diese Person",
     "adviceSeekers.delete.failure.failed": "Fehler beim Markieren (Grund: {{reason}})",
-    "adviceSeekers.delete.close": "Schließen"
+    "adviceSeekers.delete.close": "Schließen",
+    "adviceSeekers.technical": "Technisches Konto",
+    "adviceSeekers.technicalHint": "Gehört zu den Gruppenchats des Trägers und wird zusammen mit dem Träger gelöscht.",
+    "adviceSeekers.technicalOrphanHint": "Der Träger dieses technischen Kontos ist bereits gelöscht. Das Konto kann gelöscht werden.",
+    "adviceSeekers.status.failedOn": "Letzter Versuch am {{date}}",
+    "adviceSeekers.failureDetails": "Technische Details",
+    "adviceSeekers.delete.failure.technicalAccount": "technisches Konto eines bestehenden Trägers – wird zusammen mit dem Träger gelöscht"
 }

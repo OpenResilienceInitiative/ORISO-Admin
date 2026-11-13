@@ -19,3 +19,43 @@
     overflow-y: auto;
     overflow-wrap: anywhere;
 }
+
+.username {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.name {
+    overflow-wrap: anywhere;
+}
+
+.technical {
+    padding: 0 6px;
+    border: 1px solid currentcolor;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.failure {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    code {
+        display: block;
+        max-width: 320px;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+}
+
+.failureMeta {
+    color: var(--admin-form-muted-text);
+    font-size: 12px;
+}

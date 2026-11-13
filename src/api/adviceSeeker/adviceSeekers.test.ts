@@ -54,7 +54,7 @@ describe('adviceSeekers api', () => {
     it('marks each advice seeker in turn and reports every outcome', async () => {
         mockedFetchData
             .mockResolvedValueOnce({ status: 200 })
-            .mockRejectedValueOnce(new Error(FETCH_ERRORS.CONFLICT))
+            .mockRejectedValueOnce(new Response(null, { status: 409 }))
             .mockRejectedValueOnce(new Error(FETCH_ERRORS.NO_MATCH))
             .mockRejectedValueOnce(new Response(null, { status: 500, headers: { 'X-Reason': 'KEYCLOAK_DOWN' } }));
 
@@ -81,5 +81,16 @@ describe('adviceSeekers api', () => {
 
         expect(outcome).toEqual({ id: 'a-9', result: 'forbidden' });
         expect(mockedFetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.FORBIDDEN_SILENT);
+    });
+
+    it('reports a technical account of an existing Träger as such', async () => {
+        mockedFetchData.mockRejectedValueOnce(
+            new Response(null, { status: 409, headers: { 'X-Reason': 'TECHNICAL_ACCOUNT_OF_EXISTING_TENANT' } }),
+        );
+
+        const [outcome] = await deleteAdviceSeekers(['group-chat-system-3']);
+
+        expect(outcome).toEqual({ id: 'group-chat-system-3', result: 'technicalAccount' });
+        expect(mockedFetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.CONFLICT_WITH_RESPONSE);
     });
 });

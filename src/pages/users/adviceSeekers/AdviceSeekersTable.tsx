@@ -85,19 +85,49 @@ export const AdviceSeekersTable = () => {
     };
 
     const columns: ColumnsType<AdviceSeekerData> = [
-        { key: 'username', title: t('adviceSeekers.column.username'), dataIndex: 'username', ellipsis: true },
+        {
+            key: 'username',
+            title: t('adviceSeekers.column.username'),
+            render: (_, seeker) => (
+                <span className={styles.username}>
+                    <span className={styles.name}>{seeker.username}</span>
+                    {seeker.technical && (
+                        <Tooltip
+                            title={t(
+                                seeker.deletable ? 'adviceSeekers.technicalOrphanHint' : 'adviceSeekers.technicalHint',
+                            )}
+                        >
+                            <span className={styles.technical}>{t('adviceSeekers.technical')}</span>
+                        </Tooltip>
+                    )}
+                </span>
+            ),
+        },
         {
             key: 'status',
             title: t('adviceSeekers.column.status'),
             render: (_, seeker) => {
                 const status = adviceSeekerStatus(seeker);
                 const tag = <ToneBadge {...STATUS_BADGE[status]}>{t(`adviceSeekers.status.${status}`)}</ToneBadge>;
-                return seeker.deleteDate ? (
+                const badge = seeker.deleteDate ? (
                     <Tooltip title={t('adviceSeekers.status.markedOn', { date: formatDate(seeker.deleteDate) })}>
                         {tag}
                     </Tooltip>
                 ) : (
                     tag
+                );
+                if (status !== 'deletionFailed' || !seeker.deletionFailureReason) return badge;
+                return (
+                    <div className={styles.failure}>
+                        {badge}
+                        <span className={styles.failureMeta}>
+                            {t('adviceSeekers.status.failedOn', { date: formatDate(seeker.deletionFailedAt) })}
+                        </span>
+                        <details>
+                            <summary>{t('adviceSeekers.failureDetails')}</summary>
+                            <code data-testid="advice-seeker-failure-reason">{seeker.deletionFailureReason}</code>
+                        </details>
+                    </div>
                 );
             },
         },

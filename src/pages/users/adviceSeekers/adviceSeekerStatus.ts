@@ -27,6 +27,9 @@ export const adviceSeekerStatus = ({
     return 'active';
 };
 
-/** Only an active advice seeker can be marked; the others are already on their way out or back. */
-export const canMarkForDeletion = (seeker: { deletionState?: string; deleteDate?: string }) =>
-    adviceSeekerStatus(seeker) === 'active';
+/**
+ * Only an active entry the server would accept can be marked: the others are already on their way
+ * out or back, and a technical account of an existing Träger goes with the Träger.
+ */
+export const canMarkForDeletion = (seeker: { deletionState?: string; deleteDate?: string; deletable?: boolean }) =>
+    adviceSeekerStatus(seeker) === 'active' && seeker.deletable !== false;
