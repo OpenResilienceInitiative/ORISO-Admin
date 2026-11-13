@@ -2444,8 +2444,9 @@ export const Statistic = () => {
                                             : []),
                                     ]}
                                 />
-                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error there is nothing to export */}
-                                {!allTargetsSuppressed && !hasStatisticLoadError && (
+                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error, or while the
+                                    hint stands in for the figures, there is nothing to export */}
+                                {!allTargetsSuppressed && !hasStatisticLoadError && !agencyLevelHint && (
                                     <div className="statisticDashboard__export">
                                         <CSVLink
                                             className="statisticDashboard__exportLink"

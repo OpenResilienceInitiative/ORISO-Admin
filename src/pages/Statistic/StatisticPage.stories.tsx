@@ -541,6 +541,8 @@ export const PlatformAdminOlderBackend: Story = {
         await pickMusterstadt(canvasElement);
         const hint = await within(canvasElement).findByTestId('agency-level-hint');
         await expect(hint).toHaveTextContent('erst mit dem nächsten Server-Update');
+        // no figures on screen, so no file of them either
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
     },
 };
 
