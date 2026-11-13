@@ -233,6 +233,28 @@ describe('statisticDashboardData', () => {
         expect(metrics.textMessagesTotal).toBeNull();
     });
 
+    it('keeps the combined text-message total withheld across targets when one target has a withheld part', () => {
+        const base = agencyTarget({});
+        const withheldPart = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const fullyTracked = agencyTarget({
+            agencyId: 12,
+            metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: 4, messagesAdviceSeekersCurrentMonth: 6 },
+        });
+        const { statisticsById } = buildStatisticData(
+            tenantScopeResponse([withheldPart, fullyTracked]),
+            emptyLookups,
+            now,
+        );
+
+        const combined = addTrackedMetricValues(
+            statisticsById['agency-11'].metrics.textMessagesTotal,
+            statisticsById['agency-12'].metrics.textMessagesTotal,
+        );
+
+        expect(statisticsById['agency-12'].metrics.textMessagesTotal).toBe(10);
+        expect(combined).toBeNull();
+    });
+
     it('treats a backend without communication counts as not tracking them', () => {
         const { metrics } = buildStatisticData(tenantScopeResponse([agencyTarget({})]), emptyLookups, now)
             .statisticsById['agency-11'];
