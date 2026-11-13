@@ -20,7 +20,10 @@ const ALL = 10000;
 export const useScopeFilterAvailability = (sectionId: TypeOfUser) => {
     const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { can } = useUserPermissions();
-    const centreTab = sectionId === TypeOfUser.Consultants || sectionId === TypeOfUser.AgencyAdmins;
+    const centreTab =
+        sectionId === TypeOfUser.Consultants ||
+        sectionId === TypeOfUser.AgencyAdmins ||
+        sectionId === TypeOfUser.AdviceSeekers;
     return {
         tenant: isSuperAdmin && (centreTab || sectionId === TypeOfUser.TenantAdmins),
         agency: centreTab,

@@ -40,6 +40,8 @@ export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
+/** Advice seekers for the admin interface: GET lists, DELETE /{id} marks one for deletion (ORISO-Admin#1521). */
+export const adviceSeekerAdminEndpoint = `${userServiceURL}/service/useradmin/askers`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
 // SigNoz via UserService's existing structured logger.
 export const errorReportEndpoint = `${userServiceURL}/service/error-reports`;
@@ -133,6 +135,7 @@ const routePathNames = {
     permissionsSettings: '/admin/theme-settings/permissions',
     users: '/admin/users',
     consultants: '/admin/users/consultants',
+    adviceSeekers: '/admin/users/advice-seekers',
     agency: '/admin/agency',
     agencyAdmins: '/admin/users/agency-admins',
     agencyEdit: '/admin/agency/edit',

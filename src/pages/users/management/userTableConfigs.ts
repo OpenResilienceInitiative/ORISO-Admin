@@ -126,6 +126,28 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
             col('actions', true, false, 80),
         ],
     },
+    // Rendered by AdviceSeekersTable, not the generic table: advice seekers have no names or
+    // e-mail to show. The entry keeps the section's permission in the shared lookups.
+    [TypeOfUser.AdviceSeekers]: {
+        sectionId: TypeOfUser.AdviceSeekers,
+        sectionKind: 'users',
+        readResource: Resource.AdviceSeeker,
+        createResource: Resource.AdviceSeeker,
+        updateResource: Resource.AdviceSeeker,
+        defaultSort,
+        showAgencyExpand: false,
+        showStatus: true,
+        editPathPrefix: routePathNames.adviceSeekers,
+        searchPlaceholderKey: 'adviceSeekers.searchPlaceholder',
+        emptyTextKey: 'adviceSeekers.empty',
+        columns: [
+            col('username', true, false, 220),
+            col('status', true, false, 160),
+            col('agency', true, false, 220),
+            col('tenant', true, false, 120),
+            col('actions', true, false, 80),
+        ],
+    },
     [TypeOfUser.AgencyAdmins]: {
         sectionId: TypeOfUser.AgencyAdmins,
         sectionKind: 'users',
