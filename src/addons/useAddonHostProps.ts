@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -5,7 +6,14 @@ import { getAccessTokenForRequests } from '../api/auth/auth';
 import parseJwt from '../utils/parseJWT';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
 import { addonApiCall } from './addonApiCall';
-import { ADDON_CONTRACT, ADMIN_PAGE_SLOT, type AddonApp, type AddonHostProps, type AvailableAddon } from './addonTypes';
+import {
+    ADDON_CONTRACT,
+    ADMIN_PAGE_SLOT,
+    type AddonApp,
+    type AddonHostProps,
+    type AddonNotice,
+    type AvailableAddon,
+} from './addonTypes';
 
 /** The tenant colours the admin theme set as custom properties on the root element. */
 export const readThemeTokens = (root: HTMLElement = document.documentElement) => {
@@ -26,6 +34,26 @@ export const readAddonUser = (token: string | null | undefined = getAccessTokenF
         username: typeof payload?.preferred_username === 'string' ? payload.preferred_username : '',
         roles: Array.isArray(payload?.realm_access?.roles) ? (payload.realm_access.roles as string[]) : [],
     };
+};
+
+/** Longest text an add-on can show; longer text is cut, so a notice stays a notice. */
+const NOTICE_MAX_LENGTH = 300;
+
+const plainText = (value: unknown) => (typeof value === 'string' ? value.slice(0, NOTICE_MAX_LENGTH) : '');
+
+/**
+ * Shows an add-on's `notify` call with antd's `message`, as ORISO-Admin does for its own
+ * feedback. Unknown types become `info`; title and text are plain strings (rendered as text).
+ */
+export const showAddonNotice = (notice: AddonNotice, show: typeof message = message) => {
+    const text = plainText(notice?.text);
+    if (!text) {
+        return;
+    }
+    const title = plainText(notice.title);
+    const content = title ? `${title}: ${text}` : text;
+    const type = (['success', 'info', 'warning', 'error'] as const).includes(notice.type) ? notice.type : 'info';
+    show[type]({ content, duration: type === 'error' || type === 'warning' ? 8 : 4 });
 };
 
 export interface AddonTenant {
@@ -57,6 +85,7 @@ export const useAddonHostProps = (
             theme: readThemeTokens(),
             api: addonApiCall(addon),
             navigate: goTo,
+            notify: (notice: AddonNotice) => showAddonNotice(notice),
         }),
         [addon, app.id, tenant.id, tenant.name, locale, goTo],
     );

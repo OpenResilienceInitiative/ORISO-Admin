@@ -156,6 +156,16 @@ export interface AddonAuditQuery {
 }
 
 /** What every lifecycle function of an add-on bundle receives. */
+/**
+ * A short on-screen message for the person using the add-on, shown with the host's own
+ * notifications. Plain text only; the add-on translates it.
+ */
+export interface AddonNotice {
+    type: 'success' | 'info' | 'warning' | 'error';
+    text: string;
+    title?: string;
+}
+
 export interface AddonHostProps {
     contract: typeof ADDON_CONTRACT;
     domElement: HTMLElement;
@@ -170,6 +180,8 @@ export interface AddonHostProps {
     /** Calls the add-on's own API with the admin's login. */
     api: (path: string, init?: RequestInit) => Promise<Response>;
     navigate: (to: string) => void;
+    /** Shows a short message through the host's notifications. */
+    notify: (notice: AddonNotice) => void;
 }
 
 /** The module an add-on bundle exports; same shape as a single-spa parcel. */
