@@ -460,7 +460,7 @@ export const TemporarilyUnavailable: Story = {
  * every Beratungsstelle is in the picker, and picking one loads its Träger's dashboard (`?tenantId=`).
  */
 let drillRequests: string[] = [];
-const platformDirectoryHandlers = (answerTenant: boolean) => [
+const platformDirectoryHandlers = (answerTenant: boolean, withMusterstadt = true) => [
     http.get(`${adminStatisticsDashboardEndpoint}*`, ({ request }) => {
         const tenantId = new URL(request.url).searchParams.get('tenantId');
         if (tenantId) drillRequests.push(tenantId);
@@ -469,7 +469,7 @@ const platformDirectoryHandlers = (answerTenant: boolean) => [
                 ...statistics('LIVE', [
                     target('TENANT', 2, null, 2),
                     // a factor no other row has: 105 enquiries this month exist only for Musterstadt
-                    target('AGENCY', 2, 11, 1.25),
+                    ...(withMusterstadt ? [target('AGENCY', 2, 11, 1.25)] : []),
                     target('AGENCY', 2, 12, 0.5),
                 ]),
                 scope: 'TENANT',
@@ -528,6 +528,26 @@ export const PlatformAdminFindsBeratungsstelle: Story = {
 export const PlatformAdminFindsBeratungsstellePhone: Story = {
     ...PlatformAdminFindsBeratungsstelle,
     globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/**
+ * The Träger's answer lacks the picked Beratungsstelle (new, deleted, or withheld): the page says so
+ * instead of showing the Träger's total under the Beratungsstelle's name.
+ */
+export const PlatformAdminPickWithoutFigures: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true, false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('Für diese Beratungsstelle liegen noch keine Zahlen vor');
+        // Beispielort's 42 enquiries (factor 0.5) must not show up as Musterstadt's figures
+        await expect(within(canvasElement).queryByText('Anfragen gesamt')).toBeNull();
+    },
 };
 
 /** Until the UserService knows `?tenantId=`, the page says so instead of showing an empty level. */

@@ -420,6 +420,8 @@ const AGENCY_LEVEL_HINTS = {
     pick: 'Wählen Sie unter „Ansicht“ eine Beratungsstelle oder einen Träger. Dann sehen Sie die Zahlen seiner Beratungsstellen.',
     directoryFailed:
         'Die Liste der Beratungsstellen konnte nicht geladen werden. Bitte laden Sie die Seite neu oder wählen Sie einen Träger.',
+    selectionUnavailable:
+        'Für diese Beratungsstelle liegen noch keine Zahlen vor. Wählen Sie eine andere Beratungsstelle oder ihren Träger.',
     unsupported: 'Zahlen je Beratungsstelle gibt es für Plattform-Admins erst mit dem nächsten Server-Update.',
     failed: 'Die Zahlen dieser Beratungsstellen konnten nicht geladen werden. Bitte versuchen Sie es später noch einmal.',
 } as const;
@@ -1979,11 +1981,19 @@ export const Statistic = () => {
     // A pick kept from the Beratungsstellen level must not cover the platform figures while it loads.
     const isStatisticLoading = isDashboardLoading || (drill === 'loading' && activeScope !== 'platform');
     // Platform admin on the Beratungsstellen level: nothing picked yet, the list of Beratungsstellen did not
-    // load, or the Träger's numbers did not come.
-    let agencyLevelHint: 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | null = null;
+    // load, the Träger's numbers did not come, or they came without the picked Beratungsstelle (new, deleted,
+    // or withheld). In that last case the Träger's total must not appear under the Beratungsstelle's name.
+    let agencyLevelHint: 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | 'selectionUnavailable' | null = null;
     if (isSuperAdmin && activeScope === 'agency' && !isStatisticLoading) {
+        const pickedAgencyIds = selectedFilterTargetIdsByScope.agency;
+        const answeredAgencyIds = new Set(statisticData.targetsByScope.agency.map((target) => target.id));
         if (drillTenantId == null) agencyLevelHint = hasAgencyDirectoryError ? 'directoryFailed' : 'pick';
         else if (drill === 'unsupported' || drill === 'failed') agencyLevelHint = drill;
+        else if (
+            pickedAgencyIds.length > 0 &&
+            !pickedAgencyIds.some((id) => answeredAgencyIds.has(id) && Boolean(statisticData.statisticsById[id]))
+        )
+            agencyLevelHint = 'selectionUnavailable';
     }
     const navigate = useNavigate();
     // A fixed stand is read from its own time: its "this week" must not slide with today.
