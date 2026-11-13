@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { ReactNode } from 'react';
 
 const tenant = vi.hoisted(() => ({ current: { name: 'Alter Name' } as Record<string, unknown> }));
@@ -16,6 +16,8 @@ vi.mock('../../../../hooks/useAddOrUpdateTenant.hook', () => ({ useAddOrUpdateTe
 vi.mock('../../../../hooks/useAddOrUpdateTenantAdmin.hook', () => ({
     useAddOrUpdateTenantAdmin: () => ({ mutate: vi.fn() }),
 }));
+// The status block has its own tests and needs a QueryClient; this one is about the name field.
+vi.mock('../../../../components/EntityStatusCard', () => ({ ManagedEntityStatus: () => null }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
     GeneralSettings: ({ leadingTiles }: { leadingTiles?: ReactNode }) => <div>{leadingTiles}</div>,
 }));

@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantsList } from './index';
 
 const mocks = vi.hoisted(() => ({
@@ -15,6 +15,15 @@ const mocks = vi.hoisted(() => ({
     can: (() => true) as (action: string, resource: string) => boolean,
 }));
 
+// The subdomain switch is read through this mock, so each test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+
 const translations: Record<string, string> = {
     'tenants.list.empty': 'No tenants',
     'tenants.list.maxConsultants': 'Max. allowed consultants',
@@ -22,6 +31,7 @@ const translations: Record<string, string> = {
     'tenants.list.new': 'New',
     'tenants.list.subdomain': 'Subdomain',
     'tenants.list.tenantId': 'Tenant ID',
+    'tenants.list.tenantIdShort': 'ID',
     'tenants.list.adminEmails': 'Admin e-mail',
     'tenants.list.created': 'Created',
     'tenants.list.noAdmins': 'No admin',
@@ -151,13 +161,14 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             multitenancyWithSingleDomainEnabled: true,
         };
         mocks.can = () => true;
+        subdomainFeature.finished = false;
         withTenants([]);
         setWidth(1440);
     });
 
     afterEach(() => setWidth(1024));
 
-    it('shows the first admin e-mail, how many more there are, licences and both dates', () => {
+    it('shows the first admin e-mail, how many more there are and both dates', () => {
         withTenants([tenant()]);
 
         render(<TenantsList />);
@@ -166,7 +177,6 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(within(row).getByText('21')).toBeInTheDocument();
         expect(within(row).getByText('admin@nord.example')).toBeInTheDocument();
         expect(within(row).getByText('+2')).toBeInTheDocument();
-        expect(within(row).getByText('40')).toBeInTheDocument();
         expect(within(row).getByText('12/03/2025')).toBeInTheDocument();
     });
 
@@ -196,26 +206,26 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
 
         render(<TenantsList />);
 
-        fireEvent.click(screen.getByRole('button', { name: /^Tenant ID/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^ID/ }));
         await waitFor(() =>
             expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
                 expect.objectContaining({ dir: 'ASC', sort: 'ID', page: 1 }),
             ),
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /^Max. allowed consultants/ }));
-        await waitFor(() =>
-            expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
-                expect.objectContaining({ dir: 'ASC', sort: 'BERATERCOUNT' }),
-            ),
-        );
+        // Subdomain, maximum of counsellors and the dates are no columns of the wide row.
+        expect(screen.queryByRole('columnheader', { name: /^Max. allowed consultants/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /^Created/ })).not.toBeInTheDocument();
     });
 
-    it('shows the subdomain only when Träger have their own domain', () => {
+    it('keeps the subdomain out of the details (not technically finished), also with own domains', () => {
         withTenants([tenant()]);
         const { unmount } = render(<TenantsList />);
-        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.getByText('Max. allowed consultants')).toBeInTheDocument();
+        expect(screen.getByText('40')).toBeInTheDocument();
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
         unmount();
 
         mocks.settings = {
@@ -223,7 +233,27 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             multitenancyWithSingleDomainEnabled: false,
         };
         render(<TenantsList />);
-        expect(screen.getByRole('columnheader', { name: /^Subdomain/ })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the subdomain in the details only when Träger have their own domain, once subdomains are finished', () => {
+        subdomainFeature.finished = true;
+        withTenants([tenant()]);
+        const { unmount } = render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        unmount();
+
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: '',
+            multitenancyWithSingleDomainEnabled: false,
+        };
+        render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.getByText('Subdomain')).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
     });
 
     it('opens a Träger for editing', () => {

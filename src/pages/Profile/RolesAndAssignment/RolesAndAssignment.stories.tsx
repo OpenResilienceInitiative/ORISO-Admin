@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { RolesAndAssignment } from './index';
 
 const meta = {
-    title: 'Pages/Profile/RolesAndAssignment',
+    title: 'Settings/Mein Account/RolesAndAssignment',
+    id: 'pages-profile-rolesandassignment',
     component: RolesAndAssignment,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin', 'user-admin', 'consultant'])],

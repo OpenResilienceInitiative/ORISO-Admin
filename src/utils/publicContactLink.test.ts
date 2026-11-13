@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from './publicContactLink';
 
 // ORISO-UserService#1534: same rule as the UserService (PublicSlugFormat).

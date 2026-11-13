@@ -77,7 +77,8 @@ const platformAdminHandlers = [
 const oneTopicSwitchName = /genau einen Fachbereich/;
 
 const meta = {
-    title: 'Organisms/Pages/Settings/GlobalLoginSettings',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/GlobalLoginSettings',
+    id: 'organisms-pages-settings-globalloginsettings',
     component: GlobalLoginSettingsPage,
     parameters: { layout: 'fullscreen' },
     // Tenant-scoped admin (not super-admin) so the superadmin-only translation-keys
@@ -160,7 +161,7 @@ export const TenantAdmin: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const oneTopicSwitch = await canvas.findByRole('switch', { name: oneTopicSwitchName });
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(oneTopicCard(oneTopicSwitch).queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };

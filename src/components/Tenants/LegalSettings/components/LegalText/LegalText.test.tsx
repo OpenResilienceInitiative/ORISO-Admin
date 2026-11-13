@@ -1,7 +1,8 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeAll, beforeEach } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../../../Snackbar';
 import { LegalText } from './index';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -53,11 +54,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../hooks/useLegalTextReadOnlyReason', () => ({
     useLegalTextReadOnlyReason: () => mocks.readOnlyReason,
 }));
-
-vi.mock('antd', async () => {
-    const antd = await vi.importActual<typeof import('antd')>('antd');
-    return { ...antd, notification: { ...antd.notification, success: mocks.notifySuccess } };
-});
 
 const tenantFormData = () => {
     const key = [mocks.imprint, mocks.storedConsent, mocks.activeLanguages];
@@ -198,7 +194,9 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
             // Everything the tenant editor passes beyond the props modelled above.
             // Read by the "consent chooser stays off this level" test below.
             data-extra-props={Object.keys(rest).sort().join(',')}
+            data-hide-header={String(rest.hideHeader)}
         >
+            {rest.headerAction as React.ReactNode}
             {helpSlot}
             {snackbarSlot}
             {comparison?.open && (
@@ -274,6 +272,7 @@ beforeEach(() => {
     mocks.versions = [];
     mocks.historyState = 'available';
     mocks.notifySuccess.mockReset();
+    vi.spyOn(snackbar, 'success').mockImplementation(mocks.notifySuccess);
     mocks.readOnlyReason = { key: 'tenants.legal.readOnly.managedByTraeger', platformLock: false };
     mocks.dataCache = undefined;
     window.localStorage.clear();
@@ -583,90 +582,66 @@ describe('LegalText — consent template chooser (deliberately absent)', () => {
     });
 });
 
-describe('LegalText hint snackbar (imprint / privacy)', () => {
-    it('shows the imprint hint as a dismissible snackbar (not duplicated inline)', () => {
+describe('LegalText hint (imprint / privacy)', () => {
+    const renderHint = (type: 'imprint' | 'privacy') =>
         render(
             <LegalText
                 tenantId="1"
                 fieldName={['content', 'imprint']}
-                titleKey="imprint.title"
-                legalType="imprint"
-                placeHolderKey="settings.imprint.placeholder"
+                titleKey={`${type}.title`}
+                legalType={type}
+                placeHolderKey={`settings.${type}.placeholder`}
             />,
         );
 
-        expect(screen.getByText('legal.help.imprint.platform.published.text')).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('legal.help.imprint.platform.published.hint');
-        expect(screen.getAllByText('legal.help.imprint.platform.published.hint')).toHaveLength(1);
-    });
+    it.each(['imprint', 'privacy'] as const)(
+        'shows the %s tip as plain tile text with a hide link, never as a pop-up',
+        (type) => {
+            renderHint(type);
 
-    it('shows the privacy hint as a dismissible snackbar (not duplicated inline)', () => {
-        render(
-            <LegalText
-                tenantId="1"
-                fieldName={['content', 'imprint']}
-                titleKey="privacy.title"
-                legalType="privacy"
-                placeHolderKey="settings.privacy.placeholder"
-            />,
-        );
+            expect(screen.getByText(`legal.help.${type}.platform.published.text`)).toBeInTheDocument();
+            expect(
+                screen.getAllByText(new RegExp(`legal\\.help\\.${type}\\.platform\\.published\\.hint`)),
+            ).toHaveLength(1);
+            expect(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' })).toBeInTheDocument();
+            // Permanent help is not an event: nothing is raised on the pop-up channel.
+            expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
+        },
+    );
 
-        expect(screen.getByText('legal.help.privacy.platform.published.text')).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('legal.help.privacy.platform.published.hint');
-        expect(screen.getAllByText('legal.help.privacy.platform.published.hint')).toHaveLength(1);
-    });
-
-    it('"nicht mehr anzeigen" hides the snackbar and persists across remounts', async () => {
+    it('"nicht mehr anzeigen" hides the tip and persists across remounts', async () => {
         const user = userEvent.setup();
-        const { unmount } = render(
-            <LegalText
-                tenantId="1"
-                fieldName={['content', 'imprint']}
-                titleKey="imprint.title"
-                legalType="imprint"
-                placeHolderKey="settings.imprint.placeholder"
-            />,
-        );
+        const { unmount } = renderHint('imprint');
 
-        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        await user.click(await screen.findByRole('button', { name: 'legal.help.snackbar.dismiss' }));
+        expect(screen.queryByText('legal.help.imprint.platform.published.hint')).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.imprint.hint.dismissed.1:user-1')).toBe('true');
 
         unmount();
-        render(
-            <LegalText
-                tenantId="1"
-                fieldName={['content', 'imprint']}
-                titleKey="imprint.title"
-                legalType="imprint"
-                placeHolderKey="settings.imprint.placeholder"
-            />,
-        );
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        // Hint falls back to the inline help row once the snackbar is dismissed.
-        expect(screen.getByText('legal.help.imprint.platform.published.hint')).toBeInTheDocument();
+        renderHint('imprint');
+        expect(screen.queryByText('legal.help.imprint.platform.published.hint')).not.toBeInTheDocument();
+        // The description stays: only the tip is hidden.
+        expect(screen.getByText('legal.help.imprint.platform.published.text')).toBeInTheDocument();
     });
 
-    it('"X" hides the snackbar for the session only', async () => {
-        const user = userEvent.setup();
-        render(
-            <LegalText
-                tenantId="1"
-                fieldName={['content', 'imprint']}
-                titleKey="privacy.title"
-                legalType="privacy"
-                placeHolderKey="settings.privacy.placeholder"
-            />,
-        );
+    it('still honours a session-only close from an earlier version without touching localStorage', async () => {
+        window.sessionStorage.setItem('oriso-admin.legal.privacy.hint.closed.1:user-1', 'true');
+        renderHint('privacy');
 
-        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        await screen.findByText('legal.help.privacy.platform.published.text');
+        expect(screen.queryByText('legal.help.privacy.platform.published.hint')).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.privacy.hint.dismissed.1:user-1')).toBeNull();
-        expect(window.sessionStorage.getItem('oriso-admin.legal.privacy.hint.closed.1:user-1')).toBe('true');
     });
 });
 
 describe('LegalText — tenant server draft', () => {
+    // Pop-ups share one channel and show one at a time. The permanent help hint would sit in front of
+    // the draft notices under test, so these tests start with it dismissed (its own tests are above).
+    beforeEach(() => {
+        window.localStorage.setItem('oriso-admin.legal.imprint.hint.dismissed.1:user-1', 'true');
+        window.localStorage.setItem('oriso-admin.legal.privacy.hint.dismissed.1:user-1', 'true');
+    });
+
     const renderImprint = () =>
         render(
             <LegalText
@@ -831,7 +806,7 @@ describe('LegalText — tenant server draft', () => {
         await waitFor(() =>
             expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>'),
         );
-        expect(screen.getByText('legal.draftSnackbar.saved')).toBeInTheDocument();
+        expect(await screen.findByText(/legal\.draftSnackbar\.saved/)).toBeInTheDocument();
     });
 
     it('never shows a stored draft to a viewer who may not edit', async () => {
@@ -900,7 +875,7 @@ describe('LegalText — tenant server draft', () => {
 
         expect(screen.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument();
         // Discarding stays available — in the draft snackbar, where #1025 moved it.
-        expect(screen.getByRole('button', { name: 'legal.draftSnackbar.discard' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.draftSnackbar.discard' })).toBeInTheDocument();
     });
 
     it('offers no consent input when the deployed backend does not store the wording', () => {
@@ -1011,7 +986,7 @@ describe('LegalText — tenant server draft', () => {
         );
         await user.click(screen.getByRole('button', { name: 'legal.serverDraft.collision.local' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.conflict.reload' }));
+        await user.click(await screen.findByRole('button', { name: 'legal.serverDraft.conflict.reload' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
 
         expect(mocks.serverSave).toHaveBeenLastCalledWith({
@@ -1042,7 +1017,7 @@ describe('LegalText — tenant server draft', () => {
         renderImprint();
         await user.click(screen.getByRole('button', { name: 'legal.serverDraft.collision.local' }));
         await user.click(screen.getByRole('button', { name: 'legal.m3Editor.saveDraft' }));
-        await user.click(screen.getByRole('button', { name: 'legal.serverDraft.conflict.reload' }));
+        await user.click(await screen.findByRole('button', { name: 'legal.serverDraft.conflict.reload' }));
 
         expect(window.localStorage.getItem(localKey)).not.toBeNull();
         expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-value', '<p>Impressum DE</p>');
@@ -1468,5 +1443,130 @@ describe('LegalText — received platform template (#1070)', () => {
         );
         expect(screen.queryByTestId('legal-template-reader')).toBeNull();
         expect(screen.queryByRole('button', { name: 'legal.proposal.adopt' })).toBeNull();
+    });
+});
+
+describe('LegalText as a tile', () => {
+    const tileHelp = { id: 'imprint', titleKey: 'imprint.help.title', essenceKey: 'imprint.help.essence', slides: [] };
+    const renderTile = (props: Partial<React.ComponentProps<typeof LegalText>> = {}) =>
+        render(
+            <LegalText
+                tenantId="1"
+                fieldName={['content', 'imprint']}
+                titleKey="imprint.title"
+                placeHolderKey="settings.imprint.placeholder"
+                legalType="imprint"
+                tileHelp={tileHelp}
+                collapsible
+                {...props}
+            />,
+        );
+    const header = () => screen.getByRole('button', { name: /imprint\.title/ });
+
+    it('folds up to a header with the title and the live state, and mounts no editor', () => {
+        renderTile();
+
+        expect(header()).toHaveAttribute('aria-expanded', 'false');
+        expect(header()).toHaveTextContent('legal.status.published');
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
+    });
+
+    it('moves the explanation button and the publication state out of the editor into the unfolded tile', () => {
+        renderTile({ defaultOpen: true });
+
+        const editor = screen.getByTestId('m3-editor');
+        expect(editor).toHaveAttribute('data-hide-header', 'true');
+        expect(screen.getAllByRole('button', { name: 'tileHelp.open' })).toHaveLength(1);
+        expect(within(editor).queryByRole('button', { name: 'tileHelp.open' })).toBeNull();
+        expect(screen.getByTestId('legal-publication-status')).toBeInTheDocument();
+        expect(within(editor).queryByTestId('legal-publication-status')).toBeNull();
+    });
+
+    it('keeps the help slot in the editor when it is not a tile', () => {
+        renderTile({ collapsible: false });
+
+        const editor = screen.getByTestId('m3-editor');
+        expect(within(editor).getByTestId('legal-publication-status')).toBeInTheDocument();
+        // Without a tile the explanation button stays in the editor header, where it always was.
+        expect(editor).toHaveAttribute('data-hide-header', 'false');
+        expect(within(editor).getByRole('button', { name: 'tileHelp.open' })).toBeInTheDocument();
+        expect(document.querySelector('[data-collapsible-tile]')).toBeNull();
+    });
+
+    it('says draft in the header as soon as the text differs from the live one', async () => {
+        renderTile({ defaultOpen: true });
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(screen.getByRole('button', { name: 'edit' }));
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('mounts the editor only when the header is opened', async () => {
+        renderTile();
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
+
+        await userEvent.click(header());
+
+        expect(header()).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByTestId('m3-editor')).toBeInTheDocument();
+    });
+
+    it('shows a read-only viewer the same header state and a read-only editor', async () => {
+        mocks.canEdit = false;
+        renderTile();
+        expect(header()).toHaveTextContent('legal.status.published');
+
+        await userEvent.click(header());
+
+        expect(screen.getByTestId('m3-editor')).toHaveAttribute('data-readonly', 'true');
+    });
+
+    it('says draft while a browser draft and a server draft wait for a choice', () => {
+        const localKey = 'oriso-admin.legal.draft.imprint.1:user-1';
+        window.localStorage.setItem(
+            localKey,
+            JSON.stringify({ content: { de: '<p>local</p>' }, savedAt: '2026-09-16T10:00:00Z' }),
+        );
+        mocks.serverDrafts.IMPRINT = {
+            kind: 'IMPRINT',
+            content: { de: '<p>server</p>' },
+            revision: 'server:2',
+            updatedAt: '2026-09-17T10:00:00Z',
+        };
+        try {
+            renderTile();
+
+            expect(header()).toHaveTextContent('legal.status.draft');
+            expect(header()).not.toHaveTextContent('legal.status.published');
+        } finally {
+            window.localStorage.removeItem(localKey);
+        }
+    });
+
+    it('says still empty when nothing is live and nothing is written', () => {
+        mocks.imprint = {};
+        renderTile();
+
+        expect(header()).toHaveTextContent('legal.status.empty');
+    });
+
+    it('says draft, not published, while a draft conflict is open, although the screen equals the live text', () => {
+        mocks.serverHasConflict = true;
+        renderTile();
+
+        expect(header()).toHaveTextContent('legal.status.draft');
+        expect(header()).not.toHaveTextContent('legal.status.published');
+    });
+
+    it('keeps the tile with its title while the card loads, without a state yet', () => {
+        mocks.serverDraftLoading = true;
+        const { container } = renderTile({ defaultOpen: true });
+
+        expect(header()).toHaveTextContent('imprint.title');
+        expect(header()).not.toHaveTextContent('legal.status');
+        expect(container.querySelector('.ant-spin')).not.toBeNull();
+        expect(screen.queryByTestId('m3-editor')).toBeNull();
     });
 });

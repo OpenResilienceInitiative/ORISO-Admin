@@ -119,7 +119,10 @@ export const PhaseStepper = ({
                                 REACHED_STATES.includes(phases[index + 1].state),
                         })}
                     >
+                        {/* Portal: a dated track scrolls sideways (overflow-x), which would clip
+                            an in-flow bubble above the bead and leave the hover without a tooltip. */}
                         <M3Tooltip
+                            portal
                             text={`${phase.label}: ${
                                 phase.stateHint ??
                                 t(`dataTable.phase.stateHint.${phase.state}`, STATE_HINT_FALLBACKS[phase.state])

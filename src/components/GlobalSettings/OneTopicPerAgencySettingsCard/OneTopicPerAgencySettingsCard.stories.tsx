@@ -8,7 +8,8 @@ import { OneTopicPerAgencySettingsCard } from '.';
 
 /** ORISO-UserService#1264 (ADR-014 amendment 2026-09-25): global switch, default off. */
 const meta = {
-    title: 'Organisms/GlobalSettings/OneTopicPerAgencySettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/OneTopicPerAgencySettingsCard',
+    id: 'organisms-globalsettings-onetopicperagencysettingscard',
     component: OneTopicPerAgencySettingsCard,
     decorators: [
         (Story, { parameters }) => (
@@ -47,7 +48,7 @@ export const DisabledForNonSuperadmins: Story = {
         const canvas = within(canvasElement);
         const oneTopicSwitch = canvas.getByRole('switch', { name: /genau einen Fachbereich/ });
         await expect(oneTopicSwitch).toBeChecked();
-        await expect(oneTopicSwitch).toBeDisabled();
+        await expect(oneTopicSwitch).toHaveAttribute('aria-disabled', 'true');
         await expect(canvas.queryByRole('button', { name: /edit|bearbeiten/i })).toBeNull();
     },
 };

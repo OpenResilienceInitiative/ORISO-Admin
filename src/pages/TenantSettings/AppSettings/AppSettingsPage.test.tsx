@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { UserRole } from '../../../enums/UserRole';
 
 const mocks = vi.hoisted(() => ({
@@ -58,7 +58,6 @@ describe('Träger admin Funktionalitäten page', () => {
             tenantId: '5',
             hideSmtp: true,
             hideCommunication: true,
-            hideTopicsCard: true,
             hideStatistics: true,
             hideGroupChatToggle: true,
         });

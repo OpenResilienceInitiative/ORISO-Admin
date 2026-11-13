@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
     tenantId: 0 as number | string | undefined,
@@ -54,5 +54,14 @@ describe('LegalSettingsPage — which tenant the platform legal texts belong to'
 
         expect(lastProps().tenantId).toBe(7);
         expect(lastProps().draftTenantId).toBe('7');
+    });
+
+    it('shows the legal documents as tiles', () => {
+        mocks.tenantId = 7;
+        mocks.loadedTenantId = 1;
+
+        render(<LegalSettingsPage />);
+
+        expect(lastProps().collapsible).toBe(true);
     });
 });

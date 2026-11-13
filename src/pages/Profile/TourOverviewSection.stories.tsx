@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
+import { tutorialProgressHandler } from '../../test/profileUserData';
 import { inTheRaster, withRoles } from './profileStory.matrix';
 
 const meta = {
-    title: 'Pages/Profile/TourOverviewSection',
+    title: 'Settings/Mein Account/TourOverviewSection',
+    id: 'pages-profile-touroverviewsection',
     component: TourOverviewSection,
-    parameters: { layout: 'padded' },
+    parameters: { layout: 'padded', msw: { handlers: [tutorialProgressHandler] } },
     decorators: [withRoles(['agency-admin'])],
 } satisfies Meta<typeof TourOverviewSection>;
 

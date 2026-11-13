@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { expect, fn, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
@@ -8,10 +9,12 @@ import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSe
 const filledSettings = { ...DEFAULT_PERMISSION_SETTINGS };
 
 const meta = {
-    title: 'Organisms/Permissions/PermissionsSettings',
+    title: 'Settings/Einstellungen/Funktionszugriff/PermissionsSettings',
+    id: 'organisms-permissions-permissionssettings',
     component: PermissionsSettingsView,
     parameters: {
         layout: 'fullscreen',
+        msw: { handlers: [http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([]))] },
         design: {
             type: 'multi',
             designs: [

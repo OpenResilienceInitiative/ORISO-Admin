@@ -36,7 +36,10 @@ $m3-state-active: rgb(39 50 112 / 12%);
     // Shared cards can be phone-width inside a desktop Storybook or split view.
     container-type: inline-size;
     width: 100%;
-    max-width: 800px;
+
+    // 800px is the Figma desktop card. A page that gives its document tile the whole row sets
+    // `--m3-editor-max-width` on that tile instead of squeezing the editor into a corner of it.
+    max-width: var(--m3-editor-max-width, 800px);
     min-width: 280px;
     overflow: hidden;
     background: $m3-surface;
@@ -318,7 +321,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     &:focus-visible {
-        outline: 2px solid $m3-on-surface;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 
@@ -366,6 +369,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
+.statusRow {
+    padding: 0 48px 12px;
+
+    @media (max-width: 599px) {
+        padding: 0 16px 12px;
+    }
+}
+
 .helpIcon {
     // width/height beat the MUI font-size class (emotion injects later).
     width: 16px;
@@ -397,6 +408,31 @@ $m3-state-active: rgb(39 50 112 / 12%);
     font-weight: 600;
 }
 
+// "Nicht mehr anzeigen": a text link inside the tile's own hint, not a pop-up action.
+.helpHintDismiss {
+    display: inline;
+    min-height: 24px;
+    margin: 0;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: var(--m3-primary, #b0001b);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+
+    &:hover {
+        text-decoration-thickness: 2px;
+    }
+
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+}
+
 .languageRow {
     display: flex;
     align-items: center;
@@ -415,14 +451,14 @@ $m3-state-active: rgb(39 50 112 / 12%);
         align-items: center;
         justify-content: center;
         height: 48px;
-        border: 1px solid $m3-outline-variant;
+        border: 1px solid var(--editor-chip-border, #{$m3-outline-variant});
         background: transparent;
         cursor: pointer;
-        color: $m3-on-surface-variant;
+        color: var(--editor-chip-text, #{$m3-on-surface-variant});
         transition: background 0.15s ease;
 
         &:hover {
-            background: $m3-state-hover;
+            background: var(--editor-chip-hover, #{$m3-state-hover});
         }
     }
 
@@ -474,6 +510,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     &::-webkit-scrollbar {
         display: none;
+    }
+
+    // A scroller is a keyboard stop (Chrome): it draws the shared ring too, inside its own edge so the
+    // scrollport does not clip it.
+    &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
@@ -609,8 +656,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
 
     // M3 keyboard focus ring
     &:focus-visible {
-        outline: 2px solid $m3-primary;
-        outline-offset: 1px;
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: 1px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 
     // Dropdown menu button: icon + small caret (heading / list)
@@ -907,7 +958,7 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -1017,260 +1068,6 @@ $m3-state-active: rgb(39 50 112 / 12%);
     }
 }
 
-.snackbarStack {
-    display: flex;
-    // Let two long notices use the remaining surface height at narrow widths.
-    // If more notices exceed it, this stack scrolls instead of clipping actions.
-    max-height: 100%;
-    min-height: 0;
-    flex-shrink: 0;
-    flex-direction: column;
-    gap: 8px;
-    padding: 6px;
-    overflow-y: auto;
-}
-
-.snackbarStackItem {
-    flex-shrink: 0;
-    container-type: inline-size;
-}
-
-// M3 inverse snackbar (Figma 1229-17864). It floats inside the editor surface;
-// .hasSnackbar above reserves matching scroll space so text remains reachable.
-// A snackbar flips in from its lower edge; the stack slides when one closes.
-// Rotation only, no opacity: edge-on at -90deg the snackbar is already invisible, and an
-// opacity of 0 would make every "is the snackbar visible" check fail during the 240ms.
-@keyframes hintSnackbarFlipIn {
-    from {
-        transform: perspective(600px) rotateX(-90deg);
-    }
-
-    to {
-        transform: none;
-    }
-}
-
-.hintSnackbar {
-    position: relative;
-    z-index: 5;
-    transform-origin: 50% 100%;
-    animation: hintSnackbarFlipIn 240ms cubic-bezier(0.2, 0, 0, 1);
-
-    @media (prefers-reduced-motion: reduce) {
-        animation: none;
-    }
-
-    display: flex;
-    align-items: center;
-    padding: 4px 4px 4px 16px;
-    background: #303031;
-    border-radius: 4px;
-    box-shadow: 0 4px 4px rgb(0 0 0 / 15%), 0 1px 1.5px rgb(0 0 0 / 30%);
-    color: #f3f0f0;
-
-    @media (max-width: 599px) {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 40px;
-        padding-left: 16px;
-
-        .hintSnackbarText {
-            grid-column: 1 / -1;
-        }
-
-        .hintSnackbarActions {
-            justify-self: start;
-        }
-
-        &:not(.hintSnackbarLong) .hintSnackbarAction {
-            padding-left: 0;
-            white-space: normal;
-            text-align: left;
-        }
-
-        .hintSnackbarClose {
-            grid-column: 2;
-        }
-    }
-}
-
-/* Success tone (Figma 1261-51137): same snackbar, secondary-container blue with
-   dark text. Used when the message confirms something that happened rather than
-   blocking an action — e.g. the DPA was signed. */
-
-// Errors in the M3 error role (owner call 2026-09-23): a red snackbar instead of an alert box.
-.hintSnackbarError {
-    background: var(--m3-error, #b1005e);
-    color: var(--m3-on-error, #ffffff);
-
-    .hintSnackbarAction {
-        color: var(--m3-on-error, #ffffff);
-
-        &:hover {
-            background: rgb(255 255 255 / 16%);
-        }
-    }
-
-    .hintSnackbarClose {
-        color: var(--m3-on-error, #ffffff);
-    }
-}
-
-.hintSnackbarSuccess {
-    background: var(--m3-on-secondary-container, #e7effc);
-    color: #000000;
-
-    .hintSnackbarAction {
-        color: var(--m3-error, #b1005e);
-
-        &:hover {
-            background: rgb(177 0 94 / 12%);
-        }
-    }
-
-    .hintSnackbarClose {
-        color: #000000;
-    }
-}
-
-// In read mode the dismiss label may wrap onto two lines.
-// The same dock is used in reading and writing modes.
-.readMode .hintSnackbarAction {
-    max-width: 130px;
-    line-height: 14px;
-    text-align: center;
-    white-space: normal;
-}
-
-.hintSnackbarText {
-    flex: 1;
-    padding: 6px 4px 6px 0;
-    font-size: 14px;
-    letter-spacing: 0.25px;
-    line-height: 20px;
-}
-
-.hintSnackbarActions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.hintSnackbarAction {
-    flex-shrink: 0;
-    padding: 10px 12px;
-    border: 0;
-    background: transparent;
-    border-radius: 100px;
-    color: #ffb4aa;
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.5px;
-    cursor: pointer;
-
-    &:hover {
-        background: rgb(255 180 170 / 12%);
-    }
-}
-
-.hintSnackbarClose {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    flex-shrink: 0;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    border-radius: 100px;
-    color: #f3f0f0;
-    cursor: pointer;
-
-    &:hover {
-        background: rgb(243 240 240 / 12%);
-    }
-}
-
-.hintSnackbarClose svg {
-    width: 20px;
-    height: 20px;
-}
-
-.hintSnackbarCloseIcon {
-    // Recolour the exact Figma close shape for pink error snackbars as well.
-    path {
-        fill: currentColor;
-    }
-}
-
-.hintSnackbarSuccessIcon {
-    width: 20px;
-    height: 20px;
-}
-
-// Figma 53977:34280, adapted to dynamic legal copy and a possible second action.
-// Two 20px text lines produce the reference's 112px overall height.
-.hintSnackbarLong {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 48px;
-    grid-template-rows: auto minmax(48px, auto);
-    align-items: start;
-    gap: 10px 0;
-    padding: 14px 0 0 16px;
-
-    .hintSnackbarText {
-        min-width: 0;
-        grid-column: 1 / -1;
-        grid-row: 1;
-        padding: 0 16px 0 0;
-        font-size: 14px;
-        line-height: 20px;
-        overflow-wrap: anywhere;
-    }
-
-    .hintSnackbarActions {
-        min-width: 0;
-        width: 100%;
-        grid-column: 1;
-        grid-row: 2;
-        justify-self: end;
-        justify-content: flex-end;
-        padding-left: 8px;
-        gap: 10px;
-    }
-
-    .hintSnackbarAction {
-        min-height: 40px;
-        max-width: 100%;
-        padding: 10px 12px;
-        font-size: 14px;
-        letter-spacing: 0.1px;
-        line-height: 20px;
-        white-space: normal;
-    }
-
-    .hintSnackbarCloseIcon {
-        width: 24px;
-        height: 24px;
-    }
-
-    .hintSnackbarClose {
-        width: 48px;
-        height: 48px;
-        grid-column: 2;
-        grid-row: 2;
-        align-self: end;
-    }
-}
-
-// Read mode's compact 130px limit must not squeeze long action labels.
-// Let each action take its natural width and wrap below its neighbour.
-.readMode .hintSnackbarLong .hintSnackbarAction {
-    max-width: 100%;
-    line-height: 20px;
-    white-space: normal;
-}
-
 // Horizontal inset for arbitrary editor content (aboveEditorSlot / editorSlot)
 // so it lines up with the toolbar and editor surface instead of sitting flush
 // against the card edges.
@@ -1290,6 +1087,9 @@ $m3-state-active: rgb(39 50 112 / 12%);
 }
 
 .editor {
+    // The text surface is white in every scheme: its ring is the fixed brand accent, never the scheme's light primary.
+    --admin-focus-ring-color: var(--oriso-app-accent-dark, #a5000a);
+
     // Anchor for the floating blocker snackbar (6px inside the white surface).
     position: relative;
     min-height: 280px;
@@ -1299,14 +1099,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
     border-radius: 14px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    // M3 focus state: the text surface highlights with the primary colour.
-    &:focus-within {
-        border-color: $m3-primary;
-        box-shadow: 0 0 0 1px $m3-primary;
+    // Focus state of the text surface: ONE ring, drawn here when the text itself has focus. (Not on :focus-within:
+    // a focused button inside the editor, such as a hint action, would get a second ring around the whole surface.)
+    &:has(:global(.ProseMirror):focus) {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 1px;
     }
 
     :global(.ProseMirror) {
         min-height: 248px;
+        // A wide tile sets `--m3-editor-text-max-width` so a line of text stays readable.
+        max-width: var(--m3-editor-text-max-width, none);
         outline: none;
 
         // German legal prose is full of 25+ character compounds. `hyphens: auto`
@@ -1500,8 +1303,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
-        outline-offset: -2px;
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
@@ -1523,6 +1330,17 @@ $m3-state-active: rgb(39 50 112 / 12%);
     box-sizing: border-box;
     // Desktop can wrap so every control stays directly visible.
     flex-wrap: wrap;
+
+    // The phone layout below makes it a scroller, hence a keyboard stop: shared ring, inside its edge.
+    &:focus-visible {
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: -2px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
+    }
+
     align-items: center;
     justify-content: flex-end;
     padding: 12px 16px 8px;
@@ -1578,15 +1396,21 @@ $m3-state-active: rgb(39 50 112 / 12%);
     cursor: pointer;
 
     &:focus-visible {
-        outline: 2px solid $m3-primary;
-        outline-offset: 1px;
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: 1px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 
 .versionHistoryControl {
     @container (max-width: 599px) {
+        // Wide enough for "Aktuelle Version (Entwurf)" (26 chars) so the label
+        // is not cut off at 390 px; the bar scrolls sideways if it ever overflows.
         .versionLeading > span {
-            max-width: 12ch;
+            max-width: 28ch;
         }
     }
 }
@@ -1613,12 +1437,12 @@ $m3-state-active: rgb(39 50 112 / 12%);
     display: inline-flex;
     height: 36px;
     align-items: center;
-    border: 1px solid $m3-outline-variant;
-    color: $m3-on-surface-variant;
+    border: 1px solid var(--editor-chip-border, #{$m3-outline-variant});
+    color: var(--editor-chip-text, #{$m3-on-surface-variant});
     transition: background 0.15s ease;
 
     .versionSplit:hover & {
-        background: $m3-state-hover;
+        background: var(--editor-chip-hover, #{$m3-state-hover});
     }
 
     @container (max-width: 599px) {
@@ -1897,11 +1721,11 @@ $m3-state-active: rgb(39 50 112 / 12%);
     gap: 8px;
     align-items: center;
     justify-content: flex-end;
-    padding: 8px 16px 16px;
+    padding: 12px 24px;
 
     @media (max-width: 400px) {
         gap: 4px;
-        padding-inline: 8px;
+        padding-inline: 16px;
     }
 }
 

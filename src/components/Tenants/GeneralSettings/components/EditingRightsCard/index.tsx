@@ -13,11 +13,14 @@ interface EditingRightsFormData {
 
 export const EditingRightsCard = ({
     allowEdit,
+    readOnlyAccess,
     editable,
     isLoading,
     onSave,
 }: {
     allowEdit: boolean;
+    /** The viewer may only read this tile (not a platform admin), as opposed to a value still loading. */
+    readOnlyAccess?: boolean;
     /** `undefined` means the value is not known (still loading or the read failed): the switch stays unset. */
     editable: boolean | undefined;
     isLoading?: boolean;
@@ -28,6 +31,8 @@ export const EditingRightsCard = ({
         <CardEditable
             key={`tenant-master-data-editable-${editable}`}
             allowEdit={allowEdit}
+            readOnlyAccess={readOnlyAccess}
+            readOnlyHint={t('card.edit.readOnly.platformAdmin')}
             isLoading={isLoading}
             initialValues={{ tenantAdminControls: { allowedPermissionToggles: { appearance: editable } } }}
             titleKey="settings.masterData.editable.title"
@@ -49,11 +54,9 @@ export const EditingRightsCard = ({
                 }
                 name={['tenantAdminControls', 'allowedPermissionToggles', 'appearance']}
                 inline
-                disableLabels
-                disabled={!allowEdit}
+                showStateLabel
                 className={styles.masterDataToggle}
                 switchLabel={t('settings.masterData.editable.toggle')}
-                switchVariant="m3"
             />
         </CardEditable>
     );

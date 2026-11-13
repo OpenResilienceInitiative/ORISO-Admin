@@ -44,6 +44,11 @@
 }
 
 .dialogCard {
+    /* The surface follows the colour scheme, so the focus ring and the (i) icon follow it too (>= 3:1 in light and dark).
+       applyAdminTheme checks the Träger colour against the card and falls back when it is too pale (#1168). */
+    --admin-focus-ring-color: var(--admin-focus-ring-on-surface, var(--m3-primary, #a5000a));
+    --tile-help-color: var(--m3-on-surface-variant, #444748);
+
     /* A card that is not being edited shows its values at full strength (ORISO-Admin#1313). */
     --admin-field-disabled-opacity: 1;
     --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);

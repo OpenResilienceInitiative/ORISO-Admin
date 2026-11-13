@@ -2,10 +2,10 @@ import '@ant-design/v5-patch-for-react-19';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
+import { SnackbarHost, snackbar as message } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import { TopicDuplicateSettingsCard, TopicDuplicateSettingsCardContainer } from '.';
@@ -23,7 +23,7 @@ afterEach(async () => {
     // message API has its own React root and an auto-dismiss timer. Tear it down and
     // drain the scheduler here, or react-dom runs after this file's jsdom is gone and
     // crashes with "window is not defined" (same as InviteCsvImportModal.test.tsx).
-    message.destroy();
+    message.clear();
     for (let i = 0; i < 20; i += 1) {
         // eslint-disable-next-line no-await-in-loop -- sequential drain, not parallelizable
         await new Promise((resolve) => {
@@ -32,6 +32,8 @@ afterEach(async () => {
     }
 });
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     savedBodies = [];
     setSessionTokens(
         `header.${btoa(

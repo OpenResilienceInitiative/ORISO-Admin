@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
 import { AskerPermissionsCard } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -32,7 +32,8 @@ const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermiss
  *   switch, so a Träger admin can see the choice exists and who holds it.
  */
 const meta = {
-    title: 'Tenants/Permissions/AskerPermissionsCard',
+    title: 'Settings/Einstellungen/Funktionszugriff/AskerPermissionsCard',
+    id: 'tenants-permissions-askerpermissionscard',
     component: AskerPermissionsCard,
     render: (args) => <ControlledAskerPermissionsCard {...args} />,
     tags: ['autodocs'],

@@ -24,8 +24,12 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
-        outline-offset: 1px;
+        // Set as the token, not only as outline-offset: the shared rule in app.css is more specific than this one and
+        // would otherwise reset the offset to the default.
+        --admin-focus-ring-offset: 1px;
+
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset);
     }
 }
 

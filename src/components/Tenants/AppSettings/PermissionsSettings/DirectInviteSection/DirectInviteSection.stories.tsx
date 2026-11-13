@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
 import { DirectInviteSection } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
@@ -36,7 +36,8 @@ const allowed: PolicyValue<boolean> = { value: true, mode: 'SUGGESTED', inherite
  * ORISO-TenantService#332 (`permissionPolicies`) and ORISO-AgencyService#347 (centre `settings`).
  */
 const meta = {
-    title: 'Tenants/Permissions/DirectInviteSection',
+    title: 'Settings/Einstellungen/Funktionszugriff/DirectInviteSection',
+    id: 'tenants-permissions-directinvitesection',
     component: DirectInviteSection,
     render: (args) => <ControlledDirectInviteSection {...args} />,
     tags: ['autodocs'],

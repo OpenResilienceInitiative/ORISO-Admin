@@ -1,15 +1,17 @@
 import React from 'react';
-import { beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
-import { message } from 'antd';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { snackbar as message } from '../../../components/Snackbar';
 import { UserEditOrAdd } from './index';
 import { UserRole } from '../../../enums/UserRole';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { ChangeConsultantTenantError } from '../../../api/counselor/changeConsultantTenant';
 import { appURL } from '../../../appConfig';
+import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 
 /**
  * Behavioural tests for the consultant create/edit form.
@@ -47,6 +49,8 @@ const mocks = vi.hoisted(() => ({
     /** Swapped per test so the same harness can drive the create AND the edit form. */
     params: { id: 'add', typeOfUsers: 'consultants' } as { id: string; typeOfUsers: string },
     canUpdateAgency: true,
+    agencyAdminActions: [] as PermissionAction[],
+    useMountedRoute: false,
     addTopicsToAgency: vi.fn(),
     appSettings: {} as Record<string, unknown>,
 }));
@@ -133,6 +137,7 @@ const translations: Record<string, string> = {
     save: 'Speichern',
     edit: 'Bearbeiten',
     'btn.cancel': 'Abbrechen',
+    'errorPages.accessDenied.title': 'Schade!',
 };
 
 const t = (key: string, values?: Record<string, unknown>) =>
@@ -150,7 +155,10 @@ vi.mock('react-router-dom', async () => {
         // Defaults to the consultant *create* form (`id: 'add'`): nothing is read-only and the
         // save button is available without first unlocking the form. Tests that need the edit
         // form set `mocks.params.id` to a consultant id.
-        useParams: () => mocks.params,
+        useParams: function useEditorParams() {
+            const routeParams = actual.useParams();
+            return mocks.useMountedRoute ? routeParams : mocks.params;
+        },
     };
 });
 
@@ -201,9 +209,11 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 vi.mock('../../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({
         permissions: {},
-        // Grants only "update" on agencies, so a check for any other action cannot pass by accident.
-        can: (action: PermissionAction, resource: Resource) =>
-            resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency),
+        can: (action: PermissionAction, resource: Resource) => {
+            if (resource === Resource.AgencyAdminUser) return mocks.agencyAdminActions.includes(action);
+            // Grants only "update" on agencies, so another agency action cannot pass by accident.
+            return resource !== Resource.Agency || (action === PermissionAction.Update && mocks.canUpdateAgency);
+        },
     }),
 }));
 
@@ -215,8 +225,9 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
     // The page runs this hook twice: once searching for the edited consultant (`search: id`) and
     // once, unsearched, for the supervisor candidates. They have to be distinguishable, otherwise
     // a candidate-query failure cannot be simulated at all.
-    useConsultantsOrAdminsData: (args: { search?: string }) =>
+    useConsultantsOrAdminsData: vi.fn((args: { search?: string }) =>
         args?.search ? mocks.consultantsResult : mocks.supervisorCandidatesResult,
+    ),
 }));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
@@ -329,6 +340,12 @@ const chooseOption = async (
     await user.click(await screen.findByRole('option', { name: optionLabel }));
 };
 
+// The tests spy on the module-level snackbar channel (and on QueryClient): put the originals back so
+// a pass-through spy never leaks into the next test.
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 beforeEach(() => {
     mocks.mutate.mockReset();
     mocks.navigate.mockReset();
@@ -346,9 +363,93 @@ beforeEach(() => {
     mocks.counselorResult = { data: undefined, isLoading: false };
     mocks.params = { id: 'add', typeOfUsers: 'consultants' };
     mocks.canUpdateAgency = true;
+    mocks.agencyAdminActions = [PermissionAction.Read, PermissionAction.Create, PermissionAction.Update];
+    mocks.useMountedRoute = false;
+    vi.mocked(useConsultantsOrAdminsData).mockClear();
     mocks.addTopicsToAgency.mockReset();
     mocks.addTopicsToAgency.mockResolvedValue(undefined);
     mocks.appSettings = {};
+});
+
+describe('user editor route access', () => {
+    const renderEditorRoute = (path: string) => {
+        mocks.useMountedRoute = true;
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        return render(
+            <QueryClientProvider client={queryClient}>
+                <MemoryRouter initialEntries={[path]}>
+                    <Routes>
+                        <Route path="/admin/users/:typeOfUsers/:id" element={<UserEditOrAdd />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+    };
+
+    it.each(['agency-admins/admin-42', 'agency-admins/add', 'unrecognized/admin-42'])(
+        'denies the restricted agency admin at %s before loading any record',
+        (path) => {
+            mocks.roles = [UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin];
+            mocks.agencyAdminActions = [];
+
+            renderEditorRoute(`/admin/users/${path}`);
+
+            expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+            expect(screen.queryByLabelText('Vorname')).not.toBeInTheDocument();
+            expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+        },
+    );
+
+    it('requires update as well as read for an existing agency-admin editor', () => {
+        mocks.agencyAdminActions = [PermissionAction.Read];
+
+        renderEditorRoute('/admin/users/agency-admins/admin-42');
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+        expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+    });
+
+    it('allows agency-admin creation with Create alone and keeps the one-time password', () => {
+        mocks.agencyAdminActions = [PermissionAction.Create];
+
+        renderEditorRoute('/admin/users/agency-admins/add');
+
+        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
+        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
+        expect(pageButton('Speichern')).toBeEnabled();
+    });
+
+    it('denies agency-admin creation with only Read and Update', () => {
+        mocks.agencyAdminActions = [PermissionAction.Read, PermissionAction.Update];
+
+        renderEditorRoute('/admin/users/agency-admins/add');
+
+        expect(screen.getByRole('heading', { name: 'Schade!' })).toBeVisible();
+        expect(screen.queryByLabelText('Vorname')).not.toBeInTheDocument();
+        expect(useConsultantsOrAdminsData).not.toHaveBeenCalled();
+    });
+
+    it.each([
+        ['agency-admins', [PermissionAction.Read, PermissionAction.Update], UserRole.TenantAdmin],
+        ['consultants', [], UserRole.RestrictedAgencyAdmin],
+    ])('preserves the authorized %s editor', async (section, actions, role) => {
+        mocks.roles = [role, UserRole.UserAdmin];
+        mocks.agencyAdminActions = actions;
+        mocks.consultantsResult = {
+            data: { data: [{ id: 'account-42', firstname: 'Ada', lastname: 'Lovelace' }] },
+            isLoading: false,
+        };
+
+        renderEditorRoute(`/admin/users/${section}/account-42`);
+
+        expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+        expect(useConsultantsOrAdminsData).toHaveBeenCalledWith(
+            expect.objectContaining({ typeOfUser: section, search: 'account-42', enabled: true }),
+        );
+        await userEvent.click(pageButton('Bearbeiten'));
+        expect(pageButton('Speichern')).toBeEnabled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
 });
 
 describe('admin remarks are gated on the tenant-level admin role (#994)', () => {
@@ -398,15 +499,6 @@ describe('a new counsellor chooses their own password (#1144)', () => {
         await fillMandatoryFields();
 
         expect(await submit(user)).not.toHaveProperty('password');
-    });
-
-    it('still asks for the one-time password when an agency admin is created', () => {
-        // Only counsellors are covered by the product decision; agency admins keep the field.
-        mocks.params = { id: 'add', typeOfUsers: 'agency-admins' };
-        renderForm();
-
-        expect(screen.getByLabelText('Passwort')).toBeInTheDocument();
-        expect(screen.queryByText('counselor.password.setupEmailHint')).not.toBeInTheDocument();
     });
 });
 
@@ -763,6 +855,33 @@ describe('topics per centre (#1264)', () => {
         ]);
     });
 
+    // #1302: the search row carries the server's list. Read as a map by centre id, centre 0 resolved
+    // to the list's first entry (an object) and the picker threw "t.map is not a function".
+    it('opens the editor of a counsellor at centre ID 0 and shows that centre’s topics', async () => {
+        const ZERO = {
+            id: 0,
+            name: 'Null',
+            postcode: '10000',
+            city: 'Berlin',
+            tenantId: TENANT.id,
+            topics: [{ id: 14, name: 'Wohnen' }],
+        };
+        const stored = { topicsByAgency: [{ agencyId: 0, topicIds: [14] }] };
+        editConsultant([ZERO], stored);
+        mocks.consultantsResult = {
+            data: { data: [{ ...mocks.consultantsResult.data.data[0], ...stored }] },
+            isLoading: false,
+        };
+        mocks.agenciesResult = { data: { data: [ZERO, NORD] }, isLoading: false };
+        mocks.topicsResult = { data: [{ id: 14, name: 'Wohnen' }], isLoading: false };
+        const user = userEvent.setup();
+        renderForm();
+        await unlock(user);
+
+        expect(await optionsOf(user, 'Themen bei Null (10000 Berlin)')).toEqual(['Wohnen']);
+        expect((await submit(user)).topicsByAgency).toEqual([{ agencyId: 0, topicIds: [14] }]);
+    });
+
     it('sends only flat topicIds to a server that does not know topicsByAgency', async () => {
         editConsultant([NORD], { topics: [SUCHT] });
         const user = userEvent.setup();
@@ -953,7 +1072,7 @@ describe('topics per centre (#1264)', () => {
             await editWithDroppedTopic(user);
             await chooseOption(user, 'Themen bei Nord (20095 Hamburg)', 'Schulden');
             await user.keyboard('{Escape}');
-            await user.click(screen.getByRole('button', { name: 'Speichern' }));
+            await user.click(pageButton('Speichern'));
 
             expect(await screen.findByText('Erst markierte Themen entfernen.')).toBeInTheDocument();
             expect(mocks.mutate).not.toHaveBeenCalled();
@@ -1302,7 +1421,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         expect(screen.queryByLabelText(/^Themen/)).not.toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         // null = keep the stored topics (editCounselorData sends it as-is).
         expect((await submit(user)).topicIds).toBeNull();
@@ -1315,7 +1434,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         expect(await screen.findByLabelText('Themen bei Nord (20095 Hamburg)')).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect((await submit(user)).topicIds).toEqual(['11']);
     });
@@ -1327,7 +1446,7 @@ describe('topic assignment on edit (#1026)', () => {
         renderForm();
 
         await screen.findByLabelText('Themen bei Nord (20095 Hamburg)');
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Themen bei Nord (20095 Hamburg)'));
         await user.keyboard('{Backspace}');
 
@@ -1434,7 +1553,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
     };
 
     const unlockAndSubmit = async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         return submit(user);
     };
 
@@ -1456,7 +1575,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: SUPERVISOR_ID });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         // Hover is what a real admin does to reveal the clear affordance.
         await user.hover(screen.getByLabelText('Fester Supervisor'));
         // Query it by its visible title rather than MUI's internal class, so a class rename in
@@ -1496,7 +1615,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, tenantId: TENANT.id, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Fester Supervisor'));
 
         expect(await screen.findByRole('option', { name: 'Grace Hopper' })).toBeTruthy();
@@ -1525,7 +1644,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         mocks.supervisorCandidatesResult = { data: undefined, isLoading: false, isError: true };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Liste konnte nicht geladen werden.')).toBeTruthy();
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
@@ -1546,7 +1665,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Nur diese Person ist freigegeben.')).toBeTruthy();
         expect(screen.queryByText('Noch niemand freigegeben.')).toBeNull();
@@ -1557,7 +1676,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant(undefined);
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
         expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('disabled', true);
@@ -1576,7 +1695,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Nur die ersten 1000 werden durchsucht.')).toBeTruthy();
     });
@@ -1591,7 +1710,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await waitFor(() => expect(screen.getByLabelText('Fester Supervisor')).toHaveProperty('value', ''));
 
         mocks.counselorResult = {
@@ -1622,7 +1741,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         const { rerender } = renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
         await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
 
@@ -1649,7 +1768,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
 
         expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
@@ -1669,7 +1788,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: 'supervisor-disabled' });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await user.click(screen.getByLabelText('Fester Supervisor'));
 
         const staleOption = await screen.findByRole('option', { name: 'Disabled Supervisor' });
@@ -1689,7 +1808,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
 
         expect(screen.getByText('Gespeicherte Zuweisung nicht ladbar.')).toBeTruthy();
         expect(screen.queryByText('Nur die ersten 1000 werden durchsucht.')).toBeNull();
@@ -1700,7 +1819,7 @@ describe('standing supervisor (ADR-008 "Supervision (auto-assigned)")', () => {
         editExistingConsultant({ id: CONSULTANT_ID, assignedSupervisorId: undefined });
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         await chooseOption(user, 'Fester Supervisor', 'Grace Hopper');
         // OBP 2.1 #107: the first standing supervisor is confirmed against the privacy policy.
         await user.click(await screen.findByRole('button', { name: 'supervision.privacyConfirm.confirm' }));
@@ -1736,7 +1855,7 @@ describe('absence survives an unrelated edit', () => {
         openAbsentConsultant();
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         // The reason the admin opened the page at all: something unrelated.
         setField('E-Mail', 'ada.neu@example.org');
 
@@ -1754,7 +1873,7 @@ describe('absence survives an unrelated edit', () => {
         openAbsentConsultant();
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.getByLabelText('Abwesenheitsnotiz')).toHaveValue(ABSENCE_NOTE);
 
         setField('Abwesenheitsnotiz', 'Zurueck ab dem 01.10.');
@@ -1772,7 +1891,7 @@ describe('absence survives an unrelated edit', () => {
         mocks.counselorResult = { data: present, isLoading: false };
         renderForm();
 
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.queryByLabelText('Abwesenheitsnotiz')).not.toBeInTheDocument();
 
         expect(await submit(user)).toMatchObject({ absent: false });
@@ -1808,7 +1927,7 @@ describe('existing consultant username validation', () => {
         mocks.topicsResult = { data: [topic], isLoading: false };
         const user = userEvent.setup();
         renderForm();
-        await user.click(screen.getByRole('button', { name: 'Bearbeiten' }));
+        await user.click(pageButton('Bearbeiten'));
         expect(screen.getByLabelText('Benutzername')).toBeDisabled();
         expect(screen.getByLabelText('Benutzername')).toHaveValue(existing.username);
         await chooseOption(user, 'Beratungsstelle', '10115 Isolated test agency Berlin');
@@ -2083,9 +2202,15 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
 
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
 
-            expect(await within(dialog).findByRole('alert')).toHaveTextContent(
-                'Letzte Beratungsperson einer aktiven Stelle.',
+            // The refusal is announced in the dialog and also raised as a pop-up on the snackbar channel.
+            await waitFor(() =>
+                expect(within(dialog).getByRole('alert')).toHaveTextContent(
+                    'Letzte Beratungsperson einer aktiven Stelle.',
+                ),
             );
+            expect(
+                await within(await screen.findByTestId('snackbar-host')).findByText(/Letzte Beratungsperson/),
+            ).toBeVisible();
             expect(mocks.navigate).not.toHaveBeenCalled();
             await user.click(within(dialog).getByRole('button', { name: 'Zurück zum Bearbeiten' }));
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -2100,7 +2225,10 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
             renderForm();
             const dialog = await reviewMoveTo(user);
             await user.click(within(dialog).getByRole('button', { name: 'Träger wechseln' }));
-            await within(dialog).findByRole('alert');
+            // The refusal text itself, not just an alert region: the region exists before any text does.
+            await waitFor(() =>
+                expect(within(dialog).getByRole('alert')).toHaveTextContent('Anmeldedienst lehnt ab, nichts geändert.'),
+            );
 
             await user.click(within(dialog).getByRole('button', { name: 'Erneut versuchen' }));
 

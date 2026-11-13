@@ -179,10 +179,10 @@ export const HeadingMenu = ({
                     requestAnimationFrame(() => triggerRef.current?.focus());
                 }
             }}
-            // antd's dropdownRender contract is "function returning the overlay
+            // antd's popupRender contract is "function returning the overlay
             // element" — `panel` is a pre-built element, not a nested component.
             // eslint-disable-next-line react/no-unstable-nested-components
-            dropdownRender={() => panel}
+            popupRender={() => panel}
         >
             <button
                 ref={triggerRef}

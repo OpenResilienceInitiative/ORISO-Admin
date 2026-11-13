@@ -1,10 +1,10 @@
 // @vitest-environment node
 // Node env for the same reason as fetchData.test.ts: fetch/Request/AbortController
 // all come from the same realm as the code under test.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
+import { snackbar } from '../../components/Snackbar';
 
 const messageError = vi.fn();
-vi.mock('antd', () => ({ message: { error: (...args: unknown[]) => messageError(...args) } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (keys: unknown) => keys } }));
 
 vi.mock('../auth/auth', () => ({
@@ -31,6 +31,7 @@ const response = (status: number, body: Record<string, unknown> = {}) => ({
 
 describe('getAgencyDataById', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'error').mockImplementation(messageError as never);
         messageError.mockReset();
     });
 

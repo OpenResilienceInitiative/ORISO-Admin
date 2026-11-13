@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { vi } from 'vitest';
+import { vi } from 'vite-plus/test';
 import { AccessDenied } from './AccessDenied';
 
 const logoutMock = vi.fn();
@@ -16,7 +16,7 @@ describe('AccessDenied', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'logout' }));
 
-        expect(logoutMock).toHaveBeenCalledWith(true);
+        expect(logoutMock).toHaveBeenCalledWith(true, undefined, 'explicit');
         expect(screen.getByRole('link', { name: 'toHomePage' })).toHaveAttribute('href', '/app');
     });
 });

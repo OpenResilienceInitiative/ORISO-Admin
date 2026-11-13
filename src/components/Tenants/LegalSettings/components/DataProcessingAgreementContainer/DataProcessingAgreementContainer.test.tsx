@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementContainer } from './index';
@@ -112,6 +112,9 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         onDiscardDraft,
         readOnlyFooter,
         errorMessage,
+        collapsible,
+        defaultOpen,
+        onOpenChange,
     }: any) => {
         const [draft, setDraft] = React.useState('');
         return (
@@ -128,11 +131,16 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 data-draft-saved-at={draftSavedAt ?? ''}
                 data-draft-stale={draftStale ? 'true' : 'false'}
                 data-has-draft-action={onSaveDraft ? 'true' : 'false'}
+                data-collapsible={String(!!collapsible)}
+                data-default-open={String(!!defaultOpen)}
             >
                 <div data-testid="card-readonly-footer">{readOnlyFooter}</div>
                 <span data-testid="draft">{draft}</span>
                 <button type="button" onClick={() => setDraft('unsaved draft')}>
                     edit draft
+                </button>
+                <button type="button" onClick={() => onOpenChange?.(true)}>
+                    unfold tile
                 </button>
                 <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
                     publish
@@ -176,6 +184,34 @@ beforeEach(() => {
 });
 
 describe('DataProcessingAgreementContainer', () => {
+    it('hands the tile settings to the card and starts unfolded only when asked to', () => {
+        const { unmount } = render(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'false');
+        unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={1} collapsible defaultOpen />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'true');
+    });
+
+    it('keeps the tile unfolded when the card is rebuilt after a publish', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+        await user.click(screen.getByRole('button', { name: 'edit draft' }));
+        await user.click(screen.getByRole('button', { name: 'unfold tile' }));
+        expect(screen.getByTestId('draft')).toHaveTextContent('unsaved draft');
+
+        // A new published version changes the card's key, so React builds the card again.
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        rerender(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+
+        expect(screen.getByTestId('draft')).toHaveTextContent('');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'true');
+    });
+
     it('passes the complete latest content map and the editable languages to the card', () => {
         useDpaVersions.mockReturnValue({
             data: [

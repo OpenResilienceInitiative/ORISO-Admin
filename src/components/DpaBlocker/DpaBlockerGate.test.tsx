@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -49,6 +49,13 @@ vi.mock('../../api/tenant/createDpaSignInvite', () => ({
 vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
     sendDpaInviteEmail: mocks.sendDpaInviteEmail,
     isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
+}));
+
+// A failed preview raises its own persistent pop-up, which would hold a place in the snackbar
+// stack and could cover the pop-up under test.
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+    getPublicDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
 }));
 
 vi.mock('../../api/auth/logout', () => ({
@@ -358,7 +365,7 @@ describe('DpaBlockerGate', () => {
         expect(await screen.findByTestId('dpa-text')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
     });
 
     it('scroll-locks the app behind the overlay while blocked', async () => {
@@ -425,7 +432,7 @@ describe('DpaBlockerGate', () => {
 
             await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-            expect(mocks.logout).toHaveBeenCalledWith(true);
+            expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
             expect(screen.getByTestId('dpa-pending-dialog')).toBeInTheDocument();
             expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
         });
@@ -637,7 +644,7 @@ describe('DpaBlockerGate', () => {
 
             await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-            expect(mocks.logout).toHaveBeenCalledWith(true);
+            expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
         });
     });
 

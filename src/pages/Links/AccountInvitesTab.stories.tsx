@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { message } from 'antd';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { snackbar } from '../../components/Snackbar';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
@@ -179,7 +179,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * The Träger-Invites tab in its everyday state: invites listed, templates available in
+ * The Träger-Einladungen tab in its everyday state: invites listed, templates available in
  * the select, "Vorlagen verwalten" opens the template dialog. The Träger-ID field
  * pre-fills with the smallest free id (tenants occupy 1+3, the active invite holds 2 → 4).
  */
@@ -257,12 +257,13 @@ export const SmtpCredentialsMissing: Story = {
             { timeout: 10_000 },
         );
         await userEvent.click(enabledSendButton);
-        // antd renders toasts in a portal outside canvasElement.
+        // The snackbar host renders in a portal outside canvasElement.
         await waitFor(
-            () =>
-                expect(document.body.querySelector('.ant-message')?.textContent ?? '').toContain(
-                    'SMTP-Zugangsdaten fehlen',
-                ),
+            () => {
+                const popups = document.body.querySelectorAll('[data-testid="snackbar"]');
+                expect(popups).toHaveLength(1);
+                expect(popups[0].textContent ?? '').toContain('SMTP-Zugangsdaten fehlen');
+            },
             { timeout: 10_000 },
         );
     },
@@ -311,7 +312,7 @@ let setupListReads = 0;
 /** Existing setup recovery must work before an ordinary invitation template exists. */
 export const SetupResendWithoutTemplates: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         setupResendRequests.length = 0;
         setupListReads = 0;
     },
@@ -358,7 +359,7 @@ const ordinaryResendRequests: unknown[] = [];
 /** The setup exemption must not remove the existing ordinary invitation guard. */
 export const OrdinaryResendStillRequiresTemplate: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         ordinaryResendRequests.length = 0;
     },
     parameters: {
@@ -495,5 +496,58 @@ export const PhoneToolbar: Story = {
         await waitFor(() =>
             expect(menu.getBoundingClientRect().right).toBeLessThanOrEqual(toolbar.getBoundingClientRect().right + 1),
         );
+    },
+};
+
+/** Explicit server pages exercise query reset, totals and clearing in the real tab. */
+export const ServerSearchAndPaging: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(INVITES_ENDPOINT, ({ request }) => {
+                    const params = new URL(request.url).searchParams;
+                    const query = params.get('query');
+                    const page = Number(params.get('page') ?? 0);
+                    const lisa = {
+                        ...INVITES[0],
+                        id: 88,
+                        firstName: 'Lisa',
+                        lastName: 'Simpson',
+                        recipientEmail: 'lisa.simpson@example.org',
+                    };
+                    if (query)
+                        return HttpResponse.json({
+                            content: query === 'Lisa Simpson' ? [lisa] : [],
+                            totalElements: query === 'Lisa Simpson' ? 1 : 0,
+                            totalPages: 1,
+                            page: 0,
+                            size: 20,
+                        });
+                    return HttpResponse.json({
+                        content: page === 0 ? [INVITES[0]] : [lisa],
+                        totalElements: 21,
+                        totalPages: 2,
+                        page,
+                        size: 20,
+                    });
+                }),
+                templatesByKind,
+                http.get(TENANT_SEARCH_ENDPOINT, () => HttpResponse.json(TENANTS)),
+                ...idAllocationHandlers,
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('muenchen@example.org');
+        await userEvent.click(canvas.getByRole('button', { name: /Nächste Seite|Next page/ }));
+        await canvas.findByText('lisa.simpson@example.org');
+        await expect(canvas.getByText(/21–21/)).toBeInTheDocument();
+        await userEvent.type(canvas.getByRole('searchbox'), 'Lisa Simpson');
+        await canvas.findByText(/1–1/);
+        await expect(canvas.getByText('Lisa Simpson')).toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: /Suche leeren|Clear search/ }));
+        await canvas.findByText('muenchen@example.org');
+        await expect(canvas.getByText(/1–20/)).toBeInTheDocument();
     },
 };

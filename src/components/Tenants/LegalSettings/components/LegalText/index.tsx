@@ -1,7 +1,9 @@
 import set from 'lodash.set';
-import { notification, Spin, Tag } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Fingerprint from '@mui/icons-material/Fingerprint';
+import { Spin, Tag } from 'antd';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import { Modal, ModalProps } from '../../../../Modal';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { EditorVersionSection, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
@@ -12,8 +14,9 @@ import { useLegalDraft } from '../../hooks/useLegalDraft';
 import { useLegalTextReadOnlyReason } from '../../hooks/useLegalTextReadOnlyReason';
 import { useLegalTextVersions } from '../../../../../hooks/useLegalTextVersions.hook';
 import { LegalConsentField } from '../LegalConsentField';
-import { LegalDraftNotice } from '../LegalDraftNotice';
+import { LegalDraftNotice, LegalDraftStatus, useLegalDraftNoticeState } from '../LegalDraftNotice';
 import { TenantLegalDraftNotice } from '../TenantLegalDraftNotice';
+import { TenantLegalDraftStatus, useDraftDecision } from '../TenantLegalDraftStatus';
 import { DraftStatusSnackbar, isDraftInfoState } from '../DraftStatusSnackbar';
 import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useTenantLegalDraft } from '../../hooks/useTenantLegalDraft';
@@ -28,6 +31,9 @@ import { isEmptyLegalContent } from '../../utils/legalHelpTexts';
 import { useTenantAppearanceFormData } from '../../../../../hooks/useTenantAppearanceFormData';
 import { useUserData } from '../../../../../hooks/useUserData.hook';
 import { TileHelpButton, type TileHelpTopic } from '../../../../TileHelp';
+import { ImprintIcon } from '../../../../CustomIcons/LegalIcons';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { legalDocumentStatus, legalTextState } from '../LegalDocumentTile/legalDocumentStatus';
 import styles from './styles.module.scss';
 import { PermissionAction } from '../../../../../enums/PermissionAction';
 import { Resource } from '../../../../../enums/Resource';
@@ -83,14 +89,6 @@ const persistHintDismissed = (type: 'privacy' | 'imprint', scope: string) => {
     }
 };
 
-const persistHintClosedForSession = (type: 'privacy' | 'imprint', scope: string) => {
-    try {
-        window.sessionStorage.setItem(scopedKey(hintSessionKey(type), scope), 'true');
-    } catch {
-        // Private mode / storage disabled: the close still works for this mount.
-    }
-};
-
 interface LegalTextProps {
     /** The tile's explanation (slideshow) behind the info button in the editor's title row. */
     tileHelp?: TileHelpTopic;
@@ -125,6 +123,13 @@ interface LegalTextProps {
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
     showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
+    /**
+     * Folds the card up to a tile header (icon, title, publication state). The explanation button and the help
+     * text then sit at the top of the unfolded content, and the editor does not repeat the title.
+     */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
 }
 
 /**
@@ -151,8 +156,14 @@ export const LegalText = ({
     placeHolderKey,
     icon,
     showConfirmationModal,
+    collapsible = false,
+    defaultOpen = false,
 }: LegalTextProps) => {
+    const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
+    const cardId = useId();
+    // The same default the editor header falls back to, so the explanation shows the tile's icon.
+    const TileIcon = icon ?? Fingerprint;
     const locale = i18n?.language?.split('-')[0] || 'de';
     const { can } = useUserPermissions();
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
@@ -456,7 +467,13 @@ export const LegalText = ({
         setHintHidden(legalType && dismissalScope ? isHintDismissed(legalType, dismissalScope) : false);
     }, [legalType, dismissalScope]);
 
-    const showHintSnackbar = !!legalType && !hintHidden;
+    // The role/state tip is permanent help: plain text in the tile with a "Nicht mehr anzeigen" link,
+    // never a pop-up (Frank, 2026-11-07).
+    const showHint = !!legalType && !hintHidden && !!help.hint;
+    const dismissHint = () => {
+        if (legalType && dismissalScope) persistHintDismissed(legalType, dismissalScope);
+        setHintHidden(true);
+    };
 
     const publishSavedDraft = useCallback(
         async (formData: Record<string, unknown>, revision: string, operationIdentity: string) => {
@@ -599,15 +616,31 @@ export const LegalText = ({
             });
     }, [editorIdentity, saveCurrentDraft, t]);
 
+    // The draft pop-ups can be closed without losing the state: it stays as quiet text in the tile.
+    const decisionState = {
+        unavailable: canEditLegalText && !!legalType && serverDraft.isError,
+        conflict: canEditLegalText && !!legalType && serverDraft.hasConflict,
+        collision: canEditLegalText && !!legalType && draftCollision && !sourceChosen,
+    };
+    const draftDecision = useDraftDecision(decisionState);
+    const localDraftNotice = useLegalDraftNoticeState({ savedAt });
+
     // Wait for the opaque user id too, but only where a draft is possible: mounting the
     // editor first and letting the draft arrive later would remount it mid-edit and offer
     // a save action that silently does nothing. A viewer without edit permission has no
     // draft, so the published text must not wait on that query.
     if (isLoading || serverDraft.isLoading || (isUserLoading && canEditLegalText)) {
-        return (
+        const loading = (
             <div className={styles.card}>
                 <Spin />
             </div>
+        );
+        return collapsible ? (
+            <LegalDocumentTile icon={icon ?? ImprintIcon} title={t(titleKey)} defaultOpen={defaultOpen}>
+                {loading}
+            </LegalDocumentTile>
+        ) : (
+            loading
         );
     }
 
@@ -663,7 +696,7 @@ export const LegalText = ({
         (historyState === 'available' ? versions?.find((version) => !version.supersededAt)?.publishedAt : undefined);
     const publicationStatus = isPublished && (
         <div className={styles.publicationStatus}>
-            <Tag color="green" data-testid="legal-publication-status">
+            <Tag color="green" className={styles.publishedTag} data-testid="legal-publication-status">
                 {publishedAt ? (
                     <>
                         {t('legal.status.publishedAt')}{' '}
@@ -847,10 +880,40 @@ export const LegalText = ({
             editor
         );
 
-    return (
-        <div className={styles.card}>
+    // The tile header says where this text stands: live, still a draft, or not written yet.
+    const tileStatus = legalDocumentStatus(
+        t,
+        legalTextState({
+            isPublished,
+            differsFromPublished,
+            // Two drafts and no choice yet: the screen shows the live text, but a decision is pending.
+            hasConflict: serverDraft.hasConflict || !sourceChosen,
+        }),
+    );
+
+    const helpSlotContent = legalType && (
+        <>
+            {publicationStatus}
+            <EditorHelpText
+                text={helpText}
+                hint={showHint ? help.hint : undefined}
+                onDismissHint={showHint ? dismissHint : undefined}
+            />
+            <TenantLegalDraftStatus
+                kind={draftDecision.kind}
+                dismissed={draftDecision.dismissed}
+                onReopen={draftDecision.reopen}
+            />
+        </>
+    );
+
+    const card = (
+        <div id={cardId} className={styles.card}>
             {canEditLegalText && legalType ? (
                 <TenantLegalDraftNotice
+                    jumpTarget={cardId}
+                    dismissed={draftDecision.dismissed}
+                    onDismiss={draftDecision.dismiss}
                     savedAt={serverBase.draft?.updatedAt}
                     localSavedAt={draftSource === 'server' ? undefined : savedAt}
                     collision={draftCollision && !sourceChosen}
@@ -894,13 +957,29 @@ export const LegalText = ({
                     pending={draftActionPending}
                 />
             ) : (
-                canEditLegalText && <LegalDraftNotice savedAt={savedAt} onDiscard={discardDraftAndEdits} />
+                canEditLegalText && (
+                    <LegalDraftNotice
+                        savedAt={savedAt}
+                        jump={cardId}
+                        dismissed={localDraftNotice.dismissed}
+                        onDismiss={localDraftNotice.dismiss}
+                        onDiscard={discardDraftAndEdits}
+                    />
+                )
             )}
             {wrapEditor(
                 <M3RichTextEditor
                     title={t(titleKey)}
                     icon={icon}
-                    headerAction={tileHelp && <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} />}
+                    // In a tile the header, the explanation button and the help text belong to the tile.
+                    hideHeader={collapsible}
+                    headerAction={
+                        collapsible
+                            ? undefined
+                            : tileHelp && (
+                                  <TileHelpButton topic={tileHelp} tileTitle={t(titleKey)} tileIcon={<TileIcon />} />
+                              )
+                    }
                     readOnly={!canEditLegalText}
                     publishing={isPending || draftActionPending}
                     versionLabel={draftVersionLabel}
@@ -932,22 +1011,14 @@ export const LegalText = ({
                     }))}
                     language={activeLanguage}
                     onLanguageChange={setActiveLanguage}
-                    helpSlot={
-                        legalType && (
-                            <>
-                                {publicationStatus}
-                                <EditorHelpText text={helpText} hint={showHintSnackbar ? undefined : help.hint} />
-                            </>
-                        )
-                    }
+                    helpSlot={collapsible ? undefined : helpSlotContent}
                     // Only hand over a slot when a message is actually showing: the editor reserves
                     // bottom space whenever the slot is set, and an empty queue must not leave a gap.
                     snackbarSlot={
                         (editorError ||
                             (versionsUnavailable && !historyNoticeClosed) ||
                             (blockedLanguages.length > 0 && consentBlockedClosed !== blockedLanguageNames) ||
-                            showDraftSnackbar ||
-                            showHintSnackbar) && (
+                            showDraftSnackbar) && (
                             <EditorSnackbarQueue
                                 items={[
                                     editorError && {
@@ -1005,31 +1076,24 @@ export const LegalText = ({
                                             />
                                         ),
                                     },
-                                    showHintSnackbar && {
-                                        key: 'help-hint',
-                                        node: (
-                                            <EditorHintSnackbar
-                                                layout="long"
-                                                text={help.hint}
-                                                onClose={() => {
-                                                    if (legalType && dismissalScope)
-                                                        persistHintClosedForSession(legalType, dismissalScope);
-                                                    setHintHidden(true);
-                                                }}
-                                                onDismiss={() => {
-                                                    if (legalType && dismissalScope)
-                                                        persistHintDismissed(legalType, dismissalScope);
-                                                    setHintHidden(true);
-                                                }}
-                                            />
-                                        ),
-                                    },
                                 ]}
                             />
                         )
                     }
                     aboveEditorSlot={
-                        !legalType && subTitle ? <p className={styles.description}>{subTitle}</p> : undefined
+                        !legalType && (subTitle || (canEditLegalText && savedAt)) ? (
+                            <>
+                                {subTitle ? <p className={styles.description}>{subTitle}</p> : null}
+                                {canEditLegalText ? (
+                                    <LegalDraftStatus
+                                        savedAt={savedAt}
+                                        dismissed={localDraftNotice.dismissed}
+                                        onReopen={localDraftNotice.reopen}
+                                        onDiscard={discardDraftAndEdits}
+                                    />
+                                ) : null}
+                            </>
+                        ) : undefined
                     }
                     placeholder={t(placeHolderKey)}
                     textTokens={legalTextTokens}
@@ -1095,5 +1159,20 @@ export const LegalText = ({
                 sentence can be blocking on open — possibly in a language other than
                 the one on screen. */}
         </div>
+    );
+
+    if (!collapsible) return card;
+
+    return (
+        <LegalDocumentTile
+            icon={icon ?? ImprintIcon}
+            title={t(titleKey)}
+            status={tileStatus}
+            help={tileHelp}
+            intro={helpSlotContent}
+            defaultOpen={defaultOpen}
+        >
+            {card}
+        </LegalDocumentTile>
     );
 };

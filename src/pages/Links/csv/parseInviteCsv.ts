@@ -28,6 +28,9 @@ const RECOGNISED_HEADER_FIRST_CELLS = new Set([
 export type InviteCsvRejectionReason =
     | 'invalidEmail'
     | 'invalidId'
+    | 'ambiguousId'
+    /** The ID column is labelled for the other tab's organisation type (Träger-ID vs. Beratungsstellen-ID). */
+    | 'wrongIdType'
     /** "Ziel" is neither neu/new nor bestehend/existing. */
     | 'invalidMode'
     /** "bestehend" names a unit by its number — without one there is nothing to invite into. */
@@ -67,27 +70,50 @@ export const INVITE_CSV_COLUMN_ORDER: ColumnKey[] = [
 /** E-Mail, Vorname, Name, ID: the columns an old file may label freely. */
 const LEGACY_COLUMN_COUNT = 4;
 
+/**
+ * Which id space the CSV's ID column addresses. `tenant` (Träger tab) resolves
+ * empty cells client-side from the free-id sequence; `agency` leaves them empty
+ * because AgencyService assigns the id when the invite is created (AUTO mode).
+ */
+export type InviteCsvIdKind = 'tenant' | 'agency';
+
+/** Header labels that name no organisation type; the file is read against the importing tab. */
+const GENERIC_ID_LABELS = ['id', 'nr', 'nummer'];
+const TENANT_ID_LABELS = [
+    'träger-id',
+    'traeger-id',
+    'träger id',
+    'tenant id',
+    'tenant-id',
+    'tenantid',
+    'provider id',
+    'provider-id',
+    'providerid',
+];
+const AGENCY_ID_LABELS = [
+    'beratungsstellen-id',
+    'beratungsstelle-id',
+    'bst-id',
+    'agency id',
+    'agency-id',
+    'agencyid',
+    'counselling centre id',
+    'counselling-centre-id',
+    'counseling center id',
+    'counseling-center-id',
+];
+
+const idKindOfLabel = (label: string): InviteCsvIdKind | undefined => {
+    if (TENANT_ID_LABELS.includes(label)) return 'tenant';
+    if (AGENCY_ID_LABELS.includes(label)) return 'agency';
+    return undefined;
+};
+
 /** Recognised header labels per column (lower-cased, trimmed). */
 const HEADER_LABELS: Record<Exclude<ColumnKey, 'email'>, string[]> = {
     firstName: ['vorname', 'first name', 'firstname', 'first_name'],
     lastName: ['name', 'nachname', 'last name', 'lastname', 'last_name', 'surname'],
-    id: [
-        'id',
-        'nr',
-        'nummer',
-        'träger-id',
-        'traeger-id',
-        'träger id',
-        'beratungsstellen-id',
-        'beratungsstelle-id',
-        'bst-id',
-        'tenant id',
-        'tenant-id',
-        'tenantid',
-        'agency id',
-        'agency-id',
-        'agencyid',
-    ],
+    id: [...GENERIC_ID_LABELS, ...TENANT_ID_LABELS, ...AGENCY_ID_LABELS],
     target: ['ziel', 'modus', 'mode', 'einheit', 'target', 'allocation mode', 'allocationmode'],
     role: ['rolle', 'role'],
     template: ['vorlage', 'e-mail-vorlage', 'template', 'email template'],
@@ -137,10 +163,16 @@ const ROLE_VALUES: Record<string, InviteRole> = {
     'beratungsstellen-admin': 'AGENCY_ADMIN',
     agency_admin: 'AGENCY_ADMIN',
     'agency admin': 'AGENCY_ADMIN',
+    'counselling centre admin': 'AGENCY_ADMIN',
+    'counselling-centre admin': 'AGENCY_ADMIN',
+    'counseling center admin': 'AGENCY_ADMIN',
+    'counseling-center admin': 'AGENCY_ADMIN',
     'träger-admin': 'TENANT_ADMIN',
     'traeger-admin': 'TENANT_ADMIN',
     tenant_admin: 'TENANT_ADMIN',
     'tenant admin': 'TENANT_ADMIN',
+    provider_admin: 'TENANT_ADMIN',
+    'provider admin': 'TENANT_ADMIN',
 };
 
 /** The backend enum, plain true/false and the German yes/no words a spreadsheet user types. */
@@ -309,13 +341,17 @@ const tokenize = (text: string, delimiter: ',' | ';'): CsvRecord[] => {
  * never uploaded). Robustness: BOM strip, `,`/`;` auto-detect, quoted fields,
  * CRLF/LF/CR, trailing/interspersed empty lines, header auto-detect (the first
  * row is skipped only when its first cell is a recognised header label).
+ * With `tabIdKind` (the importing tab's ID space) a row is rejected when the
+ * header labels its ID column for the other organisation type, because the same
+ * number would name a different organisation. Generic labels ("ID", "Nr") pass.
  */
-export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
+export const parseInviteCsv = (text: string, tabIdKind?: InviteCsvIdKind): ParseInviteCsvResult => {
     const content = stripBom(text);
     const delimiter = detectInviteCsvDelimiter(content);
     const records = tokenize(content, delimiter).filter((record) => record.cells.some((c) => c.trim() !== ''));
 
     let headerSkipped = false;
+    let ambiguousId = false;
     let dataRecords = records;
     let columnIndex: Partial<Record<ColumnKey, number>> = Object.fromEntries(
         INVITE_CSV_COLUMN_ORDER.map((key, index) => [key, index]),
@@ -333,6 +369,7 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
                 HEADER_LABELS[candidate].includes(label),
             );
         });
+        ambiguousId = recognised.filter((key) => key === 'id').length > 1;
         // Named columns claim first, so a positional fallback never steals a column that is labelled later on.
         recognised.forEach((key, index) => {
             if (key && columnIndex[key] == null) columnIndex[key] = index;
@@ -344,6 +381,11 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         });
     }
     const columns = INVITE_CSV_COLUMN_ORDER.filter((key) => columnIndex[key] != null);
+    // Only a recognised header can name the ID type; a header-less file or a custom label stays generic.
+    const labelledIdKind =
+        headerSkipped && columnIndex.id != null
+            ? idKindOfLabel(normalize(records[0].cells[columnIndex.id] ?? ''))
+            : undefined;
 
     const rows: ParsedInviteRow[] = [];
     const rejected: RejectedInviteRow[] = [];
@@ -362,6 +404,11 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
                 firstName: cell('firstName'),
                 lastName: cell('lastName'),
             });
+
+        if (ambiguousId) {
+            reject('ambiguousId');
+            return;
+        }
 
         const email = cell('email');
         const firstName = cell('firstName');
@@ -396,6 +443,12 @@ export const parseInviteCsv = (text: string): ParseInviteCsvResult => {
         const role = roleRaw === '' ? undefined : ROLE_VALUES[roleRaw];
         if (roleRaw !== '' && role == null) {
             reject('invalidRole');
+            return;
+        }
+        // A Träger-admin row on the counsellor tab joins the viewer's own Träger and never reads the cell.
+        const readsIdCell = !(tabIdKind === 'agency' && role === 'TENANT_ADMIN');
+        if (id != null && readsIdCell && tabIdKind != null && labelledIdKind != null && labelledIdKind !== tabIdKind) {
+            reject('wrongIdType');
             return;
         }
         const topicPermission = topicRaw === '' ? undefined : TOPIC_PERMISSION_VALUES[topicRaw];

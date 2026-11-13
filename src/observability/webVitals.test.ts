@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const histogramsByName: Record<string, { record: ReturnType<typeof vi.fn> }> = {};
 const gaugesByName: Record<string, { addCallback: ReturnType<typeof vi.fn> }> = {};

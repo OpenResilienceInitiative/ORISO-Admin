@@ -2,7 +2,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
 import { GlobalLoginSettingsPage } from '.';
 
@@ -62,12 +62,12 @@ describe('GlobalLoginSettingsPage one-topic-per-agency switch access', () => {
     });
 
     /** ORISO rule: superadmin-only settings stay visible for everyone, they just cannot be edited. */
-    it('shows the switch to other admins, disabled and without edit or save', () => {
+    it('shows the switch to other admins, read-only and without edit or save', () => {
         state.isSuperAdmin = false;
         showPage();
 
         expect(screen.getByText('Fachbereiche')).toBeVisible();
-        expect(oneTopicSwitch()).toBeDisabled();
+        expect(oneTopicSwitch()).toHaveAttribute('aria-disabled', 'true');
         expect(oneTopicCard().queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
         expect(oneTopicCard().queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
     });

@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { Documentation } from './index';
 
 const meta = {
-    title: 'Pages/Profile/Documentation',
+    title: 'Settings/Mein Account/Documentation',
+    id: 'pages-profile-documentation',
     component: Documentation,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin'])],

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { ReactElement } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import '../../../../i18n';
 
 const render = (ui: ReactElement) =>
@@ -142,7 +142,9 @@ describe('AgencyPermissionsSettings case handover card', () => {
             mocks.useAgencyData.mockReturnValue({ data: undefined, isLoading: false, isPending: true });
             render(<AgencyPermissionsSettings agencyId="55" />);
 
-            expect(screen.queryByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/i)).toBeNull();
+            expect(
+                screen.queryByText(/Übergaberegeln gelten je Träger|Handover rules are set per provider/i),
+            ).toBeNull();
             expect(document.querySelector('[data-testid="case-handover-card-loading"]')).not.toBeNull();
             expect(fetchStub.mock.calls.map(([request]) => (request as unknown as Request).url).join(' ')).not.toMatch(
                 /case-handover/,
@@ -160,7 +162,7 @@ describe('AgencyPermissionsSettings case handover card', () => {
         });
         render(<AgencyPermissionsSettings agencyId="55" />);
 
-        expect(screen.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per Träger/i)).toBeTruthy();
+        expect(screen.getByText(/Übergaberegeln gelten je Träger|Handover rules are set per provider/i)).toBeTruthy();
     });
 });
 
@@ -207,9 +209,9 @@ describe('AgencyPermissionsSettings notification channels', () => {
             mocks.useAgencyData.mockReturnValue(agency({}));
             render(<AgencyPermissionsSettings agencyId="55" />);
 
-            expect((await screen.findAllByText(/Träger.*(nicht geladen|could not be loaded)/i)).length).toBeGreaterThan(
-                0,
-            );
+            expect(
+                (await screen.findAllByText(/(Träger.*nicht geladen|provider.*could not be loaded)/i)).length,
+            ).toBeGreaterThan(0);
             expect(policy('featureAskerEmailAgencyCounsellingEnabled')).toBeNull();
         } finally {
             vi.unstubAllGlobals();
@@ -243,7 +245,7 @@ describe('AgencyPermissionsSettings direct invitations', () => {
                 ).toBeDisabled(),
             );
             expect(
-                screen.getByText(/Ihr Träger hat das ausgeschaltet|Your Träger has switched this off/i),
+                screen.getByText(/Ihr Träger hat das ausgeschaltet|Your provider has switched this off/i),
             ).toBeTruthy();
 
             const chat = policy('featureDirectInviteChatEnabled');
@@ -267,7 +269,7 @@ describe('AgencyPermissionsSettings direct invitations', () => {
 
             expect(
                 await screen.findByText(
-                    /Einstellung des Trägers konnte nicht geladen|Träger's setting could not be loaded/i,
+                    /Einstellung des Trägers konnte nicht geladen|provider's setting could not be loaded/i,
                 ),
             ).toBeTruthy();
             expect(policy('featureDirectInviteChatEnabled')).toBeNull();

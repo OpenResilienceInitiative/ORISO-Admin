@@ -1,9 +1,10 @@
-import { Alert, Button, Input, message, Tag, Tooltip } from 'antd';
+import { Button, Input, Tag, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     createInviteEmailTemplate,
     InviteEmailTemplateDTO,
@@ -29,6 +30,7 @@ import { ListingTable, listingTableStyles } from '../../components/ListingTable'
 import { M3Tooltip } from '../../components/M3Tooltip';
 import { Modal, DialogButton } from '../../components/Modal';
 import styles from './EmailTemplatesDialog.module.scss';
+import { Notify } from '../../components/Notify';
 
 interface EmailTemplatesDialogProps {
     /** The template kind of the invite tab the dialog was opened from — used to preset new templates. */
@@ -98,10 +100,12 @@ export const EmailTemplatesDialog = ({
     onSelect,
     selectedTemplateId,
 }: EmailTemplatesDialogProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const fieldId = useId();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [loading, setLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
     /** Set once the first template request settled — success, empty or failure alike. */
     const [loadCompleted, setLoadCompleted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -181,11 +185,13 @@ export const EmailTemplatesDialog = ({
     // required kind, and the merged list is grouped with the current kind first.
     const loadTemplates = useCallback(async () => {
         setLoading(true);
+        setLoadFailed(false);
         try {
             const results = await Promise.all(visibleKinds.map((kind) => listInviteEmailTemplates(kind)));
             setTemplates(results.flat());
         } catch {
-            message.error(t('links.templates.loadFailed', 'Could not load templates'));
+            // Shown as a pop-up with "Erneut versuchen" (see the list view); the list keeps quiet text.
+            setLoadFailed(true);
         } finally {
             setLoading(false);
             // "The request finished", independent of what (or whether) it returned:
@@ -193,7 +199,7 @@ export const EmailTemplatesDialog = ({
             // one, and the create deep link must open in both cases.
             setLoadCompleted(true);
         }
-    }, [t, visibleKinds]);
+    }, [visibleKinds]);
 
     useEffect(() => {
         loadTemplates();
@@ -579,6 +585,21 @@ export const EmailTemplatesDialog = ({
         </div>
     ) : undefined;
 
+    // One notice for both views: a failed load must not vanish when the admin opens the form.
+    const loadFailedNotice = (jump?: string) =>
+        loadFailed && (
+            <Notify
+                severity="error"
+                title={t('notify.title.links')}
+                quietText={t('notify.tile.notLoaded')}
+                causeKey="links:email-templates"
+                jump={jump}
+                actions={[{ label: t('notify.retry'), onClick: () => loadTemplates() }]}
+            >
+                {t('links.templates.loadFailed', 'Could not load templates')}
+            </Notify>
+        );
+
     if (view === 'form') {
         const formTitleKey = editingTemplate ? 'links.templates.editTitle' : 'links.templates.newTitle';
         const formDescriptionKey = editingTemplate
@@ -602,6 +623,7 @@ export const EmailTemplatesDialog = ({
                 onDismiss={() => (discardPrompt ? cancelDiscardPrompt() : guardDraft(onClose))}
                 onSave={onSave}
             >
+                {loadFailedNotice()}
                 {discardPrompt && (
                     <p className={styles.discardBody} role="status">
                         {t('links.templates.discardBody', 'Diese Vorlage wurde geändert, aber noch nicht gespeichert.')}
@@ -684,13 +706,12 @@ export const EmailTemplatesDialog = ({
                                 ]}
                             />
                             {previewTenantsFailed && (
-                                <Alert
-                                    type="error"
-                                    message={t(
+                                <Notify title={t('notify.title.links')} severity="error">
+                                    {t(
                                         'links.templates.previewTenantsFailed',
                                         'Träger für die Vorschau konnten nicht geladen werden.',
                                     )}
-                                />
+                                </Notify>
                             )}
                         </div>
                     )}
@@ -755,34 +776,38 @@ export const EmailTemplatesDialog = ({
             footer={listFooter}
             width={1180}
         >
-            <ListingTable
-                rowKey="id"
-                loading={loading}
-                columns={columns}
-                dataSource={sortedTemplates}
-                pagination={false}
-                scroll={{ y: 'auto' }}
-                onRow={(template: InviteEmailTemplateDTO) => ({
-                    className: classNames({
-                        [styles.pickableRow]: isSelectable(template),
-                        [styles.selectedRow]: template.id === selectedTemplateId,
-                    }),
-                    // The whole row is a hit area for picking, but its own
-                    // buttons (name, edit) keep their meaning.
-                    onClick: (event: MouseEvent<HTMLElement>) => {
-                        if ((event.target as HTMLElement).closest('button')) return;
-                        if (isSelectable(template)) {
-                            onSelect?.(template);
-                        } else if (!onSelect && mayEditTemplate(template) && isPhone()) {
-                            // No double-click on a touch screen (a double tap zooms): one tap edits (#1127).
-                            openEditForm(template);
-                        }
-                    },
-                    // Manager-only mode: without picking, a row click is free
-                    // for the edit shortcut — for whoever may edit at all.
-                    onDoubleClick: onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
-                })}
-            />
+            {loadFailedNotice('email-templates-list')}
+            <div id="email-templates-list">
+                <ListingTable
+                    rowKey="id"
+                    loading={loading}
+                    columns={columns}
+                    dataSource={sortedTemplates}
+                    pagination={false}
+                    scroll={{ y: 'auto' }}
+                    onRow={(template: InviteEmailTemplateDTO) => ({
+                        className: classNames({
+                            [styles.pickableRow]: isSelectable(template),
+                            [styles.selectedRow]: template.id === selectedTemplateId,
+                        }),
+                        // The whole row is a hit area for picking, but its own
+                        // buttons (name, edit) keep their meaning.
+                        onClick: (event: MouseEvent<HTMLElement>) => {
+                            if ((event.target as HTMLElement).closest('button')) return;
+                            if (isSelectable(template)) {
+                                onSelect?.(template);
+                            } else if (!onSelect && mayEditTemplate(template) && isPhone()) {
+                                // No double-click on a touch screen (a double tap zooms): one tap edits (#1127).
+                                openEditForm(template);
+                            }
+                        },
+                        // Manager-only mode: without picking, a row click is free
+                        // for the edit shortcut — for whoever may edit at all.
+                        onDoubleClick:
+                            onSelect || !mayEditTemplate(template) ? undefined : () => openEditForm(template),
+                    })}
+                />
+            </div>
         </Modal>
     );
 };

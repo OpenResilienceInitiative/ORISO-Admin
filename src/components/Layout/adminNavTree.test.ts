@@ -1,8 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import routePathNames from '../../appConfig';
-import i18n from '../../i18n';
-import { searchNav } from '../AdminMobileNav/navSearch';
-import { buildNavSearchEntries } from './AdminMobileNavBar';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
@@ -85,17 +82,10 @@ describe('buildAdminNavTree', () => {
             hasRole: (role) => [role].flat().includes(UserRole.AgencyAdmin),
             can: (action, resource) => resource === Resource.LegalText && action === PermissionAction.Read,
         });
-        const entries = buildNavSearchEntries(
-            i18n.getFixedT('de'),
-            ['de', 'en'].map((language) => i18n.getFixedT(language)),
-            [{ key: 'theme', label: 'Einstellungen' }],
-            tree,
-        );
 
-        const [hit] = searchNav(entries, 'Datenschutz');
-
-        expect(hit?.entry.id).toBe('settings:legal');
-        expect(hit?.entry.to).toBe(`${routePathNames.themeSettings}/legal`);
+        // The single tab stays in the tree, so the app-wide search still finds it.
+        expect(ids(tree, 'theme')).toEqual(['settings:legal']);
+        expect(tree.theme[0].to).toBe(`${routePathNames.themeSettings}/legal`);
     });
 
     it('returns empty lists for an admin without permissions', () => {

@@ -1,6 +1,8 @@
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
+import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import { Card } from '../../Card';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
 import { TileSections } from '../../TileSections';
@@ -65,21 +67,23 @@ export const CounsellorTutorialSettingsCard = ({
                             <dd>{availability(practiceAvailable)}</dd>
                         </div>
                     </dl>
-                    <Form
-                        layout="vertical"
-                        disabled={!onToursChange || toursSaving}
-                        className={styles.toursControl}
-                        fields={[{ name: 'tours', value: toursEnabled === true }]}
-                        onValuesChange={(changed: { tours?: boolean }) => {
-                            if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
-                        }}
-                    >
-                        <MuiSwitchField
-                            name="tours"
-                            label={t('globalSettings.tutorials.showTours')}
-                            helpText={t('globalSettings.tutorials.showToursHelp')}
-                        />
-                    </Form>
+                    <ReadOnlyTileContext.Provider value={!onToursChange && !toursSaving}>
+                        <Form
+                            layout="vertical"
+                            disabled={!onToursChange || toursSaving}
+                            className={styles.toursControl}
+                            fields={[{ name: 'tours', value: toursEnabled === true }]}
+                            onValuesChange={(changed: { tours?: boolean }) => {
+                                if (typeof changed.tours === 'boolean') onToursChange?.(changed.tours);
+                            }}
+                        >
+                            <MuiSwitchField
+                                name="tours"
+                                label={t('globalSettings.tutorials.showTours')}
+                                helpText={t('globalSettings.tutorials.showToursHelp')}
+                            />
+                        </Form>
+                    </ReadOnlyTileContext.Provider>
                 </TileSections.Section>
                 <TileSections.Section
                     id="tutorials-planned"
@@ -148,9 +152,8 @@ export const CounsellorTutorialSettingsCardContainer = () => {
                               {
                                   // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                                   onError: () =>
-                                      message.error({
+                                      snackbar.error({
                                           content: t('globalSettings.tutorials.error.generic'),
-                                          duration: 5,
                                       }),
                               },
                           )

@@ -4,7 +4,7 @@ import antdResetCss from 'antd/dist/reset.css?inline';
 import InputAdornment from '@mui/material/InputAdornment';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { MuiSelectField } from '../MuiSelectField';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from './index';
 
@@ -141,6 +141,70 @@ describe('MuiFormField', () => {
         expect(await screen.findByText('Email is required')).toBeVisible();
         expect(input).toHaveAttribute('aria-invalid', 'true');
         expect(screen.getByTestId('mui-form-field-error-icon')).toBeVisible();
+    });
+
+    it('shows and clears the error for a field inside an AntD Form.List', async () => {
+        const user = userEvent.setup();
+        const onFinish = vi.fn();
+        render(
+            <Form initialValues={{ postCodes: [{ from: '10551' }] }} onFinish={onFinish}>
+                <Form.List name="postCodes">
+                    {(fields) =>
+                        fields.map(({ key, name }) => (
+                            <MuiFormField
+                                key={key}
+                                name={[name, 'from']}
+                                label="From postcode"
+                                rules={[{ min: 5, message: 'Enter a five-digit postcode' }]}
+                            />
+                        ))
+                    }
+                </Form.List>
+                <button type="submit">Submit</button>
+            </Form>,
+        );
+
+        const input = screen.getByRole('textbox', { name: 'From postcode' });
+        const submit = screen.getByRole('button', { name: 'Submit' });
+        await user.clear(input);
+        await user.type(input, '1055');
+        await user.click(submit);
+
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(onFinish).not.toHaveBeenCalled();
+        expect(await screen.findByText('Enter a five-digit postcode')).toBeVisible();
+        expect(input).toHaveAccessibleDescription('Enter a five-digit postcode');
+
+        await user.type(input, '1');
+        await user.click(submit);
+
+        expect(input).toHaveAttribute('aria-invalid', 'false');
+        expect(screen.queryByText('Enter a five-digit postcode')).not.toBeInTheDocument();
+        expect(onFinish).toHaveBeenCalledOnce();
+        expect(onFinish).toHaveBeenCalledWith({ postCodes: [{ from: '10551' }] });
+    });
+
+    it('keeps the first error as the description when multiple rules fail for a flat field', async () => {
+        const user = userEvent.setup();
+        render(
+            <Form initialValues={{ email: 'a' }}>
+                <MuiFormField
+                    name="email"
+                    label="Email"
+                    rules={[
+                        { min: 5, message: 'Email is too short' },
+                        { type: 'email', message: 'Email is invalid' },
+                    ]}
+                />
+                <button type="submit">Submit</button>
+            </Form>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Submit' }));
+
+        expect(await screen.findByText('Email is too short')).toBeVisible();
+        expect(screen.getByRole('textbox', { name: 'Email' })).toHaveAccessibleDescription('Email is too short');
+        expect(screen.queryByText('Email is invalid')).not.toBeInTheDocument();
     });
 
     it('keeps the password visibility toggle when the field is in error', async () => {

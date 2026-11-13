@@ -1,8 +1,8 @@
 import { ReactNode } from 'react';
-import { notification } from 'antd';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar as notification } from '../components/Snackbar';
 import { useAppearanceEditingRights } from './useAppearanceEditingRights.hook';
 import { tenantPermissionPoliciesKey } from './useTenantPermissionPolicies';
 import { useUserRoles } from './useUserRoles.hook';

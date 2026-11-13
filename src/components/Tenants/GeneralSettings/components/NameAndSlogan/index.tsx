@@ -13,6 +13,7 @@ export const NameAndSlogan = ({ tenantId, readOnly = false }: { tenantId: string
         <CardEditable
             key={`name-slogan-${tenantId}-${readOnly}`}
             allowEdit={!readOnly}
+            readOnlyAccess={readOnly}
             isLoading={isLoading}
             initialValues={{ ...data }}
             titleKey="organisations.nameAndSlugTitle"

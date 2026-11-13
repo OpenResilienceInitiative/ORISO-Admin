@@ -13,7 +13,7 @@
 // globals. jsdom's `Storage` interface survives while Node's native `sessionStorage`
 // instance survives with it — two objects that do not belong to each other. Installing
 // only the area that happens to be missing therefore leaves one no spy can reach.
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const areas = [
     ['localStorage', () => window.localStorage],

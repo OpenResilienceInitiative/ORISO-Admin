@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { AccountInviteDTO } from '../../../api/accountInvites/accountInvites';
@@ -80,6 +80,46 @@ const baseProps = () => ({
     onResend: vi.fn(),
     onCopyLink: vi.fn(),
     onRevoke: vi.fn(),
+});
+
+const serverList = () => ({
+    page: 2,
+    pageSize: 20,
+    total: 61,
+    filter: null,
+    sort: null,
+    onPageChange: vi.fn(),
+    onPageSizeChange: vi.fn(),
+    onFilterChange: vi.fn(),
+    onSortChange: vi.fn(),
+});
+
+describe('InviteProgressBoard server results', () => {
+    it('uses server totals and delegates next-page navigation without slicing the supplied page again', async () => {
+        const user = userEvent.setup();
+        const paging = serverList();
+        render(<InviteProgressBoard {...baseProps()} invites={[invite(21), invite(22)]} serverList={paging} />);
+        expect(screen.getByText('21–40 von 61')).toBeInTheDocument();
+        expect(screen.getByText('person21@example.org')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(paging.onPageChange).toHaveBeenCalledWith(3);
+    });
+
+    it('keeps selections from other server pages', () => {
+        const props = baseProps();
+        render(<InviteProgressBoard {...props} selectedIds={[1]} invites={[invite(21)]} serverList={serverList()} />);
+        expect(props.onSelectionChange).not.toHaveBeenCalled();
+    });
+
+    it('delegates lifecycle and sort changes to the owner of the server request', async () => {
+        const user = userEvent.setup();
+        const paging = serverList();
+        render(<InviteProgressBoard {...baseProps()} serverList={paging} />);
+        await user.click(screen.getByRole('button', { name: /^Braucht Aktion/ }));
+        expect(paging.onFilterChange).toHaveBeenCalledWith('needsAction');
+        await user.click(screen.getByRole('button', { name: /^Empfänger/ }));
+        expect(paging.onSortChange).toHaveBeenCalledWith({ key: 'recipient', direction: 'asc' });
+    });
 });
 
 describe('InviteProgressBoard', () => {
@@ -390,6 +430,22 @@ describe('InviteProgressBoard', () => {
             'Der Versand konnte nicht bestätigt werden. Die Einladung bleibt erhalten und kann erneut gesendet werden.',
         );
         expect(row.getByRole('button', { name: 'Erinnerung erneut senden' })).toBeEnabled();
+    });
+
+    it('names each row action in a hover tooltip without repeating it as a description (#1374)', async () => {
+        const user = userEvent.setup();
+        render(<InviteProgressBoard {...baseProps()} invites={[invite(11, { inviteStatus: 'EMAIL_SENT' })]} />);
+
+        const row = within(screen.getByText('person11@example.org').closest('tr') as HTMLElement);
+        const names = ['Erinnerung erneut senden', 'Einladungslink kopieren', 'Einladung widerrufen'];
+        await names.reduce<Promise<void>>(async (previous, name) => {
+            await previous;
+            const action = row.getByRole('button', { name });
+            await user.hover(action);
+            expect(await screen.findByRole('tooltip')).toHaveTextContent(name);
+            expect(action).not.toHaveAttribute('aria-describedby');
+            await user.unhover(action);
+        }, Promise.resolve());
     });
 
     it('reports selection changes through row checkboxes', async () => {

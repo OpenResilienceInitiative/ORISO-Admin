@@ -1,9 +1,10 @@
-import { Button, Form, message } from 'antd';
+import { Button, Form } from 'antd';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { ThemeProvider } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiFormField, MuiNumberFormField, MuiPasswordFormField } from '../../components/mui/MuiFormField';
 import { CardEditable } from '../../components/CardEditable';
 import { Card } from '../../components/Card';
@@ -41,6 +42,7 @@ import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../component
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
+import { Notify } from '../../components/Notify';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -129,6 +131,7 @@ export const GlobalLoginSettingsPage = () => {
 };
 
 export const GlobalSmtpSettingsPage = () => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const [testForm] = Form.useForm();
@@ -366,16 +369,14 @@ export const GlobalSmtpSettingsPage = () => {
                             </p>
                         )}
                         {!isSummaryLoading && (isError || !platformSmtp) && (
-                            <div className={styles.smtpReadStatus} role="alert">
-                                <p>{t('globalSettings.smtp.saved.error')}</p>
-                                <Button
-                                    onClick={() => {
-                                        refetch();
-                                    }}
-                                >
-                                    {t('globalSettings.smtp.saved.retry')}
-                                </Button>
-                            </div>
+                            <Notify
+                                title={t('notify.title.globalSettings')}
+                                severity="error"
+                                quietText={t('notify.tile.notLoaded')}
+                                actions={[{ label: t('globalSettings.smtp.saved.retry'), onClick: () => refetch() }]}
+                            >
+                                {t('globalSettings.smtp.saved.error')}
+                            </Notify>
                         )}
                         {!isSummaryLoading && !isError && platformSmtp && (
                             <dl className={styles.smtpReadOnly}>
@@ -425,7 +426,8 @@ export const GlobalSmtpSettingsPage = () => {
                                 </div>
                             </dl>
                         )}
-                        {syncStatus && (
+                        {/* The sync status speaks about the saved settings: only when they were read. */}
+                        {syncStatus && !isSummaryLoading && !isError && platformSmtp && (
                             <p className={styles.smtpReadStatus} role="status">
                                 {t(smtpSyncMessageKeys[syncStatus])}
                             </p>

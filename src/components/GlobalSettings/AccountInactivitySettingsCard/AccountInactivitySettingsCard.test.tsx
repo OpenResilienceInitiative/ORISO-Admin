@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, expect, it } from 'vite-plus/test';
+import { SnackbarHost } from '../../Snackbar';
 import i18n from '../../../i18n';
 import { setSessionTokens, clearSessionTokens } from '../../../api/auth/tokenSessionStore';
 import { AccountInactivitySettingsCardContainer } from '.';
@@ -18,6 +19,8 @@ afterEach(() => {
     clearSessionTokens();
 });
 beforeEach(async () => {
+    // Saved/failed feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     setSessionTokens(
         `header.${btoa(
             JSON.stringify({ realm_access: { roles: ['agency-admin', 'tenant-admin'] }, tenantId: 0 }),
@@ -44,7 +47,8 @@ it('loads the three confirmed periods and explains deletion, suspension and new-
             'Änderungen gelten nur für neu angelegte Personen. Bestehende Personen behalten ihre bisherige Frist.',
         ),
     ).toBeVisible();
-    expect(screen.getByText(/werden Ratsuchende gelöscht/)).toBeVisible();
+    expect(screen.getByText(/Konten nur mit der Rolle Ratsuchende.*gelöscht/)).toBeVisible();
+    expect(screen.getByText(/Wenn die automatische Verarbeitung aktiv ist/)).toBeVisible();
 });
 
 it('saves all three periods with revision zero and reads the confirmed values after remounting', async () => {

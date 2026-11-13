@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
-import { afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vite-plus/test';
+import { snackbarStore } from '../components/Snackbar/snackbarStore';
 import { installMemoryStorage, resetMemoryStorage } from './memoryStorage';
 
 if (typeof window !== 'undefined') {
@@ -41,7 +42,7 @@ if (typeof window !== 'undefined') {
 
     // Emotion's dev build gives every rule its own <style> tag, and antd rescans all of <head>
     // on every component mount; one tag per sheet (as in production) keeps big forms in budget.
-    const [emotion, { createElement }, { flushSync }, { createRoot }] = await Promise.all([
+    const [emotion, { createElement, useContext }, { flushSync }, { createRoot }] = await Promise.all([
         import('@emotion/react'),
         import('react'),
         import('react-dom'),
@@ -59,39 +60,30 @@ if (typeof window !== 'undefined') {
     if (found.cache) {
         found.cache.sheet.isSpeedy = true;
     }
+
+    // antd's own style engine (@ant-design/cssinjs) writes every component's CSS into <head> as it
+    // first renders (433 rules for Button alone, 800+ per file). jsdom matches each rule against the
+    // element and all its ancestors on every computed-style lookup, which is what role queries do,
+    // so those rules cost ~10 s per file for nothing: no unit test asserts on antd's look.
+    // Its 'server' mock still builds the class names and keeps the cache, but injects nothing.
+    // Storybook/browser tests do not run this file and keep the real styles.
+    // eslint-disable-next-line import/no-extraneous-dependencies -- the copy antd renders with; reached through antd, not declared by us
+    const { StyleContext } = await import('@ant-design/cssinjs');
+    const StyleContextProbe = () => {
+        const defaultStyleContext = useContext(StyleContext);
+        defaultStyleContext.mock = 'server';
+        return null;
+    };
+    const styleContextRoot = createRoot(document.createElement('div'));
+    flushSync(() => styleContextRoot.render(createElement(StyleContextProbe)));
+    styleContextRoot.unmount();
 }
 
-// antd's static `message` / `notification` APIs render through a module-level
-// singleton that portals notices into a container appended straight to document.body.
-// RTL's cleanup() only unmounts what render() created, so a notice that has not
-// auto-dismissed yet survives into the next test — a stale "This tenant ID is already
-// taken." toast once broke an unrelated assertion in AccountInvitesTab.test.tsx on CI.
-//
-// destroy() alone does not fix it: it only queues a React update, so the notice is
-// still in the DOM when the next test starts. act() flushes that update synchronously.
-//
-// Do NOT instead remove the .ant-message root from the body (the way stuck
-// .ant-modal-root nodes are swept up): the singleton keeps rendering into the detached
-// container, and every later notice in that file then silently never appears.
-//
-// Registered before the timer hook below so it runs last — Vitest runs afterEach in
-// reverse registration order — and never has to flush against a test's fake clock.
-//
-// antd/react are imported lazily, only when a notice is actually on screen: a static
-// import would pull antd into every test file, and an unconditional destroy() would
-// instantiate the message holder in every single test.
-afterEach(async () => {
-    // `@vitest-environment node` files (e.g. api/fetchData.test.ts) have no DOM.
-    if (typeof document === 'undefined' || !document.querySelector('.ant-message, .ant-notification')) {
-        return;
-    }
-
-    const [{ message, notification }, { act }] = await Promise.all([import('antd'), import('react')]);
-
-    act(() => {
-        message.destroy();
-        notification.destroy();
-    });
+// The snackbar channel is a module-level store, so a snackbar raised by one test would still be
+// queued (and its dedupe window still open) in the next one. Clearing it also forgets the dedupe
+// history, which keeps tests that raise the same message independent of each other.
+afterEach(() => {
+    snackbarStore.clear();
 });
 
 // Prevent storage leaking from one test into the next: the in-memory areas live for
@@ -103,4 +95,48 @@ afterEach(() => {
 // Prevent fake-timer leakage between test files when a test forgets to restore.
 afterEach(() => {
     vi.useRealTimers();
+});
+
+// Notifications are pop-ups on the shared snackbar channel (`<Notify>`, `snackbar.*`), rendered by the
+// app-level `<SnackbarHost>`. A DOM test gets that host the moment something is notified, so a component
+// that raises a notification can be asserted with `screen`/`findByText`/`findByRole('alert')` as in the
+// app. Mounting on demand (not in beforeEach) lets a test finish its own `react-i18next` mock first.
+let teardownSnackbarHost: (() => void) | undefined;
+
+beforeEach(async () => {
+    if (typeof document === 'undefined') return;
+    const [{ createElement, act }, { createRoot }, { SnackbarHost, snackbar }] = await Promise.all([
+        import('react'),
+        import('react-dom/client'),
+        import('../components/Snackbar'),
+    ]);
+    snackbar.clear();
+    let mounted: { root: ReturnType<typeof createRoot>; element: HTMLElement } | undefined;
+    const mount = () => {
+        if (mounted) return;
+        // A test that renders its own <SnackbarHost> already shows the pop-ups; a second host would duplicate them.
+        if (document.querySelector('[data-testid="snackbar-host"]')) return;
+        const element = document.createElement('div');
+        document.body.appendChild(element);
+        const root = createRoot(element);
+        mounted = { root, element };
+        // Not wrapped in act(): the first notification often arrives while React is already rendering.
+        root.render(createElement(SnackbarHost));
+    };
+    const unsubscribe = snackbarStore.subscribe(() => {
+        if (snackbarStore.getState().current) mount();
+    });
+    teardownSnackbarHost = () => {
+        unsubscribe();
+        act(() => snackbar.clear());
+        if (mounted) {
+            act(() => mounted?.root.unmount());
+            mounted.element.remove();
+        }
+    };
+});
+
+afterEach(() => {
+    teardownSnackbarHost?.();
+    teardownSnackbarHost = undefined;
 });

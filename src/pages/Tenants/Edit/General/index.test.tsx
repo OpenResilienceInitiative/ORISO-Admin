@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { GeneralTenantSettings } from './index';
 
 type MutationOptions = { onSuccess: (data: unknown, variables: unknown) => void; onError: (error: Error) => void };
@@ -10,6 +10,16 @@ const mocks = vi.hoisted(() => ({
     createTenant: vi.fn(),
     createTenantAdmin: vi.fn(),
     tenantOptions: undefined as MutationOptions | undefined,
+    settings: { multitenancyWithSingleDomainEnabled: true },
+}));
+
+// The subdomain switch is read through this mock, so each test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
 }));
 
 vi.mock('react-router-dom', () => ({
@@ -17,7 +27,7 @@ vi.mock('react-router-dom', () => ({
     useParams: () => ({ id: 'add' }),
 }));
 vi.mock('../../../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: true } }),
+    useAppConfigContext: () => ({ settings: mocks.settings }),
 }));
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({ data: undefined, isLoading: false }),
@@ -48,6 +58,26 @@ describe('Neuen Träger anlegen — Save (Admin#1206)', () => {
         mocks.createTenant.mockReset();
         mocks.createTenantAdmin.mockReset();
         mocks.navigate.mockReset();
+        mocks.settings = { multitenancyWithSingleDomainEnabled: true };
+        subdomainFeature.finished = false;
+    });
+
+    it('has no subdomain field, also on a multi-domain installation (subdomains are not finished)', () => {
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+
+        render(<GeneralTenantSettings />);
+
+        expect(screen.getByLabelText(/tenants\.add\.form\.name\.placeholder/)).toBeInTheDocument();
+        expect(screen.queryByLabelText(/tenants\.add\.form\.subdomain\.placeholder/)).not.toBeInTheDocument();
+    });
+
+    it('asks for the subdomain on a multi-domain installation once subdomains are technically finished', () => {
+        subdomainFeature.finished = true;
+        mocks.settings = { multitenancyWithSingleDomainEnabled: false };
+
+        render(<GeneralTenantSettings />);
+
+        expect(screen.getByLabelText(/tenants\.add\.form\.subdomain\.placeholder/)).toBeInTheDocument();
     });
 
     it('sends one create request for a double click and shows Save as busy while it runs', async () => {
