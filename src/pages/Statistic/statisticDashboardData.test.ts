@@ -7,6 +7,7 @@ import {
     buildCaseChartDateLabels,
     buildCasePeriodOptions,
     buildCaseWeekOverview,
+    addTrackedMetricValues,
     buildStatisticData,
     emptyStatisticData,
     getIsoWeek,
@@ -184,6 +185,85 @@ describe('statisticDashboardData', () => {
         expect(conversation.total).toEqual([40, 0, 5, 0]);
     });
 
+    it('maps communication counts and keeps untracked ones apart from withheld ones', () => {
+        const base = agencyTarget({});
+        const tracked = agencyTarget({
+            metrics: {
+                ...base.metrics!,
+                messagesCounselorsCurrentMonth: 40,
+                messagesAdviceSeekersCurrentMonth: 25,
+                audioCallsCurrentMonth: 3,
+                videoCallsCurrentMonth: null,
+            },
+        });
+        const { metrics } = buildStatisticData(tenantScopeResponse([tracked]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesCounselors).toBe(40);
+        expect(metrics.messagesSeekers).toBe(25);
+        expect(metrics.textMessagesTotal).toBe(65);
+        expect(metrics.phoneCalls).toBe(3);
+        // tracked but withheld
+        expect(metrics.videoCalls).toBeNull();
+        // not sent at all: no data source
+        expect(metrics.voiceMessages).toBeUndefined();
+        expect(metrics.liveChat).toBeUndefined();
+    });
+
+    it('keeps a communication count withheld when one target withholds it', () => {
+        // one target reports 5 messages, another withholds its count: the sum is not 5
+        expect(addTrackedMetricValues(5, null)).toBeNull();
+        expect(addTrackedMetricValues(null, 5)).toBeNull();
+        expect(addTrackedMetricValues(5, 3)).toBe(8);
+        // untracked contributors are skipped, all-untracked stays untracked
+        expect(addTrackedMetricValues(undefined, 5)).toBe(5);
+        expect(addTrackedMetricValues(null, undefined)).toBeNull();
+        expect(addTrackedMetricValues(undefined, undefined)).toBeUndefined();
+    });
+
+    it('reports text messages as withheld, not untracked, when one part is withheld and the other absent', () => {
+        const base = agencyTarget({});
+        const target = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const { metrics } = buildStatisticData(tenantScopeResponse([target]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesSeekers).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeNull();
+    });
+
+    it('keeps the combined text-message total withheld across targets when one target has a withheld part', () => {
+        const base = agencyTarget({});
+        const withheldPart = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const fullyTracked = agencyTarget({
+            agencyId: 12,
+            metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: 4, messagesAdviceSeekersCurrentMonth: 6 },
+        });
+        const { statisticsById } = buildStatisticData(
+            tenantScopeResponse([withheldPart, fullyTracked]),
+            emptyLookups,
+            now,
+        );
+
+        const combined = addTrackedMetricValues(
+            statisticsById['agency-11'].metrics.textMessagesTotal,
+            statisticsById['agency-12'].metrics.textMessagesTotal,
+        );
+
+        expect(statisticsById['agency-12'].metrics.textMessagesTotal).toBe(10);
+        expect(combined).toBeNull();
+    });
+
+    it('treats a backend without communication counts as not tracking them', () => {
+        const { metrics } = buildStatisticData(tenantScopeResponse([agencyTarget({})]), emptyLookups, now)
+            .statisticsById['agency-11'];
+
+        expect(metrics.messagesCounselors).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeUndefined();
+        expect(metrics.phoneCalls).toBeUndefined();
+    });
+
     it('resolves monthly top topics by calendar month with topic names', () => {
         const target = agencyTarget({
             monthlyTopTopics: [
@@ -199,7 +279,7 @@ describe('statisticDashboardData', () => {
 
         const { metrics } = data.statisticsById['agency-11'];
         expect(metrics.topicsByMonth[0]).toEqual({ label: 'Schulden', share: 75 });
-        expect(metrics.topicsByMonth[1]).toEqual({ label: '#200', share: 50 });
+        expect(metrics.topicsByMonth[1]).toEqual({ label: 'Thema 200', share: 50 });
         expect(metrics.topicsByMonth[2].label).toBe(NO_DATA_LABEL);
     });
 
@@ -459,7 +539,7 @@ describe('configurable time windows (UserService#1544)', () => {
         const { topicsByMonth } = data.statisticsById['agency-11'].metrics;
         expect(data.topicMonths).toBe(12);
         expect(topicsByMonth).toHaveLength(12);
-        expect(topicsByMonth[11]).toEqual({ label: '#300', share: 40 });
+        expect(topicsByMonth[11]).toEqual({ label: 'Thema 300', share: 40 });
         expect(topicsByMonth[0].label).toBe(NO_DATA_LABEL);
     });
 

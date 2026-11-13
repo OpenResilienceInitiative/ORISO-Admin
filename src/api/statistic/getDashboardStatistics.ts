@@ -20,6 +20,15 @@ export interface AdminDashboardMetrics {
     /** Null in a fixed stand. */
     activeConversationsToday: number | null;
     groupChatsTotal: number;
+    /*
+     * Communication counts of the current month. A field the backend does not track is left out
+     * (older backend, or a channel it cannot see); null = tracked but withheld.
+     */
+    messagesCounselorsCurrentMonth?: number | null;
+    messagesAdviceSeekersCurrentMonth?: number | null;
+    audioCallsCurrentMonth?: number | null;
+    videoCallsCurrentMonth?: number | null;
+    voiceMessagesCurrentMonth?: number | null;
 }
 
 export interface AdminDashboardWeeklyCount {

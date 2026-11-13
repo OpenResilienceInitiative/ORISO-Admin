@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import getDashboardStatistics from '../../api/statistic/getDashboardStatistics';
-import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint } from '../../appConfig';
+import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint, topicEndpoint } from '../../appConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
 import { buildStatisticData, emptyStatisticData, StatisticData } from './statisticDashboardData';
 
@@ -63,7 +63,19 @@ const fetchTenantNames = () =>
         `${tenantAdminEndpoint}/search?page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&query=&field=NAME&order=ASC`,
     );
 
-const fetchTopicNames = () => fetchNameLookup(`${topicAdminEndpoint}/?${listQuery}`);
+/**
+ * The topic admin list is denied to some admin roles (403 for platform admins on dev), which left
+ * the "most frequent topic" card showing a bare id. The public topic list has the same ids and names,
+ * so it fills the gaps; the admin list wins where both have a name.
+ */
+const fetchTopicNames = async () => {
+    const [adminNames, publicNames] = await Promise.all([
+        fetchNameLookup(`${topicAdminEndpoint}/?${listQuery}`),
+        fetchNameLookup(`${topicEndpoint}public`),
+    ]);
+
+    return { ...publicNames, ...adminNames };
+};
 
 /**
  * Loads the real statistics for the admin dashboard and resolves display names for

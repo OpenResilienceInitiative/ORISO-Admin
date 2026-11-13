@@ -15,6 +15,7 @@ import {
     agencyEndpointBase,
     tenantAdminEndpoint,
     topicAdminEndpoint,
+    topicEndpoint,
     tutorialStatisticsEndpoint,
 } from '../../appConfig';
 import { findPopup, popupsOf } from '../../test/storyPopups';
@@ -67,6 +68,10 @@ const target = (
         activeCases: Math.round(56 * factor),
         activeConversationsToday: Math.round(9 * factor),
         groupChatsTotal: Math.round(14 * factor),
+        messagesCounselorsCurrentMonth: Math.round(410 * factor),
+        messagesAdviceSeekersCurrentMonth: Math.round(365 * factor),
+        audioCallsCurrentMonth: Math.round(18 * factor),
+        videoCallsCurrentMonth: Math.round(11 * factor),
     },
     dailyNewSessions: dailySessions(factor),
     monthlyTopTopics: monthlyTopics(factor),
@@ -152,6 +157,8 @@ const handlers = (dashboard: () => Response | Promise<Response>) => [
             { id: 3, name: 'Sucht' },
         ]),
     ),
+    // the public topic list fills names the topic admin list does not give (Admin role without access)
+    http.get(`${topicEndpoint}public`, () => HttpResponse.json([])),
     http.get(`${tutorialStatisticsEndpoint}*`, () =>
         HttpResponse.json({ generatedAt: GENERATED_AT, scope: 'PLATFORM', tenants: [] }),
     ),
@@ -186,6 +193,21 @@ const meta = {
 } satisfies Meta<typeof Statistic>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** A backend from before communication tracking: no message or call counts at all. */
+const withoutCommunication = (row: AdminDashboardTarget): AdminDashboardTarget =>
+    row.metrics
+        ? {
+              ...row,
+              metrics: {
+                  enquiriesCurrentMonth: row.metrics.enquiriesCurrentMonth,
+                  enquiriesPreviousMonth: row.metrics.enquiriesPreviousMonth,
+                  activeCases: row.metrics.activeCases,
+                  activeConversationsToday: row.metrics.activeConversationsToday,
+                  groupChatsTotal: row.metrics.groupChatsTotal,
+              },
+          }
+        : row;
 
 export const DailyStand: Story = {
     play: async ({ canvasElement }) => {
@@ -429,5 +451,75 @@ export const TemporarilyUnavailable: Story = {
         await waitFor(() => expect(quiet).toBeVisible());
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
         await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+    },
+};
+
+const communicationCard = (canvasElement: HTMLElement, title: string) =>
+    [...canvasElement.querySelectorAll<HTMLElement>('.statisticDashboard__metricCard')].find((card) =>
+        card.querySelector('.statisticDashboard__cardHeader')?.textContent?.trim().startsWith(title),
+    );
+
+/** Messages and calls are counted (UserService): the communication row shows this month's numbers. */
+export const CommunicationTracked: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        // platform row, factor 4: 1640 counsellor + 1460 advice-seeker messages
+        await waitFor(() =>
+            expect(communicationCard(canvasElement, 'Textnachrichten')?.textContent).toContain('3.100'),
+        );
+        await expect(communicationCard(canvasElement, 'Anrufe')?.textContent).toContain('72');
+        // voice messages are not sent by the backend: the dashed slot says so, without a promise
+        const voice = communicationCard(canvasElement, 'Sprachnachrichten');
+        await expect(voice?.className).toContain('notTracked');
+        await expect(voice?.textContent).toContain('Für diese Kennzahl gibt es noch keine Datenquelle.');
+    },
+};
+
+/** A backend from before communication tracking: the four slots stay as dashed "no data source" cards. */
+export const BeforeCommunicationTracking: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() => {
+                const body = statistics('DAILY');
+                return HttpResponse.json({ ...body, targets: body.targets.map(withoutCommunication) });
+            }),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        await waitFor(() =>
+            expect(
+                canvasElement.querySelectorAll('.statisticDashboard__metricCard--notTracked').length,
+            ).toBeGreaterThanOrEqual(4),
+        );
+    },
+};
+
+/** Platform admins get a 403 from the topic admin list; the public topic list still names the topic. */
+export const TopicNameWithoutTopicAdmin: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(`${topicAdminEndpoint}/*`, () => new HttpResponse(null, { status: 403 })),
+                http.get(`${topicEndpoint}public`, () =>
+                    HttpResponse.json([
+                        { id: 1, name: 'Allgemeine Sozialberatung' },
+                        { id: 2, name: 'Schulden' },
+                        { id: 3, name: 'Sucht' },
+                    ]),
+                ),
+                ...fixedStand('DAILY'),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Häufigstes Thema')).toBeVisible());
+        // a long name is shown whole, on up to two lines, not cut after a few letters
+        const topic = await canvas.findByTitle('Allgemeine Sozialberatung');
+        await expect(getComputedStyle(topic).whiteSpace).toBe('normal');
+        await expect(canvasElement.textContent).not.toMatch(/#\d/);
     },
 };
