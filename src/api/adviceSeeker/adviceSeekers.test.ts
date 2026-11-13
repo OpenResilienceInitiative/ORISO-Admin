@@ -85,9 +85,9 @@ describe('adviceSeekers api', () => {
         expect(mockedFetchData.mock.calls[0][0].responseHandling).toContain(FETCH_ERRORS.FORBIDDEN_SILENT);
     });
 
-    it('reports a technical account of an existing Träger as such', async () => {
+    it('reports a refused technical group-chat account as such', async () => {
         mockedFetchData.mockRejectedValueOnce(
-            new Response(null, { status: 409, headers: { 'X-Reason': 'TECHNICAL_ACCOUNT_OF_EXISTING_TENANT' } }),
+            new Response(null, { status: 409, headers: { 'X-Reason': 'TECHNICAL_GROUP_CHAT_ACCOUNT' } }),
         );
 
         const [outcome] = await deleteAdviceSeekers(['group-chat-system-3']);

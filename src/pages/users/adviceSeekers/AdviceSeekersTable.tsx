@@ -90,20 +90,8 @@ export const AdviceSeekersTable = () => {
         {
             key: 'username',
             title: t('adviceSeekers.column.username'),
-            render: (_, seeker) => (
-                <span className={styles.username}>
-                    <span className={styles.name}>{seeker.username}</span>
-                    {seeker.technical && (
-                        <Tooltip
-                            title={t(
-                                seeker.deletable ? 'adviceSeekers.technicalOrphanHint' : 'adviceSeekers.technicalHint',
-                            )}
-                        >
-                            <span className={styles.technical}>{t('adviceSeekers.technical')}</span>
-                        </Tooltip>
-                    )}
-                </span>
-            ),
+            dataIndex: 'username',
+            render: (name: string) => <span className={styles.name}>{name}</span>,
         },
         {
             key: 'status',

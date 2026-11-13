@@ -21,8 +21,5 @@ describe('adviceSeekerStatus', () => {
         expect(canMarkForDeletion({ deletionState: 'ACTIVE' })).toBe(true);
         expect(canMarkForDeletion({ deletionState: 'HARD_DELETE_PARTIAL_FAILURE' })).toBe(false);
         expect(canMarkForDeletion({ deletionState: 'READ_ONLY_SAFEGUARD' })).toBe(false);
-        // A technical account of an existing Träger goes with the Träger.
-        expect(canMarkForDeletion({ deletionState: 'ACTIVE', deletable: false })).toBe(false);
-        expect(canMarkForDeletion({ deletionState: 'ACTIVE', deletable: true })).toBe(true);
     });
 });

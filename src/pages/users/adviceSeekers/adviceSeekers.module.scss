@@ -20,24 +20,8 @@
     overflow-wrap: anywhere;
 }
 
-.username {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-}
-
 .name {
     overflow-wrap: anywhere;
-}
-
-.technical {
-    padding: 0 6px;
-    border: 1px solid currentcolor;
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
 }
 
 .failure {

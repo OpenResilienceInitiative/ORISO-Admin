@@ -18,10 +18,6 @@ export interface AdviceSeekerData {
     deletionFailureReason?: string;
     /** ISO-8601, UTC, no offset. */
     deletionFailedAt?: string;
-    /** A group-chat system account that owns a Träger's group chats, not a person. */
-    technical?: boolean;
-    /** False when the server would refuse marking it now (technical account of an existing Träger). */
-    deletable?: boolean;
 }
 
 export interface AdviceSeekerPage {
@@ -63,8 +59,8 @@ export type AdviceSeekerDeletionResult =
     | 'forbidden'
     | 'failed';
 
-/** X-Reason of the 409 for a group-chat system account whose Träger still exists. */
-export const TECHNICAL_ACCOUNT_OF_EXISTING_TENANT = 'TECHNICAL_ACCOUNT_OF_EXISTING_TENANT';
+/** X-Reason of the 409 for a technical group-chat account, which only goes with its Träger. */
+export const TECHNICAL_GROUP_CHAT_ACCOUNT = 'TECHNICAL_GROUP_CHAT_ACCOUNT';
 /** X-Reason of the 409 for an advice seeker who is already marked. */
 export const ASKER_ALREADY_MARKED_FOR_DELETION = 'ASKER_ALREADY_MARKED_FOR_DELETION';
 
@@ -102,7 +98,7 @@ export const deleteAdviceSeeker = async (id: string): Promise<AdviceSeekerDeleti
             if (error.status === 409 && reason === ASKER_ALREADY_MARKED_FOR_DELETION) {
                 return { id, result: 'alreadyMarked' };
             }
-            if (error.status === 409 && reason === TECHNICAL_ACCOUNT_OF_EXISTING_TENANT) {
+            if (error.status === 409 && reason === TECHNICAL_GROUP_CHAT_ACCOUNT) {
                 return { id, result: 'technicalAccount' };
             }
             return { id, result: 'failed', status: error.status, ...(reason ? { reason } : {}) };

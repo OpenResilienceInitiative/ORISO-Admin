@@ -165,9 +165,9 @@ describe('AdviceSeekersTable', () => {
         expect(await screen.findByRole('button', { name: 'adviceSeekers.delete.close' })).toBeTruthy();
     });
 
-    it('shows why the nightly run kept an entry and keeps technical accounts of a live Träger', async () => {
+    it('shows why the nightly run kept an entry', async () => {
         mockedGet.mockResolvedValue({
-            total: 2,
+            total: 1,
             data: [
                 {
                     id: 'a-5',
@@ -179,14 +179,6 @@ describe('AdviceSeekersTable', () => {
                         'DATABASE: Unable to delete user: still referenced by session (session_ibfk_1)',
                     deletionFailedAt: '2026-11-13T03:00:12',
                 },
-                {
-                    id: 'group-chat-system-3',
-                    username: 'group-chat-system-3',
-                    agencyIds: [],
-                    deletionState: 'ACTIVE',
-                    technical: true,
-                    deletable: false,
-                },
             ],
         });
         show();
@@ -196,16 +188,6 @@ describe('AdviceSeekersTable', () => {
         expect(within(rowOf('eve')).getByTestId('advice-seeker-failure-reason').textContent).toContain(
             'still referenced by session (session_ibfk_1)',
         );
-        const technical = rowOf('group-chat-system-3');
-        expect(within(technical).getByText('adviceSeekers.technical')).toBeTruthy();
-        expect(
-            (
-                within(technical).getByRole('button', {
-                    name: 'adviceSeekers.delete.one:group-chat-system-3',
-                }) as HTMLButtonElement
-            ).disabled,
-        ).toBe(true);
-        expect((within(technical).getByRole('checkbox') as HTMLInputElement).disabled).toBe(true);
     });
 
     it('asks for nothing and says so without the read permission', async () => {
