@@ -575,7 +575,9 @@ export interface StatisticAgencyEntry {
 
 /**
  * Which Träger a platform admin is looking into: the Träger of the picked Beratungsstelle, else the
- * picked Träger. Undefined while nothing is picked (the platform dashboard alone is enough then).
+ * Träger picked last. Undefined while nothing is picked (the platform dashboard alone is enough then).
+ * A Beratungsstelle wins only because picking a Träger drops the Beratungsstellen of other Träger
+ * (`agenciesOfTenant`): the two picks never point at different Träger, so the newest pick counts.
  */
 export const resolveDrillTenantId = (
     selection: Partial<Record<ScopeKey, string[]>>,
@@ -586,6 +588,71 @@ export const resolveDrillTenantId = (
         ? directory.find((agency) => agencyTargetId(agency.id) === agencyId)?.tenantId
         : undefined;
     if (fromAgency != null) return fromAgency;
-    const tenantId = selection.tenant?.[0]?.match(/^tenant-(\d+)$/)?.[1];
+    const tenantId = selection.tenant?.[selection.tenant.length - 1]?.match(/^tenant-(\d+)$/)?.[1];
     return tenantId ? Number(tenantId) : undefined;
+};
+
+/**
+ * A platform admin picked the Träger `tenantTarget`: only the picked Beratungsstellen of that Träger
+ * stay. Otherwise an older Beratungsstelle pick (kept in localStorage) would keep the Beratungsstellen
+ * level on its own Träger. Beratungsstellen the directory does not know cannot be checked and go too.
+ */
+export const agenciesOfTenant = (
+    agencyIds: string[],
+    tenantTarget: string,
+    directory: StatisticAgencyEntry[],
+): string[] =>
+    agencyIds.filter((agencyId) => {
+        const agency = directory.find((entry) => agencyTargetId(entry.id) === agencyId);
+        return agency != null && tenantTargetId(agency.tenantId) === tenantTarget;
+    });
+
+export type AgencyLevelHint = 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | 'selectionUnavailable';
+
+export interface StatisticViewInput {
+    isSuperAdmin: boolean;
+    activeScope: ScopeKey;
+    /** Beratungsstellen picked on the Beratungsstellen level. */
+    pickedAgencyIds: string[];
+    isDashboardLoading: boolean;
+    isDirectoryLoading: boolean;
+    isDirectoryError: boolean;
+    drillTenantId: number | undefined;
+    drill: 'idle' | 'loading' | 'ready' | 'unsupported' | 'failed';
+    data: StatisticData;
+}
+
+/**
+ * Whether the shown level is still loading, and what a platform admin on the Beratungsstellen level is
+ * told instead of figures: nothing picked yet, the list of Beratungsstellen did not load, the Träger's
+ * numbers did not come, or they came without the picked Beratungsstelle (new, deleted, or withheld).
+ * In that last case the Träger's total must not appear under the Beratungsstelle's name.
+ */
+export const resolveStatisticView = ({
+    isSuperAdmin,
+    activeScope,
+    pickedAgencyIds,
+    isDashboardLoading,
+    isDirectoryLoading,
+    isDirectoryError,
+    drillTenantId,
+    drill,
+    data,
+}: StatisticViewInput): { isLoading: boolean; agencyLevelHint: AgencyLevelHint | null } => {
+    const onAgencyDrill = isSuperAdmin && activeScope === 'agency';
+    // A picked Beratungsstelle needs the list of Beratungsstellen to find its Träger: until the list is in,
+    // the level is loading, not waiting for a pick.
+    const directoryPending = onAgencyDrill && isDirectoryLoading && pickedAgencyIds.length > 0;
+    // The Träger's numbers only feed the Beratungsstellen level; no other level waits for them.
+    const isLoading = isDashboardLoading || directoryPending || (onAgencyDrill && drill === 'loading');
+    if (!onAgencyDrill || isLoading) return { isLoading, agencyLevelHint: null };
+
+    if (drillTenantId == null) return { isLoading, agencyLevelHint: isDirectoryError ? 'directoryFailed' : 'pick' };
+    if (drill === 'unsupported' || drill === 'failed') return { isLoading, agencyLevelHint: drill };
+    const answeredAgencyIds = new Set(data.targetsByScope.agency.map((target) => target.id));
+    const pickedAnswered = pickedAgencyIds.some((id) => answeredAgencyIds.has(id) && Boolean(data.statisticsById[id]));
+    return {
+        isLoading,
+        agencyLevelHint: pickedAgencyIds.length > 0 && !pickedAnswered ? 'selectionUnavailable' : null,
+    };
 };

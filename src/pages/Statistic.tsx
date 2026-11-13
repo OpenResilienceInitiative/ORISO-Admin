@@ -57,6 +57,8 @@ import {
     NO_DATA_LABEL,
     noDataTopics,
     resolveDrillTenantId,
+    agenciesOfTenant,
+    resolveStatisticView,
     tenantTargetId,
     topicMenuKeyForMonth,
     agencyTargetId,
@@ -415,16 +417,6 @@ const getAllowedStatisticScopes = (
 };
 
 const NO_AGENCY_DIRECTORY: StatisticAgencyEntry[] = [];
-
-const AGENCY_LEVEL_HINTS = {
-    pick: 'Wählen Sie unter „Ansicht“ eine Beratungsstelle oder einen Träger. Dann sehen Sie die Zahlen seiner Beratungsstellen.',
-    directoryFailed:
-        'Die Liste der Beratungsstellen konnte nicht geladen werden. Bitte laden Sie die Seite neu oder wählen Sie einen Träger.',
-    selectionUnavailable:
-        'Für diese Beratungsstelle liegen noch keine Zahlen vor. Wählen Sie eine andere Beratungsstelle oder ihren Träger.',
-    unsupported: 'Zahlen je Beratungsstelle gibt es für Plattform-Admins erst mit dem nächsten Server-Update.',
-    failed: 'Die Zahlen dieser Beratungsstellen konnten nicht geladen werden. Bitte versuchen Sie es später noch einmal.',
-} as const;
 
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
     platform: {
@@ -1965,12 +1957,18 @@ export const Statistic = () => {
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
     // The platform dashboard stops at Träger. A platform admin who picks a Beratungsstelle (or a Träger)
-    // gets that Träger's dashboard loaded on top, so its Beratungsstellen have numbers and can be found.
-    const { data: agencyDirectoryData, isError: hasAgencyDirectoryError } = useStatisticAgencyDirectory(isSuperAdmin);
+    // gets that Träger's dashboard loaded on top, so its Beratungsstellen have numbers. Only the
+    // Beratungsstellen level uses it, so only that level asks for it.
+    const {
+        data: agencyDirectoryData,
+        isError: hasAgencyDirectoryError,
+        isLoading: isAgencyDirectoryLoading,
+    } = useStatisticAgencyDirectory(isSuperAdmin);
     const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
-    const drillTenantId = isSuperAdmin
-        ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
-        : undefined;
+    const drillTenantId =
+        isSuperAdmin && activeScope === 'agency'
+            ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
+            : undefined;
     const {
         data: statisticData,
         isError: hasStatisticLoadError,
@@ -1978,23 +1976,17 @@ export const Statistic = () => {
         isUnavailable: isStatisticUnavailable,
         drill,
     } = useStatisticDashboardData({ drillTenantId });
-    // A pick kept from the Beratungsstellen level must not cover the platform figures while it loads.
-    const isStatisticLoading = isDashboardLoading || (drill === 'loading' && activeScope !== 'platform');
-    // Platform admin on the Beratungsstellen level: nothing picked yet, the list of Beratungsstellen did not
-    // load, the Träger's numbers did not come, or they came without the picked Beratungsstelle (new, deleted,
-    // or withheld). In that last case the Träger's total must not appear under the Beratungsstelle's name.
-    let agencyLevelHint: 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | 'selectionUnavailable' | null = null;
-    if (isSuperAdmin && activeScope === 'agency' && !isStatisticLoading) {
-        const pickedAgencyIds = selectedFilterTargetIdsByScope.agency;
-        const answeredAgencyIds = new Set(statisticData.targetsByScope.agency.map((target) => target.id));
-        if (drillTenantId == null) agencyLevelHint = hasAgencyDirectoryError ? 'directoryFailed' : 'pick';
-        else if (drill === 'unsupported' || drill === 'failed') agencyLevelHint = drill;
-        else if (
-            pickedAgencyIds.length > 0 &&
-            !pickedAgencyIds.some((id) => answeredAgencyIds.has(id) && Boolean(statisticData.statisticsById[id]))
-        )
-            agencyLevelHint = 'selectionUnavailable';
-    }
+    const { isLoading: isStatisticLoading, agencyLevelHint } = resolveStatisticView({
+        isSuperAdmin,
+        activeScope,
+        pickedAgencyIds: selectedFilterTargetIdsByScope.agency || [],
+        isDashboardLoading,
+        isDirectoryLoading: isAgencyDirectoryLoading,
+        isDirectoryError: hasAgencyDirectoryError,
+        drillTenantId,
+        drill,
+        data: statisticData,
+    });
     const navigate = useNavigate();
     // A fixed stand is read from its own time: its "this week" must not slide with today.
     const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
@@ -2266,10 +2258,26 @@ export const Statistic = () => {
             const sameType = (currentSelection[nextTarget.scope] || []).filter(
                 (targetId) => levelTargets.find((target) => target.id === targetId)?.type === nextTarget.type,
             );
+            // The newest pick decides which Träger the Beratungsstellen level looks into.
+            const agency =
+                isSuperAdmin && nextTarget.type === 'Träger'
+                    ? agenciesOfTenant(currentSelection.agency || [], nextTarget.id, agencyDirectory)
+                    : currentSelection.agency;
 
-            return sameType.includes(nextTarget.id)
+            // A re-picked Träger moves to the end, so the stored order always ends with the newest pick.
+            const movesToEnd = isSuperAdmin && nextTarget.type === 'Träger';
+            const alreadyLast = sameType[sameType.length - 1] === nextTarget.id;
+            const unchanged = sameType.includes(nextTarget.id) && (!movesToEnd || alreadyLast);
+
+            return unchanged && agency === currentSelection.agency
                 ? currentSelection
-                : { ...currentSelection, [nextTarget.scope]: [...sameType, nextTarget.id] };
+                : {
+                      ...currentSelection,
+                      agency,
+                      [nextTarget.scope]: unchanged
+                          ? sameType
+                          : [...sameType.filter((targetId) => targetId !== nextTarget.id), nextTarget.id],
+                  };
         });
     };
     const removeFilterTarget = (targetId: string) => {
@@ -2415,11 +2423,7 @@ export const Statistic = () => {
                                 )}
                                 {agencyLevelHint && (
                                     <HintText className="statisticDashboard__caption" data-testid="agency-level-hint">
-                                        {translateDashboardKey(
-                                            translate,
-                                            `statistic.dashboard.agencyLevel.${agencyLevelHint}`,
-                                            AGENCY_LEVEL_HINTS[agencyLevelHint],
-                                        )}
+                                        {translate(`statistic.dashboard.agencyLevel.${agencyLevelHint}`)}
                                     </HintText>
                                 )}
                                 <StatisticInfoRow

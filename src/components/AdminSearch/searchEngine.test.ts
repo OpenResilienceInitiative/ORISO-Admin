@@ -120,15 +120,14 @@ describe('searchIndex on a small index', () => {
         expect(searchIndex(index, '   ')).toEqual([]);
     });
 
-    it('applies the kind and level filters', () => {
+    it('applies the kind filter', () => {
         const filtered = prepareIndex([
             doc('p', 'Support address', { level: 'platform' }),
             doc('t', 'Support contact', { level: 'tenant', kind: 'page' }),
         ]);
 
-        expect(searchIndex(filtered, 'support', { levels: ['tenant'] }).map((hit) => hit.doc.id)).toEqual(['t']);
         expect(searchIndex(filtered, 'support', { kinds: ['settings'] }).map((hit) => hit.doc.id)).toEqual(['p']);
-        expect(searchIndex(filtered, 'support', { kinds: ['settings'], levels: ['tenant'] })).toEqual([]);
+        expect(searchIndex(filtered, 'support', { kinds: ['pages'] }).map((hit) => hit.doc.id)).toEqual(['t']);
     });
 });
 

@@ -307,9 +307,6 @@ const passesFilters = (doc: SearchDoc, filters: SearchFilters): boolean => {
     if (filters.kinds?.length && !filters.kinds.includes(GROUP_OF_KIND[doc.kind])) {
         return false;
     }
-    if (filters.levels?.length && !(doc.level && filters.levels.includes(doc.level))) {
-        return false;
-    }
 
     return true;
 };

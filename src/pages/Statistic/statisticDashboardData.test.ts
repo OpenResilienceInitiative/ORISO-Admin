@@ -16,7 +16,10 @@ import {
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
     formatStandDay,
+    agenciesOfTenant,
     resolveDrillTenantId,
+    resolveStatisticView,
+    type StatisticViewInput,
     withAgencyDrill,
 } from './statisticDashboardData';
 
@@ -638,5 +641,70 @@ describe('platform admin looking into one Träger', () => {
         expect(resolveDrillTenantId({ agency: [], tenant: ['tenant-9'] }, directory)).toBe(9);
         expect(resolveDrillTenantId({ agency: ['agency-77'] }, directory)).toBeUndefined();
         expect(resolveDrillTenantId({}, directory)).toBeUndefined();
+    });
+
+    // Found in review (PR #1530): a Beratungsstelle kept in localStorage outvoted a Träger picked later.
+    it('follows the newest pick: a picked Träger drops the Beratungsstellen of other Träger', () => {
+        const directory = [
+            { id: 11, name: 'BST Nord', tenantId: 5 },
+            { id: 21, name: 'BST Süd', tenantId: 9 },
+        ];
+        const agency = agenciesOfTenant(['agency-11', 'agency-21', 'agency-77'], 'tenant-9', directory);
+
+        expect(agency).toEqual(['agency-21']);
+        expect(
+            resolveDrillTenantId(
+                { agency: agenciesOfTenant(['agency-11'], 'tenant-9', directory), tenant: ['tenant-9'] },
+                directory,
+            ),
+        ).toBe(9);
+        expect(resolveDrillTenantId({ tenant: ['tenant-5', 'tenant-9'] }, directory)).toBe(9);
+    });
+});
+
+describe('resolveStatisticView (platform admin, Beratungsstellen level)', () => {
+    const view = (overrides: Partial<StatisticViewInput> = {}) =>
+        resolveStatisticView({
+            isSuperAdmin: true,
+            activeScope: 'agency',
+            pickedAgencyIds: [],
+            isDashboardLoading: false,
+            isDirectoryLoading: false,
+            isDirectoryError: false,
+            drillTenantId: undefined,
+            drill: 'idle',
+            data: emptyStatisticData(),
+            ...overrides,
+        });
+
+    // Found in review (PR #1530): the Träger level waited for a Träger dashboard only the Beratungsstellen level uses.
+    it('lets no other level wait for the Träger dashboard', () => {
+        expect(view({ activeScope: 'tenant', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ activeScope: 'platform', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ drill: 'loading', drillTenantId: 9 })).toEqual({ isLoading: true, agencyLevelHint: null });
+    });
+
+    // Found in review (PR #1530): with a saved Beratungsstelle the page asked to pick one while the list of
+    // Beratungsstellen (which names its Träger) was still loading.
+    it('is loading, not asking for a pick, while the list for a picked Beratungsstelle loads', () => {
+        expect(view({ pickedAgencyIds: ['agency-11'], isDirectoryLoading: true })).toEqual({
+            isLoading: true,
+            agencyLevelHint: null,
+        });
+        expect(view({ isDirectoryLoading: true }).agencyLevelHint).toBe('pick');
+        expect(view({ isDirectoryError: true }).agencyLevelHint).toBe('directoryFailed');
+    });
+
+    it('says when the Träger dashboard failed, or came without the picked Beratungsstelle', () => {
+        expect(view({ drillTenantId: 9, drill: 'failed' }).agencyLevelHint).toBe('failed');
+        expect(view({ drillTenantId: 9, drill: 'unsupported' }).agencyLevelHint).toBe('unsupported');
+        expect(view({ drillTenantId: 9, drill: 'ready', pickedAgencyIds: ['agency-11'] }).agencyLevelHint).toBe(
+            'selectionUnavailable',
+        );
+        expect(view({ drillTenantId: 9, drill: 'ready' }).agencyLevelHint).toBeNull();
+    });
+
+    it('gives other roles no hint', () => {
+        expect(view({ isSuperAdmin: false })).toEqual({ isLoading: false, agencyLevelHint: null });
     });
 });
