@@ -1,12 +1,12 @@
 import { Button, Grid, Popover } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
-import { useListQuery } from '../../../hooks/useListQuery';
+import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
 import { ListSearchBar } from '../../../components/ListSearchBar';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
@@ -86,7 +86,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
 
-    const [tableState, setTableState] = useState<TableState>({
+    // A new search starts on page 1 (in the same render, so the old page is never asked for with it).
+    const [tableState, setTableState] = useListTableState<TableState>(search, {
         current: 1,
         sortBy: config.defaultSort.field,
         order: config.defaultSort.order,
@@ -217,10 +218,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const onDeleteTenant = useCallback((record: TenantData) => {
         setTenantToDelete(record);
     }, []);
-
-    useEffect(() => {
-        setTableState((state) => (state.current === 1 ? state : { ...state, current: 1 }));
-    }, [search]);
 
     const handleTableAction = useCallback(
         (pagination: TablePaginationConfig, _: unknown, sorter: any) => {

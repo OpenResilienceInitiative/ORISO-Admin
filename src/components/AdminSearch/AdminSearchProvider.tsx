@@ -19,6 +19,14 @@ const LIST_PATHS: Record<ListGroup, string> = {
     accounts: routePathNames.users,
 };
 
+/**
+ * The list "Show all matches in the list" opens. Konten has three tabs (Berater, Beratungsstellen-Admins,
+ * Träger-Admins) and the plain users path shows the Berater tab, so accounts go to the tab of their
+ * hits: the first tab in that order that has one. `docs` are the entity hits for the typed query.
+ */
+export const listPathFor = (group: ListGroup, docs: SearchDoc[]): string =>
+    (group === 'accounts' && docs.find((doc) => doc.kind === 'account' && doc.listPath)?.listPath) || LIST_PATHS[group];
+
 interface AdminSearchContextValue {
     isOpen: boolean;
     /** False outside a provider (or while disabled): callers fall back to their own search. */
@@ -109,9 +117,11 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing
     const onOpenList = useCallback(
         (group: ListGroup, typed: string) => {
             rememberSearch(typed);
-            navigate(listPathWithQuery(LIST_PATHS[group], typed));
+            // Rows of an older query must not pick the tab.
+            const hits = forQuery === typed.trim() ? docs : [];
+            navigate(listPathWithQuery(listPathFor(group, hits), typed));
         },
-        [navigate],
+        [navigate, docs, forQuery],
     );
 
     return (

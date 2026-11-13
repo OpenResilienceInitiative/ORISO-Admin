@@ -692,6 +692,30 @@ describe('Statistic page', () => {
             expect(screen.queryByText(totalNotice)).toBeNull();
         });
 
+        // Found in review (PR #1530): a picked Träger loaded that Träger's dashboard (`?tenantId=`) on every
+        // level, and the Träger level waited for it although it does not use it.
+        it("asks for a picked Träger's dashboard only on the Beratungsstellen level", async () => {
+            roleState.isSuperAdmin = true;
+            const platformTarget = { ...agencyRow(0), targetType: 'PLATFORM' as const, tenantId: null, agencyId: null };
+            const tenantTarget = { ...agencyRow(0), targetType: 'TENANT' as const, tenantId: 5, agencyId: null };
+            dashboardMock.mockImplementation((tenantId?: number) =>
+                tenantId == null
+                    ? Promise.resolve({ ...response, scope: 'PLATFORM', targets: [platformTarget, tenantTarget] })
+                    : new Promise(() => {}),
+            );
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            openScopePicker();
+            fireEvent.click(await screen.findByRole('option', { name: /Träger 5/ }));
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            expect(dashboardMock).not.toHaveBeenCalledWith(5);
+
+            openScopePicker();
+            fireEvent.click(screen.getByRole('button', { name: /^(Beratungsstellen|Counselling centres)$/ }));
+            await waitFor(() => expect(dashboardMock).toHaveBeenCalledWith(5));
+        });
+
         it('does not render the tutorial section while the dashboard is unavailable', async () => {
             dashboardMock.mockRejectedValue(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
             renderStatistic();

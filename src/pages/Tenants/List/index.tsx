@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -9,7 +9,7 @@ import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { ListSearchBar } from '../../../components/ListSearchBar';
-import { useListQuery } from '../../../hooks/useListQuery';
+import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -30,22 +30,19 @@ type DeleteResult = 'success' | 'error' | null;
 export const TenantsList = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [tableState, setTableState] = useState<TableState>({
-        current: 1,
-        pageSize: 10,
-    });
-
     const { settings } = useAppConfigContext();
     // The admin search (⌘K) is the one place to type; "Show all matches in the list" opens this page with ?q=.
     const { query: search, clear: clearSearch } = useListQuery();
+    // A new search starts on page 1 (in the same render, so the old page is never asked for with it).
+    const [tableState, setTableState] = useListTableState<TableState>(search, {
+        current: 1,
+        pageSize: 10,
+    });
     const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
     const [deleteResult, setDeleteResult] = useState<DeleteResult>(null);
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
-    useEffect(() => {
-        setTableState((state) => (state.current === 1 ? state : { ...state, current: 1 }));
-    }, [search]);
     const { data, isLoading, isError } = useTenantsData({
         page: tableState.current,
         perPage: tableState.pageSize,

@@ -4,8 +4,6 @@ import styles from '../UserTable/scopeContextBar.module.scss';
 
 export interface ListSearchBarProps {
     query: string;
-    /** Already worded, e.g. "3 Träger". */
-    count?: string;
     onClear: () => void;
 }
 
@@ -14,7 +12,7 @@ export interface ListSearchBarProps {
  * whole list again. Same look as the Träger/Beratungsstelle context bars, so every reason a list is
  * shorter reads the same way.
  */
-export const ListSearchBar = ({ query, count, onClear }: ListSearchBarProps) => {
+export const ListSearchBar = ({ query, onClear }: ListSearchBarProps) => {
     const { t } = useTranslation();
     const caption = t('listSearch.caption', 'Gefiltert nach Suche');
 
@@ -28,7 +26,6 @@ export const ListSearchBar = ({ query, count, onClear }: ListSearchBarProps) => 
                     {t('listSearch.quoteOpen', '„')}
                     {query}
                     {t('listSearch.quoteClose', '“')}
-                    {count && <span className={styles.count}> · {count}</span>}
                 </span>
             </div>
             <M3Button variant="text" onClick={onClear}>

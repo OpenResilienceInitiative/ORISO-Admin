@@ -3651,7 +3651,6 @@
     "adminSearch.level.personal": "Persönlich",
     "adminSearch.filter.label": "Ergebnisse filtern",
     "adminSearch.filter.type": "Nur zeigen",
-    "adminSearch.filter.level": "Ebene",
     "adminSearch.filter.reset": "Filter zurücksetzen",
     "adminSearch.empty.title": "Nichts gefunden für „{{query}}“",
     "adminSearch.empty.text": "Prüfen Sie die Schreibweise oder versuchen Sie ein anderes Wort. Deutsch und Englisch funktionieren beide.",

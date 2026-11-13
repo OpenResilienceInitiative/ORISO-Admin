@@ -185,23 +185,17 @@ export const AdminSearchView = ({
         const extra: SearchHit[] = entityDocs
             .filter((doc) => !foundIds.has(doc.id))
             .filter((doc) => !active.kinds?.length || active.kinds.some((group) => groupOf(doc) === group))
-            .filter((doc) => !active.levels?.length || (doc.level && active.levels.includes(doc.level)))
             .map((doc) => ({ doc, score: 20, matchedField: 'title' as const, titleRanges: [] }));
 
         return [...found, ...extra];
     };
 
-    // Level counts and group chips are computed without the chip they belong to, so a chip never
-    // shows "0" just because it is the one switched on.
+    // Group chip counts are computed without the chips, so a chip never shows "0" just because it is
+    // the one switched on.
     const baseHits = useMemo(
-        () =>
-            trimmed
-                ? withPassthrough(searchIndex(prepared, trimmed, { levels: filters.levels }, NO_LIMIT), {
-                      levels: filters.levels,
-                  })
-                : [],
+        () => (trimmed ? withPassthrough(searchIndex(prepared, trimmed, {}, NO_LIMIT), {}) : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prepared, trimmed, filters.levels, entityDocs, entityQuery],
+        [prepared, trimmed, entityDocs, entityQuery],
     );
 
     const hits = useMemo(
@@ -360,7 +354,7 @@ export const AdminSearchView = ({
     );
     const levelLabel = (level: SearchLevel) => t(`adminSearch.level.${level}`);
     const groupLabel = (group: SearchGroup) => t(`adminSearch.group.${group}`);
-    const filtersActive = !!(filters.kinds?.length || filters.levels?.length);
+    const filtersActive = !!filters.kinds?.length;
     const activeId = rows[activeIndex] ? `${listId}-option-${activeIndex}` : undefined;
 
     const chip = (label: string, on: boolean, onClick: () => void, count?: number, key?: string) => (

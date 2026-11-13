@@ -135,6 +135,7 @@ export const accountDocs = (
                 description: row.email ?? row.username,
                 breadcrumb: [labels.accounts, labels.accountLists[list] ?? list, name],
                 to: `${routePathNames.users}/${list}/${row.id}`,
+                listPath: `${routePathNames.users}/${list}`,
                 level,
                 terms: entityTerms(name, row.email, row.username),
             };

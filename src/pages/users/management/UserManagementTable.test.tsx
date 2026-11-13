@@ -12,6 +12,8 @@ const state = vi.hoisted(() => ({
     canManage: true,
     navigate: vi.fn(),
     tenantAdminSearch: undefined as string | undefined,
+    tenantAdminRequests: [] as Array<{ search?: string; current?: number }>,
+    tenantAdminTotal: 1,
 }));
 vi.mock('react-router-dom', async (original) => ({
     ...(await original<typeof import('react-router-dom')>()),
@@ -49,8 +51,9 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 }));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
-    useTenantAdminsData: ({ search }: { search?: string }) => {
+    useTenantAdminsData: ({ search, current }: { search?: string; current?: number }) => {
         state.tenantAdminSearch = search;
+        state.tenantAdminRequests.push({ search, current });
         return {
             data: {
                 data: [
@@ -64,7 +67,7 @@ vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
                         agencies: [],
                     },
                 ],
-                total: 1,
+                total: state.tenantAdminTotal,
             },
             refetch: vi.fn(),
         };
@@ -119,6 +122,8 @@ describe('UserManagementTable section authorization', () => {
         state.isSuperAdmin = false;
         state.canManage = true;
         state.navigate.mockClear();
+        state.tenantAdminRequests = [];
+        state.tenantAdminTotal = 1;
     });
     const show = (entry = '/admin/users') =>
         render(
@@ -162,6 +167,21 @@ describe('UserManagementTable section authorization', () => {
         fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
         expect(screen.queryByTestId('list-search-bar')).not.toBeInTheDocument();
         expect(state.tenantAdminSearch).toBe('');
+    });
+
+    // Found in review (PR #1530): the page went back to 1 in an effect, so a changed search was first asked
+    // for with the old page (usually empty: a flash of "no results").
+    it('asks for page 1 of a changed search at once, never for the old page', () => {
+        state.tenantAdminTotal = 30;
+        show('/admin/users?q=simpson');
+        fireEvent.click(screen.getByRole('button', { name: 'dataTable.pagination.next' }));
+        expect(state.tenantAdminRequests.at(-1)).toEqual({ search: 'simpson', current: 2 });
+
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+
+        const pagesOfNewSearch = state.tenantAdminRequests.filter((request) => request.search === '');
+        expect(pagesOfNewSearch.length).toBeGreaterThan(0);
+        expect(pagesOfNewSearch.every((request) => request.current === 1)).toBe(true);
     });
 
     it('labels invitations as navigation and points to the invitations section', () => {

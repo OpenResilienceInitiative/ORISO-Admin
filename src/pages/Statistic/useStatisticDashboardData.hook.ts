@@ -158,13 +158,23 @@ export const useStatisticDashboardData = ({
             drillQuery.data?.targets.some((target) => target.targetType === 'AGENCY'),
     );
 
+    // A platform admin's page already reads every Beratungsstelle with its name (the directory, same
+    // query key, so one request): its names are used instead of asking the same endpoint again.
+    const directoryQuery = useStatisticAgencyDirectory(isPlatformScope);
+    const directoryNames = useMemo(
+        () =>
+            directoryQuery.data &&
+            Object.fromEntries(directoryQuery.data.map((agency) => [`${agency.id}`, agency.name])),
+        [directoryQuery.data],
+    );
     const agenciesQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_AGENCY_NAMES'],
         queryFn: fetchAgencyNames,
-        enabled: hasAgencyTargets,
+        enabled: hasAgencyTargets && !isPlatformScope,
         staleTime: 5 * 60 * 1000,
         retry: false,
     });
+    const agencyNamesById = isPlatformScope ? directoryNames : agenciesQuery.data;
 
     const tenantsQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_TENANT_NAMES'],
@@ -194,7 +204,7 @@ export const useStatisticDashboardData = ({
         }
 
         const lookups = {
-            agencyNamesById: agenciesQuery.data || {},
+            agencyNamesById: agencyNamesById || {},
             tenantNamesById: tenantsQuery.data || {},
             topicNamesById: topicsQuery.data || {},
         };
@@ -208,7 +218,7 @@ export const useStatisticDashboardData = ({
         drillAnswered,
         drillQuery.data,
         isUnavailable,
-        agenciesQuery.data,
+        agencyNamesById,
         tenantsQuery.data,
         topicsQuery.data,
     ]);
