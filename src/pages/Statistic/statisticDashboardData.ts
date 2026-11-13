@@ -275,10 +275,10 @@ const buildConversationValues = (
         {} as Record<ConversationPeriodKey, ConversationValues>,
     );
 
-/** Both parts tracked → their sum; one withheld → withheld; one untracked → untracked. */
+/** Both parts tracked → their sum; one withheld → withheld (even next to an untracked part); else untracked. */
 const sumTracked = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
-    if (first === undefined || second === undefined) return undefined;
     if (first === null || second === null) return null;
+    if (first === undefined || second === undefined) return undefined;
     return first + second;
 };
 

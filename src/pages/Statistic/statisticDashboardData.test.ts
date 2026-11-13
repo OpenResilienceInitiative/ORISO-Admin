@@ -222,6 +222,17 @@ describe('statisticDashboardData', () => {
         expect(addTrackedMetricValues(undefined, undefined)).toBeUndefined();
     });
 
+    it('reports text messages as withheld, not untracked, when one part is withheld and the other absent', () => {
+        const base = agencyTarget({});
+        const target = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const { metrics } = buildStatisticData(tenantScopeResponse([target]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesSeekers).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeNull();
+    });
+
     it('treats a backend without communication counts as not tracking them', () => {
         const { metrics } = buildStatisticData(tenantScopeResponse([agencyTarget({})]), emptyLookups, now)
             .statisticsById['agency-11'];
