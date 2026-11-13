@@ -170,11 +170,15 @@ export const NarrowedBySearch: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByText('Caritas Beratungsstelle Mitte')).toBeVisible();
+        // the search reaches the list: a centre that does not match is not shown
+        await expect(canvas.queryByText('Online-Beratung Süd')).toBeNull();
         await expect(canvas.queryByRole('textbox')).toBeNull();
         const bar = canvas.getByTestId('list-search-bar');
         await expect(bar).toHaveTextContent('„Mitte“');
         await userEvent.click(within(bar).getByRole('button', { name: 'Ganze Liste zeigen' }));
         await waitFor(() => expect(canvas.queryByTestId('list-search-bar')).toBeNull());
+        // the whole list is back
+        await expect(await canvas.findByText('Online-Beratung Süd')).toBeVisible();
     },
 };
 

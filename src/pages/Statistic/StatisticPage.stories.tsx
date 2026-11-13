@@ -468,7 +468,8 @@ const platformDirectoryHandlers = (answerTenant: boolean) => [
             return HttpResponse.json({
                 ...statistics('LIVE', [
                     target('TENANT', 2, null, 2),
-                    target('AGENCY', 2, 11, 1),
+                    // a factor no other row has: 105 enquiries this month exist only for Musterstadt
+                    target('AGENCY', 2, 11, 1.25),
                     target('AGENCY', 2, 12, 0.5),
                 ]),
                 scope: 'TENANT',
@@ -519,6 +520,8 @@ export const PlatformAdminFindsBeratungsstelle: Story = {
         );
         await expect(canvas.queryByTestId('agency-level-hint')).toBeNull();
         await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+        // the figure comes from Musterstadt's own row in the Träger dashboard, not from the platform data
+        await waitFor(() => expect(canvas.getByText('105')).toBeVisible());
     },
 };
 

@@ -77,23 +77,30 @@ const fetchTenantNames = () =>
         `${tenantAdminEndpoint}/search?page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&query=&field=NAME&order=ASC`,
     );
 
-/** Every Beratungsstelle with its Träger (best effort, like the name lookups): what a platform admin can pick. */
+/**
+ * Every Beratungsstelle with its Träger: what a platform admin can pick. Reads every page. A failure
+ * is thrown, not turned into an empty list, so the page can say that the list did not load.
+ */
 const fetchAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
-    try {
+    const entries: StatisticAgencyEntry[] = [];
+    for (let page = 1; ; page += 1) {
+        // eslint-disable-next-line no-await-in-loop -- pages are read one after another until all are in
         const result = await fetchData({
-            url: `${agencyEndpointBase}?q=${encodeURIComponent('*')}&${listQuery}`,
+            url: `${agencyEndpointBase}?q=${encodeURIComponent(
+                '*',
+            )}&page=${page}&perPage=${NAME_LOOKUP_PAGE_SIZE}&order=ASC&field=NAME`,
             method: FETCH_METHODS.GET,
             skipAuth: false,
         });
-        const rows: Array<{ id?: number | null; name?: string; tenantId?: number | null }> = Array.isArray(result)
-            ? result
-            : removeEmbedded(result || {})?.data || [];
-
-        return rows
-            .filter((row) => row && row.id != null && row.tenantId != null && row.name)
-            .map((row) => ({ id: Number(row.id), name: String(row.name), tenantId: Number(row.tenantId) }));
-    } catch {
-        return [];
+        const { data, total } = Array.isArray(result)
+            ? { data: result, total: result.length }
+            : removeEmbedded(result || {});
+        const rows: Array<{ id?: number | null; name?: string; tenantId?: number | null }> = data || [];
+        rows.filter((row) => row && row.id != null && row.tenantId != null && row.name).forEach((row) =>
+            entries.push({ id: Number(row.id), name: String(row.name), tenantId: Number(row.tenantId) }),
+        );
+        const read = (page - 1) * NAME_LOOKUP_PAGE_SIZE + rows.length;
+        if (Array.isArray(result) || rows.length < NAME_LOOKUP_PAGE_SIZE || !(Number(total) > read)) return entries;
     }
 };
 
