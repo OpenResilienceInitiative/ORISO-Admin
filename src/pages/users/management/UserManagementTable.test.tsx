@@ -6,7 +6,13 @@ import type { UserScopeFiltersProps } from './UserScopeFilters';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from './UserManagementTable';
 
-const state = vi.hoisted(() => ({ section: 'tenant-admins', isSuperAdmin: false, canManage: true, navigate: vi.fn() }));
+const state = vi.hoisted(() => ({
+    section: 'tenant-admins',
+    isSuperAdmin: false,
+    canManage: true,
+    navigate: vi.fn(),
+    tenantAdminSearch: undefined as string | undefined,
+}));
 vi.mock('react-router-dom', async (original) => ({
     ...(await original<typeof import('react-router-dom')>()),
     useParams: () => ({ typeOfUsers: state.section }),
@@ -43,23 +49,26 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 }));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
-    useTenantAdminsData: () => ({
-        data: {
-            data: [
-                {
-                    id: '42',
-                    tenantId: 2,
-                    firstName: 'Alex',
-                    lastName: 'Tenant',
-                    email: 'alex@example.test',
-                    username: 'alex',
-                    agencies: [],
-                },
-            ],
-            total: 1,
-        },
-        refetch: vi.fn(),
-    }),
+    useTenantAdminsData: ({ search }: { search?: string }) => {
+        state.tenantAdminSearch = search;
+        return {
+            data: {
+                data: [
+                    {
+                        id: '42',
+                        tenantId: 2,
+                        firstName: 'Alex',
+                        lastName: 'Tenant',
+                        email: 'alex@example.test',
+                        username: 'alex',
+                        agencies: [],
+                    },
+                ],
+                total: 1,
+            },
+            refetch: vi.fn(),
+        };
+    },
 }));
 vi.mock('../../../hooks/usePlatformAdminsData', () => ({
     usePlatformAdminsData: () => ({
@@ -86,9 +95,8 @@ vi.mock('../../../hooks/useAdminListPreferences', () => ({
     useSaveAdminListSort: () => vi.fn(),
 }));
 vi.mock('./UserScopeFilters', () => ({
-    UserScopeFilters: ({ actions, search }: UserScopeFiltersProps) => (
+    UserScopeFilters: ({ actions }: UserScopeFiltersProps) => (
         <div role="group" aria-label="account toolbar">
-            {search && <input aria-label={search.searchPlaceholder} />}
             {actions}
         </div>
     ),
@@ -112,9 +120,9 @@ describe('UserManagementTable section authorization', () => {
         state.canManage = true;
         state.navigate.mockClear();
     });
-    const show = () =>
+    const show = (entry = '/admin/users') =>
         render(
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[entry]}>
                 <UserManagementTable />
             </MemoryRouter>,
         );
@@ -139,12 +147,21 @@ describe('UserManagementTable section authorization', () => {
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
     });
 
-    it('renders search and permitted actions together exactly once', () => {
+    it('renders permitted actions exactly once and no search field of its own (⌘K is the one search)', () => {
         show();
         const toolbar = within(screen.getByRole('group', { name: 'account toolbar' }));
-        expect(toolbar.getByRole('textbox')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
         expect(toolbar.getByRole('button', { name: /new$/ })).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /new$/ })).toHaveLength(1);
+    });
+
+    it('says when the list is narrowed by a search from the admin search (?q=)', () => {
+        show('/admin/users?q=simpson');
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('simpson');
+        expect(state.tenantAdminSearch).toBe('simpson');
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+        expect(screen.queryByTestId('list-search-bar')).not.toBeInTheDocument();
+        expect(state.tenantAdminSearch).toBe('');
     });
 
     it('labels invitations as navigation and points to the invitations section', () => {

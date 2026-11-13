@@ -2011,6 +2011,11 @@
     "statistic.dashboard.period.yesterday": "yesterday",
     "statistic.dashboard.scope.agency": "Counselling centres",
     "statistic.dashboard.scope.aria": "Statistics level",
+    "statistic.dashboard.agencyLevel.pick": "Pick a counselling centre or a provider under “View” to see the figures of its counselling centres.",
+    "statistic.dashboard.agencyLevel.selectionUnavailable": "There are no figures for this counselling centre yet. Pick another counselling centre or its provider.",
+    "statistic.dashboard.agencyLevel.directoryFailed": "The list of counselling centres could not be loaded. Please reload the page or pick a provider.",
+    "statistic.dashboard.agencyLevel.unsupported": "Figures per counselling centre for platform admins come with the next server update.",
+    "statistic.dashboard.agencyLevel.failed": "The figures of these counselling centres could not be loaded. Please try again later.",
     "statistic.dashboard.scope.platform": "Platform-wide",
     "statistic.dashboard.scope.tenant": "Organisations",
     "statistic.dashboard.text.activeAgencyUnits": "active counseling centers",
@@ -3645,7 +3650,7 @@
     "adminSearch.level.agency": "Agency",
     "adminSearch.level.personal": "Personal",
     "adminSearch.filter.label": "Filter results",
-    "adminSearch.filter.type": "Type",
+    "adminSearch.filter.type": "Show only",
     "adminSearch.filter.level": "Level",
     "adminSearch.filter.reset": "Reset filters",
     "adminSearch.empty.title": "Nothing found for “{{query}}”",
@@ -3841,5 +3846,10 @@
     "inactiveAudit.role.CONSULTANT": "Counsellors",
     "inactiveAudit.role.ADMIN": "Admin",
     "statistic.dashboard.scope.picker": "View",
-    "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found"
+    "statistic.dashboard.scope.noMatch": "No Träger or counselling centre found",
+    "listSearch.caption": "Filtered by search",
+    "listSearch.clear": "Show the whole list",
+    "listSearch.quoteOpen": "“",
+    "listSearch.quoteClose": "”",
+    "adminSearch.group.inList": "Show all matches in the list"
 }

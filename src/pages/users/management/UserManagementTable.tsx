@@ -1,12 +1,13 @@
 import { Button, Grid, Popover } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useDebouncedCallback } from 'use-debounce';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
+import { useListQuery } from '../../../hooks/useListQuery';
+import { ListSearchBar } from '../../../components/ListSearchBar';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
 import { canSeeLinksSection } from '../../../constants/linksAccess';
@@ -78,7 +79,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const navigate = useNavigate();
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
-    const [search, setSearch] = useState('');
+    // The admin search (⌘K) is the one place to type; it opens this list with ?q= (no second search field here).
+    const { query: search, clear: clearSearch } = useListQuery();
     const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
     const [deletionWindow, setDeletionWindow] = useState<{ mode: DeletionWindowMode; id: string } | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
@@ -216,11 +218,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setTenantToDelete(record);
     }, []);
 
-    const updateSearch = useCallback((value: string) => {
-        setTableState((state) => ({ ...state, current: 1 }));
-        setSearch(value);
-    }, []);
-    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
+    useEffect(() => {
+        setTableState((state) => (state.current === 1 ? state : { ...state, current: 1 }));
+    }, [search]);
 
     const handleTableAction = useCallback(
         (pagination: TablePaginationConfig, _: unknown, sorter: any) => {
@@ -364,11 +364,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     sectionId={sectionId}
                     filters={filters}
                     onChange={onFiltersChange}
-                    search={{
-                        onSearch: updateSearch,
-                        onSearchChange: setSearchDebounced,
-                        searchPlaceholder: t(config.searchPlaceholderKey),
-                    }}
                     actions={
                         (canCreate || canInvite) && (
                             <div className={styles.toolbarActions}>
@@ -383,6 +378,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         )
                     }
                 />
+                <ListSearchBar query={search} onClear={clearSearch} />
                 {countLicences && consultantCount != null && (
                     <span className={styles.sectionCount}>
                         {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}

@@ -2,13 +2,22 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useNavigate } from 'react-router-dom';
 import type { AdminSidebarNavItem } from '../Layout/AdminSidebar';
 import type { AdminNavSubsection } from '../Layout/adminNavTree';
-import { AdminSearchView } from './AdminSearchView';
+import { AdminSearchView, type ListGroup } from './AdminSearchView';
+import routePathNames from '../../appConfig';
+import { listPathWithQuery } from '../../hooks/useListQuery';
 import { rememberSearch } from './recentSearches';
 import type { SearchDoc } from './searchTypes';
 import { useAdminSearchIndex } from './useAdminSearchIndex';
 import { useSearchEntities } from './useSearchEntities';
 import { useTileTarget } from './useTileTarget';
 import { withTileTarget } from './tileTarget';
+
+/** Where "Show all matches in the list" goes for each group. */
+const LIST_PATHS: Record<ListGroup, string> = {
+    tenants: routePathNames.tenants,
+    agencies: routePathNames.agency,
+    accounts: routePathNames.users,
+};
 
 interface AdminSearchContextValue {
     isOpen: boolean;
@@ -97,6 +106,13 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing
         },
         [navigate],
     );
+    const onOpenList = useCallback(
+        (group: ListGroup, typed: string) => {
+            rememberSearch(typed);
+            navigate(listPathWithQuery(LIST_PATHS[group], typed));
+        },
+        [navigate],
+    );
 
     return (
         <AdminSearchView
@@ -107,6 +123,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing
             entitiesFailed={hasError}
             onQueryChange={setQuery}
             onOpen={onOpen}
+            onOpenList={onOpenList}
             onClose={onClose}
             onClosing={onClosing}
             origin={origin}

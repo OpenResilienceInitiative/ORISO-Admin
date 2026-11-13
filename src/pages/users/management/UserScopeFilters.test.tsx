@@ -71,29 +71,18 @@ describe('user-list centre filter access', () => {
 });
 
 describe('unified account toolbar', () => {
-    it('keeps search and actions available on a tab with no scope filters', async () => {
-        const user = userEvent.setup();
-        const onSearch = vi.fn();
-        const onSearchChange = vi.fn();
+    it('has no search field of its own (the admin search, ⌘K, is the one place to type) and keeps actions', () => {
         render(
             <UserScopeFilters
                 sectionId={TypeOfUser.PlatformAdmins}
                 filters={{}}
                 onChange={vi.fn()}
-                search={{ searchPlaceholder: 'Search accounts', onSearch, onSearchChange }}
                 actions={<button type="button">New account</button>}
             />,
         );
-        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Suche ausklappen' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'New account' })).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const input = screen.getByRole('textbox', { name: 'Search accounts' });
-        await user.type(input, 'Alex{Enter}');
-        expect(onSearch).toHaveBeenLastCalledWith('Alex');
-        expect(onSearchChange).toHaveBeenLastCalledWith('Alex');
-        await user.click(screen.getByRole('button', { name: 'Suche einklappen' }));
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        expect(screen.getByRole('textbox', { name: 'Search accounts' })).toHaveValue('Alex');
     });
 
     it('clears selected centres when switching Träger and offers only the new Träger centres', async () => {

@@ -137,7 +137,7 @@ const named = (rows: { id: number; name: string }[]) => HttpResponse.json({ tota
 
 const handlers = (dashboard: () => Response | Promise<Response>) => [
     http.get(`${adminStatisticsDashboardEndpoint}*`, dashboard),
-    http.get(`${agencyEndpointBase}/*`, () =>
+    http.get(`${agencyEndpointBase}*`, () =>
         named([
             { id: 11, name: 'Beratungsstelle Musterstadt' },
             { id: 12, name: 'Beratungsstelle Beispielort' },
@@ -451,6 +451,118 @@ export const TemporarilyUnavailable: Story = {
         await waitFor(() => expect(quiet).toBeVisible());
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
         await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+    },
+};
+
+/*
+ * Frank: "In Statistik the search did not work." The platform dashboard stops at Träger (scope
+ * PLATFORM: one platform row, one row per Träger), so no Beratungsstelle could ever be found. Now
+ * every Beratungsstelle is in the picker, and picking one loads its Träger's dashboard (`?tenantId=`).
+ */
+let drillRequests: string[] = [];
+const platformDirectoryHandlers = (answerTenant: boolean, withMusterstadt = true) => [
+    http.get(`${adminStatisticsDashboardEndpoint}*`, ({ request }) => {
+        const tenantId = new URL(request.url).searchParams.get('tenantId');
+        if (tenantId) drillRequests.push(tenantId);
+        if (tenantId && answerTenant) {
+            return HttpResponse.json({
+                ...statistics('LIVE', [
+                    target('TENANT', 2, null, 2),
+                    // a factor no other row has: 105 enquiries this month exist only for Musterstadt
+                    ...(withMusterstadt ? [target('AGENCY', 2, 11, 1.25)] : []),
+                    target('AGENCY', 2, 12, 0.5),
+                ]),
+                scope: 'TENANT',
+            });
+        }
+        // An older backend ignores ?tenantId= and answers with the platform dashboard.
+        return HttpResponse.json(
+            statistics('LIVE', [
+                target('PLATFORM', null, null, 4),
+                target('TENANT', 2, null, 2),
+                target('TENANT', 3, null, 1),
+            ]),
+        );
+    }),
+    http.get(`${agencyEndpointBase}*`, () =>
+        HttpResponse.json({
+            total: 3,
+            _embedded: [
+                { id: 11, name: 'Beratungsstelle Musterstadt', tenantId: 2 },
+                { id: 12, name: 'Beratungsstelle Beispielort', tenantId: 2 },
+                { id: 13, name: 'Beratungsstelle Testheim', tenantId: 3 },
+            ],
+        }),
+    ),
+    ...handlers(() => HttpResponse.json({})).slice(2),
+];
+
+const pickMusterstadt = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toBeVisible());
+    await userEvent.click(canvas.getByRole('button', { name: /^Ansicht:/ }));
+    await userEvent.type(await canvas.findByRole('combobox'), 'Muster');
+    await userEvent.click(await canvas.findByRole('option', { name: /Beratungsstelle Musterstadt/ }));
+};
+
+export const PlatformAdminFindsBeratungsstelle: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toHaveAccessibleName(/Musterstadt/),
+        );
+        await expect(canvas.queryByTestId('agency-level-hint')).toBeNull();
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+        // the figure comes from Musterstadt's own row in the Träger dashboard, not from the platform data
+        await waitFor(() => expect(canvas.getByText('105')).toBeVisible());
+    },
+};
+
+export const PlatformAdminFindsBeratungsstellePhone: Story = {
+    ...PlatformAdminFindsBeratungsstelle,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/**
+ * The Träger's answer lacks the picked Beratungsstelle (new, deleted, or withheld): the page says so
+ * instead of showing the Träger's total under the Beratungsstelle's name.
+ */
+export const PlatformAdminPickWithoutFigures: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true, false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('Für diese Beratungsstelle liegen noch keine Zahlen vor');
+        // Beispielort's 42 enquiries (factor 0.5) must not show up as Musterstadt's figures
+        await expect(within(canvasElement).queryByText('Anfragen gesamt')).toBeNull();
+    },
+};
+
+/** Until the UserService knows `?tenantId=`, the page says so instead of showing an empty level. */
+export const PlatformAdminOlderBackend: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('erst mit dem nächsten Server-Update');
+        // no figures on screen, so no file of them either
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
     },
 };
 

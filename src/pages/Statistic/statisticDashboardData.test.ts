@@ -16,6 +16,8 @@ import {
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
     formatStandDay,
+    resolveDrillTenantId,
+    withAgencyDrill,
 } from './statisticDashboardData';
 
 // Saturday, 11 July 2026 (local time)
@@ -583,5 +585,58 @@ describe('configurable time windows (UserService#1544)', () => {
         expect(bars[11]).toMatchObject({ day: 'KW 28', value: 6, isDefaultSelected: true });
         expect(bars[11].dateLabel).toMatch(/^KW 28, 6 Jul\S* – 12 Jul/);
         expect(bars[0]).toMatchObject({ day: 'KW 17', value: 11, isDefaultSelected: false });
+    });
+});
+
+// Frank: "In Statistik the search did not work." The platform dashboard has no Beratungsstellen, so a
+// platform admin looks into one Träger (`?tenantId=`), whose Beratungsstellen are merged in here.
+describe('platform admin looking into one Träger', () => {
+    const platform = buildStatisticData(
+        {
+            generatedAt: '2026-07-11T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                agencyTarget({ targetType: 'PLATFORM', tenantId: null, agencyId: null, counselorCount: 12 }),
+                agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 8 }),
+            ],
+        },
+        emptyLookups,
+        now,
+    );
+    const tenant = buildStatisticData(
+        tenantScopeResponse([
+            agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 99 }),
+            agencyTarget({ agencyId: 11 }),
+            agencyTarget({ agencyId: 12 }),
+        ]),
+        { ...emptyLookups, agencyNamesById: { '11': 'BST Nord' } },
+        now,
+    );
+
+    it('puts that Träger’s Beratungsstellen on the Beratungsstellen level and keeps the platform levels', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(platform.targetsByScope.agency).toEqual([]);
+        expect(merged.targetsByScope.agency.map((target) => target.id)).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.agency[0].label).toBe('BST Nord');
+        expect(merged.fallbackIdsByScope.agency).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.tenant).toEqual(platform.targetsByScope.tenant);
+        expect(merged.fallbackIdsByScope.platform).toEqual(['platform-total']);
+        expect(merged.statisticsById['agency-11']).toBeDefined();
+    });
+
+    it('keeps the Träger row of the platform dashboard (same id in both answers)', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(merged.statisticsById['tenant-5']).toBe(platform.statisticsById['tenant-5']);
+    });
+
+    it('looks into the Träger of the picked Beratungsstelle, else the picked Träger, else none', () => {
+        const directory = [{ id: 11, name: 'BST Nord', tenantId: 5 }];
+
+        expect(resolveDrillTenantId({ agency: ['agency-11'], tenant: ['tenant-9'] }, directory)).toBe(5);
+        expect(resolveDrillTenantId({ agency: [], tenant: ['tenant-9'] }, directory)).toBe(9);
+        expect(resolveDrillTenantId({ agency: ['agency-77'] }, directory)).toBeUndefined();
+        expect(resolveDrillTenantId({}, directory)).toBeUndefined();
     });
 });

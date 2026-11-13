@@ -649,26 +649,19 @@ const licensedSearch = http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
 export const LicenceLimitIgnoresSearch: Story = {
     render: onTab('consultants'),
     parameters: {
+        // The search comes from the admin search (⌘K) as ?q=; the list has no search field of its own.
+        route: '/admin/users/consultants?q=Muster',
         msw: { handlers: withDefaults([licensedSearch]) },
         seedQueries: (client: QueryClient) => {
             client.setQueryDefaults([TENANT_DATA_KEY], { staleTime: Infinity });
             client.setQueryData([TENANT_DATA_KEY, 0], { id: 1, licensing: { allowedNumberOfUsers: 3 } });
         },
     },
-    play: async ({ canvasElement, userEvent: user }) => {
+    play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await rowOf(canvasElement, 'Dritte');
-        await expect(canvas.getByText(/^3\/3 Berater/)).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
-
-        await user.click(canvas.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(
-            await canvas.findByRole('textbox', {
-                name: /Vorname, Nachname, Anzeigename, E-Mail, ID oder Beratungsstelle/,
-            }),
-            'Muster',
-        );
-        await waitFor(() => expect(canvas.queryByText('Ben Beispiel')).toBeNull());
+        await rowOf(canvasElement, 'Muster');
+        await expect(canvas.queryByText('Ben Beispiel')).toBeNull();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Muster“');
         await expect(await canvas.findByText(/^3\/3 Berater/)).toBeVisible();
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
     },
@@ -1492,7 +1485,7 @@ export const AccountsAt728 = accountsBoundary(728, 5);
 export const AccountsAt983 = accountsBoundary(983, 5);
 export const AccountsAt984 = accountsBoundary(984, 6);
 
-// ---- The account toolbar keeps scope filters beside search, including on phones.
+// ---- The account toolbar: one Filter button and the actions, no search of its own (⌘K), also on phones.
 
 const toolbarSpy = searchSpy(CONSULTANTS_ENDPOINT, CONSULTANTS, CONSULTANTS.length);
 const toolbarLanguage = (language: 'de' | 'en') => async () => {
@@ -1509,7 +1502,6 @@ const toolbarLabels = {
         tenant: 'Träger',
         centre: 'Beratungsstelle',
         expand: 'Suche ausklappen',
-        collapse: 'Suche einklappen',
         invitations: 'Zu Einladungen',
         create: 'Neu',
     },
@@ -1517,18 +1509,9 @@ const toolbarLabels = {
         tenant: 'Provider',
         centre: 'Counselling centre',
         expand: 'Expand search',
-        collapse: 'Collapse search',
         invitations: 'Go to invitations',
         create: 'New',
     },
-};
-
-const sameControlRow = async (controls: HTMLElement[]) => {
-    const centres = controls.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.top + rect.height / 2;
-    });
-    await expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(8);
 };
 
 const toolbarPlay =
@@ -1537,24 +1520,16 @@ const toolbarPlay =
         const canvas = within(canvasElement);
         const labels = toolbarLabels[language];
         await canvas.findByText('Anna Muster');
-        const expand = canvas.getByRole('button', { name: labels.expand });
+        // One search for the whole admin (⌘K): no search field of the list's own beside the Filter button.
+        await expect(canvas.queryByRole('button', { name: labels.expand })).toBeNull();
+        await expect(canvas.queryByRole('textbox')).toBeNull();
         const filter = canvas.getByRole('button', { name: /^Filter/ });
         const invitations = canvas.getByRole('link', { name: labels.invitations });
         await expect(invitations).toHaveAttribute('href', '/admin/links');
         await expect(canvas.getAllByRole('button', { name: new RegExp(`${labels.create}$`) })).toHaveLength(1);
-        // Admin#1510: search and one "Filter" button share the row; the pickers fold out below it.
+        // Admin#1510: one "Filter" button; the pickers fold out below it.
         await expect(filter).toHaveAttribute('aria-expanded', 'false');
         await expect(canvas.queryByRole('combobox', { name: labels.tenant })).toBeNull();
-        await sameControlRow([expand, filter]);
-        await user.click(expand);
-        const search = canvas.getByRole('textbox');
-        await waitFor(() => expect(search).toBeVisible());
-        await user.type(search, 'Anna');
-        await waitFor(() => expect(toolbarSpy.last().searchParams.get('query')).toBe('Anna'));
-        await user.click(canvas.getByRole('button', { name: labels.collapse }));
-        await user.click(canvas.getByRole('button', { name: labels.expand }));
-        await expect(canvas.getByRole('textbox')).toHaveValue('Anna');
-        await sameControlRow([canvas.getByRole('textbox'), filter]);
         await user.click(filter);
         await expect(canvas.getByRole('combobox', { name: labels.tenant })).toBeVisible();
         await expect(canvas.getByRole('combobox', { name: labels.centre })).toBeVisible();
@@ -1595,15 +1570,12 @@ export const UnifiedToolbarTraegerPhone390: Story = {
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         await canvas.findByText('Anna Muster');
-        const search = canvas.getByRole('button', { name: 'Suche ausklappen' });
+        await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
         const filter = canvas.getByRole('button', { name: /^Filter/ });
-        await sameControlRow([search, filter]);
         await user.click(filter);
         await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
         await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Beratungsstelle' })).toBeEnabled());
         await expect(canvas.getByRole('link', { name: 'Zu Einladungen' })).toHaveAttribute('href', '/admin/links');
-        await user.click(search);
-        await waitFor(() => expect(canvas.getByRole('textbox')).toBeVisible());
         await noSideScroll(canvasElement);
     },
 };
@@ -1704,4 +1676,32 @@ export const UnifiedToolbarManyLongCentresPhone390: Story = {
 export const UnifiedToolbarEightLongCentresPhone390: Story = {
     ...UnifiedToolbarManyLongCentresPhone390,
     play: manyLongCentresPlay(8),
+};
+
+const narrowedSpy = searchSpy(CONSULTANTS_ENDPOINT, [CONSULTANTS[0]], 1);
+/**
+ * One search for the whole admin: the account list has no search field of its own any more (it used
+ * to sit beside the ⌘K search). ⌘K → "Alle Treffer in der Liste zeigen" opens it with `?q=`; the
+ * Filter button and the actions stay.
+ */
+export const NarrowedBySearch: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        route: '/admin/users/consultants?q=Anna',
+        msw: { handlers: withDefaults([narrowedSpy.handler]) },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByText('Anna Muster');
+        await expect(narrowedSpy.last().searchParams.get('query')).toBe('Anna');
+        await expect(canvas.queryByRole('textbox')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Anna“');
+        await expect(canvas.getByRole('button', { name: /^Filter/ })).toBeVisible();
+    },
+};
+
+export const NarrowedBySearchPhone: Story = {
+    ...NarrowedBySearch,
+    globals: { viewport: { value: 'phone', isRotated: false } },
 };
