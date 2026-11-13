@@ -18,8 +18,23 @@ vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({ data: { settings: {} }, isLoading: false }),
 }));
 
+const mutate = vi.fn();
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: vi.fn() }),
+    useTenantAdminDataMutation: () => ({ mutate }),
+}));
+
+// ORISO-TenantService#363: the effective value comes from the Träger's permission policies.
+const policies: Record<string, { value: boolean; mode: 'SUGGESTED' | 'ENFORCED'; inherited?: boolean }> = {
+    featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
+};
+const policyState = { isError: false };
+const savePolicies = vi.fn(async (next: unknown) => next);
+vi.mock('../../../../hooks/useTenantPermissionPolicies', () => ({
+    useTenantPermissionPolicies: () =>
+        policyState.isError
+            ? { data: undefined, isLoading: false, isError: true }
+            : { data: { tenantId: 1, policies }, isLoading: false, isError: false },
+    useTenantPermissionPoliciesMutation: () => ({ mutateAsync: savePolicies }),
 }));
 
 vi.mock('../../../../context/useAppConfig', () => ({
@@ -97,5 +112,72 @@ describe('OtherFunctionsSettings', () => {
 
         expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
         expect(master).not.toBeChecked();
+    });
+
+    // Single writer: a supervision switch saved here becomes the Träger's own policy, never a raw setting.
+    it('saves a feature switch as an own permission policy, not as a raw setting', async () => {
+        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
+        expect(master).toBeChecked();
+        await user.click(master);
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
+        expect(savePolicies).toHaveBeenCalledWith({
+            tenantId: 1,
+            policies: { featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: false } },
+        });
+        expect(mutate.mock.calls[0][0].settings).not.toHaveProperty('featureSupervisionEnabled');
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
+
+    it('writes the settings only after the policy save succeeded, and reopens on failure', async () => {
+        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
+        mutate.mockClear();
+        let reject: (error: Error) => void = () => undefined;
+        savePolicies.mockImplementationOnce(
+            () =>
+                new Promise((_resolve, rejectPromise) => {
+                    reject = rejectPromise;
+                }),
+        );
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+        await vi.waitFor(() => expect(savePolicies).toHaveBeenCalled());
+        expect(mutate).not.toHaveBeenCalled();
+
+        reject(new Error('rejected'));
+        expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
+        expect(mutate).not.toHaveBeenCalled();
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
+
+    it.each([
+        [true, 'checked'],
+        [false, 'unchecked'],
+    ])('shows an inherited lock %s as %s and disabled', (value) => {
+        policies.featureSupervisionEnabled = { value, mode: 'ENFORCED', inherited: true };
+        render(<OtherFunctionsSettings tenantId="1" />);
+        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
+        if (value) expect(master).toBeChecked();
+        else expect(master).not.toBeChecked();
+        expect(master).toBeDisabled();
+        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
+    });
+
+    it('shows an error instead of editable switches when the policies cannot be read', () => {
+        policyState.isError = true;
+        render(<OtherFunctionsSettings tenantId="1" />);
+        expect(screen.getByRole('alert')).toHaveTextContent('error.loading');
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+        policyState.isError = false;
     });
 });

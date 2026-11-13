@@ -13,7 +13,13 @@ import { PolicyOptionCard } from './PolicyOptionCard';
 import { CONVERSATION_HELP } from './tileHelpTopics';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
-import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
+import {
+    type EffectivePolicy,
+    isSubToggleDisabled,
+    permissionPolicySource,
+    resolvePermissionPolicy,
+} from './permissionsSettingsUtils';
+
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type {
@@ -26,6 +32,13 @@ import type {
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
+
+/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
+const sourceHintKey = (policy: EffectivePolicy) => {
+    const source = permissionPolicySource(policy);
+    if (source !== 'own' || policy.suggestedValue === undefined) return source;
+    return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
+};
 
 /**
  * Reason a toggle cannot control anything in this environment, or `null` when
@@ -66,6 +79,8 @@ export type PermissionsSettingsViewProps = {
     onToggleUpdate: ToggleAfterChangeHandler;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    /** Values this level stored itself; they win over a suggestion from above (TenantService#363). */
+    ownSettings?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
     /** Centre page: the Träger's policies for "Direkteinladung erlauben" (a Träger "off" wins). */
@@ -91,6 +106,7 @@ export const PermissionsSettingsView = ({
     onToggleUpdate,
     policyLevel = 'tenant',
     permissionPolicies,
+    ownSettings,
     pendingPolicyFields,
     onPolicyChange,
     recipientScope,
@@ -121,8 +137,14 @@ export const PermissionsSettingsView = ({
 
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
-            resolvePermissionPolicy(permissionPolicies, fieldKey, currentValue, restrictedFields),
-        [permissionPolicies, restrictedFields],
+            resolvePermissionPolicy(
+                permissionPolicies,
+                fieldKey,
+                currentValue,
+                restrictedFields,
+                ownSettings?.[fieldKey],
+            ),
+        [permissionPolicies, restrictedFields, ownSettings],
     );
     const policyPending = useCallback(
         (fieldKey: string) => pendingPolicyFields?.has(fieldKey) === true,
@@ -147,7 +169,7 @@ export const PermissionsSettingsView = ({
     // One row for every switch on a tile: feature toggles and notification channels alike.
     const toggleRow = (
         form: FormInstance,
-        row: { setting: string; labelKey: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
+        row: { setting: string; labelKey: string; policy: EffectivePolicy; disabled?: boolean; note?: string },
     ) => (
         <PolicyOptionCard
             key={row.setting}
@@ -158,7 +180,12 @@ export const PermissionsSettingsView = ({
             policy={row.policy}
             pending={policyPending(row.setting)}
             disabled={row.disabled}
-            supportingText={row.note}
+            supportingText={
+                row.note ??
+                (policyLevel === 'platform'
+                    ? undefined
+                    : t(`tenants.permissions.policy.source.${sourceHintKey(row.policy)}`))
+            }
             onChange={(next) => changePolicy(row.setting, next, form)}
         />
     );
@@ -370,10 +397,17 @@ export const PermissionsSettingsView = ({
                                                                 return toggleRow(form, {
                                                                     setting: toggle.field[1],
                                                                     labelKey: toggle.labelKey,
-                                                                    policy: policyFor(
-                                                                        toggle.field[1],
-                                                                        getFieldValue(toggle.field),
-                                                                    ),
+                                                                    // Nothing implements it yet: locked off.
+                                                                    policy: unavailableHintKey
+                                                                        ? {
+                                                                              value: false,
+                                                                              mode: 'ENFORCED',
+                                                                              inherited: true,
+                                                                          }
+                                                                        : policyFor(
+                                                                              toggle.field[1],
+                                                                              getFieldValue(toggle.field),
+                                                                          ),
                                                                     disabled:
                                                                         Boolean(unavailableHintKey) || disabledByMaster,
                                                                     note: disabledHintKey
