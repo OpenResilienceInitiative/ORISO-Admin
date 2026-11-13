@@ -4,6 +4,7 @@ import type {
     AddonSettings,
     AddonSettingsValues,
     AddonStats,
+    AddonTenantState,
     AdminAddon,
     AgencyOverride,
 } from '../../addons/addonTypes';
@@ -39,6 +40,14 @@ export class AddonSettingsValidationError extends Error {
 export const getAdminAddons = (tenantId?: number | null): Promise<AdminAddon[]> =>
     fetchData({
         url: `${adminAddonsUrl}${queryString({ tenantId })}`,
+        method: FETCH_METHODS.GET,
+        responseHandling: READ_HANDLING,
+    }).then((result) => (Array.isArray(result) ? result : []));
+
+/** The Träger of one add-on with their switch and agency overrides; SuperAdmins only. */
+export const getAddonTenants = (name: string): Promise<AddonTenantState[]> =>
+    fetchData({
+        url: `${addonUrl(name)}/tenants`,
         method: FETCH_METHODS.GET,
         responseHandling: READ_HANDLING,
     }).then((result) => (Array.isArray(result) ? result : []));

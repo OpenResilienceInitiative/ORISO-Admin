@@ -118,3 +118,49 @@
 .formAlert {
     margin-bottom: 8px;
 }
+
+.tenants {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.tenantsHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.tenantsFilter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.subheading {
+    margin: 0;
+    color: var(--m3-on-surface);
+    font-family: var(--m3-body-font-family);
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.tenants :global(.ant-table-row) {
+    cursor: pointer;
+}
+
+.selectedRow > td {
+    background: var(--m3-secondary-container, #f4ece6) !important;
+}
+
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}

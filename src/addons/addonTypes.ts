@@ -38,6 +38,19 @@ export interface AgencyOverride {
     updatedBy?: string;
 }
 
+/**
+ * One entry of `GET /service/addons/admin/addons/{name}/tenants` (SuperAdmins): a Träger with a
+ * switch or agency overrides for the add-on. `updatedAt` is missing when only overrides exist.
+ */
+export interface AddonTenantState {
+    tenantId: number;
+    enabled: boolean;
+    updatedAt?: string | null;
+    updatedBy?: string | null;
+    agenciesEnabled: number;
+    agenciesDisabled: number;
+}
+
 /** One entry of `GET /service/addons/admin/addons`. */
 export interface AdminAddon {
     manifest: AddonManifest;

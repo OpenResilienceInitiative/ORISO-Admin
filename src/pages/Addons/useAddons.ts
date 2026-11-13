@@ -4,6 +4,7 @@ import {
     getAddonRegistry,
     getAddonSettings,
     getAddonStats,
+    getAddonTenants,
     getAdminAddons,
     saveAddonSettings,
     setAddonEnabledForAgency,
@@ -11,6 +12,7 @@ import {
 } from '../../api/addons/addonsApi';
 import { getAddonAuditEntries } from '../../api/addons/addonAuditApi';
 import getAgencyDataById from '../../api/agency/getAgencyById';
+import { searchTenantData } from '../../api/tenant/searchTenantData';
 import type { AddonAuditQuery, AddonSettingsValues } from '../../addons/addonTypes';
 import decodeHTML from '../../utils/decodeHTML';
 
@@ -19,6 +21,52 @@ export const ADDON_REGISTRY_KEY = 'addon-registry';
 const ADDON_SETTINGS_KEY = 'addon-settings';
 const ADDON_STATS_KEY = 'addon-stats';
 const ADDON_AUDIT_KEY = 'addon-audit';
+export const ADDON_TENANTS_KEY = 'addon-tenants';
+const ALL_TENANTS_KEY = 'addon-all-tenants';
+
+/** Upper bound for the Träger list of the add-on view; a platform has far fewer Träger. */
+const TENANT_PAGE_SIZE = 100;
+const TENANT_PAGE_LIMIT = 20;
+
+export interface TenantName {
+    id: number;
+    name: string;
+}
+
+/** Every Träger except the platform (id 0), for the SuperAdmin's add-on view. */
+const toTenantNames = (rows: { id?: number | string | null; name?: string | null }[]): TenantName[] =>
+    rows
+        .filter((tenant) => tenant.id != null && Number(tenant.id) > 0)
+        .map((tenant) => ({ id: Number(tenant.id), name: decodeHTML(tenant.name || '') || `#${tenant.id}` }));
+
+/** Every Träger except the platform (id 0), for the SuperAdmin's add-on view. */
+export const fetchAllTenants = async (): Promise<TenantName[]> => {
+    const first = await searchTenantData({ page: 1, perPage: TENANT_PAGE_SIZE });
+    const pages = Math.min(Math.ceil((first.total ?? 0) / TENANT_PAGE_SIZE), TENANT_PAGE_LIMIT);
+    const rest = await Promise.all(
+        Array.from({ length: Math.max(pages - 1, 0) }, (_, index) =>
+            searchTenantData({ page: index + 2, perPage: TENANT_PAGE_SIZE }),
+        ),
+    );
+    return [first, ...rest].flatMap((response) => toTenantNames(response.data ?? []));
+};
+
+export const useAllTenants = (enabled: boolean) =>
+    useQuery({
+        queryKey: [ALL_TENANTS_KEY],
+        queryFn: fetchAllTenants,
+        enabled,
+        retry: false,
+        staleTime: 5 * 60_000,
+    });
+
+export const useAddonTenants = (name: string | null, enabled: boolean) =>
+    useQuery({
+        queryKey: [ADDON_TENANTS_KEY, name],
+        queryFn: () => getAddonTenants(name as string),
+        enabled: enabled && !!name,
+        retry: false,
+    });
 
 export const useAdminAddons = (tenantId: number | null, enabled = true) =>
     useQuery({
@@ -84,6 +132,7 @@ const useInvalidateAddons = (tenantId: number) => {
         Promise.all([
             queryClient.invalidateQueries({ queryKey: [ADMIN_ADDONS_KEY, tenantId] }),
             queryClient.invalidateQueries({ queryKey: [ADDON_REGISTRY_KEY] }),
+            queryClient.invalidateQueries({ queryKey: [ADDON_TENANTS_KEY] }),
         ]);
 };
 

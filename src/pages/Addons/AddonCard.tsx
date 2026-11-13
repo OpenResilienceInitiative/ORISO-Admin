@@ -1,7 +1,6 @@
 import { Card, Collapse, Switch, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
-import { snackbar } from '../../components/Snackbar';
-import { localizedText, type AdminAddon } from '../../addons/addonTypes';
+import type { AdminAddon } from '../../addons/addonTypes';
 import { canSwitchAddonForTenant } from '../../constants/addonsAccess';
 import { AgencyOverrides } from './AgencyOverrides';
 import { AddonSettingsSection } from './AddonSettingsSection';
@@ -12,17 +11,18 @@ import styles from './addons.module.scss';
 interface AddonCardProps {
     addon: AdminAddon;
     tenantId: number;
+    /** Shown as the card title; the id alone when the name is unknown. */
+    tenantName?: string;
     isSuperAdmin: boolean;
 }
 
-export const AddonCard = ({ addon, tenantId, isSuperAdmin }: AddonCardProps) => {
-    const { t, i18n } = useTranslation();
-    const language = i18n.resolvedLanguage || i18n.language || 'de';
+/** One add-on at one Träger: the Träger switch, statistics, agency overrides and settings. */
+export const AddonCard = ({ addon, tenantId, tenantName, isSuperAdmin }: AddonCardProps) => {
+    const { t } = useTranslation();
     const { manifest } = addon;
     const canSwitch = canSwitchAddonForTenant({ isSuperAdmin });
     const setEnabled = useSetTenantEnabled(manifest.name, tenantId);
-    const switchId = `addon-${manifest.name}-enabled`;
-    const apps = manifest.apps ?? [];
+    const switchId = `addon-${manifest.name}-${tenantId}-enabled`;
     const hasStats = (manifest.stats ?? []).length > 0;
 
     const onToggle = (enabled: boolean) =>
@@ -33,12 +33,13 @@ export const AddonCard = ({ addon, tenantId, isSuperAdmin }: AddonCardProps) => 
     return (
         <Card
             className={styles.card}
-            data-testid={`addon-card-${manifest.name}`}
+            data-testid={`addon-card-${manifest.name}-${tenantId}`}
             title={
                 <div className={styles.cardTitle}>
-                    <span className={styles.addonName}>{manifest.name}</span>
-                    <Tag>{t('addons.version', { version: manifest.version })}</Tag>
-                    <Tag className={addon.enabled ? styles.statusActive : undefined}>
+                    <span className={styles.addonName}>
+                        {tenantName ? `${tenantName} (${tenantId})` : t('addons.tenant.unnamed', { id: tenantId })}
+                    </span>
+                    <Tag color={addon.enabled ? 'green' : 'default'}>
                         {t(addon.enabled ? 'addons.status.active' : 'addons.status.inactive')}
                     </Tag>
                 </div>
@@ -62,28 +63,12 @@ export const AddonCard = ({ addon, tenantId, isSuperAdmin }: AddonCardProps) => 
                     {t('addons.tenant.readOnly')}
                 </p>
             )}
-            <div className={styles.apps}>
-                <span className={styles.label}>{t('addons.apps')}</span>
-                {apps.length === 0 ? (
-                    <span>{t('addons.apps.none')}</span>
-                ) : (
-                    <ul className={styles.appList}>
-                        {apps.map((app) => (
-                            <li key={app.id}>
-                                <strong>{localizedText(app.title, language, app.id)}</strong>{' '}
-                                {(app.slots ?? []).map((slot) => (
-                                    <Tag key={slot}>{slot}</Tag>
-                                ))}
-                            </li>
-                        ))}
-                    </ul>
-                )}
-            </div>
             {hasStats && (
                 <AddonStatsTiles name={manifest.name} tenantId={tenantId} definitions={manifest.stats ?? []} />
             )}
             <Collapse
                 className={styles.sections}
+                defaultActiveKey={['agencies', 'settings']}
                 items={[
                     {
                         key: 'agencies',

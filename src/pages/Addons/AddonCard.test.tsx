@@ -8,6 +8,9 @@ vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: 'de', language: 'de' } }),
 }));
 
+vi.mock('./AgencyOverrides', () => ({ AgencyOverrides: () => <div>agency overrides</div> }));
+vi.mock('./AddonSettingsSection', () => ({ AddonSettingsSection: () => <div>settings form</div> }));
+
 const mutate = vi.hoisted(() => vi.fn());
 vi.mock('./useAddons', () => ({
     useSetTenantEnabled: () => ({ mutate, isPending: false }),
@@ -29,20 +32,21 @@ const addon: AdminAddon = {
 const renderCard = (isSuperAdmin: boolean) =>
     render(
         <QueryClientProvider client={new QueryClient()}>
-            <AddonCard addon={addon} tenantId={7} isSuperAdmin={isSuperAdmin} />
+            <AddonCard addon={addon} tenantId={7} tenantName="Caritas Musterstadt" isSuperAdmin={isSuperAdmin} />
         </QueryClientProvider>,
     );
 
 beforeEach(() => mutate.mockReset());
 
 describe('AddonCard', () => {
-    it('shows name, version, apps and statistics', () => {
+    it('shows the Träger, its state and statistics', () => {
         renderCard(false);
-        expect(screen.getByText('digisucht-tools')).toBeInTheDocument();
-        expect(screen.getByText('Ziele')).toBeInTheDocument();
-        expect(screen.getByText('admin.page')).toBeInTheDocument();
+        expect(screen.getByText('Caritas Musterstadt (7)')).toBeInTheDocument();
+        expect(screen.getByText('addons.status.active')).toBeInTheDocument();
         expect(screen.getByText('Freigegebene Tools')).toBeInTheDocument();
         expect(screen.getByText('12')).toBeInTheDocument();
+        expect(screen.getByText('agency overrides')).toBeInTheDocument();
+        expect(screen.getByText('settings form')).toBeInTheDocument();
     });
 
     it('lets a SuperAdmin switch the add-on for the Träger', () => {
