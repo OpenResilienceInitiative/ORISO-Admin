@@ -4,20 +4,46 @@ import type { TenantSettings } from '../../../../types/tenant';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
 
+/** Where the value a tile shows comes from (ORISO-TenantService#363). */
+export type PermissionPolicySource = 'own' | 'suggested' | 'enforced' | 'forbidden';
+
+/** An effective policy; `suggestedValue` is the suggestion from above when it differs from the value. */
+export type EffectivePolicy = PolicyValue<boolean> & { suggestedValue?: boolean };
+
+/**
+ * The effective value of one feature at this level, as TenantService serves it (ORISO-TenantService#363):
+ * 1. a lock from above (enforced on / forbidden) always wins;
+ * 2. otherwise an own policy (`inherited: false`) or the value this level stored (`ownValue`) wins —
+ *    a suggestion from above never overrides it, it only shows as a hint when it differs;
+ * 3. only without any stored value does the suggestion from above count.
+ */
 export const resolvePermissionPolicy = (
     permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
     fieldKey: string,
     currentValue: unknown,
     restrictedFields: ReadonlySet<string>,
-): PolicyValue<boolean> => {
-    const restricted = restrictedFields.has(fieldKey);
-    return (
-        permissionPolicies?.[fieldKey] ?? {
-            value: currentValue !== false,
-            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
-            inherited: restricted,
-        }
-    );
+    ownValue?: unknown,
+): EffectivePolicy => {
+    const policy = permissionPolicies?.[fieldKey];
+    // Inherited lock first, then a restriction from above, and only then an own requirement.
+    if (policy?.mode === 'ENFORCED' && policy.inherited === true) return policy;
+    if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
+    if (policy && policy.inherited !== true) return policy;
+    if (typeof ownValue === 'boolean') {
+        const differs = policy !== undefined && policy.value !== ownValue;
+        return {
+            value: ownValue,
+            mode: 'SUGGESTED',
+            inherited: false,
+            ...(differs ? { suggestedValue: policy.value } : {}),
+        };
+    }
+    return policy ?? { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
+};
+
+export const permissionPolicySource = (policy: PolicyValue<boolean>): PermissionPolicySource => {
+    if (policy.mode === 'ENFORCED') return policy.value ? 'enforced' : 'forbidden';
+    return policy.inherited === true ? 'suggested' : 'own';
 };
 
 /**

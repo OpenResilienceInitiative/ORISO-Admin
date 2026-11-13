@@ -806,7 +806,9 @@ export const ConsultantsTabAt960SortedByDate: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await rowOf(canvasElement, 'Muster');
         // Default order is "last updated, newest first".
-        const pill = canvas.getByRole('button', { name: /nach Zuletzt aktualisiert/ });
+        const pill = canvas.getByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
+        });
         await user.click(pill);
         await expect(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' })).toHaveAttribute(
             'aria-checked',
@@ -817,7 +819,52 @@ export const ConsultantsTabAt960SortedByDate: Story = {
 
         await user.click(canvas.getByRole('button', { name: /Name nach Vorname/ }));
         await user.click(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' }));
-        await expect(await canvas.findByRole('button', { name: /nach Zuletzt aktualisiert/ })).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
+    },
+};
+
+export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
+    ...ConsultantsTabAt960,
+    parameters: {
+        ...WIDTHS,
+        msw: {
+            handlers: withDefaults([
+                http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+                    const url = new URL(request.url);
+                    return consultantsResponse(
+                        url.searchParams.get('field') === 'UPDATE_DATE' && url.searchParams.get('order') === 'ASC'
+                            ? [...CONSULTANTS].reverse()
+                            : CONSULTANTS,
+                    );
+                }),
+                http.get(PREFERENCES_ENDPOINT, () =>
+                    HttpResponse.json({ sorts: { consultants: { field: 'UPDATE_DATE', order: 'ASC' } } }),
+                ),
+            ]),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await rowOf(canvasElement, 'Muster');
+        const bodyRows = canvas.getAllByRole('row').slice(1);
+        await expect(within(bodyRows[0]).getByText(/Beispiel/)).toBeVisible();
+        await expect(within(bodyRows[1]).getByText(/Muster/)).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert älteste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
+        await noSideScroll(canvasElement);
     },
 };
 
@@ -1013,8 +1060,15 @@ const searchSpy = (endpoint: string, rows: CounselorData[] = CONSULTANTS, total 
     return { urls, handler, last: () => urls[urls.length - 1] };
 };
 
+/** The Träger and Beratungsstelle pickers fold out behind one "Filter" button (Admin#1510). */
+const openFilters = async (canvasElement: HTMLElement) => {
+    const toggle = within(canvasElement).getByRole('button', { name: /^Filter/ });
+    if (toggle.getAttribute('aria-expanded') !== 'true') await userEvent.setup().click(toggle);
+};
+
 const pick = async (canvasElement: HTMLElement, label: string, option: RegExp) => {
     const user = userEvent.setup();
+    await openFilters(canvasElement);
     await user.click(within(canvasElement).getByRole('combobox', { name: label }));
     await user.click(await within(canvasElement.ownerDocument.body).findByRole('option', { name: option }));
     await user.keyboard('{Escape}');
@@ -1050,6 +1104,7 @@ export const FilterByTraegerAndCentre: Story = {
         });
 
         await step('centre filter offers only that Träger’s centres and sends agencyId', async () => {
+            await openFilters(canvasElement);
             await user.click(canvas.getByRole('combobox', { name: 'Beratungsstelle' }));
             const list = await within(canvasElement.ownerDocument.body).findByRole('listbox');
             await expect(within(list).getAllByRole('option')).toHaveLength(2);
@@ -1081,6 +1136,7 @@ export const FilterTenantAdminsByTraeger: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
+        await openFilters(canvasElement);
         await expect(canvas.queryByRole('combobox', { name: 'Beratungsstelle' })).toBeNull();
         await pick(canvasElement, 'Träger', /Diakonie Berlin/);
         await waitFor(() => expect(tenantAdminSpy.last().searchParams.get('tenantId')).toBe('7'));
@@ -1089,18 +1145,19 @@ export const FilterTenantAdminsByTraeger: Story = {
 
 const chipSpy = searchSpy(CONSULTANTS_ENDPOINT);
 
-/** A click on a row's BST chip filters the table to that centre. */
-export const ChipSetsCentreFilter: Story = {
+/** A row's Träger and BST chips are labels, not filters: filtering lives behind the "Filter" button (Admin#1510). */
+export const RowChipsAreNotFilters: Story = {
     render: onTab('consultants'),
     parameters: { msw: { handlers: withDefaults([chipSpy.handler]) } },
-    play: async ({ canvasElement, userEvent: user }) => {
+    play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const row = await rowOf(canvasElement, 'Muster');
-        await user.click(within(row).getByRole('button', { name: /BST 101/ }));
-        await waitFor(() => expect(chipSpy.last().searchParams.get('agencyId')).toBe('101'));
-        await expect(canvas.getByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).toHaveTextContent(
-            'Beratungsstelle Nord',
-        );
+        const chip = row.querySelector('[data-scope-chip="agency"]') as HTMLElement;
+        await expect(chip).toHaveTextContent(/BST\s*101/);
+        await expect(chip.closest('button, [role="button"]')).toBeNull();
+        await userEvent.setup().click(chip);
+        await expect(chipSpy.last().searchParams.get('agencyId')).toBeNull();
+        await expect(canvas.queryByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).toBeNull();
     },
 };
 
@@ -1119,6 +1176,7 @@ export const CentreFilterForTraegerAdmin: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
+        await openFilters(canvasElement);
         await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
         await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Beratungsstelle' })).toBeEnabled());
     },
@@ -1145,7 +1203,8 @@ export const CentreFilterForBstAdmin: Story = {
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
-        const input = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
+        await waitFor(() => openFilters(canvasElement));
+        const input = await canvas.findByRole('combobox', { name: 'Beratungsstelle' });
         await waitFor(() => expect(input).toBeEnabled());
         await user.click(input);
         const list = await within(canvasElement.ownerDocument.body).findByRole('listbox');
@@ -1153,7 +1212,7 @@ export const CentreFilterForBstAdmin: Story = {
     },
 };
 
-/** BST admin with one centre: nothing to choose, the filter stays visible but disabled. */
+/** BST admin with one centre: nothing to choose, so no "Filter" button and no centre picker (Admin#1510). */
 export const CentreFilterForBstAdminWithOneCentre: Story = {
     ...CentreFilterForBstAdmin,
     parameters: {
@@ -1167,7 +1226,8 @@ export const CentreFilterForBstAdminWithOneCentre: Story = {
     },
     play: async ({ canvasElement }) => {
         await rowOf(canvasElement, 'Muster');
-        await expect(within(canvasElement).getByRole('combobox', { name: 'Beratungsstelle' })).toBeDisabled();
+        await waitFor(() => expect(within(canvasElement).queryByRole('button', { name: /^Filter/ })).toBeNull());
+        await expect(within(canvasElement).queryByRole('combobox', { name: 'Beratungsstelle' })).toBeNull();
     },
 };
 
@@ -1477,13 +1537,15 @@ const toolbarPlay =
         const canvas = within(canvasElement);
         const labels = toolbarLabels[language];
         await canvas.findByText('Anna Muster');
-        const tenant = canvas.getByRole('combobox', { name: labels.tenant });
-        const centre = canvas.getByRole('combobox', { name: labels.centre });
         const expand = canvas.getByRole('button', { name: labels.expand });
+        const filter = canvas.getByRole('button', { name: /^Filter/ });
         const invitations = canvas.getByRole('link', { name: labels.invitations });
         await expect(invitations).toHaveAttribute('href', '/admin/links');
         await expect(canvas.getAllByRole('button', { name: new RegExp(`${labels.create}$`) })).toHaveLength(1);
-        await sameControlRow([expand, tenant, centre]);
+        // Admin#1510: search and one "Filter" button share the row; the pickers fold out below it.
+        await expect(filter).toHaveAttribute('aria-expanded', 'false');
+        await expect(canvas.queryByRole('combobox', { name: labels.tenant })).toBeNull();
+        await sameControlRow([expand, filter]);
         await user.click(expand);
         const search = canvas.getByRole('textbox');
         await waitFor(() => expect(search).toBeVisible());
@@ -1492,23 +1554,14 @@ const toolbarPlay =
         await user.click(canvas.getByRole('button', { name: labels.collapse }));
         await user.click(canvas.getByRole('button', { name: labels.expand }));
         await expect(canvas.getByRole('textbox')).toHaveValue('Anna');
-        await sameControlRow([canvas.getByRole('textbox'), tenant, centre]);
-        if (phone) {
-            // Only the controls row scrolls; the page and account cards stay inside the viewport.
-            let scroller: HTMLElement | null = centre.parentElement;
-            while (scroller) {
-                const overflow = getComputedStyle(scroller).overflowX;
-                if (['auto', 'scroll'].includes(overflow) && scroller.scrollWidth > scroller.clientWidth) break;
-                scroller = scroller.parentElement;
-            }
-            await expect(scroller).not.toBeNull();
-            if (!scroller) return;
-            scroller.scrollLeft = scroller.scrollWidth;
-            await expect(scroller.scrollLeft).toBeGreaterThan(0);
-            await noSideScroll(canvasElement);
-        }
+        await sameControlRow([canvas.getByRole('textbox'), filter]);
+        await user.click(filter);
+        await expect(canvas.getByRole('combobox', { name: labels.tenant })).toBeVisible();
+        await expect(canvas.getByRole('combobox', { name: labels.centre })).toBeVisible();
+        if (phone) await noSideScroll(canvasElement);
         await pick(canvasElement, labels.centre, /Jugendberatung Mitte/);
         await waitFor(() => expect(toolbarSpy.last().searchParams.get('agencyId')).toBe('102'));
+        await expect(filter).toHaveAccessibleName(/1/);
     };
 
 /** Wide layout: one calm row; invitations is clearly navigation, not a send action. */
@@ -1542,11 +1595,12 @@ export const UnifiedToolbarTraegerPhone390: Story = {
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         await canvas.findByText('Anna Muster');
-        await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
-        const centre = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
         const search = canvas.getByRole('button', { name: 'Suche ausklappen' });
-        await expect(centre).toBeEnabled();
-        await sameControlRow([search, centre]);
+        const filter = canvas.getByRole('button', { name: /^Filter/ });
+        await sameControlRow([search, filter]);
+        await user.click(filter);
+        await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
+        await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Beratungsstelle' })).toBeEnabled());
         await expect(canvas.getByRole('link', { name: 'Zu Einladungen' })).toHaveAttribute('href', '/admin/links');
         await user.click(search);
         await waitFor(() => expect(canvas.getByRole('textbox')).toBeVisible());

@@ -218,7 +218,7 @@ export const GlobalSearchBar = ({
                     {expanded && (
                         <Input
                             aria-label={ariaLabel ?? searchPlaceholder ?? t('globalSearch.placeholder', 'Suchen')}
-                            autoComplete="search"
+                            autoComplete="off"
                             className={styles.input}
                             name="search"
                             type={inputType}

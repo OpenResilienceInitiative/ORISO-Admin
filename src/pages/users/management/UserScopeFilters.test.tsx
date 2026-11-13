@@ -115,13 +115,15 @@ describe('unified account toolbar', () => {
             );
         };
         render(<Toolbar />);
+        // Two filters are set, and the button says so; the pickers fold out behind it (Admin#1510).
+        await user.click(screen.getByRole('button', { name: /^Filter/ }));
         await user.click(screen.getByRole('combobox', { name: 'Träger' }));
         await user.clear(screen.getByRole('combobox', { name: 'Träger' }));
         await user.click(await screen.findByRole('option', { name: 'Diakonie Berlin' }));
         expect(onChange).toHaveBeenLastCalledWith({ tenantId: '7', agencyIds: [] });
         expect(screen.queryByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).not.toBeInTheDocument();
-        // One centre is deliberately not selectable without an active selection.
-        expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toBeDisabled();
+        // A choice of one is no choice: the centre picker is not offered for a Träger with one centre.
+        expect(screen.queryByRole('combobox', { name: 'Beratungsstelle' })).not.toBeInTheDocument();
         await user.click(screen.getByRole('combobox', { name: 'Träger' }));
         await user.clear(screen.getByRole('combobox', { name: 'Träger' }));
         await user.click(await screen.findByRole('option', { name: 'Caritas Hamburg' }));

@@ -35,7 +35,7 @@ import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } f
 import { mapSorterToApiField } from './useUserTableColumns';
 import { TenantTable } from './TenantTable';
 import { UserDataTable } from './UserDataTable';
-import { UserScopeFilters, useScopeFilterAvailability } from './UserScopeFilters';
+import { UserScopeFilters } from './UserScopeFilters';
 import {
     normalizeTenantAdminSortField,
     USER_TABLE_API_SAFE_ORDER,
@@ -93,7 +93,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     // The page remounts this table per tab (keyed by tab), so plain state is already per tab.
     const [pickedSort, setPickedSort] = useState<{ sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
     const [filters, setFilters] = useState<UserSearchFilters>(NO_FILTERS);
-    const scopeFilters = useScopeFilterAvailability(sectionId);
 
     // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
     const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
@@ -443,14 +442,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         total={responseList?.total ?? 0}
                         onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
                         onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
-                        onTenantClick={
-                            scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
-                        }
-                        onAgencyClick={
-                            scopeFilters.canListAgencies
-                                ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
-                                : undefined
-                        }
                         ariaLabel={t(config.searchPlaceholderKey)}
                     />
                 )}

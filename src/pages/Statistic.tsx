@@ -1,4 +1,3 @@
-import { Close } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { CSVLink } from 'react-csv';
@@ -13,12 +12,10 @@ import TopicIcon from '@mui/icons-material/CategoryOutlined';
 import VideoCallsIcon from '@mui/icons-material/VideocamOutlined';
 import VoiceMessagesIcon from '@mui/icons-material/MicNoneOutlined';
 import routePathNames from '../appConfig';
-import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { DashboardEmptyState } from '../components/DashboardEmptyState/DashboardEmptyState';
 import { Page } from '../components/Page';
 import { CardGrid } from '../components/CardGrid';
 import cardStyles from '../components/Card/styles.module.scss';
-import { GlobalSearchBar } from '../components/GlobalSearch';
 import Spinner from '../components/Spinner/Spinner';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
@@ -31,6 +28,7 @@ import { ReactComponent as ScopeAgencyIcon } from '../resources/img/svg/statisti
 import { ReactComponent as ScopePlatformIcon } from '../resources/img/svg/statistics-dashboard/scope-platform.svg';
 import { ReactComponent as ScopeTenantIcon } from '../resources/img/svg/statistics-dashboard/scope-tenant.svg';
 import { conversationPeriodOptions, defaultSelectedCaseDayByScope, scopeOrder } from './Statistic/statisticConstants';
+import { StatisticScopePicker, type ScopePickerLevel, type ScopePickerTarget } from './Statistic/StatisticScopePicker';
 import {
     buildDonutSegments,
     getCaseAxisLabels,
@@ -92,7 +90,6 @@ import type {
     StatisticEmptyKind,
     TrendBadgeDefinition,
 } from './Statistic/types';
-import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Notify } from '../components/Notify';
 import { HintText } from '../components/HintText';
 
@@ -430,8 +427,6 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
         icon: ScopeAgencyIcon,
     },
 };
-
-const normalizeFilterSearch = (value: string, locale: string) => value.trim().toLocaleLowerCase(locale);
 
 const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]> = {
     platform: [
@@ -1053,7 +1048,6 @@ const THIS_MONTH_DETAIL = 'Dieser Monat';
 const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
 /** Width of the Träger/Beratungsstelle filter; the stylesheet reads it as --statistic-filter-width. */
-const STATISTIC_FILTER_WIDTH = 400;
 /** After a failed load the figure is unknown, not absent (#1374). */
 const LOAD_FAILED_HINT = 'konnte nicht geladen werden';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
@@ -1826,158 +1820,6 @@ const DonutChart = ({
     );
 };
 
-interface StatisticFilterBarProps {
-    availableTargets: FilterTarget[];
-    locale: string;
-    onAddFirstSuggestion: () => void;
-    onAddTarget: (targetId: string) => void;
-    onRemoveTarget: (targetId: string) => void;
-    onSearchChange: (value: string) => void;
-    searchValue: string;
-    selectedTargets: FilterTarget[];
-    suggestions: FilterTarget[];
-    translate: DashboardTranslate;
-}
-
-const StatisticFilterBar = ({
-    availableTargets,
-    locale,
-    onAddFirstSuggestion,
-    onAddTarget,
-    onRemoveTarget,
-    onSearchChange,
-    searchValue,
-    selectedTargets,
-    suggestions,
-    translate,
-}: StatisticFilterBarProps) => {
-    const [isSuggestionMenuOpen, setIsSuggestionMenuOpen] = useState(false);
-    const visibleSuggestions = (() => {
-        if (searchValue.trim() || suggestions.length) {
-            return suggestions;
-        }
-
-        return availableTargets
-            .filter((target) => !selectedTargets.some((selectedTarget) => selectedTarget.id === target.id))
-            .slice(0, 6);
-    })();
-    const hasSuggestions = visibleSuggestions.length > 0;
-
-    const addFirstVisibleSuggestion = () => {
-        if (visibleSuggestions[0]) {
-            onAddTarget(visibleSuggestions[0].id);
-        } else {
-            onAddFirstSuggestion();
-        }
-    };
-
-    const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            addFirstVisibleSuggestion();
-            setIsSuggestionMenuOpen(false);
-        }
-
-        if (event.key === 'Escape') {
-            setIsSuggestionMenuOpen(false);
-        }
-    };
-
-    return (
-        <div
-            className="statisticDashboard__filterBar"
-            aria-label={translateDashboardText(translate, 'Statistik eingrenzen', locale)}
-        >
-            <div
-                className="statisticDashboard__filterSearchWrap"
-                onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                        setIsSuggestionMenuOpen(false);
-                    }
-                }}
-            >
-                <GlobalSearchBar
-                    defaultExpanded
-                    expandedWidth={STATISTIC_FILTER_WIDTH}
-                    className="statisticDashboard__filterSearch"
-                    ariaLabel={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.searchAria',
-                        'Beratungsstellen oder Träger suchen',
-                    )}
-                    value={searchValue}
-                    onInputClick={() => setIsSuggestionMenuOpen(true)}
-                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
-                    onInputKeyDown={handleSearchKeyDown}
-                    onSearchChange={(value) => {
-                        setIsSuggestionMenuOpen(true);
-                        onSearchChange(value);
-                    }}
-                    onSearch={() => {
-                        addFirstVisibleSuggestion();
-                        setIsSuggestionMenuOpen(false);
-                    }}
-                    searchPlaceholder={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.placeholder',
-                        'Suche',
-                    )}
-                />
-
-                {isSuggestionMenuOpen && hasSuggestions && (
-                    <div className="statisticDashboard__filterSuggestions" role="listbox">
-                        {visibleSuggestions.map((target) => (
-                            <button
-                                key={target.id}
-                                type="button"
-                                className="statisticDashboard__filterSuggestion"
-                                role="option"
-                                aria-selected="false"
-                                onClick={() => {
-                                    onAddTarget(target.id);
-                                    setIsSuggestionMenuOpen(false);
-                                }}
-                            >
-                                <span>
-                                    <strong>{target.label}</strong>
-                                    <small>{translateDashboardText(translate, target.detail, locale)}</small>
-                                </span>
-                                <em>{translateDashboardText(translate, target.type, locale)}</em>
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {!!selectedTargets.length && (
-                <div
-                    className="statisticDashboard__filterChips"
-                    aria-label={translateDashboardKey(translate, 'statistic.dashboard.filter.active', 'Aktive Filter')}
-                >
-                    {selectedTargets.map((target) => (
-                        <span key={target.id} className="statisticDashboard__filterChip">
-                            <small>{translateDashboardText(translate, target.type, locale)}</small>
-                            <span>{target.label}</span>
-                            <button
-                                type="button"
-                                aria-label={translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.filter.removeTarget',
-                                    `${target.label} entfernen`,
-                                    { target: target.label },
-                                )}
-                                onClick={() => onRemoveTarget(target.id)}
-                            >
-                                <Close aria-hidden="true" />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 interface PeriodSelectProps<OptionKey extends string> {
     ariaLabel: string;
     onSelect: (key: OptionKey) => void;
@@ -2085,11 +1927,6 @@ export const Statistic = () => {
         useState<SelectedCardMenuByScope>(readStoredCardMenuSelection);
     const [selectedFilterTargetIdsByScope, setSelectedFilterTargetIdsByScope] =
         useState<SelectedFilterTargetIdsByScope>(readStoredFilterTargetSelection);
-    const [filterSearchByScope, setFilterSearchByScope] = useState<Record<ScopeKey, string>>({
-        platform: '',
-        tenant: '',
-        agency: '',
-    });
     const [selectedCasePeriodByScope, setSelectedCasePeriodByScope] = useState<Record<ScopeKey, CasePeriodKey>>({
         platform: casePeriodKeyForWeek(0),
         tenant: casePeriodKeyForWeek(0),
@@ -2129,7 +1966,6 @@ export const Statistic = () => {
     );
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
-    const filterSearch = filterSearchByScope[activeScope];
     const visibleFilterTargetIds = selectedFilterTargetIds.filter((targetId) =>
         availableFilterTargets.some((target) => target.id === targetId),
     );
@@ -2302,23 +2138,7 @@ export const Statistic = () => {
                 .filter((target): target is FilterTarget => Boolean(target)),
         [availableFilterTargets, visibleFilterTargetIds],
     );
-    const filterSuggestions = useMemo(() => {
-        const normalizedSearch = normalizeFilterSearch(filterSearch, locale);
-
-        return availableFilterTargets
-            .filter((target) => !visibleFilterTargetIds.includes(target.id))
-            .filter((target) =>
-                normalizedSearch
-                    ? [
-                          target.label,
-                          translateDashboardText(translate, target.detail, locale),
-                          translateDashboardText(translate, target.type, locale),
-                      ].some((value) => normalizeFilterSearch(value, locale).includes(normalizedSearch))
-                    : true,
-            )
-            .slice(0, 6);
-    }, [availableFilterTargets, filterSearch, locale, translate, visibleFilterTargetIds]);
-    const scopeTabItems: AdminSegmentedTabItem[] = allowedScopeKeys.map((scopeKey) => {
+    const pickerLevels: ScopePickerLevel[] = allowedScopeKeys.map((scopeKey) => {
         const scope = scopeDefinitions[scopeKey];
         const ScopeIcon = scope.icon;
 
@@ -2328,6 +2148,20 @@ export const Statistic = () => {
             icon: <ScopeIcon />,
         };
     });
+    // Every Träger and Beratungsstelle once, on the level that shows its own numbers: a Träger on the
+    // Träger level, a Beratungsstelle on the Beratungsstellen level (where the role has that level).
+    const pickerTargets = useMemo(() => {
+        const byId = new Map<string, ScopePickerTarget>();
+        allowedScopeKeys.forEach((scopeKey) => {
+            statisticData.targetsByScope[scopeKey].forEach((target) => {
+                const ownLevel: ScopeKey = target.type === 'Träger' ? 'tenant' : 'agency';
+                if (!byId.has(target.id) || scopeKey === ownLevel) {
+                    byId.set(target.id, { ...target, scope: scopeKey });
+                }
+            });
+        });
+        return [...byId.values()];
+    }, [allowedScopeKeys, statisticData.targetsByScope]);
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -2337,41 +2171,24 @@ export const Statistic = () => {
             },
         }));
     };
-    const updateFilterSearch = (value: string) => {
-        setFilterSearchByScope((currentSearch) => ({
-            ...currentSearch,
-            [activeScope]: value,
-        }));
+    /** The whole level: no Träger or Beratungsstelle picked on it any more. */
+    const selectScopeLevel = (scopeKey: ScopeKey) => {
+        setActiveScope(scopeKey);
+        setSelectedFilterTargetIdsByScope((currentSelection) => ({ ...currentSelection, [scopeKey]: [] }));
     };
-    const addFilterTarget = (targetId: string) => {
-        const nextTarget = availableFilterTargets.find((target) => target.id === targetId);
-
-        if (!nextTarget) {
-            return;
-        }
-
+    /** Switches to the target's level and adds it; targets of another type on that level make way. */
+    const selectScopeTarget = (nextTarget: ScopePickerTarget) => {
+        const levelTargets = statisticData.targetsByScope[nextTarget.scope];
+        setActiveScope(nextTarget.scope);
         setSelectedFilterTargetIdsByScope((currentSelection) => {
-            const currentScopeSelection = (currentSelection[activeScope] || []).filter((currentTargetId) => {
-                const currentTarget = availableFilterTargets.find((target) => target.id === currentTargetId);
+            const sameType = (currentSelection[nextTarget.scope] || []).filter(
+                (targetId) => levelTargets.find((target) => target.id === targetId)?.type === nextTarget.type,
+            );
 
-                return currentTarget?.type === nextTarget.type;
-            });
-
-            if (currentScopeSelection.includes(targetId)) {
-                return currentSelection;
-            }
-
-            return {
-                ...currentSelection,
-                [activeScope]: [...currentScopeSelection, targetId],
-            };
+            return sameType.includes(nextTarget.id)
+                ? currentSelection
+                : { ...currentSelection, [nextTarget.scope]: [...sameType, nextTarget.id] };
         });
-        updateFilterSearch('');
-    };
-    const addFirstFilterSuggestion = () => {
-        if (filterSuggestions[0]) {
-            addFilterTarget(filterSuggestions[0].id);
-        }
     };
     const removeFilterTarget = (targetId: string) => {
         setSelectedFilterTargetIdsByScope((currentSelection) => ({
@@ -2411,33 +2228,45 @@ export const Statistic = () => {
     return (
         <Page>
             <Page.Title>
-                {/* Levels left, the Träger/Beratungsstelle filter right, one divider under
-                    both (ORISO-Admin#1374). */}
-                <div
-                    className="statisticDashboard__headerRow"
-                    style={{ '--statistic-filter-width': `${STATISTIC_FILTER_WIDTH}px` } as CSSProperties}
-                >
-                    <AdminSegmentedTabs
-                        className="statisticDashboard__scopeTabs"
-                        activeId={activeScope}
-                        ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                        items={scopeTabItems}
-                        onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
+                {/* One picker for level and Träger/Beratungsstelle (ORISO-Admin#1510), one divider under it. */}
+                <div className="statisticDashboard__headerRow">
+                    <StatisticScopePicker
+                        levels={pickerLevels}
+                        activeLevel={activeScope}
+                        targets={pickerTargets}
+                        selectedTargets={selectedFilterTargets}
+                        onSelectLevel={selectScopeLevel}
+                        onSelectTarget={selectScopeTarget}
+                        onRemoveTarget={removeFilterTarget}
+                        locale={locale}
+                        describe={(text) => translateDashboardText(translate, text, locale)}
+                        labels={{
+                            picker: translateDashboardKey(translate, 'statistic.dashboard.scope.picker', 'Ansicht'),
+                            levels: translateDashboardText(translate, 'Statistik-Ebene', locale),
+                            search: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.searchAria',
+                                'Beratungsstellen oder Träger suchen',
+                            ),
+                            noMatch: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.scope.noMatch',
+                                'Kein Träger und keine Beratungsstelle gefunden',
+                            ),
+                            selected: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.active',
+                                'Aktive Filter',
+                            ),
+                            remove: (target) =>
+                                translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.filter.removeTarget',
+                                    `${target} entfernen`,
+                                    { target },
+                                ),
+                        }}
                     />
-                    {activeScope !== 'agency' && (
-                        <StatisticFilterBar
-                            availableTargets={availableFilterTargets}
-                            locale={locale}
-                            onAddFirstSuggestion={addFirstFilterSuggestion}
-                            onAddTarget={addFilterTarget}
-                            onRemoveTarget={removeFilterTarget}
-                            onSearchChange={updateFilterSearch}
-                            searchValue={filterSearch}
-                            selectedTargets={selectedFilterTargets}
-                            suggestions={filterSuggestions}
-                            translate={translate}
-                        />
-                    )}
                 </div>
             </Page.Title>
             <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
