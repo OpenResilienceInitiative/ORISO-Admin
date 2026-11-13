@@ -730,6 +730,8 @@
     "userTable.scope.agency.idLabel": "Counselling centre ID",
     "userTable.sortPill.prefix": "Name by",
     "userTable.sortPill.lastUpdated": "Last updated",
+    "userTable.sortPill.lastUpdated.asc": "oldest first",
+    "userTable.sortPill.lastUpdated.desc": "newest first",
     "userTable.sortPill.prefixAny": "Sorted by",
     "userTable.sortPill.menuLabelAny": "Sort by",
     "userTable.sortPill.menuLabel": "Sort name by",
