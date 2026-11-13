@@ -35,6 +35,7 @@ import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettin
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
 import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
+import { ChatMessageSettingsCardContainer } from '../../components/GlobalSettings/ChatMessageSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
 import { Notify } from '../../components/Notify';
@@ -64,6 +65,9 @@ export const GlobalLoginSettingsPage = () => {
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <TopicDuplicateSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <ChatMessageSettingsCardContainer />
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <CounsellorTutorialSettingsCardContainer />
