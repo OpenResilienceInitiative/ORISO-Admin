@@ -7,7 +7,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import { CollapsibleField } from '../../components/CollapsibleField';
 import { NavGlyph } from '../../components/NavGlyph';
-import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
+import { InviteTemplateQuickPicker } from './InviteTemplateQuickPicker';
 import { ReactComponent as ArrowMenuOpenIcon } from '../../resources/img/svg/oriso/arrow_menu_open_24px.svg';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
@@ -306,24 +306,13 @@ export const InvitePanel = ({
                     valueSummary={selectedTemplate?.name}
                     onExpand={() => pills.expand('template')}
                 >
-                    <TemplateSplitButton
-                        activeTemplateId={selectedTemplate?.id}
+                    <InviteTemplateQuickPicker
                         fullWidth
                         label={
                             selectedTemplate ? undefined : t('links.composer.templateChoose', 'E-Mail-Vorlage wählen')
                         }
-                        size="medium"
-                        templates={activeTemplates}
-                        onCreateFromTemplate={
-                            templates.onCreateFrom &&
-                            ((id) => templates.onCreateFrom?.(typeof id === 'number' ? id : Number(id)))
-                        }
-                        onCreateTemplate={() => templates.onManage('create')}
-                        onMainClick={() => templates.onManage('list')}
-                        onSelectTemplate={(id) => {
-                            templates.onSelect?.(typeof id === 'number' ? id : Number(id));
-                            pills.collapse('template');
-                        }}
+                        templates={templates}
+                        onPicked={() => pills.collapse('template')}
                     />
                 </CollapsibleField>
                 {/* A blur on mousedown would collapse the edited field and move the button before mouseup. */}

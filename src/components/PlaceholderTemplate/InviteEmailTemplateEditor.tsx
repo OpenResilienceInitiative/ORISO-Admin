@@ -37,6 +37,8 @@ export interface InviteEmailTemplateEditorProps {
     kind?: InviteEmailTemplateKind;
     /** Tenant used only for the unsaved server-rendered preview. */
     tenantId?: number;
+    /** The host renders its own loader, for example in a persistent footer. */
+    hideTemplateChooser?: boolean;
 }
 
 /**
@@ -65,6 +67,7 @@ export const InviteEmailTemplateEditor = ({
     language,
     kind,
     tenantId,
+    hideTemplateChooser = false,
 }: InviteEmailTemplateEditorProps) => {
     const { t } = useTranslation();
 
@@ -76,6 +79,8 @@ export const InviteEmailTemplateEditor = ({
 
     return (
         <PlaceholderTemplateEditor
+            matchPreviewHeight
+            hideTemplateChooser={hideTemplateChooser}
             activeTemplateId={activeTemplateId}
             fields={fields}
             heading={t('placeholderTemplate.invite.heading', 'Einladungs-E-Mail')}

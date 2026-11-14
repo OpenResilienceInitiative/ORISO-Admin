@@ -228,3 +228,23 @@
         transform: rotate(360deg);
     }
 }
+
+/* Optional working-sheet layout: the footer never scrolls with a long editor. */
+.scrollableBody {
+    :global(.ant-modal-content) {
+        display: flex;
+        max-height: calc(100dvh - 32px);
+        flex-direction: column;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex: none;
+    }
+
+    :global(.ant-modal-body) {
+        overflow: auto;
+        min-height: 0;
+        overscroll-behavior: contain;
+    }
+}

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { CollapsibleField } from '../../components/CollapsibleField';
 import { GlobalSearchBar } from '../../components/GlobalSearch';
-import { TemplateSplitButton } from '../../components/PlaceholderTemplate';
+import { InviteTemplateQuickPicker } from './InviteTemplateQuickPicker';
 import type { InviteSendMode } from './inviteModel';
 import type { InviteTab } from './inviteRules';
 import { useInviteBulkSend, useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
@@ -21,6 +21,8 @@ export interface InviteSearchProps {
 export interface InviteTemplatesProps {
     list: InviteEmailTemplateDTO[];
     selectedId?: number;
+    /** Latest explicit choices for the signed-in account, newest first. */
+    recentIds?: number[];
     onSelect?: (templateId: number) => void;
     /** Opens the templates dialog; `list` is the picker. */
     onManage: (intent: 'create' | 'delete' | 'list') => void;
@@ -92,22 +94,7 @@ export const InviteToolbar = ({
                     valueSummary={selectedTemplate?.name}
                     onExpand={templatePill.onExpand}
                 >
-                    <TemplateSplitButton
-                        activeTemplateId={selectedTemplate?.id}
-                        templates={activeTemplates}
-                        onCreateFromTemplate={
-                            templates.onCreateFrom &&
-                            ((id) => templates.onCreateFrom?.(typeof id === 'number' ? id : Number(id)))
-                        }
-                        onCreateTemplate={() => templates.onManage('create')}
-                        onMainClick={() => templates.onManage('list')}
-                        onSelectTemplate={(id) => {
-                            templates.onSelect?.(typeof id === 'number' ? id : Number(id));
-                            templatePill.onPicked();
-                        }}
-                        // Match the row's 56px SplitButtons; the chooser defaults to the legal editors' 40px pill.
-                        size="medium"
-                    />
+                    <InviteTemplateQuickPicker templates={templates} onPicked={templatePill.onPicked} />
                 </CollapsibleField>
                 {/* A blur on mousedown would collapse the edited field and slide the button away before mouseup. */}
                 <span className={styles.sendSlot} onMouseDownCapture={(event) => event.preventDefault()}>
