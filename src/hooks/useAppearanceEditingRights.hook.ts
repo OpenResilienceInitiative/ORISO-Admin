@@ -9,6 +9,7 @@ import { useTenantData } from './useTenantData.hook';
 import { tenantPermissionPoliciesKey, useTenantPermissionPolicies } from './useTenantPermissionPolicies';
 import { useUserRoles } from './useUserRoles.hook';
 import { withStoredScopeOnly } from '../components/Tenants/AppSettings/PermissionsSettings/RecipientScope/recipientScopePolicy';
+import { withoutCalendar } from '../components/Tenants/AppSettings/PermissionsSettings/Calendar/calendarPolicy';
 
 /** Key of the policy the tenant service reads when it checks the editing lock (ORISO-TenantService#345). */
 const APPEARANCE_POLICY_KEY = 'appearance';
@@ -64,14 +65,17 @@ export const useAppearanceEditingRights = (tenantId: string) => {
                 return;
             }
             mutation.mutate(
-                withStoredScopeOnly({
-                    ...stored,
-                    allowedPermissionToggles: { ...stored.allowedPermissionToggles, appearance: nextEditable },
-                    permissionPolicies: {
-                        ...stored.permissionPolicies,
-                        [APPEARANCE_POLICY_KEY]: { value: nextEditable, mode: 'ENFORCED' },
-                    },
-                }),
+                // The calendar preset is left out; the backend keeps it as stored (TenantService#365).
+                withoutCalendar(
+                    withStoredScopeOnly({
+                        ...stored,
+                        allowedPermissionToggles: { ...stored.allowedPermissionToggles, appearance: nextEditable },
+                        permissionPolicies: {
+                            ...stored.permissionPolicies,
+                            [APPEARANCE_POLICY_KEY]: { value: nextEditable, mode: 'ENFORCED' as const },
+                        },
+                    }),
+                ),
                 { onError: options?.onError },
             );
         },
