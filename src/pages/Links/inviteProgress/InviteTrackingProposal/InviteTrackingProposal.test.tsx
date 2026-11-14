@@ -61,6 +61,18 @@ it('offers an explicit assignment action for an existing account without creatin
     expect(screen.getByRole('status')).toHaveTextContent('No new account or email');
 });
 
+it('focuses the opened explanation without a duplicate tooltip and restores the trigger on Escape', async () => {
+    const user = userEvent.setup();
+    render(<InviteTrackingProposal initialView="history" onlyStatus="replaced" />);
+    const row = within(screen.getByRole('article', { name: 'Frida Beispiel · INV-204' }));
+    const trigger = row.getByRole('button', { name: 'Ersetzt · Erklärung' });
+    await user.click(trigger);
+    expect(row.getByRole('note')).toHaveFocus();
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(trigger).toHaveFocus();
+});
+
 it('restores focus to the explanation trigger after Escape from the close control', async () => {
     const user = userEvent.setup();
     render(<InviteTrackingProposal initialView="history" />);
