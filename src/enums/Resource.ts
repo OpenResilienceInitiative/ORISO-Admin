@@ -8,4 +8,5 @@ export enum Resource {
     Tenant,
     LegalText,
     Language,
+    AdviceSeeker,
 }

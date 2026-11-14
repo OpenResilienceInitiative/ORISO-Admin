@@ -771,10 +771,12 @@ export const ConsultantsTabAt960: Story = {
                 expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
                 expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
             });
-            // 664px of bar: Beratende, the selected last tab, takes the place of Beratungsstellen Admins.
+            // 664px of bar: the selected Beratende stays in the bar; Beratungsstellen Admins and
+            // Ratsuchende (ORISO-Admin#1521) move behind „Mehr“.
             await expect(active).toHaveTextContent('Beratende');
             await expect(canvas.queryByRole('tab', { name: 'Beratungsstellen Admins' })).toBeNull();
-            const more = within(bar).getByRole('button', { name: 'Mehr (1)' });
+            await expect(canvas.queryByRole('tab', { name: 'Ratsuchende' })).toBeNull();
+            const more = within(bar).getByRole('button', { name: 'Mehr (2)' });
             await expect(tablist).not.toContainElement(more);
             await expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(bar.getBoundingClientRect().right + 1);
             await noSideScroll(canvasElement);

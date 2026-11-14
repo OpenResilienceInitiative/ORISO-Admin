@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { accountDocs, agencyDocs, departmentDocs, tenantDocs, topicDocs, type EntityLabels } from './searchEntities';
+import {
+    accountDocs,
+    adviceSeekerDocs,
+    agencyDocs,
+    departmentDocs,
+    tenantDocs,
+    topicDocs,
+    type EntityLabels,
+} from './searchEntities';
 import { prepareIndex, searchIndex } from './searchEngine';
 
 const labels: EntityLabels = {
@@ -8,7 +16,12 @@ const labels: EntityLabels = {
     topics: 'Topics',
     departments: 'Departments',
     accounts: 'Accounts',
-    accountLists: { consultants: 'Counsellors', 'agency-admins': 'Agency admins', 'tenant-admins': 'Tenant admins' },
+    accountLists: {
+        consultants: 'Counsellors',
+        'agency-admins': 'Agency admins',
+        'tenant-admins': 'Tenant admins',
+        'advice-seekers': 'Advice seekers',
+    },
 };
 
 describe('entity documents', () => {
@@ -66,5 +79,25 @@ describe('entity documents', () => {
         expect(docs[0].to).toBe('/admin/users/consultants/abc');
         expect(searchIndex(index, 'mueller')[0].doc.id).toBe('account:consultants:abc');
         expect(searchIndex(index, 'anna@example')[0].doc.id).toBe('account:consultants:abc');
+    });
+
+    it('opens the advice-seeker list narrowed to the username, since advice seekers have no page', () => {
+        const docs = adviceSeekerDocs(
+            [
+                { id: 'a-1', username: 'ratsuchend 42' },
+                { id: 'a-2', username: '' },
+            ],
+            labels,
+        );
+
+        expect(docs).toHaveLength(1);
+        expect(docs[0]).toMatchObject({
+            id: 'account:advice-seekers:a-1',
+            kind: 'account',
+            title: 'ratsuchend 42',
+            breadcrumb: ['Accounts', 'Advice seekers', 'ratsuchend 42'],
+            to: '/admin/users/advice-seekers?q=ratsuchend+42',
+        });
+        expect(searchIndex(prepareIndex(docs), 'ratsuchend 42')[0].doc.id).toBe('account:advice-seekers:a-1');
     });
 });

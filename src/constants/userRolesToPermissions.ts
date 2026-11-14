@@ -145,6 +145,9 @@ export const useUserRolesToPermission = () => {
         },
         [UserRole.UserAdmin]: {
             Consultant: { read: true, create: true, update: true, delete: true },
+            // GET/DELETE /useradmin/askers need user-admin; the server narrows to the caller's
+            // Träger or centres (ORISO-Admin#1521). Advice seekers are never created here.
+            AdviceSeeker: { read: true, delete: true },
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
         },
     };
