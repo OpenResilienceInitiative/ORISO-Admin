@@ -4,7 +4,7 @@ import { Resource } from '../enums/Resource';
 import type { CanFn } from './caseHandoverAccess';
 
 export type UserSection = {
-    id: 'platform-admins' | 'tenant-admins' | 'agency-admins' | 'counsellors';
+    id: 'platform-admins' | 'tenant-admins' | 'agency-admins' | 'counsellors' | 'advice-seekers';
     labelKey: string;
     to: string;
 };
@@ -43,6 +43,13 @@ export const getUserSections = ({ isSuperAdmin, can }: { isSuperAdmin: boolean; 
             id: 'counsellors',
             labelKey: 'users.sectionPills.counsellors',
             to: routePathNames.consultants,
+        });
+    }
+    if (can(PermissionAction.Read, Resource.AdviceSeeker)) {
+        visible.push({
+            id: 'advice-seekers',
+            labelKey: 'users.sectionPills.adviceSeekers',
+            to: routePathNames.adviceSeekers,
         });
     }
 

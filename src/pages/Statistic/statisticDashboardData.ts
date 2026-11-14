@@ -10,9 +10,8 @@ import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, P
 /**
  * Pure mapping from the UserService admin statistics response to the dashboard data
  * shapes. All numbers shown on the statistics dashboard originate here — there is no
- * mock data anymore. Metrics without an application-layer data source (messages, video
- * calls, voice messages, phone calls, live chat) are represented as `null` and rendered
- * as "Keine Daten".
+ * mock data anymore. Communication metrics the backend does not send are `undefined`
+ * ("not tracked"); live chat has no data source yet and is always `undefined`.
  */
 
 export type FilterTargetType = 'Träger' | 'Beratungsstelle';
@@ -30,6 +29,8 @@ export interface TopicStatistic {
 }
 
 export type MetricValue = number | null;
+/** `undefined` = the backend does not track this metric at all (shown as "not tracked"). */
+export type TrackedMetricValue = MetricValue | undefined;
 
 export interface FilterTargetMetricStats {
     activeAgencies: MetricValue;
@@ -38,14 +39,14 @@ export interface FilterTargetMetricStats {
     conversationsTotal: MetricValue;
     counselors: MetricValue;
     groups: MetricValue;
-    liveChat: MetricValue;
-    messagesCounselors: MetricValue;
-    messagesSeekers: MetricValue;
+    liveChat: TrackedMetricValue;
+    messagesCounselors: TrackedMetricValue;
+    messagesSeekers: TrackedMetricValue;
     oneToOne: MetricValue;
-    phoneCalls: MetricValue;
-    textMessagesTotal: MetricValue;
-    videoCalls: MetricValue;
-    voiceMessages: MetricValue;
+    phoneCalls: TrackedMetricValue;
+    textMessagesTotal: TrackedMetricValue;
+    videoCalls: TrackedMetricValue;
+    voiceMessages: TrackedMetricValue;
     /** Top topic per month of the topic window; index 0 = this month, 1 = last month, … */
     topicsByMonth: TopicStatistic[];
 }
@@ -255,7 +256,7 @@ const buildTopicStatistic = (
     }
 
     return {
-        label: topicNamesById[`${monthlyTopic.topicId}`] || `#${monthlyTopic.topicId}`,
+        label: topicNamesById[`${monthlyTopic.topicId}`] || `Thema ${monthlyTopic.topicId}`,
         share: monthlyTopic.sharePercent,
     };
 };
@@ -273,6 +274,24 @@ const buildConversationValues = (
         }),
         {} as Record<ConversationPeriodKey, ConversationValues>,
     );
+
+/** Both parts tracked → their sum; one withheld → withheld (even next to an untracked part); else untracked. */
+const sumTracked = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === null || second === null) return null;
+    if (first === undefined || second === undefined) return undefined;
+    return first + second;
+};
+
+/**
+ * Combines one communication count across targets: a metric no target tracks stays untracked,
+ * and a count one target withholds (null) keeps the whole sum withheld instead of reading as 0.
+ */
+export const addTrackedMetricValues = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === undefined) return second;
+    if (second === undefined) return first;
+    if (first === null || second === null) return null;
+    return first + second;
+};
 
 interface TimeWindows {
     chartWeeks: number;
@@ -326,14 +345,17 @@ const buildTargetStatistics = (
             conversationsTotal: target.sessionCountsByPeriod?.total ?? null,
             counselors: target.counselorCount,
             groups: target.groupChatCountsByPeriod?.total ?? null,
-            liveChat: null,
-            messagesCounselors: null,
-            messagesSeekers: null,
+            liveChat: undefined,
+            messagesCounselors: target.metrics?.messagesCounselorsCurrentMonth,
+            messagesSeekers: target.metrics?.messagesAdviceSeekersCurrentMonth,
             oneToOne: target.metrics?.enquiriesCurrentMonth ?? null,
-            phoneCalls: null,
-            textMessagesTotal: null,
-            videoCalls: null,
-            voiceMessages: null,
+            phoneCalls: target.metrics?.audioCallsCurrentMonth,
+            textMessagesTotal: sumTracked(
+                target.metrics?.messagesCounselorsCurrentMonth,
+                target.metrics?.messagesAdviceSeekersCurrentMonth,
+            ),
+            videoCalls: target.metrics?.videoCallsCurrentMonth,
+            voiceMessages: target.metrics?.voiceMessagesCurrentMonth,
             topicsByMonth: Array.from({ length: windows.topicMonths }, (unused, monthsAgo) =>
                 buildTopicStatistic(target, monthKeyWithOffset(now, monthsAgo), topicNamesById),
             ),
@@ -520,5 +542,117 @@ export const buildStatisticData = (
         statisticsById,
         suppressionDisabled,
         ...windows,
+    };
+};
+
+/**
+ * A platform admin's dashboard has no Beratungsstellen (the platform scope stops at Träger). Picking a
+ * Beratungsstelle loads its Träger's dashboard (`?tenantId=`); this puts that Träger's Beratungsstellen
+ * on the Beratungsstellen level and keeps everything else from the platform dashboard. Only agency
+ * rows are taken over: the Träger row of both answers has the same id, and the platform one stays.
+ */
+export const withAgencyDrill = (platform: StatisticData, tenant: StatisticData): StatisticData => {
+    const agencies = tenant.targetsByScope.agency;
+    const agencyStatistics: Record<string, FilterTargetStatistics> = {};
+    agencies.forEach((target) => {
+        if (tenant.statisticsById[target.id]) agencyStatistics[target.id] = tenant.statisticsById[target.id];
+    });
+
+    return {
+        ...platform,
+        targetsByScope: { ...platform.targetsByScope, agency: agencies },
+        fallbackIdsByScope: { ...platform.fallbackIdsByScope, agency: tenant.fallbackIdsByScope.agency },
+        statisticsById: { ...platform.statisticsById, ...agencyStatistics },
+    };
+};
+
+/** A Beratungsstelle as the platform admin can pick it before any of its numbers are loaded. */
+export interface StatisticAgencyEntry {
+    id: number;
+    name: string;
+    tenantId: number;
+}
+
+/**
+ * Which Träger a platform admin is looking into: the Träger of the picked Beratungsstelle, else the
+ * Träger picked last. Undefined while nothing is picked (the platform dashboard alone is enough then).
+ * A Beratungsstelle wins only because picking a Träger drops the Beratungsstellen of other Träger
+ * (`agenciesOfTenant`): the two picks never point at different Träger, so the newest pick counts.
+ */
+export const resolveDrillTenantId = (
+    selection: Partial<Record<ScopeKey, string[]>>,
+    directory: StatisticAgencyEntry[],
+): number | undefined => {
+    const agencyId = selection.agency?.[0];
+    const fromAgency = agencyId
+        ? directory.find((agency) => agencyTargetId(agency.id) === agencyId)?.tenantId
+        : undefined;
+    if (fromAgency != null) return fromAgency;
+    const tenantId = selection.tenant?.[selection.tenant.length - 1]?.match(/^tenant-(\d+)$/)?.[1];
+    return tenantId ? Number(tenantId) : undefined;
+};
+
+/**
+ * A platform admin picked the Träger `tenantTarget`: only the picked Beratungsstellen of that Träger
+ * stay. Otherwise an older Beratungsstelle pick (kept in localStorage) would keep the Beratungsstellen
+ * level on its own Träger. Beratungsstellen the directory does not know cannot be checked and go too.
+ */
+export const agenciesOfTenant = (
+    agencyIds: string[],
+    tenantTarget: string,
+    directory: StatisticAgencyEntry[],
+): string[] =>
+    agencyIds.filter((agencyId) => {
+        const agency = directory.find((entry) => agencyTargetId(entry.id) === agencyId);
+        return agency != null && tenantTargetId(agency.tenantId) === tenantTarget;
+    });
+
+export type AgencyLevelHint = 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | 'selectionUnavailable';
+
+export interface StatisticViewInput {
+    isSuperAdmin: boolean;
+    activeScope: ScopeKey;
+    /** Beratungsstellen picked on the Beratungsstellen level. */
+    pickedAgencyIds: string[];
+    isDashboardLoading: boolean;
+    isDirectoryLoading: boolean;
+    isDirectoryError: boolean;
+    drillTenantId: number | undefined;
+    drill: 'idle' | 'loading' | 'ready' | 'unsupported' | 'failed';
+    data: StatisticData;
+}
+
+/**
+ * Whether the shown level is still loading, and what a platform admin on the Beratungsstellen level is
+ * told instead of figures: nothing picked yet, the list of Beratungsstellen did not load, the Träger's
+ * numbers did not come, or they came without the picked Beratungsstelle (new, deleted, or withheld).
+ * In that last case the Träger's total must not appear under the Beratungsstelle's name.
+ */
+export const resolveStatisticView = ({
+    isSuperAdmin,
+    activeScope,
+    pickedAgencyIds,
+    isDashboardLoading,
+    isDirectoryLoading,
+    isDirectoryError,
+    drillTenantId,
+    drill,
+    data,
+}: StatisticViewInput): { isLoading: boolean; agencyLevelHint: AgencyLevelHint | null } => {
+    const onAgencyDrill = isSuperAdmin && activeScope === 'agency';
+    // A picked Beratungsstelle needs the list of Beratungsstellen to find its Träger: until the list is in,
+    // the level is loading, not waiting for a pick.
+    const directoryPending = onAgencyDrill && isDirectoryLoading && pickedAgencyIds.length > 0;
+    // The Träger's numbers only feed the Beratungsstellen level; no other level waits for them.
+    const isLoading = isDashboardLoading || directoryPending || (onAgencyDrill && drill === 'loading');
+    if (!onAgencyDrill || isLoading) return { isLoading, agencyLevelHint: null };
+
+    if (drillTenantId == null) return { isLoading, agencyLevelHint: isDirectoryError ? 'directoryFailed' : 'pick' };
+    if (drill === 'unsupported' || drill === 'failed') return { isLoading, agencyLevelHint: drill };
+    const answeredAgencyIds = new Set(data.targetsByScope.agency.map((target) => target.id));
+    const pickedAnswered = pickedAgencyIds.some((id) => answeredAgencyIds.has(id) && Boolean(data.statisticsById[id]));
+    return {
+        isLoading,
+        agencyLevelHint: pickedAgencyIds.length > 0 && !pickedAnswered ? 'selectionUnavailable' : null,
     };
 };

@@ -7,6 +7,7 @@ import {
     buildCaseChartDateLabels,
     buildCasePeriodOptions,
     buildCaseWeekOverview,
+    addTrackedMetricValues,
     buildStatisticData,
     emptyStatisticData,
     getIsoWeek,
@@ -15,6 +16,11 @@ import {
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
     formatStandDay,
+    agenciesOfTenant,
+    resolveDrillTenantId,
+    resolveStatisticView,
+    type StatisticViewInput,
+    withAgencyDrill,
 } from './statisticDashboardData';
 
 // Saturday, 11 July 2026 (local time)
@@ -184,6 +190,85 @@ describe('statisticDashboardData', () => {
         expect(conversation.total).toEqual([40, 0, 5, 0]);
     });
 
+    it('maps communication counts and keeps untracked ones apart from withheld ones', () => {
+        const base = agencyTarget({});
+        const tracked = agencyTarget({
+            metrics: {
+                ...base.metrics!,
+                messagesCounselorsCurrentMonth: 40,
+                messagesAdviceSeekersCurrentMonth: 25,
+                audioCallsCurrentMonth: 3,
+                videoCallsCurrentMonth: null,
+            },
+        });
+        const { metrics } = buildStatisticData(tenantScopeResponse([tracked]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesCounselors).toBe(40);
+        expect(metrics.messagesSeekers).toBe(25);
+        expect(metrics.textMessagesTotal).toBe(65);
+        expect(metrics.phoneCalls).toBe(3);
+        // tracked but withheld
+        expect(metrics.videoCalls).toBeNull();
+        // not sent at all: no data source
+        expect(metrics.voiceMessages).toBeUndefined();
+        expect(metrics.liveChat).toBeUndefined();
+    });
+
+    it('keeps a communication count withheld when one target withholds it', () => {
+        // one target reports 5 messages, another withholds its count: the sum is not 5
+        expect(addTrackedMetricValues(5, null)).toBeNull();
+        expect(addTrackedMetricValues(null, 5)).toBeNull();
+        expect(addTrackedMetricValues(5, 3)).toBe(8);
+        // untracked contributors are skipped, all-untracked stays untracked
+        expect(addTrackedMetricValues(undefined, 5)).toBe(5);
+        expect(addTrackedMetricValues(null, undefined)).toBeNull();
+        expect(addTrackedMetricValues(undefined, undefined)).toBeUndefined();
+    });
+
+    it('reports text messages as withheld, not untracked, when one part is withheld and the other absent', () => {
+        const base = agencyTarget({});
+        const target = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const { metrics } = buildStatisticData(tenantScopeResponse([target]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesSeekers).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeNull();
+    });
+
+    it('keeps the combined text-message total withheld across targets when one target has a withheld part', () => {
+        const base = agencyTarget({});
+        const withheldPart = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const fullyTracked = agencyTarget({
+            agencyId: 12,
+            metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: 4, messagesAdviceSeekersCurrentMonth: 6 },
+        });
+        const { statisticsById } = buildStatisticData(
+            tenantScopeResponse([withheldPart, fullyTracked]),
+            emptyLookups,
+            now,
+        );
+
+        const combined = addTrackedMetricValues(
+            statisticsById['agency-11'].metrics.textMessagesTotal,
+            statisticsById['agency-12'].metrics.textMessagesTotal,
+        );
+
+        expect(statisticsById['agency-12'].metrics.textMessagesTotal).toBe(10);
+        expect(combined).toBeNull();
+    });
+
+    it('treats a backend without communication counts as not tracking them', () => {
+        const { metrics } = buildStatisticData(tenantScopeResponse([agencyTarget({})]), emptyLookups, now)
+            .statisticsById['agency-11'];
+
+        expect(metrics.messagesCounselors).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeUndefined();
+        expect(metrics.phoneCalls).toBeUndefined();
+    });
+
     it('resolves monthly top topics by calendar month with topic names', () => {
         const target = agencyTarget({
             monthlyTopTopics: [
@@ -199,7 +284,7 @@ describe('statisticDashboardData', () => {
 
         const { metrics } = data.statisticsById['agency-11'];
         expect(metrics.topicsByMonth[0]).toEqual({ label: 'Schulden', share: 75 });
-        expect(metrics.topicsByMonth[1]).toEqual({ label: '#200', share: 50 });
+        expect(metrics.topicsByMonth[1]).toEqual({ label: 'Thema 200', share: 50 });
         expect(metrics.topicsByMonth[2].label).toBe(NO_DATA_LABEL);
     });
 
@@ -459,7 +544,7 @@ describe('configurable time windows (UserService#1544)', () => {
         const { topicsByMonth } = data.statisticsById['agency-11'].metrics;
         expect(data.topicMonths).toBe(12);
         expect(topicsByMonth).toHaveLength(12);
-        expect(topicsByMonth[11]).toEqual({ label: '#300', share: 40 });
+        expect(topicsByMonth[11]).toEqual({ label: 'Thema 300', share: 40 });
         expect(topicsByMonth[0].label).toBe(NO_DATA_LABEL);
     });
 
@@ -503,5 +588,123 @@ describe('configurable time windows (UserService#1544)', () => {
         expect(bars[11]).toMatchObject({ day: 'KW 28', value: 6, isDefaultSelected: true });
         expect(bars[11].dateLabel).toMatch(/^KW 28, 6 Jul\S* – 12 Jul/);
         expect(bars[0]).toMatchObject({ day: 'KW 17', value: 11, isDefaultSelected: false });
+    });
+});
+
+// Frank: "In Statistik the search did not work." The platform dashboard has no Beratungsstellen, so a
+// platform admin looks into one Träger (`?tenantId=`), whose Beratungsstellen are merged in here.
+describe('platform admin looking into one Träger', () => {
+    const platform = buildStatisticData(
+        {
+            generatedAt: '2026-07-11T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                agencyTarget({ targetType: 'PLATFORM', tenantId: null, agencyId: null, counselorCount: 12 }),
+                agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 8 }),
+            ],
+        },
+        emptyLookups,
+        now,
+    );
+    const tenant = buildStatisticData(
+        tenantScopeResponse([
+            agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 99 }),
+            agencyTarget({ agencyId: 11 }),
+            agencyTarget({ agencyId: 12 }),
+        ]),
+        { ...emptyLookups, agencyNamesById: { '11': 'BST Nord' } },
+        now,
+    );
+
+    it('puts that Träger’s Beratungsstellen on the Beratungsstellen level and keeps the platform levels', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(platform.targetsByScope.agency).toEqual([]);
+        expect(merged.targetsByScope.agency.map((target) => target.id)).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.agency[0].label).toBe('BST Nord');
+        expect(merged.fallbackIdsByScope.agency).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.tenant).toEqual(platform.targetsByScope.tenant);
+        expect(merged.fallbackIdsByScope.platform).toEqual(['platform-total']);
+        expect(merged.statisticsById['agency-11']).toBeDefined();
+    });
+
+    it('keeps the Träger row of the platform dashboard (same id in both answers)', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(merged.statisticsById['tenant-5']).toBe(platform.statisticsById['tenant-5']);
+    });
+
+    it('looks into the Träger of the picked Beratungsstelle, else the picked Träger, else none', () => {
+        const directory = [{ id: 11, name: 'BST Nord', tenantId: 5 }];
+
+        expect(resolveDrillTenantId({ agency: ['agency-11'], tenant: ['tenant-9'] }, directory)).toBe(5);
+        expect(resolveDrillTenantId({ agency: [], tenant: ['tenant-9'] }, directory)).toBe(9);
+        expect(resolveDrillTenantId({ agency: ['agency-77'] }, directory)).toBeUndefined();
+        expect(resolveDrillTenantId({}, directory)).toBeUndefined();
+    });
+
+    // Found in review (PR #1530): a Beratungsstelle kept in localStorage outvoted a Träger picked later.
+    it('follows the newest pick: a picked Träger drops the Beratungsstellen of other Träger', () => {
+        const directory = [
+            { id: 11, name: 'BST Nord', tenantId: 5 },
+            { id: 21, name: 'BST Süd', tenantId: 9 },
+        ];
+        const agency = agenciesOfTenant(['agency-11', 'agency-21', 'agency-77'], 'tenant-9', directory);
+
+        expect(agency).toEqual(['agency-21']);
+        expect(
+            resolveDrillTenantId(
+                { agency: agenciesOfTenant(['agency-11'], 'tenant-9', directory), tenant: ['tenant-9'] },
+                directory,
+            ),
+        ).toBe(9);
+        expect(resolveDrillTenantId({ tenant: ['tenant-5', 'tenant-9'] }, directory)).toBe(9);
+    });
+});
+
+describe('resolveStatisticView (platform admin, Beratungsstellen level)', () => {
+    const view = (overrides: Partial<StatisticViewInput> = {}) =>
+        resolveStatisticView({
+            isSuperAdmin: true,
+            activeScope: 'agency',
+            pickedAgencyIds: [],
+            isDashboardLoading: false,
+            isDirectoryLoading: false,
+            isDirectoryError: false,
+            drillTenantId: undefined,
+            drill: 'idle',
+            data: emptyStatisticData(),
+            ...overrides,
+        });
+
+    // Found in review (PR #1530): the Träger level waited for a Träger dashboard only the Beratungsstellen level uses.
+    it('lets no other level wait for the Träger dashboard', () => {
+        expect(view({ activeScope: 'tenant', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ activeScope: 'platform', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ drill: 'loading', drillTenantId: 9 })).toEqual({ isLoading: true, agencyLevelHint: null });
+    });
+
+    // Found in review (PR #1530): with a saved Beratungsstelle the page asked to pick one while the list of
+    // Beratungsstellen (which names its Träger) was still loading.
+    it('is loading, not asking for a pick, while the list for a picked Beratungsstelle loads', () => {
+        expect(view({ pickedAgencyIds: ['agency-11'], isDirectoryLoading: true })).toEqual({
+            isLoading: true,
+            agencyLevelHint: null,
+        });
+        expect(view({ isDirectoryLoading: true }).agencyLevelHint).toBe('pick');
+        expect(view({ isDirectoryError: true }).agencyLevelHint).toBe('directoryFailed');
+    });
+
+    it('says when the Träger dashboard failed, or came without the picked Beratungsstelle', () => {
+        expect(view({ drillTenantId: 9, drill: 'failed' }).agencyLevelHint).toBe('failed');
+        expect(view({ drillTenantId: 9, drill: 'unsupported' }).agencyLevelHint).toBe('unsupported');
+        expect(view({ drillTenantId: 9, drill: 'ready', pickedAgencyIds: ['agency-11'] }).agencyLevelHint).toBe(
+            'selectionUnavailable',
+        );
+        expect(view({ drillTenantId: 9, drill: 'ready' }).agencyLevelHint).toBeNull();
+    });
+
+    it('gives other roles no hint', () => {
+        expect(view({ isSuperAdmin: false })).toEqual({ isLoading: false, agencyLevelHint: null });
     });
 });

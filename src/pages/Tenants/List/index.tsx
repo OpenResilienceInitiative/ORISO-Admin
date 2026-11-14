@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { useDebouncedCallback } from 'use-debounce';
 import AddIcon from '@mui/icons-material/Add';
 import routePathNames from '../../../appConfig';
 import type { DataTableSort } from '../../../components/DataTable';
@@ -9,7 +8,8 @@ import { M3Button } from '../../../components/M3Button';
 import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
+import { ListSearchBar } from '../../../components/ListSearchBar';
+import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
@@ -30,23 +30,19 @@ type DeleteResult = 'success' | 'error' | null;
 export const TenantsList = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [tableState, setTableState] = useState<TableState>({
+    const { settings } = useAppConfigContext();
+    // The admin search (⌘K) is the one place to type; "Show all matches in the list" opens this page with ?q=.
+    const { query: search, clear: clearSearch } = useListQuery();
+    // A new search starts on page 1 (in the same render, so the old page is never asked for with it).
+    const [tableState, setTableState] = useListTableState<TableState>(search, {
         current: 1,
         pageSize: 10,
     });
-
-    const { settings } = useAppConfigContext();
-    const [search, setSearch] = useState('');
     const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
     const [deleteResult, setDeleteResult] = useState<DeleteResult>(null);
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
-    const handleSearch = useCallback((value) => {
-        setSearch(value);
-        setTableState((data) => ({ ...data, current: 1 }));
-    }, []);
-    const handleSearchDebounced = useDebouncedCallback(handleSearch, 1000);
     const { data, isLoading, isError } = useTenantsData({
         page: tableState.current,
         perPage: tableState.pageSize,
@@ -82,37 +78,29 @@ export const TenantsList = () => {
             <Page.Title titleKey="tenants.title" subTitle={t<string>('tenants.subTitle', { count: data?.total || 0 })}>
                 <PageMobileActions
                     id="tenants"
-                    search={{
-                        label: t('tenants.searchPlaceholder'),
-                        placeholder: t('tenants.searchPlaceholder'),
-                        onSearch: handleSearch,
-                    }}
                     add={canCreateTenant ? { label: t('tenants.list.new'), onAdd: () => navigate(addPath) } : undefined}
                 >
-                    <div className={styles.toolbar}>
-                        <GlobalSearchBar
-                            className={styles.searchField}
-                            expandedWidth={499}
-                            onSearch={handleSearch}
-                            onSearchChange={handleSearchDebounced}
-                            searchPlaceholder={t('tenants.searchPlaceholder')}
-                        >
-                            {canCreateTenant && (
-                                <span className={styles.toolbarActions}>
-                                    <M3Button
-                                        variant="filled"
-                                        icon={<AddIcon />}
-                                        className={styles.createButton}
-                                        onClick={() => navigate(addPath)}
-                                    >
-                                        {t('tenants.list.new')}
-                                    </M3Button>
-                                </span>
-                            )}
-                        </GlobalSearchBar>
-                    </div>
+                    {canCreateTenant && (
+                        <div className={styles.toolbar}>
+                            <span className={styles.toolbarActions}>
+                                <M3Button
+                                    variant="filled"
+                                    icon={<AddIcon />}
+                                    className={styles.createButton}
+                                    onClick={() => navigate(addPath)}
+                                >
+                                    {t('tenants.list.new')}
+                                </M3Button>
+                            </span>
+                        </div>
+                    )}
                 </PageMobileActions>
             </Page.Title>
+            {search && (
+                <div className={styles.toolbar}>
+                    <ListSearchBar query={search} onClear={clearSearch} />
+                </div>
+            )}
 
             {deleteResult === 'success' && (
                 <Notify

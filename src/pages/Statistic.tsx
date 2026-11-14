@@ -1,4 +1,3 @@
-import { Close } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { CSVLink } from 'react-csv';
@@ -13,12 +12,10 @@ import TopicIcon from '@mui/icons-material/CategoryOutlined';
 import VideoCallsIcon from '@mui/icons-material/VideocamOutlined';
 import VoiceMessagesIcon from '@mui/icons-material/MicNoneOutlined';
 import routePathNames from '../appConfig';
-import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { DashboardEmptyState } from '../components/DashboardEmptyState/DashboardEmptyState';
 import { Page } from '../components/Page';
 import { CardGrid } from '../components/CardGrid';
 import cardStyles from '../components/Card/styles.module.scss';
-import { GlobalSearchBar } from '../components/GlobalSearch';
 import Spinner from '../components/Spinner/Spinner';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
@@ -31,6 +28,7 @@ import { ReactComponent as ScopeAgencyIcon } from '../resources/img/svg/statisti
 import { ReactComponent as ScopePlatformIcon } from '../resources/img/svg/statistics-dashboard/scope-platform.svg';
 import { ReactComponent as ScopeTenantIcon } from '../resources/img/svg/statistics-dashboard/scope-tenant.svg';
 import { conversationPeriodOptions, defaultSelectedCaseDayByScope, scopeOrder } from './Statistic/statisticConstants';
+import { StatisticScopePicker, type ScopePickerLevel, type ScopePickerTarget } from './Statistic/StatisticScopePicker';
 import {
     buildDonutSegments,
     getCaseAxisLabels,
@@ -55,9 +53,15 @@ import {
     DEFAULT_TOPIC_MONTHS,
     emptyCaseCharts,
     getTodayDayCode,
+    addTrackedMetricValues,
     NO_DATA_LABEL,
     noDataTopics,
+    resolveDrillTenantId,
+    agenciesOfTenant,
+    resolveStatisticView,
+    tenantTargetId,
     topicMenuKeyForMonth,
+    agencyTargetId,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -65,12 +69,14 @@ import type {
     FilterTargetMetricStats,
     FilterTargetStatistics,
     MetricValue,
+    StatisticAgencyEntry,
     StatisticData,
+    TrackedMetricValue,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
 import { StatisticInfoRow } from './Statistic/StatisticInfoRow';
-import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
+import { useStatisticAgencyDirectory, useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
     CardMenuOption,
@@ -90,7 +96,6 @@ import type {
     StatisticEmptyKind,
     TrendBadgeDefinition,
 } from './Statistic/types';
-import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { Notify } from '../components/Notify';
 import { HintText } from '../components/HintText';
 
@@ -411,6 +416,8 @@ const getAllowedStatisticScopes = (
     return ['agency'];
 };
 
+const NO_AGENCY_DIRECTORY: StatisticAgencyEntry[] = [];
+
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
     platform: {
         key: 'platform',
@@ -428,8 +435,6 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
         icon: ScopeAgencyIcon,
     },
 };
-
-const normalizeFilterSearch = (value: string, locale: string) => value.trim().toLocaleLowerCase(locale);
 
 const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]> = {
     platform: [
@@ -493,14 +498,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -607,14 +612,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -721,14 +726,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -867,14 +872,15 @@ const getEmptyFilterTargetStatistics = (
         conversationsTotal: null,
         counselors: null,
         groups: null,
-        liveChat: null,
-        messagesCounselors: null,
-        messagesSeekers: null,
+        // communication counts start as "not tracked"; the first target that sends one sets it
+        liveChat: undefined,
+        messagesCounselors: undefined,
+        messagesSeekers: undefined,
         oneToOne: null,
-        phoneCalls: null,
-        textMessagesTotal: null,
-        videoCalls: null,
-        voiceMessages: null,
+        phoneCalls: undefined,
+        textMessagesTotal: undefined,
+        videoCalls: undefined,
+        voiceMessages: undefined,
         topicsByMonth: noDataTopics(topicMonths),
     },
     caseCharts: emptyCaseCharts(chartWeeks),
@@ -913,6 +919,25 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
 const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
     first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
+const communicationMetricKeys = new Set<NumericFilterMetricKey>([
+    'liveChat',
+    'messagesCounselors',
+    'messagesSeekers',
+    'phoneCalls',
+    'textMessagesTotal',
+    'videoCalls',
+    'voiceMessages',
+]);
+
+const combineFilterMetric = (
+    metricKey: NumericFilterMetricKey,
+    first: TrackedMetricValue,
+    second: TrackedMetricValue,
+): TrackedMetricValue =>
+    communicationMetricKeys.has(metricKey)
+        ? addTrackedMetricValues(first, second)
+        : addMetricValues(first ?? null, second ?? null);
+
 const aggregateFilterTargetStatistics = (
     targetIds: string[],
     statisticsById: Record<string, FilterTargetStatistics>,
@@ -930,7 +955,11 @@ const aggregateFilterTargetStatistics = (
         const metrics = numericFilterMetricKeys.reduce<FilterTargetMetricStats>(
             (nextMetrics, metricKey) => ({
                 ...nextMetrics,
-                [metricKey]: addMetricValues(aggregatedStats.metrics[metricKey], targetStats.metrics[metricKey]),
+                [metricKey]: combineFilterMetric(
+                    metricKey,
+                    aggregatedStats.metrics[metricKey],
+                    targetStats.metrics[metricKey],
+                ),
             }),
             {
                 ...aggregatedStats.metrics,
@@ -1023,10 +1052,10 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 // German seed strings for the calm empty presentation (translated like every other
 // dashboard seed via dashboardTextKeyByValue).
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const THIS_MONTH_DETAIL = 'Dieser Monat';
 const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
 /** Width of the Träger/Beratungsstelle filter; the stylesheet reads it as --statistic-filter-width. */
-const STATISTIC_FILTER_WIDTH = 400;
 /** After a failed load the figure is unknown, not absent (#1374). */
 const LOAD_FAILED_HINT = 'konnte nicht geladen werden';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
@@ -1070,6 +1099,17 @@ const buildMetricOverridesFromFilterStats = (
     const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : pendingTopicHint;
     const metricEmptyState = (value: MetricValue): EmptyState =>
         value === null ? { emptyHint: emptyMetricHint, emptyKind } : noEmptyState;
+    /** A communication count of this month; a metric the backend does not track keeps the dashed card. */
+    const trackedOverride = (value: TrackedMetricValue): Partial<CardMenuOption> =>
+        // with every target withheld or the load failed, nobody knows whether it is tracked
+        value === undefined && !allTargetsSuppressed && !loadFailed
+            ? notTrackedOverride
+            : {
+                  value: formatMetricValue(value ?? null),
+                  ...metricEmptyState(value ?? null),
+                  detail: THIS_MONTH_DETAIL,
+                  trend: undefined,
+              };
     const topicEmptyState = (topic: TopicStatistic): EmptyState =>
         topic.label === NO_DATA_LABEL ? { emptyHint: emptyTopicHint, emptyKind } : noEmptyState;
     const topicOverride = (monthsAgo: number): Partial<CardMenuOption> => {
@@ -1141,24 +1181,24 @@ const buildMetricOverridesFromFilterStats = (
             trend: undefined,
         },
         liveChat: notTrackedOverride,
-        messagesCounselors: notTrackedOverride,
+        messagesCounselors: trackedOverride(stats.metrics.messagesCounselors),
         messagesPerSession: notTrackedOverride,
-        messagesSeekers: notTrackedOverride,
+        messagesSeekers: trackedOverride(stats.metrics.messagesSeekers),
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
             ...metricEmptyState(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: notTrackedOverride,
+        phoneShare: trackedOverride(stats.metrics.phoneCalls),
         previousMonth: topicOverride(1),
-        textMessagesTotal: notTrackedOverride,
+        textMessagesTotal: trackedOverride(stats.metrics.textMessagesTotal),
         threeMonthsAgo: topicOverride(3),
         topTopic: topicOverride(0),
         twoMonthsAgo: topicOverride(2),
-        videoCallCount: notTrackedOverride,
-        videoShare: notTrackedOverride,
-        voiceShare: notTrackedOverride,
+        videoCallCount: trackedOverride(stats.metrics.videoCalls),
+        videoShare: trackedOverride(stats.metrics.videoCalls),
+        voiceShare: trackedOverride(stats.metrics.voiceMessages),
         ...furtherTopicOverrides,
     };
 };
@@ -1788,158 +1828,6 @@ const DonutChart = ({
     );
 };
 
-interface StatisticFilterBarProps {
-    availableTargets: FilterTarget[];
-    locale: string;
-    onAddFirstSuggestion: () => void;
-    onAddTarget: (targetId: string) => void;
-    onRemoveTarget: (targetId: string) => void;
-    onSearchChange: (value: string) => void;
-    searchValue: string;
-    selectedTargets: FilterTarget[];
-    suggestions: FilterTarget[];
-    translate: DashboardTranslate;
-}
-
-const StatisticFilterBar = ({
-    availableTargets,
-    locale,
-    onAddFirstSuggestion,
-    onAddTarget,
-    onRemoveTarget,
-    onSearchChange,
-    searchValue,
-    selectedTargets,
-    suggestions,
-    translate,
-}: StatisticFilterBarProps) => {
-    const [isSuggestionMenuOpen, setIsSuggestionMenuOpen] = useState(false);
-    const visibleSuggestions = (() => {
-        if (searchValue.trim() || suggestions.length) {
-            return suggestions;
-        }
-
-        return availableTargets
-            .filter((target) => !selectedTargets.some((selectedTarget) => selectedTarget.id === target.id))
-            .slice(0, 6);
-    })();
-    const hasSuggestions = visibleSuggestions.length > 0;
-
-    const addFirstVisibleSuggestion = () => {
-        if (visibleSuggestions[0]) {
-            onAddTarget(visibleSuggestions[0].id);
-        } else {
-            onAddFirstSuggestion();
-        }
-    };
-
-    const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            addFirstVisibleSuggestion();
-            setIsSuggestionMenuOpen(false);
-        }
-
-        if (event.key === 'Escape') {
-            setIsSuggestionMenuOpen(false);
-        }
-    };
-
-    return (
-        <div
-            className="statisticDashboard__filterBar"
-            aria-label={translateDashboardText(translate, 'Statistik eingrenzen', locale)}
-        >
-            <div
-                className="statisticDashboard__filterSearchWrap"
-                onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                        setIsSuggestionMenuOpen(false);
-                    }
-                }}
-            >
-                <GlobalSearchBar
-                    defaultExpanded
-                    expandedWidth={STATISTIC_FILTER_WIDTH}
-                    className="statisticDashboard__filterSearch"
-                    ariaLabel={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.searchAria',
-                        'Beratungsstellen oder Träger suchen',
-                    )}
-                    value={searchValue}
-                    onInputClick={() => setIsSuggestionMenuOpen(true)}
-                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
-                    onInputKeyDown={handleSearchKeyDown}
-                    onSearchChange={(value) => {
-                        setIsSuggestionMenuOpen(true);
-                        onSearchChange(value);
-                    }}
-                    onSearch={() => {
-                        addFirstVisibleSuggestion();
-                        setIsSuggestionMenuOpen(false);
-                    }}
-                    searchPlaceholder={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.placeholder',
-                        'Suche',
-                    )}
-                />
-
-                {isSuggestionMenuOpen && hasSuggestions && (
-                    <div className="statisticDashboard__filterSuggestions" role="listbox">
-                        {visibleSuggestions.map((target) => (
-                            <button
-                                key={target.id}
-                                type="button"
-                                className="statisticDashboard__filterSuggestion"
-                                role="option"
-                                aria-selected="false"
-                                onClick={() => {
-                                    onAddTarget(target.id);
-                                    setIsSuggestionMenuOpen(false);
-                                }}
-                            >
-                                <span>
-                                    <strong>{target.label}</strong>
-                                    <small>{translateDashboardText(translate, target.detail, locale)}</small>
-                                </span>
-                                <em>{translateDashboardText(translate, target.type, locale)}</em>
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {!!selectedTargets.length && (
-                <div
-                    className="statisticDashboard__filterChips"
-                    aria-label={translateDashboardKey(translate, 'statistic.dashboard.filter.active', 'Aktive Filter')}
-                >
-                    {selectedTargets.map((target) => (
-                        <span key={target.id} className="statisticDashboard__filterChip">
-                            <small>{translateDashboardText(translate, target.type, locale)}</small>
-                            <span>{target.label}</span>
-                            <button
-                                type="button"
-                                aria-label={translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.filter.removeTarget',
-                                    `${target.label} entfernen`,
-                                    { target: target.label },
-                                )}
-                                onClick={() => onRemoveTarget(target.id)}
-                            >
-                                <Close aria-hidden="true" />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 interface PeriodSelectProps<OptionKey extends string> {
     ariaLabel: string;
     onSelect: (key: OptionKey) => void;
@@ -2047,11 +1935,6 @@ export const Statistic = () => {
         useState<SelectedCardMenuByScope>(readStoredCardMenuSelection);
     const [selectedFilterTargetIdsByScope, setSelectedFilterTargetIdsByScope] =
         useState<SelectedFilterTargetIdsByScope>(readStoredFilterTargetSelection);
-    const [filterSearchByScope, setFilterSearchByScope] = useState<Record<ScopeKey, string>>({
-        platform: '',
-        tenant: '',
-        agency: '',
-    });
     const [selectedCasePeriodByScope, setSelectedCasePeriodByScope] = useState<Record<ScopeKey, CasePeriodKey>>({
         platform: casePeriodKeyForWeek(0),
         tenant: casePeriodKeyForWeek(0),
@@ -2073,12 +1956,37 @@ export const Statistic = () => {
     });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
+    // The platform dashboard stops at Träger. A platform admin who picks a Beratungsstelle (or a Träger)
+    // gets that Träger's dashboard loaded on top, so its Beratungsstellen have numbers. Only the
+    // Beratungsstellen level uses it, so only that level asks for it.
+    const {
+        data: agencyDirectoryData,
+        isError: hasAgencyDirectoryError,
+        isLoading: isAgencyDirectoryLoading,
+    } = useStatisticAgencyDirectory(isSuperAdmin);
+    const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
+    const drillTenantId =
+        isSuperAdmin && activeScope === 'agency'
+            ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
+            : undefined;
     const {
         data: statisticData,
         isError: hasStatisticLoadError,
-        isLoading: isStatisticLoading,
+        isLoading: isDashboardLoading,
         isUnavailable: isStatisticUnavailable,
-    } = useStatisticDashboardData();
+        drill,
+    } = useStatisticDashboardData({ drillTenantId });
+    const { isLoading: isStatisticLoading, agencyLevelHint } = resolveStatisticView({
+        isSuperAdmin,
+        activeScope,
+        pickedAgencyIds: selectedFilterTargetIdsByScope.agency || [],
+        isDashboardLoading,
+        isDirectoryLoading: isAgencyDirectoryLoading,
+        isDirectoryError: hasAgencyDirectoryError,
+        drillTenantId,
+        drill,
+        data: statisticData,
+    });
     const navigate = useNavigate();
     // A fixed stand is read from its own time: its "this week" must not slide with today.
     const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
@@ -2091,7 +1999,6 @@ export const Statistic = () => {
     );
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
-    const filterSearch = filterSearchByScope[activeScope];
     const visibleFilterTargetIds = selectedFilterTargetIds.filter((targetId) =>
         availableFilterTargets.some((target) => target.id === targetId),
     );
@@ -2146,6 +2053,7 @@ export const Statistic = () => {
         !isStatisticLoading &&
         !hasStatisticLoadError &&
         !isStatisticUnavailable &&
+        !agencyLevelHint &&
         !allTargetsSuppressed;
     // After a failed load the page says so; a preview would read as "not enough data yet".
     const showPreviewPanel = (showEmptyHero || allTargetsSuppressed) && !hasStatisticLoadError;
@@ -2257,30 +2165,36 @@ export const Statistic = () => {
     );
     const chartAnimationKey = `${activeScope}-${selectedCasePeriod}-${effectiveStatisticTargetIds.join('-')}`;
     const donutAnimationKey = `${activeScope}-${selectedConversationPeriod}-${effectiveStatisticTargetIds.join('-')}`;
+    // Beratungsstellen a platform admin can pick before their Träger's numbers are loaded.
+    const directoryTargets = useMemo<ScopePickerTarget[]>(() => {
+        const tenantNames = new Map(statisticData.targetsByScope.tenant.map((target) => [target.id, target.label]));
+        return agencyDirectory.map((agency) => ({
+            id: agencyTargetId(agency.id),
+            label: agency.name,
+            type: 'Beratungsstelle',
+            detail: tenantNames.get(tenantTargetId(agency.tenantId)) ?? '',
+            scope: 'agency',
+        }));
+    }, [agencyDirectory, statisticData.targetsByScope.tenant]);
     const selectedFilterTargets = useMemo(
         () =>
-            visibleFilterTargetIds
-                .map((targetId) => availableFilterTargets.find((target) => target.id === targetId))
+            (isSuperAdmin && activeScope === 'agency' ? selectedFilterTargetIds : visibleFilterTargetIds)
+                .map(
+                    (targetId) =>
+                        availableFilterTargets.find((target) => target.id === targetId) ??
+                        (isSuperAdmin ? directoryTargets.find((target) => target.id === targetId) : undefined),
+                )
                 .filter((target): target is FilterTarget => Boolean(target)),
-        [availableFilterTargets, visibleFilterTargetIds],
+        [
+            activeScope,
+            availableFilterTargets,
+            directoryTargets,
+            isSuperAdmin,
+            selectedFilterTargetIds,
+            visibleFilterTargetIds,
+        ],
     );
-    const filterSuggestions = useMemo(() => {
-        const normalizedSearch = normalizeFilterSearch(filterSearch, locale);
-
-        return availableFilterTargets
-            .filter((target) => !visibleFilterTargetIds.includes(target.id))
-            .filter((target) =>
-                normalizedSearch
-                    ? [
-                          target.label,
-                          translateDashboardText(translate, target.detail, locale),
-                          translateDashboardText(translate, target.type, locale),
-                      ].some((value) => normalizeFilterSearch(value, locale).includes(normalizedSearch))
-                    : true,
-            )
-            .slice(0, 6);
-    }, [availableFilterTargets, filterSearch, locale, translate, visibleFilterTargetIds]);
-    const scopeTabItems: AdminSegmentedTabItem[] = allowedScopeKeys.map((scopeKey) => {
+    const pickerLevels: ScopePickerLevel[] = allowedScopeKeys.map((scopeKey) => {
         const scope = scopeDefinitions[scopeKey];
         const ScopeIcon = scope.icon;
 
@@ -2290,6 +2204,24 @@ export const Statistic = () => {
             icon: <ScopeIcon />,
         };
     });
+    // Every Träger and Beratungsstelle once, on the level that shows its own numbers: a Träger on the
+    // Träger level, a Beratungsstelle on the Beratungsstellen level (where the role has that level).
+    const pickerTargets = useMemo(() => {
+        const byId = new Map<string, ScopePickerTarget>();
+        allowedScopeKeys.forEach((scopeKey) => {
+            statisticData.targetsByScope[scopeKey].forEach((target) => {
+                const ownLevel: ScopeKey = target.type === 'Träger' ? 'tenant' : 'agency';
+                if (!byId.has(target.id) || scopeKey === ownLevel) {
+                    byId.set(target.id, { ...target, scope: scopeKey });
+                }
+            });
+        });
+        // A platform admin finds every Beratungsstelle, not only those of the Träger already loaded.
+        directoryTargets.forEach((target) => {
+            if (!byId.has(target.id)) byId.set(target.id, target);
+        });
+        return [...byId.values()];
+    }, [allowedScopeKeys, directoryTargets, statisticData.targetsByScope]);
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -2299,41 +2231,54 @@ export const Statistic = () => {
             },
         }));
     };
-    const updateFilterSearch = (value: string) => {
-        setFilterSearchByScope((currentSearch) => ({
-            ...currentSearch,
-            [activeScope]: value,
-        }));
+    /** The whole level: no Träger or Beratungsstelle picked on it any more. */
+    const selectScopeLevel = (scopeKey: ScopeKey) => {
+        setActiveScope(scopeKey);
+        setSelectedFilterTargetIdsByScope((currentSelection) => ({ ...currentSelection, [scopeKey]: [] }));
     };
-    const addFilterTarget = (targetId: string) => {
-        const nextTarget = availableFilterTargets.find((target) => target.id === targetId);
-
-        if (!nextTarget) {
+    /** Switches to the target's level and adds it; targets of another type on that level make way. */
+    const selectScopeTarget = (nextTarget: ScopePickerTarget) => {
+        const levelTargets = statisticData.targetsByScope[nextTarget.scope];
+        setActiveScope(nextTarget.scope);
+        if (isSuperAdmin && nextTarget.scope === 'agency') {
+            // One Träger's numbers are loaded at a time: Beratungsstellen of another Träger make way.
+            const tenantOf = (targetId: string) =>
+                agencyDirectory.find((agency) => agencyTargetId(agency.id) === targetId)?.tenantId;
+            setSelectedFilterTargetIdsByScope((currentSelection) => {
+                const sameTenant = (currentSelection.agency || []).filter(
+                    (targetId) => tenantOf(targetId) === tenantOf(nextTarget.id),
+                );
+                return sameTenant.includes(nextTarget.id)
+                    ? currentSelection
+                    : { ...currentSelection, agency: [...sameTenant, nextTarget.id] };
+            });
             return;
         }
-
         setSelectedFilterTargetIdsByScope((currentSelection) => {
-            const currentScopeSelection = (currentSelection[activeScope] || []).filter((currentTargetId) => {
-                const currentTarget = availableFilterTargets.find((target) => target.id === currentTargetId);
+            const sameType = (currentSelection[nextTarget.scope] || []).filter(
+                (targetId) => levelTargets.find((target) => target.id === targetId)?.type === nextTarget.type,
+            );
+            // The newest pick decides which Träger the Beratungsstellen level looks into.
+            const agency =
+                isSuperAdmin && nextTarget.type === 'Träger'
+                    ? agenciesOfTenant(currentSelection.agency || [], nextTarget.id, agencyDirectory)
+                    : currentSelection.agency;
 
-                return currentTarget?.type === nextTarget.type;
-            });
+            // A re-picked Träger moves to the end, so the stored order always ends with the newest pick.
+            const movesToEnd = isSuperAdmin && nextTarget.type === 'Träger';
+            const alreadyLast = sameType[sameType.length - 1] === nextTarget.id;
+            const unchanged = sameType.includes(nextTarget.id) && (!movesToEnd || alreadyLast);
 
-            if (currentScopeSelection.includes(targetId)) {
-                return currentSelection;
-            }
-
-            return {
-                ...currentSelection,
-                [activeScope]: [...currentScopeSelection, targetId],
-            };
+            return unchanged && agency === currentSelection.agency
+                ? currentSelection
+                : {
+                      ...currentSelection,
+                      agency,
+                      [nextTarget.scope]: unchanged
+                          ? sameType
+                          : [...sameType.filter((targetId) => targetId !== nextTarget.id), nextTarget.id],
+                  };
         });
-        updateFilterSearch('');
-    };
-    const addFirstFilterSuggestion = () => {
-        if (filterSuggestions[0]) {
-            addFilterTarget(filterSuggestions[0].id);
-        }
     };
     const removeFilterTarget = (targetId: string) => {
         setSelectedFilterTargetIdsByScope((currentSelection) => ({
@@ -2373,33 +2318,45 @@ export const Statistic = () => {
     return (
         <Page>
             <Page.Title>
-                {/* Levels left, the Träger/Beratungsstelle filter right, one divider under
-                    both (ORISO-Admin#1374). */}
-                <div
-                    className="statisticDashboard__headerRow"
-                    style={{ '--statistic-filter-width': `${STATISTIC_FILTER_WIDTH}px` } as CSSProperties}
-                >
-                    <AdminSegmentedTabs
-                        className="statisticDashboard__scopeTabs"
-                        activeId={activeScope}
-                        ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                        items={scopeTabItems}
-                        onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
+                {/* One picker for level and Träger/Beratungsstelle (ORISO-Admin#1510), one divider under it. */}
+                <div className="statisticDashboard__headerRow">
+                    <StatisticScopePicker
+                        levels={pickerLevels}
+                        activeLevel={activeScope}
+                        targets={pickerTargets}
+                        selectedTargets={selectedFilterTargets}
+                        onSelectLevel={selectScopeLevel}
+                        onSelectTarget={selectScopeTarget}
+                        onRemoveTarget={removeFilterTarget}
+                        locale={locale}
+                        describe={(text) => translateDashboardText(translate, text, locale)}
+                        labels={{
+                            picker: translateDashboardKey(translate, 'statistic.dashboard.scope.picker', 'Ansicht'),
+                            levels: translateDashboardText(translate, 'Statistik-Ebene', locale),
+                            search: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.searchAria',
+                                'Beratungsstellen oder Träger suchen',
+                            ),
+                            noMatch: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.scope.noMatch',
+                                'Kein Träger und keine Beratungsstelle gefunden',
+                            ),
+                            selected: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.active',
+                                'Aktive Filter',
+                            ),
+                            remove: (target) =>
+                                translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.filter.removeTarget',
+                                    `${target} entfernen`,
+                                    { target },
+                                ),
+                        }}
                     />
-                    {activeScope !== 'agency' && (
-                        <StatisticFilterBar
-                            availableTargets={availableFilterTargets}
-                            locale={locale}
-                            onAddFirstSuggestion={addFirstFilterSuggestion}
-                            onAddTarget={addFilterTarget}
-                            onRemoveTarget={removeFilterTarget}
-                            onSearchChange={updateFilterSearch}
-                            searchValue={filterSearch}
-                            selectedTargets={selectedFilterTargets}
-                            suggestions={filterSuggestions}
-                            translate={translate}
-                        />
-                    )}
                 </div>
             </Page.Title>
             <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
@@ -2464,6 +2421,11 @@ export const Statistic = () => {
                                         )}
                                     </HintText>
                                 )}
+                                {agencyLevelHint && (
+                                    <HintText className="statisticDashboard__caption" data-testid="agency-level-hint">
+                                        {translate(`statistic.dashboard.agencyLevel.${agencyLevelHint}`)}
+                                    </HintText>
+                                )}
                                 <StatisticInfoRow
                                     stand={
                                         statisticData.generatedAt &&
@@ -2496,8 +2458,9 @@ export const Statistic = () => {
                                             : []),
                                     ]}
                                 />
-                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error there is nothing to export */}
-                                {!allTargetsSuppressed && !hasStatisticLoadError && (
+                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error, or while the
+                                    hint stands in for the figures, there is nothing to export */}
+                                {!allTargetsSuppressed && !hasStatisticLoadError && !agencyLevelHint && (
                                     <div className="statisticDashboard__export">
                                         <CSVLink
                                             className="statisticDashboard__exportLink"
@@ -2538,49 +2501,51 @@ export const Statistic = () => {
                                 )}
                                 {/* All eight figures in one raster: four per row on a desktop, so the
                                     channel tiles line up under the key figures (ORISO-Admin#1374). */}
-                                <CardGrid
-                                    raster
-                                    fluid
-                                    minCardWidth={280}
-                                    className={`statisticDashboard__summaryGrid${
-                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
-                                    }`}
-                                >
-                                    {dashboard.topCards.map((card) => (
-                                        <CardGrid.Item key={card.key}>
-                                            <StatisticCard
-                                                card={localizeStatisticCard(
-                                                    getPersonalizedMetricCard(
-                                                        card,
-                                                        activeScope,
-                                                        metricOverrides,
-                                                        statisticData.topicMonths,
-                                                        isFixedStand,
-                                                    ),
-                                                    translate,
-                                                    locale,
-                                                )}
-                                                locale={locale}
-                                                menuValue={selectedCardMenuByScope[activeScope][card.key]}
-                                                onMenuChange={updateCardMenuSelection}
-                                                translate={translate}
-                                            />
-                                        </CardGrid.Item>
-                                    ))}
-                                    {dashboard.communicationCards.map((card) => (
-                                        <CardGrid.Item key={card.key}>
-                                            <StatisticCard
-                                                card={localizeStatisticCard(
-                                                    getDisplayMetricCard(card, metricOverrides),
-                                                    translate,
-                                                    locale,
-                                                )}
-                                                locale={locale}
-                                                translate={translate}
-                                            />
-                                        </CardGrid.Item>
-                                    ))}
-                                </CardGrid>
+                                {!agencyLevelHint && (
+                                    <CardGrid
+                                        raster
+                                        fluid
+                                        minCardWidth={280}
+                                        className={`statisticDashboard__summaryGrid${
+                                            showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                        }`}
+                                    >
+                                        {dashboard.topCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getPersonalizedMetricCard(
+                                                            card,
+                                                            activeScope,
+                                                            metricOverrides,
+                                                            statisticData.topicMonths,
+                                                            isFixedStand,
+                                                        ),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    menuValue={selectedCardMenuByScope[activeScope][card.key]}
+                                                    onMenuChange={updateCardMenuSelection}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                        {dashboard.communicationCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getDisplayMetricCard(card, metricOverrides),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                    </CardGrid>
+                                )}
 
                                 {/* Nothing to chart yet (no data, or every figure protected): say what will
                                     appear here instead of drawing empty charts (ORISO-Admin#1374). */}
@@ -2617,7 +2582,8 @@ export const Statistic = () => {
                                     />
                                 )}
                                 {/* hidden figures or a failed load: no chart, a chart of zeros would read as "nothing happened" */}
-                                {!showPreviewPanel && !hasStatisticLoadError && (
+                                {/* With a hint for the Beratungsstellen level there are no numbers to show: no empty cards. */}
+                                {!showPreviewPanel && !hasStatisticLoadError && !agencyLevelHint && (
                                     <CardGrid
                                         raster
                                         fillers={false}

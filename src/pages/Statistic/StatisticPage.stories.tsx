@@ -15,6 +15,7 @@ import {
     agencyEndpointBase,
     tenantAdminEndpoint,
     topicAdminEndpoint,
+    topicEndpoint,
     tutorialStatisticsEndpoint,
 } from '../../appConfig';
 import { findPopup, popupsOf } from '../../test/storyPopups';
@@ -67,6 +68,10 @@ const target = (
         activeCases: Math.round(56 * factor),
         activeConversationsToday: Math.round(9 * factor),
         groupChatsTotal: Math.round(14 * factor),
+        messagesCounselorsCurrentMonth: Math.round(410 * factor),
+        messagesAdviceSeekersCurrentMonth: Math.round(365 * factor),
+        audioCallsCurrentMonth: Math.round(18 * factor),
+        videoCallsCurrentMonth: Math.round(11 * factor),
     },
     dailyNewSessions: dailySessions(factor),
     monthlyTopTopics: monthlyTopics(factor),
@@ -132,7 +137,7 @@ const named = (rows: { id: number; name: string }[]) => HttpResponse.json({ tota
 
 const handlers = (dashboard: () => Response | Promise<Response>) => [
     http.get(`${adminStatisticsDashboardEndpoint}*`, dashboard),
-    http.get(`${agencyEndpointBase}/*`, () =>
+    http.get(`${agencyEndpointBase}*`, () =>
         named([
             { id: 11, name: 'Beratungsstelle Musterstadt' },
             { id: 12, name: 'Beratungsstelle Beispielort' },
@@ -152,6 +157,8 @@ const handlers = (dashboard: () => Response | Promise<Response>) => [
             { id: 3, name: 'Sucht' },
         ]),
     ),
+    // the public topic list fills names the topic admin list does not give (Admin role without access)
+    http.get(`${topicEndpoint}public`, () => HttpResponse.json([])),
     http.get(`${tutorialStatisticsEndpoint}*`, () =>
         HttpResponse.json({ generatedAt: GENERATED_AT, scope: 'PLATFORM', tenants: [] }),
     ),
@@ -186,6 +193,21 @@ const meta = {
 } satisfies Meta<typeof Statistic>;
 export default meta;
 type Story = StoryObj<typeof meta>;
+
+/** A backend from before communication tracking: no message or call counts at all. */
+const withoutCommunication = (row: AdminDashboardTarget): AdminDashboardTarget =>
+    row.metrics
+        ? {
+              ...row,
+              metrics: {
+                  enquiriesCurrentMonth: row.metrics.enquiriesCurrentMonth,
+                  enquiriesPreviousMonth: row.metrics.enquiriesPreviousMonth,
+                  activeCases: row.metrics.activeCases,
+                  activeConversationsToday: row.metrics.activeConversationsToday,
+                  groupChatsTotal: row.metrics.groupChatsTotal,
+              },
+          }
+        : row;
 
 export const DailyStand: Story = {
     play: async ({ canvasElement }) => {
@@ -263,7 +285,10 @@ export const HiddenRowNextToShownRow: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        fireEvent.click(await canvas.findByRole('tab', { name: 'Beratungsstellen' }));
+        // Admin#1510: the level is chosen in the one "Ansicht" scope picker.
+        fireEvent.click(await canvas.findByRole('button', { name: /^Ansicht:/ }));
+        fireEvent.click(await canvas.findByRole('button', { name: 'Beratungsstellen' }));
+        fireEvent.keyDown(canvasElement.ownerDocument, { key: 'Escape' });
         const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
         // The long reason waits behind "Warum?" in the one info row.
         await expect(notice).not.toBeVisible();
@@ -426,5 +451,187 @@ export const TemporarilyUnavailable: Story = {
         await waitFor(() => expect(quiet).toBeVisible());
         await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
         await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+    },
+};
+
+/*
+ * Frank: "In Statistik the search did not work." The platform dashboard stops at Träger (scope
+ * PLATFORM: one platform row, one row per Träger), so no Beratungsstelle could ever be found. Now
+ * every Beratungsstelle is in the picker, and picking one loads its Träger's dashboard (`?tenantId=`).
+ */
+let drillRequests: string[] = [];
+const platformDirectoryHandlers = (answerTenant: boolean, withMusterstadt = true) => [
+    http.get(`${adminStatisticsDashboardEndpoint}*`, ({ request }) => {
+        const tenantId = new URL(request.url).searchParams.get('tenantId');
+        if (tenantId) drillRequests.push(tenantId);
+        if (tenantId && answerTenant) {
+            return HttpResponse.json({
+                ...statistics('LIVE', [
+                    target('TENANT', 2, null, 2),
+                    // a factor no other row has: 105 enquiries this month exist only for Musterstadt
+                    ...(withMusterstadt ? [target('AGENCY', 2, 11, 1.25)] : []),
+                    target('AGENCY', 2, 12, 0.5),
+                ]),
+                scope: 'TENANT',
+            });
+        }
+        // An older backend ignores ?tenantId= and answers with the platform dashboard.
+        return HttpResponse.json(
+            statistics('LIVE', [
+                target('PLATFORM', null, null, 4),
+                target('TENANT', 2, null, 2),
+                target('TENANT', 3, null, 1),
+            ]),
+        );
+    }),
+    http.get(`${agencyEndpointBase}*`, () =>
+        HttpResponse.json({
+            total: 3,
+            _embedded: [
+                { id: 11, name: 'Beratungsstelle Musterstadt', tenantId: 2 },
+                { id: 12, name: 'Beratungsstelle Beispielort', tenantId: 2 },
+                { id: 13, name: 'Beratungsstelle Testheim', tenantId: 3 },
+            ],
+        }),
+    ),
+    ...handlers(() => HttpResponse.json({})).slice(2),
+];
+
+const pickMusterstadt = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toBeVisible());
+    await userEvent.click(canvas.getByRole('button', { name: /^Ansicht:/ }));
+    await userEvent.type(await canvas.findByRole('combobox'), 'Muster');
+    await userEvent.click(await canvas.findByRole('option', { name: /Beratungsstelle Musterstadt/ }));
+};
+
+export const PlatformAdminFindsBeratungsstelle: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toHaveAccessibleName(/Musterstadt/),
+        );
+        await expect(canvas.queryByTestId('agency-level-hint')).toBeNull();
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+        // the figure comes from Musterstadt's own row in the Träger dashboard, not from the platform data
+        await waitFor(() => expect(canvas.getByText('105')).toBeVisible());
+    },
+};
+
+export const PlatformAdminFindsBeratungsstellePhone: Story = {
+    ...PlatformAdminFindsBeratungsstelle,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/**
+ * The Träger's answer lacks the picked Beratungsstelle (new, deleted, or withheld): the page says so
+ * instead of showing the Träger's total under the Beratungsstelle's name.
+ */
+export const PlatformAdminPickWithoutFigures: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true, false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('Für diese Beratungsstelle liegen noch keine Zahlen vor');
+        // Beispielort's 42 enquiries (factor 0.5) must not show up as Musterstadt's figures
+        await expect(within(canvasElement).queryByText('Anfragen gesamt')).toBeNull();
+    },
+};
+
+/** Until the UserService knows `?tenantId=`, the page says so instead of showing an empty level. */
+export const PlatformAdminOlderBackend: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('erst mit dem nächsten Server-Update');
+        // no figures on screen, so no file of them either
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
+};
+
+const communicationCard = (canvasElement: HTMLElement, title: string) =>
+    [...canvasElement.querySelectorAll<HTMLElement>('.statisticDashboard__metricCard')].find((card) =>
+        card.querySelector('.statisticDashboard__cardHeader')?.textContent?.trim().startsWith(title),
+    );
+
+/** Messages and calls are counted (UserService): the communication row shows this month's numbers. */
+export const CommunicationTracked: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        // platform row, factor 4: 1640 counsellor + 1460 advice-seeker messages
+        await waitFor(() =>
+            expect(communicationCard(canvasElement, 'Textnachrichten')?.textContent).toContain('3.100'),
+        );
+        await expect(communicationCard(canvasElement, 'Anrufe')?.textContent).toContain('72');
+        // voice messages are not sent by the backend: the dashed slot says so, without a promise
+        const voice = communicationCard(canvasElement, 'Sprachnachrichten');
+        await expect(voice?.className).toContain('notTracked');
+        await expect(voice?.textContent).toContain('Für diese Kennzahl gibt es noch keine Datenquelle.');
+    },
+};
+
+/** A backend from before communication tracking: the four slots stay as dashed "no data source" cards. */
+export const BeforeCommunicationTracking: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() => {
+                const body = statistics('DAILY');
+                return HttpResponse.json({ ...body, targets: body.targets.map(withoutCommunication) });
+            }),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        await waitFor(() =>
+            expect(
+                canvasElement.querySelectorAll('.statisticDashboard__metricCard--notTracked').length,
+            ).toBeGreaterThanOrEqual(4),
+        );
+    },
+};
+
+/** Platform admins get a 403 from the topic admin list; the public topic list still names the topic. */
+export const TopicNameWithoutTopicAdmin: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(`${topicAdminEndpoint}/*`, () => new HttpResponse(null, { status: 403 })),
+                http.get(`${topicEndpoint}public`, () =>
+                    HttpResponse.json([
+                        { id: 1, name: 'Allgemeine Sozialberatung' },
+                        { id: 2, name: 'Schulden' },
+                        { id: 3, name: 'Sucht' },
+                    ]),
+                ),
+                ...fixedStand('DAILY'),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Häufigstes Thema')).toBeVisible());
+        // a long name is shown whole, on up to two lines, not cut after a few letters
+        const topic = await canvas.findByTitle('Allgemeine Sozialberatung');
+        await expect(getComputedStyle(topic).whiteSpace).toBe('normal');
+        await expect(canvasElement.textContent).not.toMatch(/#\d/);
     },
 };

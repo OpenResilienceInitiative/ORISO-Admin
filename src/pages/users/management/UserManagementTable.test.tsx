@@ -6,7 +6,15 @@ import type { UserScopeFiltersProps } from './UserScopeFilters';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from './UserManagementTable';
 
-const state = vi.hoisted(() => ({ section: 'tenant-admins', isSuperAdmin: false, canManage: true, navigate: vi.fn() }));
+const state = vi.hoisted(() => ({
+    section: 'tenant-admins',
+    isSuperAdmin: false,
+    canManage: true,
+    navigate: vi.fn(),
+    tenantAdminSearch: undefined as string | undefined,
+    tenantAdminRequests: [] as Array<{ search?: string; current?: number }>,
+    tenantAdminTotal: 1,
+}));
 vi.mock('react-router-dom', async (original) => ({
     ...(await original<typeof import('react-router-dom')>()),
     useParams: () => ({ typeOfUsers: state.section }),
@@ -43,23 +51,27 @@ vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
 }));
 vi.mock('../../../hooks/useTenantsData', () => ({ useTenantsData: () => ({}) }));
 vi.mock('../../../hooks/useTenantUserAdminsData', () => ({
-    useTenantAdminsData: () => ({
-        data: {
-            data: [
-                {
-                    id: '42',
-                    tenantId: 2,
-                    firstName: 'Alex',
-                    lastName: 'Tenant',
-                    email: 'alex@example.test',
-                    username: 'alex',
-                    agencies: [],
-                },
-            ],
-            total: 1,
-        },
-        refetch: vi.fn(),
-    }),
+    useTenantAdminsData: ({ search, current }: { search?: string; current?: number }) => {
+        state.tenantAdminSearch = search;
+        state.tenantAdminRequests.push({ search, current });
+        return {
+            data: {
+                data: [
+                    {
+                        id: '42',
+                        tenantId: 2,
+                        firstName: 'Alex',
+                        lastName: 'Tenant',
+                        email: 'alex@example.test',
+                        username: 'alex',
+                        agencies: [],
+                    },
+                ],
+                total: state.tenantAdminTotal,
+            },
+            refetch: vi.fn(),
+        };
+    },
 }));
 vi.mock('../../../hooks/usePlatformAdminsData', () => ({
     usePlatformAdminsData: () => ({
@@ -86,9 +98,8 @@ vi.mock('../../../hooks/useAdminListPreferences', () => ({
     useSaveAdminListSort: () => vi.fn(),
 }));
 vi.mock('./UserScopeFilters', () => ({
-    UserScopeFilters: ({ actions, search }: UserScopeFiltersProps) => (
+    UserScopeFilters: ({ actions }: UserScopeFiltersProps) => (
         <div role="group" aria-label="account toolbar">
-            {search && <input aria-label={search.searchPlaceholder} />}
             {actions}
         </div>
     ),
@@ -111,10 +122,12 @@ describe('UserManagementTable section authorization', () => {
         state.isSuperAdmin = false;
         state.canManage = true;
         state.navigate.mockClear();
+        state.tenantAdminRequests = [];
+        state.tenantAdminTotal = 1;
     });
-    const show = () =>
+    const show = (entry = '/admin/users') =>
         render(
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[entry]}>
                 <UserManagementTable />
             </MemoryRouter>,
         );
@@ -139,12 +152,36 @@ describe('UserManagementTable section authorization', () => {
         expect(screen.getByText('delete-confirmation')).toBeInTheDocument();
     });
 
-    it('renders search and permitted actions together exactly once', () => {
+    it('renders permitted actions exactly once and no search field of its own (⌘K is the one search)', () => {
         show();
         const toolbar = within(screen.getByRole('group', { name: 'account toolbar' }));
-        expect(toolbar.getByRole('textbox')).toBeInTheDocument();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
         expect(toolbar.getByRole('button', { name: /new$/ })).toBeInTheDocument();
         expect(screen.getAllByRole('button', { name: /new$/ })).toHaveLength(1);
+    });
+
+    it('says when the list is narrowed by a search from the admin search (?q=)', () => {
+        show('/admin/users?q=simpson');
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('simpson');
+        expect(state.tenantAdminSearch).toBe('simpson');
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+        expect(screen.queryByTestId('list-search-bar')).not.toBeInTheDocument();
+        expect(state.tenantAdminSearch).toBe('');
+    });
+
+    // Found in review (PR #1530): the page went back to 1 in an effect, so a changed search was first asked
+    // for with the old page (usually empty: a flash of "no results").
+    it('asks for page 1 of a changed search at once, never for the old page', () => {
+        state.tenantAdminTotal = 30;
+        show('/admin/users?q=simpson');
+        fireEvent.click(screen.getByRole('button', { name: 'dataTable.pagination.next' }));
+        expect(state.tenantAdminRequests.at(-1)).toEqual({ search: 'simpson', current: 2 });
+
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+
+        const pagesOfNewSearch = state.tenantAdminRequests.filter((request) => request.search === '');
+        expect(pagesOfNewSearch.length).toBeGreaterThan(0);
+        expect(pagesOfNewSearch.every((request) => request.current === 1)).toBe(true);
     });
 
     it('labels invitations as navigation and points to the invitations section', () => {

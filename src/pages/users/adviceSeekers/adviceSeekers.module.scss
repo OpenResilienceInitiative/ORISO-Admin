@@ -1,0 +1,45 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 12px;
+}
+
+.hint {
+    margin: 0;
+    color: var(--admin-form-muted-text);
+    font-size: 13px;
+}
+
+.nameList {
+    max-height: 240px;
+    margin: 0 0 12px;
+    padding-left: 20px;
+    overflow-y: auto;
+    overflow-wrap: anywhere;
+}
+
+.name {
+    overflow-wrap: anywhere;
+}
+
+.failure {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    code {
+        display: block;
+        max-width: 320px;
+        font-size: 12px;
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+}
+
+.failureMeta {
+    color: var(--admin-form-muted-text);
+    font-size: 12px;
+}

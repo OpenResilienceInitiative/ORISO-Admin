@@ -2,9 +2,17 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import getDashboardStatistics from '../../api/statistic/getDashboardStatistics';
-import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint } from '../../appConfig';
+import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint, topicEndpoint } from '../../appConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
-import { buildStatisticData, emptyStatisticData, StatisticData } from './statisticDashboardData';
+import {
+    buildStatisticData,
+    emptyStatisticData,
+    StatisticData,
+    type StatisticAgencyEntry,
+    withAgencyDrill,
+} from './statisticDashboardData';
+
+export type { StatisticAgencyEntry };
 
 const NAME_LOOKUP_PAGE_SIZE = 500;
 
@@ -17,6 +25,12 @@ interface StatisticDashboardDataResult {
      * `isError`, and `data` is empty then: figures from an earlier load must not stay on screen.
      */
     isUnavailable: boolean;
+    /**
+     * A platform admin's look into one Träger (`drillTenantId`): `loading` while its dashboard comes,
+     * `unsupported` when the backend answered without that Träger's Beratungsstellen (an older
+     * UserService ignores `?tenantId=`), `failed` on an error, `idle` when nothing was asked.
+     */
+    drill: 'idle' | 'loading' | 'ready' | 'unsupported' | 'failed';
 }
 
 /**
@@ -56,14 +70,63 @@ const fetchNameLookup = async (url: string): Promise<Record<string, string>> => 
 
 const listQuery = `page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&order=ASC&field=NAME`;
 
-const fetchAgencyNames = () => fetchNameLookup(`${agencyEndpointBase}/?q=${encodeURIComponent('*')}&${listQuery}`);
+const fetchAgencyNames = () => fetchNameLookup(`${agencyEndpointBase}?q=${encodeURIComponent('*')}&${listQuery}`);
 
 const fetchTenantNames = () =>
     fetchNameLookup(
         `${tenantAdminEndpoint}/search?page=1&perPage=${NAME_LOOKUP_PAGE_SIZE}&query=&field=NAME&order=ASC`,
     );
 
-const fetchTopicNames = () => fetchNameLookup(`${topicAdminEndpoint}/?${listQuery}`);
+/**
+ * Every Beratungsstelle with its Träger: what a platform admin can pick. Reads every page. A failure
+ * is thrown, not turned into an empty list, so the page can say that the list did not load.
+ */
+const fetchAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
+    const entries: StatisticAgencyEntry[] = [];
+    for (let page = 1; ; page += 1) {
+        // eslint-disable-next-line no-await-in-loop -- pages are read one after another until all are in
+        const result = await fetchData({
+            url: `${agencyEndpointBase}?q=${encodeURIComponent(
+                '*',
+            )}&page=${page}&perPage=${NAME_LOOKUP_PAGE_SIZE}&order=ASC&field=NAME`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+        });
+        const { data, total } = Array.isArray(result)
+            ? { data: result, total: result.length }
+            : removeEmbedded(result || {});
+        const rows: Array<{ id?: number | null; name?: string; tenantId?: number | null }> = data || [];
+        rows.filter((row) => row && row.id != null && row.tenantId != null && row.name).forEach((row) =>
+            entries.push({ id: Number(row.id), name: String(row.name), tenantId: Number(row.tenantId) }),
+        );
+        const read = (page - 1) * NAME_LOOKUP_PAGE_SIZE + rows.length;
+        if (Array.isArray(result) || rows.length < NAME_LOOKUP_PAGE_SIZE || !(Number(total) > read)) return entries;
+    }
+};
+
+/** The Beratungsstellen a platform admin can look into. Off for every other role (their dashboard has them). */
+export const useStatisticAgencyDirectory = (enabled: boolean) =>
+    useQuery({
+        queryKey: ['ADMIN_STATISTICS_AGENCY_DIRECTORY'],
+        queryFn: fetchAgencyDirectory,
+        enabled,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+
+/**
+ * The topic admin list is denied to some admin roles (403 for platform admins on dev), which left
+ * the "most frequent topic" card showing a bare id. The public topic list has the same ids and names,
+ * so it fills the gaps; the admin list wins where both have a name.
+ */
+const fetchTopicNames = async () => {
+    const [adminNames, publicNames] = await Promise.all([
+        fetchNameLookup(`${topicAdminEndpoint}/?${listQuery}`),
+        fetchNameLookup(`${topicEndpoint}public`),
+    ]);
+
+    return { ...publicNames, ...adminNames };
+};
 
 /**
  * Loads the real statistics for the admin dashboard and resolves display names for
@@ -71,23 +134,47 @@ const fetchTopicNames = () => fetchNameLookup(`${topicAdminEndpoint}/?${listQuer
  * ids are shown as fallback labels instead. Only a failure of the dashboard endpoint
  * itself surfaces as an error state.
  */
-export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
+export const useStatisticDashboardData = ({
+    drillTenantId,
+}: { drillTenantId?: number } = {}): StatisticDashboardDataResult => {
     const dashboardQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_DASHBOARD'],
         queryFn: () => getDashboardStatistics(),
         staleTime: 60 * 1000,
     });
 
-    const hasAgencyTargets = Boolean(dashboardQuery.data?.targets.some((target) => target.targetType === 'AGENCY'));
     const isPlatformScope = dashboardQuery.data?.scope === 'PLATFORM';
+    const drillQuery = useQuery({
+        queryKey: ['ADMIN_STATISTICS_DASHBOARD', drillTenantId],
+        queryFn: () => getDashboardStatistics(drillTenantId),
+        enabled: isPlatformScope && drillTenantId != null,
+        staleTime: 60 * 1000,
+        retry: false,
+    });
+    const drillAnswered = drillQuery.data?.scope === 'TENANT';
 
+    const hasAgencyTargets = Boolean(
+        dashboardQuery.data?.targets.some((target) => target.targetType === 'AGENCY') ||
+            drillQuery.data?.targets.some((target) => target.targetType === 'AGENCY'),
+    );
+
+    // A platform admin's page already reads every Beratungsstelle with its name (the directory, same
+    // query key, so one request): its names are used instead of asking the same endpoint again.
+    const directoryQuery = useStatisticAgencyDirectory(isPlatformScope);
+    const directoryNames = useMemo(
+        () =>
+            directoryQuery.data &&
+            Object.fromEntries(directoryQuery.data.map((agency) => [`${agency.id}`, agency.name])),
+        [directoryQuery.data],
+    );
     const agenciesQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_AGENCY_NAMES'],
         queryFn: fetchAgencyNames,
-        enabled: hasAgencyTargets,
+        enabled: hasAgencyTargets && !isPlatformScope,
         staleTime: 5 * 60 * 1000,
         retry: false,
     });
+    const agencyNamesById = isPlatformScope ? directoryNames : agenciesQuery.data;
 
     const tenantsQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_TENANT_NAMES'],
@@ -116,17 +203,38 @@ export const useStatisticDashboardData = (): StatisticDashboardDataResult => {
             return emptyStatisticData();
         }
 
-        return buildStatisticData(dashboardQuery.data, {
-            agencyNamesById: agenciesQuery.data || {},
+        const lookups = {
+            agencyNamesById: agencyNamesById || {},
             tenantNamesById: tenantsQuery.data || {},
             topicNamesById: topicsQuery.data || {},
-        });
-    }, [dashboardQuery.data, isUnavailable, agenciesQuery.data, tenantsQuery.data, topicsQuery.data]);
+        };
+        const platform = buildStatisticData(dashboardQuery.data, lookups);
+
+        return drillAnswered && drillQuery.data
+            ? withAgencyDrill(platform, buildStatisticData(drillQuery.data, lookups))
+            : platform;
+    }, [
+        dashboardQuery.data,
+        drillAnswered,
+        drillQuery.data,
+        isUnavailable,
+        agencyNamesById,
+        tenantsQuery.data,
+        topicsQuery.data,
+    ]);
+
+    let drill: StatisticDashboardDataResult['drill'] = 'idle';
+    if (isPlatformScope && drillTenantId != null) {
+        if (drillQuery.isError) drill = 'failed';
+        else if (drillQuery.isLoading) drill = 'loading';
+        else drill = drillAnswered ? 'ready' : 'unsupported';
+    }
 
     return {
         data,
         isLoading: dashboardQuery.isLoading,
         isError: dashboardQuery.isError && !isUnavailable,
         isUnavailable,
+        drill,
     };
 };

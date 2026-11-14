@@ -17,21 +17,12 @@
     display: flex;
     min-width: 0;
     align-items: flex-start;
+    justify-content: flex-end;
     gap: 8px;
-}
-
-.searchRow {
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 100%;
 }
 
 @media (max-width: 767px) {
     .toolbar {
         flex-wrap: wrap;
-    }
-
-    .searchRow {
-        flex-basis: 100%;
     }
 }

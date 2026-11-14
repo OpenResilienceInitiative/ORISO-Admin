@@ -5,6 +5,9 @@ import { TenantsList } from './index';
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
+    // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
+    query: '',
+    setSearchParams: vi.fn(),
     deleteTenant: vi.fn(),
     deleteOptions: undefined as { onSuccess?: () => void; onError?: () => void } | undefined,
     useTenantsData: vi.fn(),
@@ -64,6 +67,7 @@ vi.mock('react-router-dom', () => ({
         </a>
     ),
     useNavigate: () => mocks.navigate,
+    useSearchParams: () => [new URLSearchParams(mocks.query ? { q: mocks.query } : {}), mocks.setSearchParams],
 }));
 
 vi.mock('../../../components/Page', () => {
@@ -71,12 +75,6 @@ vi.mock('../../../components/Page', () => {
     Page.Title = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
     return { Page };
 });
-
-vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
-        <div data-testid="global-search">{children}</div>
-    ),
-}));
 
 vi.mock('../../../components/Modal', () => ({
     Modal: ({ onConfirm, titleKeyOptions }: { onConfirm: () => void; titleKeyOptions: { name: string } }) => (
@@ -153,6 +151,8 @@ const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElem
 
 describe('TenantsList in the accounts-table design (#1184)', () => {
     beforeEach(() => {
+        mocks.query = '';
+        mocks.setSearchParams.mockReset();
         mocks.navigate.mockReset();
         mocks.deleteTenant.mockReset();
         mocks.useTenantsData.mockReset();
@@ -199,6 +199,42 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             'href',
             'mailto:third@nord.example',
         );
+    });
+
+    it('has no search field of its own and narrows the list by ?q= from the admin search', () => {
+        withTenants([tenant()]);
+        mocks.query = 'nord';
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'nord', page: 1 }));
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„nord“');
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+        expect(mocks.setSearchParams).toHaveBeenCalled();
+    });
+
+    // Found in review (PR #1530): the page went back to 1 in an effect, so a new ?q= first asked for the old
+    // page with the new search (usually empty: a flash of "no results").
+    it('asks for page 1 of a new search at once, never for the old page', () => {
+        mocks.useTenantsData.mockReturnValue({ data: { total: 30, data: [tenant()] }, isLoading: false });
+        const { rerender } = render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: '', page: 2 }));
+
+        mocks.query = 'nord';
+        rerender(<TenantsList />);
+
+        const pagesOfNewSearch = mocks.useTenantsData.mock.calls
+            .map(([params]) => params)
+            .filter((params) => params.search === 'nord')
+            .map((params) => params.page);
+        expect(pagesOfNewSearch.length).toBeGreaterThan(0);
+        expect(pagesOfNewSearch.every((page) => page === 1)).toBe(true);
+
+        // Paging on within the new search still works.
+        fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'nord', page: 2 }));
     });
 
     it('shows sortable tenant columns and forwards the selected sort to tenant search', async () => {

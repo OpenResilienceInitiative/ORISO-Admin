@@ -19,7 +19,6 @@ import { groupHits, prepareIndex, searchIndex, type HitGroup } from './searchEng
 import {
     GROUP_OF_KIND,
     SEARCH_GROUPS,
-    SEARCH_LEVELS,
     type SearchDoc,
     type SearchFilters,
     type SearchGroup,
@@ -49,6 +48,12 @@ export interface AdminSearchViewProps {
     /** Called with every query change; the container debounces it into the list requests. */
     onQueryChange?: (query: string) => void;
     onOpen: (doc: SearchDoc, query: string) => void;
+    /**
+     * Opens the list page of a group (Träger, Beratungsstellen, Konten) narrowed to the query. The
+     * lists have no search field of their own: this row is how a search becomes a filtered list.
+     * Leave it out and the row is not shown.
+     */
+    onOpenList?: (group: ListGroup, query: string) => void;
     onClose: () => void;
     /**
      * Called when the view starts to close (before its shrink animation). From then on the search
@@ -72,6 +77,11 @@ export interface AdminSearchViewProps {
 }
 
 const groupOf = (doc: SearchDoc): SearchGroup => GROUP_OF_KIND[doc.kind];
+
+/** Groups that have a list page which can show every match (`?q=`). */
+export const LIST_GROUPS = ['tenants', 'agencies', 'accounts'] as const;
+export type ListGroup = (typeof LIST_GROUPS)[number];
+const isListGroup = (group: SearchGroup): group is ListGroup => (LIST_GROUPS as readonly string[]).includes(group);
 
 /** Groups shown per query before "show more". */
 const PER_GROUP = 4;
@@ -110,7 +120,10 @@ const renderTitle = (title: string, ranges: Array<[number, number]>): ReactNode 
 };
 
 /** One stop of the arrow keys: a hit, or the "Show n more" row that ends a long group. */
-type NavRow = { kind: 'hit'; hit: SearchHit } | { kind: 'more'; group: SearchGroup; count: number };
+type NavRow =
+    | { kind: 'hit'; hit: SearchHit }
+    | { kind: 'more'; group: SearchGroup; count: number }
+    | { kind: 'list'; group: ListGroup };
 
 const toggle = <T,>(list: T[] | undefined, value: T): T[] =>
     list?.includes(value) ? list.filter((item) => item !== value) : [...(list ?? []), value];
@@ -132,6 +145,7 @@ export const AdminSearchView = ({
     entitiesFailed = false,
     onQueryChange,
     onOpen,
+    onOpenList,
     onClose,
     onClosing,
     initialQuery = '',
@@ -171,23 +185,17 @@ export const AdminSearchView = ({
         const extra: SearchHit[] = entityDocs
             .filter((doc) => !foundIds.has(doc.id))
             .filter((doc) => !active.kinds?.length || active.kinds.some((group) => groupOf(doc) === group))
-            .filter((doc) => !active.levels?.length || (doc.level && active.levels.includes(doc.level)))
             .map((doc) => ({ doc, score: 20, matchedField: 'title' as const, titleRanges: [] }));
 
         return [...found, ...extra];
     };
 
-    // Level counts and group chips are computed without the chip they belong to, so a chip never
-    // shows "0" just because it is the one switched on.
+    // Group chip counts are computed without the chips, so a chip never shows "0" just because it is
+    // the one switched on.
     const baseHits = useMemo(
-        () =>
-            trimmed
-                ? withPassthrough(searchIndex(prepared, trimmed, { levels: filters.levels }, NO_LIMIT), {
-                      levels: filters.levels,
-                  })
-                : [],
+        () => (trimmed ? withPassthrough(searchIndex(prepared, trimmed, {}, NO_LIMIT), {}) : []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [prepared, trimmed, filters.levels, entityDocs, entityQuery],
+        [prepared, trimmed, entityDocs, entityQuery],
     );
 
     const hits = useMemo(
@@ -218,8 +226,9 @@ export const AdminSearchView = ({
             visibleGroups.flatMap((group) => [
                 ...group.shown.map((hit): NavRow => ({ kind: 'hit', hit })),
                 ...(group.more > 0 ? [{ kind: 'more' as const, group: group.group, count: group.more }] : []),
+                ...(onOpenList && isListGroup(group.group) ? [{ kind: 'list' as const, group: group.group }] : []),
             ]),
-        [visibleGroups],
+        [visibleGroups, onOpenList],
     );
     const countsByGroup = useMemo(() => {
         const counts = new Map<SearchGroup, number>();
@@ -279,7 +288,18 @@ export const AdminSearchView = ({
         setQuery(value);
         refocusField();
     };
-    const activate = (row: NavRow) => (row.kind === 'hit' ? open(row.hit) : showAll(row.group));
+    const openList = (group: ListGroup) => {
+        if (closing || !onOpenList) {
+            return;
+        }
+        onOpenList(group, trimmed);
+        requestClose();
+    };
+    const activate = (row: NavRow) => {
+        if (row.kind === 'hit') open(row.hit);
+        else if (row.kind === 'list') openList(row.group);
+        else showAll(row.group);
+    };
 
     const onKeyDown = (event: KeyboardEvent) => {
         // The cursor through the results belongs to the combobox (aria-activedescendant). On a chip,
@@ -334,7 +354,7 @@ export const AdminSearchView = ({
     );
     const levelLabel = (level: SearchLevel) => t(`adminSearch.level.${level}`);
     const groupLabel = (group: SearchGroup) => t(`adminSearch.group.${group}`);
-    const filtersActive = !!(filters.kinds?.length || filters.levels?.length);
+    const filtersActive = !!filters.kinds?.length;
     const activeId = rows[activeIndex] ? `${listId}-option-${activeIndex}` : undefined;
 
     const chip = (label: string, on: boolean, onClick: () => void, count?: number, key?: string) => (
@@ -441,34 +461,22 @@ export const AdminSearchView = ({
                     <div className={styles.progressIdle} />
                 )}
 
-                <div className={styles.chips} role="group" aria-label={t('adminSearch.filter.label')}>
-                    {typeChips.length > 0 && (
-                        <>
-                            <span className={styles.chipLabel}>{t('adminSearch.filter.type')}</span>
-                            {typeChips.map((group) =>
-                                chip(
-                                    groupLabel(group),
-                                    !!filters.kinds?.includes(group),
-                                    () =>
-                                        setFilters((current) => ({ ...current, kinds: toggle(current.kinds, group) })),
-                                    trimmed ? countsByGroup.get(group) ?? 0 : undefined,
-                                    `type-${group}`,
-                                ),
-                            )}
-                            <span className={styles.chipDivider} aria-hidden />
-                        </>
-                    )}
-                    <span className={styles.chipLabel}>{t('adminSearch.filter.level')}</span>
-                    {SEARCH_LEVELS.map((level) =>
-                        chip(
-                            levelLabel(level),
-                            !!filters.levels?.includes(level),
-                            () => setFilters((current) => ({ ...current, levels: toggle(current.levels, level) })),
-                            undefined,
-                            `level-${level}`,
-                        ),
-                    )}
-                </div>
+                {/* One chip row only: a second "level" row (Plattform, Träger, Beratungsstelle) repeated Träger and
+                    Beratungsstelle as another kind of filter. A setting's level is still the badge on its row. */}
+                {typeChips.length > 0 && (
+                    <div className={styles.chips} role="group" aria-label={t('adminSearch.filter.label')}>
+                        <span className={styles.chipLabel}>{t('adminSearch.filter.type')}</span>
+                        {typeChips.map((group) =>
+                            chip(
+                                groupLabel(group),
+                                !!filters.kinds?.includes(group),
+                                () => setFilters((current) => ({ ...current, kinds: toggle(current.kinds, group) })),
+                                trimmed ? countsByGroup.get(group) ?? 0 : undefined,
+                                `type-${group}`,
+                            ),
+                        )}
+                    </div>
+                )}
 
                 {/* The results scroll inside the panel; axe (scrollable-region-focusable) wants such a region reachable by keyboard. */}
                 {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
@@ -658,6 +666,32 @@ export const AdminSearchView = ({
                                                         onClick={() => showAll(group.group)}
                                                     >
                                                         {t('adminSearch.group.more', { count: group.more })}
+                                                    </li>
+                                                );
+                                            })()}
+                                        {onOpenList &&
+                                            isListGroup(group.group) &&
+                                            (() => {
+                                                optionNumber += 1;
+                                                const number = optionNumber;
+                                                const active = number === activeIndex;
+                                                const listGroup = group.group;
+
+                                                return (
+                                                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- same as the hits: keys go through the input
+                                                    <li
+                                                        id={`${listId}-option-${number}`}
+                                                        role="option"
+                                                        aria-selected={active}
+                                                        data-active={active}
+                                                        data-list-row={listGroup}
+                                                        className={classNames(styles.more, {
+                                                            [styles.rowActive]: active,
+                                                        })}
+                                                        onMouseMove={() => active || setActiveIndex(number)}
+                                                        onClick={() => openList(listGroup)}
+                                                    >
+                                                        {t('adminSearch.group.inList')}
                                                     </li>
                                                 );
                                             })()}

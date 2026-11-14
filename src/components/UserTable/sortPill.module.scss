@@ -37,8 +37,15 @@
     white-space: nowrap;
 }
 
-.value {
+.value,
+.dateValue {
     font-weight: 600;
+}
+
+.dateValue {
+    display: flex;
+    flex-direction: column;
+    text-align: start;
 }
 
 .chevron {

@@ -106,6 +106,13 @@ beforeEach(() => {
     })) as unknown as typeof window.matchMedia;
 });
 
+// Level and Träger/Beratungsstelle are picked in one control (Admin#1510).
+const openScopePicker = () => fireEvent.click(screen.getByRole('button', { name: /^(Ansicht|View):/ }));
+const pickLevel = (name: string) => {
+    openScopePicker();
+    fireEvent.click(screen.getByRole('button', { name }));
+};
+
 describe('Statistic page', () => {
     it('initialises i18n with German translations', async () => {
         await i18n.changeLanguage('de');
@@ -121,9 +128,9 @@ describe('Statistic page', () => {
         await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
         // previous month detail is computed from the real comparison value
         expect(screen.getAllByText(/Vormonat gesamt 10/).length).toBeGreaterThan(0);
-        // metrics without an application-layer source render a lighter "not tracked yet"
-        // card that says so in words, instead of a shouty "Keine Daten" value or a bare dash
-        expect(screen.getAllByText(/^Wird noch nicht erfasst/).length).toBeGreaterThan(0);
+        // metrics the backend does not send render a lighter dashed card that says in words that
+        // there is no data source, instead of a shouty "Keine Daten" value or a bare dash
+        expect(screen.getAllByText('Für diese Kennzahl gibt es noch keine Datenquelle.').length).toBeGreaterThan(0);
         const notTrackedCards = document.querySelectorAll('.statisticDashboard__metricCard--notTracked');
         expect(notTrackedCards.length).toBeGreaterThan(0);
         notTrackedCards.forEach((card) => expect(card.textContent).not.toContain('–'));
@@ -169,6 +176,30 @@ describe('Statistic page', () => {
         const topicCall = fetchDataMock.mock.calls.find(([props]) => props.url.includes('topicadmin'));
         expect(topicCall).toBeDefined();
         expect(topicCall?.[0].responseHandling).toBeUndefined();
+    });
+
+    it('names the top topic from the public topic list when the topic admin list is denied', async () => {
+        const topicId = 7;
+        const now = new Date();
+        const month = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}`;
+        dashboardMock.mockResolvedValue({
+            ...response,
+            targets: response.targets.map((target) => ({
+                ...target,
+                monthlyTopTopics: [{ month, topicId, sessionCount: 5, sharePercent: 60 }],
+            })),
+        });
+        fetchDataMock.mockImplementation(({ url }: { url: string }) => {
+            if (url.includes('topicadmin')) return Promise.reject(new Error('API call error: 403 Forbidden'));
+            if (url.includes('/service/topic/public'))
+                return Promise.resolve([{ id: topicId, name: 'Schuldnerberatung' }]);
+            return Promise.resolve({ total: 0, _embedded: [] });
+        });
+
+        renderStatistic();
+
+        await waitFor(() => expect(screen.getAllByText('Schuldnerberatung').length).toBeGreaterThan(0));
+        expect(screen.queryByText(`#${topicId}`)).toBeNull();
     });
 
     it('shows a warning banner when small-cell suppression is disabled', async () => {
@@ -257,7 +288,7 @@ describe('Statistic page', () => {
             await screen.findByText(/^Stand 03\.11\.2026/);
             expect(document.querySelector('.statisticDashboard__emptyHero')).toBeNull();
 
-            fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
+            pickLevel('Beratungsstellen');
 
             await waitFor(() => expect(document.querySelector('.statisticDashboard__emptyHero')).not.toBeNull());
         });
@@ -543,7 +574,7 @@ describe('Statistic page', () => {
                 groupChatCountsByPeriod: null,
             });
         const tenantResponse = (targets: AdminDashboardStatisticsResponse['targets']) => ({ ...response, targets });
-        const openAgencyLevel = () => fireEvent.click(screen.getByRole('tab', { name: 'Beratungsstellen' }));
+        const openAgencyLevel = () => pickLevel('Beratungsstellen');
         const rowNotice = /kann auch einen größeren Bereich treffen/;
         const totalNotice = /Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/;
 
@@ -615,7 +646,7 @@ describe('Statistic page', () => {
             renderStatistic();
             await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
 
-            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            openScopePicker();
             fireEvent.click(await screen.findByRole('option', { name: /Beratungsstelle 12/ }));
 
             await expectPrivacyReason(rowNotice);
@@ -654,11 +685,35 @@ describe('Statistic page', () => {
             });
             renderStatistic();
             await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
-            fireEvent.focus(screen.getByRole('textbox', { name: 'Beratungsstellen oder Träger suchen' }));
+            openScopePicker();
             fireEvent.click(await screen.findByRole('option', { name: /Träger 6/ }));
 
             await expectPrivacyReason(rowNotice);
             expect(screen.queryByText(totalNotice)).toBeNull();
+        });
+
+        // Found in review (PR #1530): a picked Träger loaded that Träger's dashboard (`?tenantId=`) on every
+        // level, and the Träger level waited for it although it does not use it.
+        it("asks for a picked Träger's dashboard only on the Beratungsstellen level", async () => {
+            roleState.isSuperAdmin = true;
+            const platformTarget = { ...agencyRow(0), targetType: 'PLATFORM' as const, tenantId: null, agencyId: null };
+            const tenantTarget = { ...agencyRow(0), targetType: 'TENANT' as const, tenantId: 5, agencyId: null };
+            dashboardMock.mockImplementation((tenantId?: number) =>
+                tenantId == null
+                    ? Promise.resolve({ ...response, scope: 'PLATFORM', targets: [platformTarget, tenantTarget] })
+                    : new Promise(() => {}),
+            );
+            renderStatistic();
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+            openScopePicker();
+            fireEvent.click(await screen.findByRole('option', { name: /Träger 5/ }));
+            await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+            expect(dashboardMock).not.toHaveBeenCalledWith(5);
+
+            openScopePicker();
+            fireEvent.click(screen.getByRole('button', { name: /^(Beratungsstellen|Counselling centres)$/ }));
+            await waitFor(() => expect(dashboardMock).toHaveBeenCalledWith(5));
         });
 
         it('does not render the tutorial section while the dashboard is unavailable', async () => {

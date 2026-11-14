@@ -180,7 +180,8 @@ const preview: Preview = {
             <StoryProviders>
                 <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
                     <AntdApp component={false}>
-                        <MemoryRouter>
+                        {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
+                        <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
                             <Story />
                         </MemoryRouter>
                         {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}

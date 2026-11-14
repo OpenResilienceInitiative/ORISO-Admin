@@ -2,13 +2,30 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useNavigate } from 'react-router-dom';
 import type { AdminSidebarNavItem } from '../Layout/AdminSidebar';
 import type { AdminNavSubsection } from '../Layout/adminNavTree';
-import { AdminSearchView } from './AdminSearchView';
+import { AdminSearchView, type ListGroup } from './AdminSearchView';
+import routePathNames from '../../appConfig';
+import { listPathWithQuery } from '../../hooks/useListQuery';
 import { rememberSearch } from './recentSearches';
 import type { SearchDoc } from './searchTypes';
 import { useAdminSearchIndex } from './useAdminSearchIndex';
 import { useSearchEntities } from './useSearchEntities';
 import { useTileTarget } from './useTileTarget';
 import { withTileTarget } from './tileTarget';
+
+/** Where "Show all matches in the list" goes for each group. */
+const LIST_PATHS: Record<ListGroup, string> = {
+    tenants: routePathNames.tenants,
+    agencies: routePathNames.agency,
+    accounts: routePathNames.users,
+};
+
+/**
+ * The list "Show all matches in the list" opens. Konten has three tabs (Berater, Beratungsstellen-Admins,
+ * Träger-Admins) and the plain users path shows the Berater tab, so accounts go to the tab of their
+ * hits: the first tab in that order that has one. `docs` are the entity hits for the typed query.
+ */
+export const listPathFor = (group: ListGroup, docs: SearchDoc[]): string =>
+    (group === 'accounts' && docs.find((doc) => doc.kind === 'account' && doc.listPath)?.listPath) || LIST_PATHS[group];
 
 interface AdminSearchContextValue {
     isOpen: boolean;
@@ -97,6 +114,15 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing
         },
         [navigate],
     );
+    const onOpenList = useCallback(
+        (group: ListGroup, typed: string) => {
+            rememberSearch(typed);
+            // Rows of an older query must not pick the tab.
+            const hits = forQuery === typed.trim() ? docs : [];
+            navigate(listPathWithQuery(listPathFor(group, hits), typed));
+        },
+        [navigate, docs, forQuery],
+    );
 
     return (
         <AdminSearchView
@@ -107,6 +133,7 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing
             entitiesFailed={hasError}
             onQueryChange={setQuery}
             onOpen={onOpen}
+            onOpenList={onOpenList}
             onClose={onClose}
             onClosing={onClosing}
             origin={origin}
