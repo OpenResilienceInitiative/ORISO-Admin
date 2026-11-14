@@ -59,3 +59,6 @@ export const useTenantRecipientScopeMutation = (tenantId: string) => {
         },
     });
 };
+
+/** Saves the Träger's calendar policies (ADR-032): same rules as the recipient scope above. */
+export const useTenantCalendarPoliciesMutation = useTenantRecipientScopeMutation;
