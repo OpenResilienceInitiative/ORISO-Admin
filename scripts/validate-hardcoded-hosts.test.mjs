@@ -93,7 +93,8 @@ describe('validate-hardcoded-hosts.sh', () => {
         const bareNewUrl = 'var api=new URL(`http://localhost`);fetch(api);';
         const otherParam = 'var vU=new URL(`http://localhost`);function yU(e){if(t.createURL)return e.createURL(`/`)}';
         const mixedQuotes = 'var vU=new URL(`http://localhost");function yU(e){if(e.createURL)return e.createURL(`/`)}';
-        const withPort = 'var vU=new URL(`http://localhost:3000`);function yU(e){if(e.createURL)return e.createURL(`/`)}';
+        const withPort =
+            'var vU=new URL(`http://localhost:3000`);function yU(e){if(e.createURL)return e.createURL(`/`)}';
         expect(runGuardOn(bareNewUrl).status, bareNewUrl).toBe(1);
         expect(runGuardOn(otherParam).status, otherParam).toBe(1);
         expect(runGuardOn(mixedQuotes).status, mixedQuotes).toBe(1);
