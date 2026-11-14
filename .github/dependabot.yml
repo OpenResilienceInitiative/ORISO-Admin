@@ -44,6 +44,9 @@ updates:
           # Majors are upgraded deliberately, never by bot.
           - dependency-name: '*'
             update-types: ['version-update:semver-major']
+          # axe-core is pinned by version and hash in the a11y verification guard
+          # (scripts/verification-axe-witness.mjs); bump it deliberately with that review.
+          - dependency-name: 'axe-core'
 
     - package-ecosystem: 'github-actions'
       directories:

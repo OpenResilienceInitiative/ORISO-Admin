@@ -139,7 +139,7 @@
     "@vitejs/plugin-react": "^6.3.0",
     "@vitest/browser-playwright": "5.1.0",
     "@vitest/coverage-v8": "5.1.0",
-    "axe-core": "^4.14.0",
+    "axe-core": "^4.12.1",
     "concurrently": "^6.0.2",
     "cross-env": "^7.0.2",
     "cypress": "^15.21.1",

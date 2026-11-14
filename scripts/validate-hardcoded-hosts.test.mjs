@@ -52,7 +52,7 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(runGuardOn(routerMixed, 'vendor-ui-test.js').status, 'router line').toBe(1);
     });
 
-    it('allows the two third-party defaults found in the real bundle', () => {
+    it('allows the OTLP and router-base defaults found in the real bundle', () => {
         const otel = 'function Y(e,t){return{headers:async()=>e,url:`http://localhost:4318/`+t}}';
         const router = 'let r=`http://localhost`;e&&(r=e.location.origin===`null`?e.location.href:e.location.origin)';
         expect(runGuardOn(otel).status, otel).toBe(0);
@@ -84,6 +84,20 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(runGuardOn(otherVariable).status, otherVariable).toBe(1);
         expect(runGuardOn(otherWindow).status, otherWindow).toBe(1);
         expect(runGuardOn(mixedQuotes).status, mixedQuotes).toBe(1);
+    });
+
+    it('allows react-router fallback navigator URL only in its own shape', () => {
+        const fallback =
+            'var vU=new URL(`http://localhost`);function yU(e){if(e.createURL)return e.createURL(`/`);try{return new URL(e.createHref(`/`),vU)}catch{return vU}}';
+        expect(runGuardOn(fallback, 'vendor-ui-test.js').status, fallback).toBe(0);
+        const bareNewUrl = 'var api=new URL(`http://localhost`);fetch(api);';
+        const otherParam = 'var vU=new URL(`http://localhost`);function yU(e){if(t.createURL)return e.createURL(`/`)}';
+        const mixedQuotes = 'var vU=new URL(`http://localhost");function yU(e){if(e.createURL)return e.createURL(`/`)}';
+        const withPort = 'var vU=new URL(`http://localhost:3000`);function yU(e){if(e.createURL)return e.createURL(`/`)}';
+        expect(runGuardOn(bareNewUrl).status, bareNewUrl).toBe(1);
+        expect(runGuardOn(otherParam).status, otherParam).toBe(1);
+        expect(runGuardOn(mixedQuotes).status, mixedQuotes).toBe(1);
+        expect(runGuardOn(withPort).status, withPort).toBe(1);
     });
 
     it('does not flag names that merely start with localhost', () => {
