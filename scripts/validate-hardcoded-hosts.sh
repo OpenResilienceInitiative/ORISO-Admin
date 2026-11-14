@@ -34,11 +34,13 @@ done
 # similar names never match.
 URL_PATTERN='["'"'"'`]https?://localhost([:/?#][^"'"'"'`[:space:]]*["'"'"'`]?|["'"'"'`])'
 
-# Two third-party defaults that never become an ORISO request, allowed only in their own code:
+# Three third-party defaults that never become an ORISO request, allowed only in their own code:
 # the OpenTelemetry OTLP exporter's built-in default, which appends the signal path
-# (`url:"http://localhost:4318/"+path`; the app always passes an explicit metrics URL), and
+# (`url:"http://localhost:4318/"+path`; the app always passes an explicit metrics URL),
 # react-router's base for parsing relative paths, which it reassigns right away from the window
-# (`r="http://localhost";w&&(r=w.location.origin`, same variable). They are cut out of each file
+# (`r="http://localhost";w&&(r=w.location.origin`, same variable), and react-router's (>= 7.18.5)
+# fallback navigator URL, used only to compare origins when the navigator cannot build one
+# (`U=new URL("http://localhost");function f(n){if(n.createURL)return n.createURL(`). They are cut out of each file
 # before the scan, so the same literal anywhere else still fails, whatever the chunk is called.
 # Node does the cut because the router shape needs back-references, which BSD sed -E lacks; it is
 # always present here, since this runs as npm `postbuild`.
@@ -48,7 +50,11 @@ const id = "[A-Za-z_$][\\w$]*";
 process.stdout.write(
 	source
 		.replace(/url:(["\x27`])http:\/\/localhost:4318\/\1\+/g, "")
-		.replace(new RegExp(`(${id})=(["\x27\x60])http://localhost\\2;(${id})&&\\(\\1=\\3\\.location\\.origin`, "g"), ""),
+		.replace(new RegExp(`(${id})=(["\x27\x60])http://localhost\\2;(${id})&&\\(\\1=\\3\\.location\\.origin`, "g"), "")
+		.replace(
+			new RegExp(`${id}=new URL\\((["\x27\x60])http://localhost\\1\\);function ${id}\\((${id})\\)\\{if\\(\\2\\.createURL\\)return \\2\\.createURL\\(`, "g"),
+			"",
+		),
 );
 '
 
