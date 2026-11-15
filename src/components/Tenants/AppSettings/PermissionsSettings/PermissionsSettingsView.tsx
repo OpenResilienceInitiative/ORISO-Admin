@@ -13,6 +13,7 @@ import { PolicyOptionCard } from './PolicyOptionCard';
 import { CONVERSATION_HELP } from './tileHelpTopics';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
+import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
 import {
     type EffectivePolicy,
     isSubToggleDisabled,
@@ -87,6 +88,8 @@ export type PermissionsSettingsViewProps = {
     traegerDirectInvitePolicies?: Record<string, PolicyValue<boolean>>;
     /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
     recipientScope?: Omit<RecipientScopeControlProps, 'level' | 'disabled'>;
+    /** Calendar visibility (ADR-032); like the group-chat scope it is per Träger, so none on the agency page. */
+    calendar?: Omit<CalendarCardProps, 'level'>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
 };
@@ -110,6 +113,7 @@ export const PermissionsSettingsView = ({
     pendingPolicyFields,
     onPolicyChange,
     recipientScope,
+    calendar,
     traegerDirectInvitePolicies,
     liveChatLinks,
 }: PermissionsSettingsViewProps) => {
@@ -492,6 +496,11 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardGrid.Item>
                         ))}
+                        {calendar && policyLevel !== 'agency' && (
+                            <CardGrid.Item span={2}>
+                                <CalendarCard {...calendar} level={policyLevel} />
+                            </CardGrid.Item>
+                        )}
                     </CardGrid>
                 </div>
             )}
