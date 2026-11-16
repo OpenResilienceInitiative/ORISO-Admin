@@ -10,9 +10,9 @@ vi.mock('react-i18next', () => {
 
 const NORD = { agencyId: 1, agencyName: 'Beratungsstelle Nord', role: 'CONTACT' as const };
 
-const renderSection = (props: Partial<Parameters<typeof ContactPersonForSection>[0]> = {}) =>
+const renderSection = (props: Partial<Parameters<typeof ContactPersonForSection>[0]> = {}, formDisabled = false) =>
     render(
-        <Form>
+        <Form disabled={formDisabled}>
             <ContactPersonForSection centres={[NORD]} {...props} />
         </Form>,
     );
@@ -27,6 +27,16 @@ describe('ContactPersonForSection', () => {
             'admin.contactPersonFor.loadFailed:Suchtberatung Ost',
         );
         fireEvent.click(screen.getByRole('button', { name: 'admin.contactPersonFor.retry' }));
+        expect(onRetry).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the retry usable while the editor is read-only', () => {
+        const onRetry = vi.fn();
+        renderSection({ failedCentres: ['Suchtberatung Ost'], onRetry }, true);
+
+        const retry = screen.getByRole('button', { name: 'admin.contactPersonFor.retry' });
+        expect(retry).toBeEnabled();
+        fireEvent.click(retry);
         expect(onRetry).toHaveBeenCalledTimes(1);
     });
 

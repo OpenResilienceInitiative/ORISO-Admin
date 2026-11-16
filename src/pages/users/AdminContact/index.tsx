@@ -91,7 +91,9 @@ export const ContactPersonForSection = ({
                     <p className={styles.empty} data-testid="contact-role-load-failed">
                         {t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}{' '}
                         {onRetry && (
-                            <Button type="link" onClick={onRetry}>
+                            // The editor opens read-only, and the form's `disabled` would reach this
+                            // button too. Reloading changes nothing, so it stays usable.
+                            <Button type="link" onClick={onRetry} disabled={false}>
                                 {t('admin.contactPersonFor.retry')}
                             </Button>
                         )}
