@@ -28,6 +28,17 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import {
+    AdminContactEmailField,
+    CONTACT_EMAIL_FIELD,
+    CONTACT_ROLES_FIELD,
+    ContactPersonForSection,
+    contactRolesInitialValues,
+} from '../AdminContact';
+import { centresForAdmin, planContactRoleChanges } from '../AdminContact/contactRolesModel';
+import { useAgencyContactPairs } from '../../../hooks/useContactPerson';
+import { putAgencyContactPerson } from '../../../api/contactPerson/contactPersonApi';
+import { contactEmailForSave } from '../../../utils/contactEmailForSave';
 import { ADMIN_REMARKS_ROLES } from '../../../utils/adminRemarksRoles';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
@@ -173,6 +184,23 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
+    // #1534 "Ansprechperson für": the stored pair of every centre of this agency admin.
+    const showContactRoles = isEditing && !isConsultantForm;
+    const contactRoleAgencies = useMemo(
+        () =>
+            showContactRoles
+                ? (singleData?.agencies ?? []).map((agency) => ({
+                      id: Number(agency.id),
+                      name: agency.name,
+                  }))
+                : [],
+        [showContactRoles, singleData?.agencies],
+    );
+    const { pairs: contactPairs } = useAgencyContactPairs(contactRoleAgencies, { enabled: showContactRoles });
+    const contactRoleCentres = useMemo(
+        () => (showContactRoles && id ? centresForAdmin(contactRoleAgencies, contactPairs, id) : []),
+        [showContactRoles, id, contactRoleAgencies, contactPairs],
+    );
     /**
      * ADR-008 "Supervision (auto-assigned)": an agency admin points a counsellor at one standing
      * supervisor, who is then attached read-only to every case that counsellor accepts. Editing
@@ -548,10 +576,61 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         }),
     });
 
+    // The pairs load after the form mounted; fill the role selects once, unless the admin already chose.
+    useEffect(() => {
+        if (contactRoleCentres.length === 0 || form.isFieldsTouched([CONTACT_ROLES_FIELD])) return;
+        form.setFieldValue(CONTACT_ROLES_FIELD, contactRolesInitialValues(contactRoleCentres));
+    }, [contactRoleCentres, form]);
+
+    /**
+     * #1534: one `PUT …/contactperson` per centre whose role changed. They are their own
+     * resource, so they run before the admin save, which navigates away on success.
+     * Returns false when a chosen role cannot be saved; the form then shows why.
+     */
+    const saveContactRoles = useCallback(
+        async (roles): Promise<boolean> => {
+            if (!showContactRoles || !id) return true;
+            const plan = planContactRoleChanges({ adminId: id, pairs: contactPairs, roles });
+            if (plan.errors.length > 0) {
+                form.setFields(
+                    plan.errors.map(({ agencyId, errorKey }) => ({
+                        name: [CONTACT_ROLES_FIELD, String(agencyId)],
+                        errors: [t(errorKey)],
+                    })),
+                );
+                return false;
+            }
+            if (plan.updates.length === 0) return true;
+            const results = await Promise.allSettled(
+                // No tenant hint: the service resolves the centre's Träger, and a stale one is a 400.
+                plan.updates.map(({ agencyId, update }) => putAgencyContactPerson(agencyId, update)),
+            );
+            queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON'] });
+            if (results.some((result) => result.status === 'rejected')) {
+                message.warning({ content: t('admin.contactPersonFor.saveFailed') });
+            }
+            return true;
+        },
+        [showContactRoles, id, contactPairs, form, t, queryClient],
+    );
+
     const persist = useCallback(
-        (data, byCentre: TopicsByCentre, onError?: () => void) => {
+        async (data, byCentre: TopicsByCentre, onError?: () => void) => {
             const payload = { ...data };
             delete payload.topicsByAgency;
+            delete payload[CONTACT_ROLES_FIELD];
+            if (!isConsultantForm) {
+                // Absent keeps the stored contact e-mail, "" clears it.
+                payload[CONTACT_EMAIL_FIELD] = contactEmailForSave(
+                    data[CONTACT_EMAIL_FIELD],
+                    (singleData as { contactEmail?: string | null } | undefined)?.contactEmail,
+                    isEditing,
+                );
+                if (!(await saveContactRoles(data[CONTACT_ROLES_FIELD]))) {
+                    onError?.();
+                    return;
+                }
+            }
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
             // null = keep what is stored. Used when the pickers never loaded, and when a topic the
             // centre dropped is still held and nothing changed: the server would reject it (400).
@@ -593,6 +672,8 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             serverStoresTopicsPerCentre,
             mutate,
             canWriteStandingSupervisor,
+            saveContactRoles,
+            singleData,
         ],
     );
 
@@ -967,6 +1048,7 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                                     usernameLocked={isEditing}
                                     setupEmailHint={!isEditing && typeOfUsers === TypeOfUser.Consultants}
                                 />
+                                {!isConsultantForm && <AdminContactEmailField disabled={isReadOnly} />}
                             </Card>
                         </Col>
                         <Col xs={24} lg={12}>
@@ -1050,6 +1132,10 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                                     {/* OBP 2.1 #107: the first standing supervisor asks about the privacy policy. */}
                                     {confirmSupervision.dialog}
                                 </Card>
+
+                                {showContactRoles && (
+                                    <ContactPersonForSection centres={contactRoleCentres} disabled={isReadOnly} />
+                                )}
 
                                 {isConsultantForm && (
                                     <Card titleKey="counselor.publicSlug.status.title">
