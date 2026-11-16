@@ -587,17 +587,26 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         }),
     });
 
+    /**
+     * #1534: centres whose role the admin changed. Kept outside the form: when a centre's pair
+     * fails to reload its row unmounts, and an unmounted field reads as untouched and drops out
+     * of the submitted values, so the form alone would forget the edit.
+     */
+    const contactRolesEditedRef = useRef<Set<string>>(new Set());
+    const contactRoleChangedByAdmin = useCallback(
+        (agencyId: string) => contactRolesEditedRef.current.has(agencyId),
+        [],
+    );
+
     // The pairs load after the form mounted and may reload; refresh every row the admin has not
     // changed. A programmatic fill does not mark a row as touched, so later reloads still apply.
     useEffect(() => {
         if (contactRoleCentres.length === 0) return;
         form.setFieldValue(
             CONTACT_ROLES_FIELD,
-            refreshedRoles(form.getFieldValue(CONTACT_ROLES_FIELD), contactRoleCentres, (agencyId) =>
-                form.isFieldTouched([CONTACT_ROLES_FIELD, agencyId]),
-            ),
+            refreshedRoles(form.getFieldValue(CONTACT_ROLES_FIELD), contactRoleCentres, contactRoleChangedByAdmin),
         );
-    }, [contactRoleCentres, form]);
+    }, [contactRoleCentres, form, contactRoleChangedByAdmin]);
 
     /** #1534: the role PUTs run before the admin save, which navigates away on success. */
     const onContactRolePlanErrors = useCallback(
@@ -617,10 +626,6 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                 content: t('admin.contactPersonFor.saveFailedFor', { centres: centreNames.join(', ') }),
             }),
         [message, t],
-    );
-    const contactRoleChangedByAdmin = useCallback(
-        (agencyId: string) => form.isFieldTouched([CONTACT_ROLES_FIELD, agencyId]),
-        [form],
     );
     const contactRoleCentreName = useCallback(
         (agencyId: number) =>
@@ -650,7 +655,8 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                     (singleData as { contactEmail?: string | null } | undefined)?.contactEmail,
                     isEditing,
                 );
-                if (!(await saveContactRoles(data[CONTACT_ROLES_FIELD]))) {
+                // From the store, not `data`: a row that unmounted after a failed reload still counts.
+                if (!(await saveContactRoles(form.getFieldValue(CONTACT_ROLES_FIELD)))) {
                     onError?.();
                     return;
                 }
@@ -698,6 +704,7 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             canWriteStandingSupervisor,
             saveContactRoles,
             singleData,
+            form,
         ],
     );
 
@@ -1037,6 +1044,9 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }
+                        Object.keys(changedValues[CONTACT_ROLES_FIELD] ?? {}).forEach((agencyId) =>
+                            contactRolesEditedRef.current.add(agencyId),
+                        );
                         if (canChangeTraeger && 'tenantId' in changedValues) {
                             resetCentresForTraeger(changedValues.tenantId);
                         }
