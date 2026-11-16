@@ -618,11 +618,22 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             }),
         [message, t],
     );
+    const contactRoleChangedByAdmin = useCallback(
+        (agencyId: string) => form.isFieldTouched([CONTACT_ROLES_FIELD, agencyId]),
+        [form],
+    );
+    const contactRoleCentreName = useCallback(
+        (agencyId: number) =>
+            contactRoleAgencies.find((agency) => Number(agency.id) === agencyId)?.name || `#${agencyId}`,
+        [contactRoleAgencies],
+    );
     const { saveContactRoles, saving: savingContactRoles } = useContactRoleSaver({
         enabled: showContactRoles,
         adminId: id,
         pairs: contactPairs,
         centres: contactRoleCentres,
+        changedByAdmin: contactRoleChangedByAdmin,
+        nameOf: contactRoleCentreName,
         onPlanErrors: onContactRolePlanErrors,
         onSaveFailed: onContactRoleSaveFailed,
     });

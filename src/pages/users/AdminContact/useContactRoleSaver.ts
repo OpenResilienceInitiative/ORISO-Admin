@@ -10,6 +10,10 @@ interface ContactRoleSaverOptions {
     adminId: string | undefined;
     pairs: Record<number, AgencyContactPersonAdmin | undefined>;
     centres: ContactPersonForCentre[];
+    /** Whether the admin changed this centre's role in the form. */
+    changedByAdmin: (agencyId: string) => boolean;
+    /** Display name of a centre, also one whose pair is not loaded. */
+    nameOf: (agencyId: number) => string;
     /** A chosen role that cannot be saved; nothing was sent. */
     onPlanErrors: (errors: ContactRolePlan['errors']) => void;
     /** Names of the centres whose `PUT …/contactperson` was rejected. */
@@ -27,6 +31,8 @@ export const useContactRoleSaver = ({
     adminId,
     pairs,
     centres,
+    changedByAdmin,
+    nameOf,
     onPlanErrors,
     onSaveFailed,
 }: ContactRoleSaverOptions) => {
@@ -38,6 +44,15 @@ export const useContactRoleSaver = ({
         async (roles: Record<string, ContactRole | undefined> | undefined): Promise<boolean> => {
             if (!enabled || !adminId) return true;
             if (inFlight.current) return false;
+            // The planner skips a centre whose pair is not loaded. If the admin changed that role,
+            // saving on would navigate away and drop the change unseen.
+            const unrefreshed = Object.entries(roles ?? {})
+                .filter(([key, role]) => role && !pairs[Number(key)] && changedByAdmin(key))
+                .map(([key]) => nameOf(Number(key)));
+            if (unrefreshed.length > 0) {
+                onSaveFailed(unrefreshed);
+                return false;
+            }
             const plan = planContactRoleChanges({ adminId, pairs, roles });
             if (plan.errors.length > 0) {
                 onPlanErrors(plan.errors);
@@ -64,7 +79,7 @@ export const useContactRoleSaver = ({
                 setSaving(false);
             }
         },
-        [enabled, adminId, pairs, centres, onPlanErrors, onSaveFailed, queryClient],
+        [enabled, adminId, pairs, centres, changedByAdmin, nameOf, onPlanErrors, onSaveFailed, queryClient],
     );
 
     return { saveContactRoles, saving };

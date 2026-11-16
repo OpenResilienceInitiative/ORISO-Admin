@@ -28,7 +28,9 @@ const deferred = () => {
     return { promise, resolve };
 };
 
-const setup = () => {
+const NAMES: Record<number, string> = { 1: 'Springfield Nord', 2: 'Springfield Süd' };
+
+const setup = ({ changed = ['1', '2'] }: { changed?: string[] } = {}) => {
     const queryClient = new QueryClient();
     const refetch = deferred();
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockReturnValue(refetch.promise);
@@ -36,19 +38,21 @@ const setup = () => {
     const wrapper = ({ children }: { children: React.ReactNode }) => (
         <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(
-        () =>
+    const { result, rerender } = renderHook(
+        ({ currentPairs }: { currentPairs: Record<number, unknown> }) =>
             useContactRoleSaver({
                 enabled: true,
                 adminId: 'me',
-                pairs: pairs as never,
+                pairs: currentPairs as never,
                 centres,
+                changedByAdmin: (agencyId) => changed.includes(agencyId),
+                nameOf: (agencyId) => NAMES[agencyId],
                 onPlanErrors: vi.fn(),
                 onSaveFailed,
             }),
-        { wrapper },
+        { wrapper, initialProps: { currentPairs: pairs as Record<number, unknown> } },
     );
-    return { result, refetch, invalidate, onSaveFailed };
+    return { result, rerender, refetch, invalidate, onSaveFailed };
 };
 
 describe('useContactRoleSaver (ORISO-Admin#1534)', () => {
@@ -60,7 +64,7 @@ describe('useContactRoleSaver (ORISO-Admin#1534)', () => {
         mocks.putAgencyContactPerson.mockImplementation((agencyId: number) =>
             agencyId === 2 ? Promise.reject(new Error('400')) : Promise.resolve(undefined),
         );
-        const { result, refetch, invalidate, onSaveFailed } = setup();
+        const { result, rerender, refetch, invalidate, onSaveFailed } = setup();
         const roles = { '1': 'DEPUTY' as const, '2': 'DEPUTY' as const };
 
         let first: Promise<boolean> = Promise.resolve(true);
@@ -86,6 +90,43 @@ describe('useContactRoleSaver (ORISO-Admin#1534)', () => {
         await expect(first).resolves.toBe(false);
         expect(onSaveFailed).toHaveBeenCalledWith(['Springfield Süd']);
         expect(result.current.saving).toBe(false);
+
+        // The retry plans against the refreshed pairs: Nord is stored now, only Süd is sent again.
+        rerender({ currentPairs: { ...pairs, 1: { agencyId: 1, contact: admin('other'), deputy: admin('me') } } });
+        mocks.putAgencyContactPerson.mockReset().mockResolvedValue(undefined);
+        let retried = false;
+        await act(async () => {
+            const retry = result.current.saveContactRoles(roles);
+            refetch.resolve();
+            retried = await retry;
+        });
+        expect(retried).toBe(true);
+        expect(mocks.putAgencyContactPerson).toHaveBeenCalledTimes(1);
+        expect(mocks.putAgencyContactPerson).toHaveBeenCalledWith(2, { contactAdminId: 'other', deputyAdminId: 'me' });
+    });
+
+    it('refuses to save when a centre the admin changed has no refreshed pair', async () => {
+        const { result, rerender, invalidate, onSaveFailed } = setup({ changed: ['2'] });
+        rerender({ currentPairs: { 1: pairs[1] } });
+        let saved = true;
+        await act(async () => {
+            saved = await result.current.saveContactRoles({ '1': 'NONE', '2': 'DEPUTY' });
+        });
+        expect(saved).toBe(false);
+        expect(onSaveFailed).toHaveBeenCalledWith(['Springfield Süd']);
+        expect(mocks.putAgencyContactPerson).not.toHaveBeenCalled();
+        expect(invalidate).not.toHaveBeenCalled();
+    });
+
+    it('lets an unchanged centre without a pair pass, so a failed load alone does not block the save', async () => {
+        const { result, rerender, onSaveFailed } = setup({ changed: [] });
+        rerender({ currentPairs: { 1: pairs[1] } });
+        let saved = false;
+        await act(async () => {
+            saved = await result.current.saveContactRoles({ '1': 'NONE', '2': 'DEPUTY' });
+        });
+        expect(saved).toBe(true);
+        expect(onSaveFailed).not.toHaveBeenCalled();
     });
 
     it('needs no refetch and no saving state when no role changed', async () => {
