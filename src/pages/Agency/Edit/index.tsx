@@ -56,6 +56,9 @@ import pageStyles from '../../../components/Page/styles.module.scss';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { useSingleTenantData } from '../../../hooks/useSingleTenantData';
+import { AgencyErstantwortSettings } from '../../../components/Tenants/AppSettings/ErstantwortSettings/AgencyErstantwort';
+import type { ErstantwortContentMap } from '../../../components/Tenants/AppSettings/ErstantwortSettings/ErstantwortTextsCard';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
@@ -75,7 +78,7 @@ function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
 const DEFAULT_MIN_AGE = 18;
 const DEFAULT_MAX_AGE = 100;
 
-type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
+type AgencySettingsSection = 'general' | 'legal' | 'functionalities' | 'erstantwort';
 
 interface AgencyPageEditProps {
     section?: AgencySettingsSection;
@@ -115,6 +118,8 @@ const AgencyPageEditForm = ({
     const isEditing = id !== 'add';
     const isLegalSection = section === 'legal';
     const isFunctionalitiesSection = section === 'functionalities';
+    const isErstantwortSection = section === 'erstantwort';
+    const { can: canDo } = useUserPermissions();
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
@@ -163,6 +168,13 @@ const AgencyPageEditForm = ({
     else if (hasNewLegalTemplate) legalTabIcon = <LegalTemplateUnreadMarker />;
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
+    /* The centre writes the Träger's single German variant and translates into its languages. An
+       agency admin may not read the Träger: then German formal and no translation targets apply. */
+    const { data: traegerSettings } = useSingleTenantData({
+        id: agencyTenantId ?? '',
+        enabled: isErstantwortSection && agencyTenantId != null,
+        retry: false,
+    });
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -177,6 +189,12 @@ const AgencyPageEditForm = ({
                   to: `${routePathNames.agency}/${id}/legal-settings`,
                   iconName: 'legal',
                   icon: legalTabIcon,
+              },
+              // ADR-018 §6: the centre's own Erstantwort texts, above the Träger's.
+              isEditing && {
+                  titleKey: 'settings.subhead.agencyErstantwort',
+                  to: `${routePathNames.agency}/${id}/erstantwort`,
+                  iconName: 'erstantwort',
               },
               isEditing && {
                   titleKey: 'settings.subhead.functionAccess',
@@ -690,7 +708,16 @@ const AgencyPageEditForm = ({
             {isLegalSection && renderLegalSettings()}
             {isFunctionalitiesSection &&
                 (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {isErstantwortSection && isEditing && id && (
+                <AgencyErstantwortSettings
+                    agencyId={id}
+                    languageFormal={traegerSettings?.settings?.extendedSettings?.languageFormal}
+                    activeLanguages={traegerSettings?.settings?.activeLanguages}
+                    traegerContent={traegerSettings?.content as ErstantwortContentMap | undefined}
+                    readOnly={!canDo(PermissionAction.Update, Resource.Agency)}
+                />
+            )}
+            {!isLegalSection && !isFunctionalitiesSection && !isErstantwortSection && renderGeneralSettings()}
         </>
     );
 

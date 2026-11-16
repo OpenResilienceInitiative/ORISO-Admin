@@ -40,6 +40,8 @@ export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 /** Platform admin's own Erstantwort texts (Settings → Begrüßung), above the built-in default. */
+/** A Beratungsstelle's own Erstantwort texts: `${erstantwortAgencyEndpoint}/{agencyId}`. */
+export const erstantwortAgencyEndpoint = `${userServiceURL}/service/useradmin/erstantwort/agencies`;
 export const erstantwortPlatformEndpoint = `${userServiceURL}/service/useradmin/erstantwort/platform`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 /** Advice seekers for the admin interface: GET lists, DELETE /{id} marks one for deletion (ORISO-Admin#1521). */

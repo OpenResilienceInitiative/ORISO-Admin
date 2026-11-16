@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
 import { expect, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { ERSTANTWORT_PLATFORM_QUERY_KEY } from '../../../../../hooks/useErstantwortPlatformTexts.hook';
 import { PlatformGreetingSettings } from './index';
 
 /** Synthetic platform texts: the admin rewrote the German greeting and translated it to English. */
@@ -42,13 +43,16 @@ const meta = {
         },
     },
     decorators: [
-        (Story) => (
-            <QueryClientProvider
-                client={new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } })}
-            >
-                <Story />
-            </QueryClientProvider>
-        ),
+        (Story) => {
+            // Seeded like the Träger editor story: the authenticated fetch wrapper has no token here.
+            const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity, retry: false } } });
+            client.setQueryData([ERSTANTWORT_PLATFORM_QUERY_KEY], platformTexts);
+            return (
+                <QueryClientProvider client={client}>
+                    <Story />
+                </QueryClientProvider>
+            );
+        },
     ],
 } satisfies Meta<typeof PlatformGreetingSettings>;
 export default meta;

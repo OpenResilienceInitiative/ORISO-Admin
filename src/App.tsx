@@ -284,6 +284,10 @@ export const App = () => {
                                     element={<LazyAgencyPageEdit section="legal" />}
                                 />
                                 <Route
+                                    path={`${routePathNames.agency}/:id/erstantwort`}
+                                    element={<LazyAgencyPageEdit section="erstantwort" />}
+                                />
+                                <Route
                                     path={`${routePathNames.agency}/:id/functionalities`}
                                     element={<LazyAgencyPageEdit section="functionalities" />}
                                 />
