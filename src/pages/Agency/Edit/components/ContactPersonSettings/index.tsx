@@ -16,6 +16,8 @@ export interface ContactPersonSettingsProps {
     /** Opens the tile in edit mode (centre create flow). */
     editMode?: boolean;
     readOnlyAccess?: boolean;
+    /** The stored pair is still loading. */
+    isLoading?: boolean;
 }
 
 const ContactPersonTileBody = ({
@@ -60,9 +62,11 @@ export const ContactPersonSettings = ({
     onSave,
     editMode,
     readOnlyAccess,
+    isLoading,
 }: ContactPersonSettingsProps) => (
     <CardEditable
         allowUnsavedChanges
+        isLoading={isLoading}
         titleKey="agency.edit.contactPerson.title"
         headerIcon={<SupportAgentOutlinedIcon />}
         variant="dialog"

@@ -58,6 +58,14 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { AgencyContactPersonTile } from './components/ContactPersonSettings/AgencyContactPersonTile';
+import {
+    ContactPersonCreateCard,
+    contactPersonFromCreateForm,
+} from './components/ContactPersonSettings/ContactPersonCreateCard';
+import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
+import { putAgencyContactPerson } from '../../../api/contactPerson/contactPersonApi';
+import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
 import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
@@ -275,6 +283,21 @@ const AgencyPageEditForm = ({
                 onSuccess: (response) => {
                     navigate(routePathNames.agency);
 
+                    // #1534: the contact person needs the id of the new centre, so it is saved
+                    // after the centre exists. A failure keeps the centre and says so.
+                    const contactPerson = isEditing ? null : contactPersonFromCreateForm(formData);
+                    const newAgencyId = Number(response?.id);
+                    if (contactPerson && Number.isFinite(newAgencyId) && newAgencyId > 0) {
+                        const newTenantId =
+                            Number(getEntityId(response?.tenantId)) ||
+                            resolveAgencyTenantId(formData.tenantId, parseUserAuthInfo().tenantId);
+                        putAgencyContactPerson(
+                            newAgencyId,
+                            contactPerson,
+                            isSuperAdmin ? newTenantId : undefined,
+                        ).catch(() => snackbar.warning({ message: t('message.agency.contactPersonFailed') }));
+                    }
+
                     snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
@@ -289,7 +312,7 @@ const AgencyPageEditForm = ({
                 },
             });
         },
-        [buildAgencyUpdateData, canCreateAgency, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, isSuperAdmin, mutate, navigate, t],
     );
 
     /**
@@ -536,6 +559,12 @@ const AgencyPageEditForm = ({
                         />
                     ),
                 },
+                {
+                    id: 'contact-person',
+                    node: (
+                        <AgencyContactPersonTile agencyId={Number(id)} tenantId={Number(agencyTenantId) || undefined} />
+                    ),
+                },
             ];
 
             return (
@@ -568,6 +597,7 @@ const AgencyPageEditForm = ({
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
                         <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                        <ContactPersonCreateCard />
                     </CardGrid>
                 </Form>
             </ThemeProvider>
