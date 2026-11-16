@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved
 import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { http, HttpResponse, delay } from 'msw';
+import type { AnyHandler } from 'msw';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import i18n from '../../i18n';
 import { snackbar } from '../Snackbar';
@@ -988,7 +989,9 @@ export const DeferredTopicLookup: Story = {
                     await offeredTopicGate;
                     return HttpResponse.json([offeredTopic]);
                 }),
-                ...(TopiclessCentreActivationConfirmation.parameters?.msw?.handlers ?? []),
+                // The base story declares `msw: { handlers: [...] }` (an array of handlers).
+                ...((TopiclessCentreActivationConfirmation.parameters?.msw as { handlers?: AnyHandler[] } | undefined)
+                    ?.handlers ?? []),
             ],
         },
     },
