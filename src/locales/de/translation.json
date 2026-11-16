@@ -2931,6 +2931,8 @@
     "links.selfAssign.cancel": "Abbrechen",
     "agency.form.settings.counsellorTopicPermission.title": "Themen & Fachbereiche neuer Berater:innen",
     "agency.form.settings.counsellorTopicPermission.help": "Voreinstellung für jede neue Einladung in diese Beratungsstelle. In der Einladung und später in der Einladungstabelle lässt sie sich pro Person ändern.",
+    "agency.form.settings.liveChatFurtherCounselling.title": "Weitere Beratung im Live-Chat empfehlen",
+    "agency.form.settings.liveChatFurtherCounselling.help": "Wenn eingeschaltet, kann die Berater:in, die einen anonymen Live-Chat angenommen hat, eine weitere Beratung zu einem Thema empfehlen. Standardmäßig aus.",
     "links.csvImport.columnsHintV3": "Spalten: E-Mail, Vorname, Name, Träger-ID, Ziel (neu/bestehend), Rolle, Vorlage — nur E-Mail ist Pflicht. „bestehend“ lädt eine weitere Träger-Admin in den Träger mit dieser Nummer ein; leere Träger-IDs werden für neue Träger automatisch vergeben; eine leere Vorlage nimmt die aus der Leiste.",
     "links.composer.topics.noneShort": "Keine weiteren",
     "links.composer.topics.selectExistingShort": "Auswählen",
