@@ -1201,7 +1201,7 @@
         "fileName": "addons.svg",
         "sourcePath": "src/resources/img/svg/nav-glyphs/addons.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/NavGlyph/index.tsx"],
+        "usageFiles": ["src/components/NavGlyph/index.tsx", "src/pages/Logs/LogsTabsLayout.tsx"],
         "usage": "app-used"
     },
     {

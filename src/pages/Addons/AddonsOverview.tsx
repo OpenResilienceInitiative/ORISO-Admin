@@ -1,4 +1,4 @@
-import { Alert, Empty, Spin } from 'antd';
+import { Alert, Empty } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { M3Select } from '../../components/M3Select';
 import type { AdminAddon } from '../../addons/addonTypes';
 import { AddonCard } from './AddonCard';
 import { AddonInfo } from './AddonInfo';
+import { AddonsLoading } from './AddonsLoading';
 import { AddonTenantsTable } from './AddonTenantsTable';
 import { useAddonsOutletContext } from './AddonsLayout';
 import { useAdminAddons } from './useAddons';
@@ -31,7 +32,7 @@ const TenantAddon = ({
     const { t } = useTranslation();
     const addons = useAdminAddons(tenantId);
     if (addons.isLoading) {
-        return <Spin aria-label={String(t('addons.loading'))} />;
+        return <AddonsLoading />;
     }
     const addon = addons.data?.find((candidate) => candidate.manifest.name === name);
     if (addons.isError || !addon) {
@@ -88,7 +89,7 @@ export const AddonsOverview = () => {
 
     const renderContent = () => {
         if (!isSuperAdmin && listTenantId == null) {
-            return <Spin aria-label={String(t('addons.loading'))} />;
+            return <AddonsLoading />;
         }
         if (addons.isLoading) {
             return <AddonsLoading />;

@@ -1,4 +1,4 @@
-/** The add-on contract `oriso-addon/v1` (ADR-032) as ORISO-Admin sees it. */
+/** The add-on contract `oriso-addon/v1` (ADR-034) as ORISO-Admin sees it. */
 
 export const ADDON_CONTRACT = 'oriso-addon/v1';
 

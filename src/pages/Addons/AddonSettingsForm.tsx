@@ -75,7 +75,7 @@ const renderControl = (field: SettingsField, id: string) => {
     }
 };
 
-/** A settings form generated from the add-on's JSON Schema (ADR-032, section 5). */
+/** A settings form generated from the add-on's JSON Schema (ADR-034, section 5). */
 export const AddonSettingsForm = ({ formId, schema, values, saving, onSubmit }: AddonSettingsFormProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();

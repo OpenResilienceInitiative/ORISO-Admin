@@ -1,10 +1,10 @@
-import { message } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getAccessTokenForRequests } from '../api/auth/auth';
 import parseJwt from '../utils/parseJWT';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from '../utils/language';
+import { snackbar, type SnackbarApi } from '../components/Snackbar';
 import { addonApiCall } from './addonApiCall';
 import {
     ADDON_CONTRACT,
@@ -42,18 +42,17 @@ const NOTICE_MAX_LENGTH = 300;
 const plainText = (value: unknown) => (typeof value === 'string' ? value.slice(0, NOTICE_MAX_LENGTH) : '');
 
 /**
- * Shows an add-on's `notify` call with antd's `message`, as ORISO-Admin does for its own
+ * Shows an add-on's `notify` call through the snackbar channel, as ORISO-Admin does for its own
  * feedback. Unknown types become `info`; title and text are plain strings (rendered as text).
  */
-export const showAddonNotice = (notice: AddonNotice, show: typeof message = message) => {
+export const showAddonNotice = (notice: AddonNotice, show: Pick<SnackbarApi, 'notify'> = snackbar) => {
     const text = plainText(notice?.text);
     if (!text) {
         return;
     }
     const title = plainText(notice.title);
-    const content = title ? `${title}: ${text}` : text;
-    const type = (['success', 'info', 'warning', 'error'] as const).includes(notice.type) ? notice.type : 'info';
-    show[type]({ content, duration: type === 'error' || type === 'warning' ? 8 : 4 });
+    const severity = (['success', 'info', 'warning', 'error'] as const).includes(notice.type) ? notice.type : 'info';
+    show.notify(title ? { severity, title, description: text } : { severity, title: text });
 };
 
 export interface AddonTenant {

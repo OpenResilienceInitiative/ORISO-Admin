@@ -1,6 +1,7 @@
 import { Card, Collapse, Switch, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import type { AdminAddon } from '../../addons/addonTypes';
+import { snackbar } from '../../components/Snackbar';
 import { canSwitchAddonForTenant } from '../../constants/addonsAccess';
 import { AgencyOverrides } from './AgencyOverrides';
 import { AddonSettingsSection } from './AddonSettingsSection';

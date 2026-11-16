@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Radio, Switch, Table, message } from 'antd';
+import { Alert, Button, Input, Radio, Switch, Table } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import {
     type TenantName,
 } from './useAddons';
 import styles from './addons.module.scss';
+import { snackbar } from '../../components/Snackbar';
 
 export interface TenantRow {
     id: number;
@@ -66,9 +67,9 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
         setPending(row.id);
         try {
             await setAddonEnabledForTenant(addonName, row.id, enabled);
-            message.success(String(t(enabled ? 'addons.tenant.enabled' : 'addons.tenant.disabled')));
+            snackbar.success(String(t(enabled ? 'addons.tenant.enabled' : 'addons.tenant.disabled')));
         } catch {
-            message.error(String(t('addons.tenants.switchError')));
+            snackbar.error(String(t('addons.tenants.switchError')));
         } finally {
             setPending(null);
             await Promise.all([

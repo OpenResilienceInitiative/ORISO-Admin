@@ -1,9 +1,10 @@
-import { Card, Popconfirm, Switch, Tag, message } from 'antd';
+import { Card, Popconfirm, Switch, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localizedText, type AdminAddon } from '../../addons/addonTypes';
 import { useSetGlobalEnabled } from './useAddons';
 import styles from './addons.module.scss';
+import { snackbar } from '../../components/Snackbar';
 
 interface AddonInfoProps {
     addon: AdminAddon;
@@ -26,8 +27,8 @@ export const AddonInfo = ({ addon, isSuperAdmin }: AddonInfoProps) => {
 
     const apply = (enabled: boolean) =>
         setGlobal.mutate(enabled, {
-            onSuccess: () => message.success(String(t(enabled ? 'addons.global.enabled' : 'addons.global.disabled'))),
-            onError: () => message.error(String(t('addons.tenants.switchError'))),
+            onSuccess: () => snackbar.success(String(t(enabled ? 'addons.global.enabled' : 'addons.global.disabled'))),
+            onError: () => snackbar.error(String(t('addons.tenants.switchError'))),
         });
 
     const onToggle = (enabled: boolean) => (enabled ? apply(true) : setConfirmOff(true));
