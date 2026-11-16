@@ -627,7 +627,8 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                 // No tenant hint: the service resolves the centre's Träger, and a stale one is a 400.
                 plan.updates.map(({ agencyId, update }) => putAgencyContactPerson(agencyId, update)),
             );
-            queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON'] });
+            // A retry must plan against the pairs as stored now, not the ones from before this save.
+            await queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON'] });
             const failedNames = failedCentreNames(plan.updates, results, contactRoleCentres);
             if (failedNames.length > 0) {
                 // Stop here: the admin save would navigate away and the unsaved role would be lost.

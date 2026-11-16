@@ -11,8 +11,13 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../api/contactPerson/contactPersonApi', () => api);
 
-const { useAgencyContactPerson, useSaveAgencyContactPerson, useSaveTenantContactPerson, useTenantContactPerson } =
-    await import('./useContactPerson');
+const {
+    useAgencyContactPairs,
+    useAgencyContactPerson,
+    useSaveAgencyContactPerson,
+    useSaveTenantContactPerson,
+    useTenantContactPerson,
+} = await import('./useContactPerson');
 
 const deferred = <T,>() => {
     let resolve!: (value: T) => void;
@@ -68,4 +73,21 @@ describe('contact person save hooks', () => {
             await waitFor(() => expect(result.current.save.isPending).toBe(false));
         },
     );
+});
+
+describe('useAgencyContactPairs', () => {
+    it('treats a centre whose refetch failed as failed, not as its stale cached pair', async () => {
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        api.getAgencyContactPerson.mockResolvedValueOnce({ agencyId: 11, traegerDefault: {}, effectiveSource: 'OWN' });
+        const { result } = renderHook(() => useAgencyContactPairs([{ id: 11 }]), { wrapper: wrapperWith(client) });
+        await waitFor(() => expect(result.current.pairs[11]).toBeDefined());
+
+        api.getAgencyContactPerson.mockRejectedValueOnce(new Error('CATCH_ALL'));
+        await act(async () => {
+            await client.refetchQueries({ queryKey: ['CONTACT_PERSON', 'AGENCY', 11] });
+        });
+
+        await waitFor(() => expect(result.current.failedIds).toEqual([11]));
+        expect(result.current.pairs[11]).toBeUndefined();
+    });
 });

@@ -37,8 +37,8 @@ export const AgencyContactPersonTile = ({ agencyId, tenantId }: AgencyContactPer
 
     return (
         <ContactPersonSettings
-            // Remount after a save so the form starts from the stored pair.
-            key={`${data?.contact?.adminId ?? '-'}:${data?.deputy?.adminId ?? '-'}`}
+            // Remount after a save, and for another centre, so the form starts from the stored pair.
+            key={`${agencyId}:${data?.contact?.adminId ?? '-'}:${data?.deputy?.adminId ?? '-'}`}
             data={data ?? emptyData(agencyId, tenantId)}
             candidates={candidates ?? []}
             candidatesLoading={candidatesLoading}

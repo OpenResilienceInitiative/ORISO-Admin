@@ -137,8 +137,9 @@ export const useAgencyContactPairs = (
     const pairs: Record<number, AgencyContactPersonAdmin | undefined> = {};
     const failedIds: number[] = [];
     results.forEach((result, index) => {
-        if (result.data) pairs[agencies[index].id] = result.data;
-        else if (result.isError) failedIds.push(agencies[index].id);
+        // A failed refetch keeps the old `data`; a stale pair must not feed a role update.
+        if (result.isError) failedIds.push(agencies[index].id);
+        else if (result.data) pairs[agencies[index].id] = result.data;
     });
     const retryFailed = () =>
         results.forEach((result) => {

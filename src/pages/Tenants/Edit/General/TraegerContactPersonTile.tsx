@@ -39,7 +39,9 @@ export const TraegerContactPersonTile = ({ tenantId }: { tenantId: number }) => 
 
     return (
         <TraegerContactPersonCard
-            key={`${data?.contact?.adminId ?? '-'}:${data?.deputy?.adminId ?? '-'}:${data?.generalContactEmail ?? ''}`}
+            key={`${tenantId}:${data?.contact?.adminId ?? '-'}:${data?.deputy?.adminId ?? '-'}:${
+                data?.generalContactEmail ?? ''
+            }`}
             data={data ?? { tenantId }}
             candidates={candidates ?? []}
             candidatesLoading={candidatesLoading}
