@@ -175,6 +175,8 @@ export const BeratungsstellenAdmin: Story = {
                 http.get('*/service/agencyadmin/agencies', () =>
                     HttpResponse.json({ _embedded: [{ _embedded: { id: 1, postcode: '' } }], total: 1 }),
                 ),
+                // Only the coverage POST is used; the centre list above wins over its GET.
+                ...contactCoverageHandlers([{ id: 1, name: '', covered: true }]),
             ],
         },
     },

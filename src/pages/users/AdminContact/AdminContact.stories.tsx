@@ -26,7 +26,15 @@ const CENTRES: ContactPersonForCentre[] = [
     { agencyId: 4, agencyName: 'Schuldnerberatung West', role: 'NONE' },
 ];
 
-const UserPanel = ({ centres, contactEmail }: { centres: ContactPersonForCentre[]; contactEmail?: string }) => (
+const UserPanel = ({
+    centres,
+    contactEmail,
+    failedCentres,
+}: {
+    centres: ContactPersonForCentre[];
+    contactEmail?: string;
+    failedCentres?: string[];
+}) => (
     <ThemeProvider theme={orisoMuiTheme}>
         <Form
             layout="vertical"
@@ -50,7 +58,11 @@ const UserPanel = ({ centres, contactEmail }: { centres: ContactPersonForCentre[
                 </Col>
                 <Col xs={24} lg={12}>
                     <Space direction="vertical" size={20} style={{ width: '100%' }}>
-                        <ContactPersonForSection centres={centres} />
+                        <ContactPersonForSection
+                            centres={centres}
+                            failedCentres={failedCentres}
+                            onRetry={() => undefined}
+                        />
                     </Space>
                 </Col>
             </Row>
@@ -85,5 +97,21 @@ export const EmptyAdmin: Story = {
     args: { centres: [], contactEmail: undefined },
     play: async ({ canvas }) => {
         await expect(canvas.getByText('Diesem Admin ist noch keine Beratungsstelle zugeordnet.')).toBeVisible();
+    },
+};
+
+/** One centre's stored pair could not be read: the section says which one instead of hiding it. */
+export const CentreFailedToLoad: Story = {
+    args: { centres: CENTRES.slice(0, 1), failedCentres: ['Suchtberatung Ost'] },
+    play: async ({ canvas }) => {
+        await expect(
+            (
+                await canvas.findAllByText(
+                    'Die Ansprechperson dieser Beratungsstellen konnte nicht geladen werden: Suchtberatung Ost.',
+                )
+            )[0],
+        ).toBeVisible();
+        await expect(canvas.getByRole('group', { name: 'Beratungsstelle Nord' })).toBeVisible();
+        await expect(canvas.queryByText('Diesem Admin ist noch keine Beratungsstelle zugeordnet.')).toBeNull();
     },
 };

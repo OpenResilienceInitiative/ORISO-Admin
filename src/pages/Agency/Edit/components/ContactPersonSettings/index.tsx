@@ -18,6 +18,8 @@ export interface ContactPersonSettingsProps {
     readOnlyAccess?: boolean;
     /** The stored pair is still loading. */
     isLoading?: boolean;
+    /** A save is in flight; its answer remounts the tile, so no new draft may start meanwhile. */
+    saving?: boolean;
 }
 
 const ContactPersonTileBody = ({
@@ -63,9 +65,11 @@ export const ContactPersonSettings = ({
     editMode,
     readOnlyAccess,
     isLoading,
+    saving,
 }: ContactPersonSettingsProps) => (
     <CardEditable
         allowUnsavedChanges
+        allowEdit={!saving}
         isLoading={isLoading}
         titleKey="agency.edit.contactPerson.title"
         headerIcon={<SupportAgentOutlinedIcon />}

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { AgencyContactPersonAdmin, ContactAdmin } from '../../../types/contactPerson';
-import { centresForAdmin, nextPair, planContactRoleChanges, roleOf } from './contactRolesModel';
+import {
+    centresForAdmin,
+    failedCentreNames,
+    nextPair,
+    planContactRoleChanges,
+    refreshedRoles,
+    roleOf,
+} from './contactRolesModel';
 
 const admin = (adminId: string, firstName: string): ContactAdmin => ({
     adminId,
@@ -93,5 +100,43 @@ describe('planContactRoleChanges', () => {
             updates: [],
             errors: [],
         });
+    });
+});
+
+describe('refreshedRoles', () => {
+    const centres = [
+        { agencyId: 11, agencyName: 'Mitte', role: 'NONE' as const },
+        { agencyId: 12, agencyName: 'Nord', role: 'DEPUTY' as const },
+    ];
+
+    it('keeps the row the admin changed and refreshes every other row from the stored pairs', () => {
+        const next = refreshedRoles({ '11': 'CONTACT', '12': 'CONTACT' }, centres, (agencyId) => agencyId === '11');
+
+        expect(next).toEqual({ '11': 'CONTACT', '12': 'DEPUTY' });
+    });
+
+    it('fills every row when nothing was changed yet', () => {
+        expect(refreshedRoles(undefined, centres, () => false)).toEqual({ '11': 'NONE', '12': 'DEPUTY' });
+    });
+});
+
+describe('failedCentreNames', () => {
+    it('names only the centres whose save was rejected, so the form can stay open for them', () => {
+        const updates = [
+            { agencyId: 11, update: { contactAdminId: 'a' } },
+            { agencyId: 12, update: { contactAdminId: 'a' } },
+            { agencyId: 99, update: { contactAdminId: 'a' } },
+        ];
+        const results: PromiseSettledResult<unknown>[] = [
+            { status: 'fulfilled', value: {} },
+            { status: 'rejected', reason: new Error('CATCH_ALL') },
+            { status: 'rejected', reason: new Error('CATCH_ALL') },
+        ];
+        const centres = [
+            { agencyId: 11, agencyName: 'Mitte', role: 'NONE' as const },
+            { agencyId: 12, agencyName: 'Nord', role: 'NONE' as const },
+        ];
+
+        expect(failedCentreNames(updates, results, centres)).toEqual(['Nord', '#99']);
     });
 });

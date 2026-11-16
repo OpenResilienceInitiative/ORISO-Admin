@@ -30,7 +30,7 @@ export const TraegerContactPersonTile = ({ tenantId }: { tenantId: number }) => 
     const canSee = canSeeTraegerDefault(roles);
     const { data, isLoading, isError } = useTenantContactPerson(tenantId, canSee);
     const { data: candidates, isLoading: candidatesLoading } = useTenantContactCandidates(tenantId, canEdit);
-    const { mutate } = useSaveTenantContactPerson(tenantId);
+    const { mutate, isPending } = useSaveTenantContactPerson(tenantId);
 
     if (!canSee) return null;
 
@@ -45,6 +45,7 @@ export const TraegerContactPersonTile = ({ tenantId }: { tenantId: number }) => 
             candidatesLoading={candidatesLoading}
             onSave={save}
             isLoading={isLoading}
+            saving={isPending}
             // Without the stored state a save could clear a default nobody saw.
             readOnlyAccess={!canEdit || isError}
         />

@@ -30,7 +30,7 @@ export const AgencyContactPersonTile = ({ agencyId, tenantId }: AgencyContactPer
     const scopedTenant = isSuperAdmin ? tenantId : undefined;
     const { data, isLoading, isError } = useAgencyContactPerson(agencyId, scopedTenant);
     const { data: candidates, isLoading: candidatesLoading } = useAgencyContactCandidates(agencyId, scopedTenant);
-    const { mutate } = useSaveAgencyContactPerson(agencyId, scopedTenant);
+    const { mutate, isPending } = useSaveAgencyContactPerson(agencyId, scopedTenant);
 
     const save = (update: ContactPersonUpdate, options?: { onError?: () => void }) =>
         mutate(update, { onError: () => options?.onError?.() });
@@ -44,6 +44,7 @@ export const AgencyContactPersonTile = ({ agencyId, tenantId }: AgencyContactPer
             candidatesLoading={candidatesLoading}
             onSave={save}
             isLoading={isLoading}
+            saving={isPending}
             // Without the stored state a save could silently clear a contact the admin never saw.
             readOnlyAccess={isError}
         />

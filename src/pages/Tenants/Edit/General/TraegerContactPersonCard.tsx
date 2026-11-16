@@ -20,6 +20,8 @@ export interface TraegerContactPersonCardProps {
     readOnlyAccess?: boolean;
     /** The stored state is still loading. */
     isLoading?: boolean;
+    /** A save is in flight; its answer remounts the tile, so no new draft may start meanwhile. */
+    saving?: boolean;
 }
 
 /**
@@ -35,12 +37,14 @@ export const TraegerContactPersonCard = ({
     editMode,
     readOnlyAccess,
     isLoading,
+    saving,
 }: TraegerContactPersonCardProps) => {
     const { t } = useTranslation();
 
     return (
         <CardEditable
             allowUnsavedChanges
+            allowEdit={!saving}
             isLoading={isLoading}
             titleKey="tenants.contactPerson.title"
             headerIcon={<SupportAgentOutlinedIcon />}

@@ -33,9 +33,13 @@ import {
     CONTACT_EMAIL_FIELD,
     CONTACT_ROLES_FIELD,
     ContactPersonForSection,
-    contactRolesInitialValues,
 } from '../AdminContact';
-import { centresForAdmin, planContactRoleChanges } from '../AdminContact/contactRolesModel';
+import {
+    centresForAdmin,
+    failedCentreNames,
+    planContactRoleChanges,
+    refreshedRoles,
+} from '../AdminContact/contactRolesModel';
 import { useAgencyContactPairs } from '../../../hooks/useContactPerson';
 import { putAgencyContactPerson } from '../../../api/contactPerson/contactPersonApi';
 import { contactEmailForSave } from '../../../utils/contactEmailForSave';
@@ -196,7 +200,19 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                 : [],
         [showContactRoles, singleData?.agencies],
     );
-    const { pairs: contactPairs } = useAgencyContactPairs(contactRoleAgencies, { enabled: showContactRoles });
+    const {
+        pairs: contactPairs,
+        failedIds: contactPairFailedIds,
+        retryFailed: retryContactPairs,
+        isLoading: contactPairsLoading,
+    } = useAgencyContactPairs(contactRoleAgencies, { enabled: showContactRoles });
+    const contactRoleFailedCentres = useMemo(
+        () =>
+            contactRoleAgencies
+                .filter((agency) => contactPairFailedIds.includes(agency.id))
+                .map((agency) => agency.name || `#${agency.id}`),
+        [contactRoleAgencies, contactPairFailedIds],
+    );
     const contactRoleCentres = useMemo(
         () => (showContactRoles && id ? centresForAdmin(contactRoleAgencies, contactPairs, id) : []),
         [showContactRoles, id, contactRoleAgencies, contactPairs],
@@ -576,10 +592,16 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         }),
     });
 
-    // The pairs load after the form mounted; fill the role selects once, unless the admin already chose.
+    // The pairs load after the form mounted and may reload; refresh every row the admin has not
+    // changed. A programmatic fill does not mark a row as touched, so later reloads still apply.
     useEffect(() => {
-        if (contactRoleCentres.length === 0 || form.isFieldsTouched([CONTACT_ROLES_FIELD])) return;
-        form.setFieldValue(CONTACT_ROLES_FIELD, contactRolesInitialValues(contactRoleCentres));
+        if (contactRoleCentres.length === 0) return;
+        form.setFieldValue(
+            CONTACT_ROLES_FIELD,
+            refreshedRoles(form.getFieldValue(CONTACT_ROLES_FIELD), contactRoleCentres, (agencyId) =>
+                form.isFieldTouched([CONTACT_ROLES_FIELD, agencyId]),
+            ),
+        );
     }, [contactRoleCentres, form]);
 
     /**
@@ -606,12 +628,17 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                 plan.updates.map(({ agencyId, update }) => putAgencyContactPerson(agencyId, update)),
             );
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON'] });
-            if (results.some((result) => result.status === 'rejected')) {
-                message.warning({ content: t('admin.contactPersonFor.saveFailed') });
+            const failedNames = failedCentreNames(plan.updates, results, contactRoleCentres);
+            if (failedNames.length > 0) {
+                // Stop here: the admin save would navigate away and the unsaved role would be lost.
+                message.warning({
+                    content: t('admin.contactPersonFor.saveFailedFor', { centres: failedNames.join(', ') }),
+                });
+                return false;
             }
             return true;
         },
-        [showContactRoles, id, contactPairs, form, t, queryClient],
+        [showContactRoles, id, contactPairs, contactRoleCentres, form, t, queryClient],
     );
 
     const persist = useCallback(
@@ -1134,7 +1161,13 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                                 </Card>
 
                                 {showContactRoles && (
-                                    <ContactPersonForSection centres={contactRoleCentres} disabled={isReadOnly} />
+                                    <ContactPersonForSection
+                                        centres={contactRoleCentres}
+                                        disabled={isReadOnly}
+                                        loading={contactPairsLoading}
+                                        failedCentres={contactRoleFailedCentres}
+                                        onRetry={retryContactPairs}
+                                    />
                                 )}
 
                                 {isConsultantForm && (

@@ -118,23 +118,40 @@ export const agencyPageComplete = (agencies: any[], total?: number, topicsRequir
     return agencies.length > 0 && agencies.every((agency) => isAgencyComplete(agency, topicsRequired));
 };
 
-/** How many centres the contact-person tip inspects; the list endpoint returns the admin's own scope. */
+/** Page size of the centre list behind the contact-person tip; the list endpoint returns the admin's own scope. */
 const COVERAGE_PAGE_SIZE = 500;
+/** Safety stop for a list whose total keeps growing: 40 pages are 20,000 centres. */
+const COVERAGE_MAX_PAGES = 40;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, four fields read
+const loadCentresInScope = async (): Promise<any[] | undefined> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const agencies: any[] = [];
+    for (let page = 1; page <= COVERAGE_MAX_PAGES; page += 1) {
+        // eslint-disable-next-line no-await-in-loop -- each page decides whether the next is needed
+        const result = await fetchData({
+            url: `${agencyEndpointBase}?q=*&page=${page}&perPage=${COVERAGE_PAGE_SIZE}&order=ASC&field=NAME`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        }).catch(() => undefined);
+        const list = result ? removeEmbedded(result) : undefined;
+        if (!Array.isArray(list?.data)) return undefined;
+        agencies.push(...list.data);
+        // A short page, or reaching the total, means every centre in scope is loaded.
+        const total = typeof list.total === 'number' ? list.total : undefined;
+        if (list.data.length < COVERAGE_PAGE_SIZE || (total !== undefined && agencies.length >= total)) break;
+    }
+    return agencies;
+};
 
 /**
- * ORISO-Admin#1534: coverage of the centres in the admin's scope, joined with
+ * ORISO-Admin#1534: coverage of every centre in the admin's scope, joined with
  * their names and, for the platform admin's per-Träger summary, their Träger.
  */
 export const loadContactCoverage = async (): Promise<ContactCoverageRow[] | undefined> => {
-    const result = await fetchData({
-        url: `${agencyEndpointBase}?q=*&page=1&perPage=${COVERAGE_PAGE_SIZE}&order=ASC&field=NAME`,
-        method: FETCH_METHODS.GET,
-        skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
-    }).catch(() => undefined);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, four fields read
-    const agencies: any[] | undefined = result ? removeEmbedded(result)?.data : undefined;
-    if (!Array.isArray(agencies)) return undefined;
+    const agencies = await loadCentresInScope();
+    if (!agencies) return undefined;
     const ids = agencies.map((agency) => Number(agency.id)).filter((id) => Number.isFinite(id) && id > 0);
     if (ids.length === 0) return [];
     // No `tenantIdsByAgency`: the service looks up each centre's Träger itself, and a stale hint is a 400.

@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import { Card } from '../../../components/Card';
+import { Notify } from '../../../components/Notify';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { fieldIcon } from '../../../components/AddressFields';
@@ -61,9 +62,17 @@ export const contactRolesInitialValues = (centres: ContactPersonForCentre[]) =>
 export const ContactPersonForSection = ({
     centres,
     disabled,
+    loading,
+    failedCentres = [],
+    onRetry,
 }: {
     centres: ContactPersonForCentre[];
     disabled?: boolean;
+    /** The stored pairs are still loading. */
+    loading?: boolean;
+    /** Names of centres whose stored pair could not be read; their rows are left out. */
+    failedCentres?: string[];
+    onRetry?: () => void;
 }) => {
     const { t } = useTranslation();
     // The select sorts by label; "—" sorts before the letters, so "none" stays first.
@@ -72,9 +81,20 @@ export const ContactPersonForSection = ({
     return (
         <Card titleKey="admin.contactPersonFor.title" headerIcon={<SupportAgentOutlinedIcon />}>
             <p className={styles.description}>{t('admin.contactPersonFor.text')}</p>
-            {centres.length === 0 ? (
+            {failedCentres.length > 0 && (
+                <Notify
+                    severity="error"
+                    quietText={t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}
+                    actions={onRetry ? [{ label: t('admin.contactPersonFor.retry'), onClick: onRetry }] : undefined}
+                >
+                    {t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}
+                </Notify>
+            )}
+            {centres.length === 0 && loading && <p className={styles.empty}>{t('admin.contactPersonFor.loading')}</p>}
+            {centres.length === 0 && !loading && failedCentres.length === 0 && (
                 <p className={styles.empty}>{t('admin.contactPersonFor.empty')}</p>
-            ) : (
+            )}
+            {centres.length > 0 && (
                 <ul className={styles.rows}>
                     {centres.map((centre) => (
                         <li key={centre.agencyId} data-testid={`contact-role-${centre.agencyId}`}>

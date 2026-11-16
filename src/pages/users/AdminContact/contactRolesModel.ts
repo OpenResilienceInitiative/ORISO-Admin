@@ -35,6 +35,34 @@ export const centresForAdmin = (
         ];
     });
 
+/**
+ * Role values after the stored pairs (re)loaded: rows the admin changed keep the
+ * admin's choice, every other row takes the stored role. One touched row must
+ * not freeze the others, or a stale value would turn into a PUT on save.
+ */
+export const refreshedRoles = (
+    current: Record<string, ContactRole | undefined> | undefined,
+    centres: ContactPersonForCentre[],
+    changedByAdmin: (agencyId: string) => boolean,
+): Record<string, ContactRole | undefined> => ({
+    ...(current ?? {}),
+    ...Object.fromEntries(
+        centres
+            .filter((centre) => !changedByAdmin(String(centre.agencyId)))
+            .map((centre) => [String(centre.agencyId), centre.role]),
+    ),
+});
+
+/** Names of the centres whose role PUT was rejected; `results` is in the order of `updates`. */
+export const failedCentreNames = (
+    updates: ContactRolePlan['updates'],
+    results: PromiseSettledResult<unknown>[],
+    centres: ContactPersonForCentre[],
+): string[] =>
+    updates
+        .filter((_, index) => results[index]?.status === 'rejected')
+        .map(({ agencyId }) => centres.find((centre) => centre.agencyId === agencyId)?.agencyName ?? `#${agencyId}`);
+
 export interface ContactRolePlan {
     updates: Array<{ agencyId: number; update: ContactPersonUpdate }>;
     /** Centres where the chosen role cannot be saved, with the i18n key that says why. */

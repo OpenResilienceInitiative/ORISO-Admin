@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
@@ -38,6 +39,14 @@ export const ContactPersonCreateCard = () => {
     const { data: traeger } = useTenantContactPerson(tenantId, mayReadTraeger);
     const { data: candidates, isLoading } = useTenantContactCandidates(tenantId, mayReadTraeger);
     const contactId = Form.useWatch(CONTACT_FIELD, form);
+
+    // Admins of the previous Träger are no candidates of the new one; never submit their ids.
+    const previousTenantId = useRef(tenantId);
+    useEffect(() => {
+        if (previousTenantId.current === tenantId) return;
+        previousTenantId.current = tenantId;
+        form.setFieldsValue({ [CONTACT_FIELD]: null, [DEPUTY_FIELD]: null });
+    }, [form, tenantId]);
 
     // Hidden rather than empty: without the Träger list there is nobody to pick.
     if (!mayReadTraeger) return null;

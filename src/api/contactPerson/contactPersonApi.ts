@@ -11,7 +11,7 @@ import type {
     TenantContactPerson,
     TenantContactPersonUpdate,
 } from '../../types/contactPerson';
-import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 
 /**
  * Thin client for the contact-person contract (ORISO-Admin#1534); the query
@@ -23,7 +23,8 @@ const withTenant = (url: string, tenantId?: number | null) =>
     typeof tenantId === 'number' ? `${url}?tenantId=${tenantId}` : url;
 
 const READ_HANDLING = [FETCH_ERRORS.NO_MATCH, FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL];
-const WRITE_HANDLING = [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL];
+// Without CONTENT, fetchData resolves a PUT/POST with the raw Response instead of its JSON body.
+const WRITE_HANDLING = [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL];
 
 const asList = <T>(body: unknown): T[] => (Array.isArray(body) ? (body as T[]) : []);
 
@@ -104,6 +105,6 @@ export const postAgencyContactCoverage = async (
             url: agencyContactCoverageEndpoint,
             method: FETCH_METHODS.POST,
             bodyData: JSON.stringify(tenantIdsByAgency ? { agencyIds, tenantIdsByAgency } : { agencyIds }),
-            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+            responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CATCH_ALL_SILENT],
         }),
     );

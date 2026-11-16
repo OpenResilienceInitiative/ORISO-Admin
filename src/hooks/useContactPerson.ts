@@ -1,4 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import i18next from 'i18next';
 import {
     getAgencyContactCandidates,
     getAgencyContactPerson,
@@ -8,6 +9,8 @@ import {
     putAgencyContactPerson,
     putTenantContactPerson,
 } from '../api/contactPerson/contactPersonApi';
+import { FETCH_ERRORS } from '../api/fetchData';
+import { snackbar } from '../components/Snackbar';
 import type { AgencyContactPersonAdmin, ContactPersonUpdate, TenantContactPersonUpdate } from '../types/contactPerson';
 
 /**
@@ -18,6 +21,16 @@ import type { AgencyContactPersonAdmin, ContactPersonUpdate, TenantContactPerson
 
 const STALE = 30_000;
 const validId = (id?: number | null): id is number => typeof id === 'number' && Number.isFinite(id) && id > 0;
+
+/** fetchData already shows a toast for CATCH_ALL; transport failures and 400s stay silent otherwise. */
+export const reportContactSaveError = (error: unknown) => {
+    if (error instanceof Error && error.message === FETCH_ERRORS.CATCH_ALL) return;
+    snackbar.error({ content: i18next.t('contactPerson.saveFailed') as string });
+};
+
+/** A 204 or an unparsed body is not a stored pair; never put it into the cache. */
+const isStored = (saved: unknown): saved is object =>
+    typeof saved === 'object' && saved !== null && !(typeof Response !== 'undefined' && saved instanceof Response);
 
 export const contactPersonKeys = {
     agency: (agencyId?: number | null) => ['CONTACT_PERSON', 'AGENCY', agencyId ?? null] as const,
@@ -48,9 +61,11 @@ export const useSaveAgencyContactPerson = (agencyId?: number | null, tenantId?: 
     return useMutation({
         mutationFn: (update: ContactPersonUpdate) => putAgencyContactPerson(agencyId as number, update, tenantId),
         onSuccess: (saved) => {
-            if (saved) queryClient.setQueryData(contactPersonKeys.agency(agencyId), saved);
+            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.agency(agencyId), saved);
+            else queryClient.invalidateQueries({ queryKey: contactPersonKeys.agency(agencyId) });
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'COVERAGE'] });
         },
+        onError: reportContactSaveError,
     });
 };
 
@@ -75,11 +90,13 @@ export const useSaveTenantContactPerson = (tenantId?: number | null) => {
     return useMutation({
         mutationFn: (update: TenantContactPersonUpdate) => putTenantContactPerson(tenantId as number, update),
         onSuccess: (saved) => {
-            if (saved) queryClient.setQueryData(contactPersonKeys.tenant(tenantId), saved);
+            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.tenant(tenantId), saved);
+            else queryClient.invalidateQueries({ queryKey: contactPersonKeys.tenant(tenantId) });
             // A changed Träger default changes what every centre without its own contact shows.
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'AGENCY'] });
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'COVERAGE'] });
         },
+        onError: reportContactSaveError,
     });
 };
 
@@ -98,7 +115,8 @@ export const useAgencyContactCoverage = (
 
 /**
  * The stored pair of each given centre, for the section "Ansprechperson für"
- * of an admin. A centre that fails to load is missing from `pairs`.
+ * of an admin. A centre that fails to load is missing from `pairs` and listed
+ * in `failedIds`; `retryFailed` loads those again.
  */
 export const useAgencyContactPairs = (
     agencies: Array<{ id: number }>,
@@ -114,8 +132,14 @@ export const useAgencyContactPairs = (
         })),
     });
     const pairs: Record<number, AgencyContactPersonAdmin | undefined> = {};
+    const failedIds: number[] = [];
     results.forEach((result, index) => {
         if (result.data) pairs[agencies[index].id] = result.data;
+        else if (result.isError) failedIds.push(agencies[index].id);
     });
-    return { pairs, isLoading: results.some((result) => result.isLoading) };
+    const retryFailed = () =>
+        results.forEach((result) => {
+            if (result.isError) result.refetch();
+        });
+    return { pairs, failedIds, retryFailed, isLoading: results.some((result) => result.isLoading) };
 };

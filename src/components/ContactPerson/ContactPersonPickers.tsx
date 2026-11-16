@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Form, type FormInstance } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { MuiSelectField } from '../mui/MuiSelectField';
@@ -33,6 +34,12 @@ export const ContactPersonPickers = ({
     const watched: string | null | undefined = Form.useWatch(CONTACT_FIELD, form);
     // useWatch is still undefined on the first render; the store already holds the initial value.
     const contactId: string | null | undefined = watched === undefined ? form?.getFieldValue(CONTACT_FIELD) : watched;
+    const deputyId: string | null | undefined = Form.useWatch(DEPUTY_FIELD, form);
+
+    // A disabled deputy would keep its value and fail validation ("deputy needs a contact") on save.
+    useEffect(() => {
+        if (form && !contactId && deputyId) form.setFieldValue(DEPUTY_FIELD, null);
+    }, [form, contactId, deputyId]);
     const translate = (key: string) => t(key);
 
     return (

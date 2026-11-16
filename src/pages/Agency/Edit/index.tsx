@@ -1,5 +1,5 @@
 import { Button, Form } from 'antd';
-import { ReactElement, useCallback, useEffect, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -272,19 +272,24 @@ const AgencyPageEditForm = ({
         [initialValues],
     );
 
+    // Mutation callbacks are skipped after an unmount; the dependent contact write must not be (#1534).
+    const isMounted = useRef(true);
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
+
     const persistAgency = useCallback(
         (formData) => {
             if (!isEditing && !canCreateAgency) return;
 
-            mutate(buildAgencyUpdateData(formData), {
-                onError: () => {
-                    setSubmitted(false);
-                },
-                onSuccess: (response) => {
-                    navigate(routePathNames.agency);
-
+            mutateAsync(buildAgencyUpdateData(formData)).then(
+                (response) => {
                     // #1534: the contact person needs the id of the new centre, so it is saved
-                    // after the centre exists. A failure keeps the centre and says so.
+                    // after the centre exists, even if the user has left the page meanwhile.
+                    // A failure keeps the centre and says so.
                     const contactPerson = isEditing ? null : contactPersonFromCreateForm(formData);
                     const newAgencyId = Number(response?.id);
                     if (contactPerson && Number.isFinite(newAgencyId) && newAgencyId > 0) {
@@ -298,6 +303,9 @@ const AgencyPageEditForm = ({
                         ).catch(() => snackbar.warning({ message: t('message.agency.contactPersonFailed') }));
                     }
 
+                    if (!isMounted.current) return;
+                    navigate(routePathNames.agency);
+
                     snackbar.success({
                         message: t(`message.agency.${isEditing ? 'updated' : 'add'}`),
                         duration: 3,
@@ -310,9 +318,12 @@ const AgencyPageEditForm = ({
                     setSubmitted(false);
                     setReadOnly(true);
                 },
-            });
+                () => {
+                    if (isMounted.current) setSubmitted(false);
+                },
+            );
         },
-        [buildAgencyUpdateData, canCreateAgency, isEditing, isSuperAdmin, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, isSuperAdmin, mutateAsync, navigate, t],
     );
 
     /**
