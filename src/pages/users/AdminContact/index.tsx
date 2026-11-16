@@ -1,3 +1,4 @@
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
@@ -82,15 +83,26 @@ export const ContactPersonForSection = ({
         <Card titleKey="admin.contactPersonFor.title" headerIcon={<SupportAgentOutlinedIcon />}>
             <p className={styles.description}>{t('admin.contactPersonFor.text')}</p>
             {failedCentres.length > 0 && (
-                <Notify
-                    severity="error"
-                    quietText={t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}
-                    actions={onRetry ? [{ label: t('admin.contactPersonFor.retry'), onClick: onRetry }] : undefined}
-                >
-                    {t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}
-                </Notify>
+                <>
+                    <Notify severity="error">
+                        {t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}
+                    </Notify>
+                    {/* The pop-up can be closed; the text and its retry stay in the tile. */}
+                    <p className={styles.empty} data-testid="contact-role-load-failed">
+                        {t('admin.contactPersonFor.loadFailed', { centres: failedCentres.join(', ') })}{' '}
+                        {onRetry && (
+                            <Button type="link" onClick={onRetry}>
+                                {t('admin.contactPersonFor.retry')}
+                            </Button>
+                        )}
+                    </p>
+                </>
             )}
-            {centres.length === 0 && loading && <p className={styles.empty}>{t('admin.contactPersonFor.loading')}</p>}
+            {loading && (
+                <p className={styles.empty} role="status">
+                    {t('admin.contactPersonFor.loading')}
+                </p>
+            )}
             {centres.length === 0 && !loading && failedCentres.length === 0 && (
                 <p className={styles.empty}>{t('admin.contactPersonFor.empty')}</p>
             )}

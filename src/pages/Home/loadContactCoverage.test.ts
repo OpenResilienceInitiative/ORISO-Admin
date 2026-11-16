@@ -82,6 +82,15 @@ describe('loadContactCoverage (ORISO-Admin#1534)', () => {
         expect(coverageMock).not.toHaveBeenCalled();
     });
 
+    it('stays unknown when the safety stop leaves centres unread', async () => {
+        const fullPage = { _embedded: Array.from({ length: 500 }, (_, i) => ({ id: i + 1 })), total: 20_001 };
+        fetchDataMock.mockResolvedValue(fullPage);
+
+        expect(await loadContactCoverage()).toBeUndefined();
+        expect(fetchDataMock).toHaveBeenCalledTimes(40);
+        expect(coverageMock).not.toHaveBeenCalled();
+    });
+
     it('makes no coverage call without centres', async () => {
         fetchDataMock.mockResolvedValue({ _embedded: [], total: 0 });
 

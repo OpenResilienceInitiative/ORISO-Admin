@@ -60,10 +60,12 @@ export const useSaveAgencyContactPerson = (agencyId?: number | null, tenantId?: 
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (update: ContactPersonUpdate) => putAgencyContactPerson(agencyId as number, update, tenantId),
-        onSuccess: (saved) => {
-            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.agency(agencyId), saved);
-            else queryClient.invalidateQueries({ queryKey: contactPersonKeys.agency(agencyId) });
+        // Returning the refetch keeps the mutation pending until the stored pair is back, so the
+        // tile stays locked until its key (and with it the form) has settled.
+        onSuccess: async (saved) => {
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'COVERAGE'] });
+            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.agency(agencyId), saved);
+            else await queryClient.invalidateQueries({ queryKey: contactPersonKeys.agency(agencyId) });
         },
         onError: reportContactSaveError,
     });
@@ -89,12 +91,13 @@ export const useSaveTenantContactPerson = (tenantId?: number | null) => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (update: TenantContactPersonUpdate) => putTenantContactPerson(tenantId as number, update),
-        onSuccess: (saved) => {
-            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.tenant(tenantId), saved);
-            else queryClient.invalidateQueries({ queryKey: contactPersonKeys.tenant(tenantId) });
+        // As above: a body-less answer keeps the tile locked until the refetch is back.
+        onSuccess: async (saved) => {
             // A changed Träger default changes what every centre without its own contact shows.
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'AGENCY'] });
             queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON', 'COVERAGE'] });
+            if (isStored(saved)) queryClient.setQueryData(contactPersonKeys.tenant(tenantId), saved);
+            else await queryClient.invalidateQueries({ queryKey: contactPersonKeys.tenant(tenantId) });
         },
         onError: reportContactSaveError,
     });

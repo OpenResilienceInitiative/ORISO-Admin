@@ -140,9 +140,12 @@ const loadCentresInScope = async (): Promise<any[] | undefined> => {
         agencies.push(...list.data);
         // A short page, or reaching the total, means every centre in scope is loaded.
         const total = typeof list.total === 'number' ? list.total : undefined;
-        if (list.data.length < COVERAGE_PAGE_SIZE || (total !== undefined && agencies.length >= total)) break;
+        if (list.data.length < COVERAGE_PAGE_SIZE || (total !== undefined && agencies.length >= total)) {
+            return agencies;
+        }
     }
-    return agencies;
+    // The safety stop left centres unread: an incomplete list would hide their tip, so stay unknown.
+    return undefined;
 };
 
 /**
