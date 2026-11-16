@@ -7,6 +7,7 @@ import { fieldIcon } from '../../../../components/AddressFields';
 import { ContactPersonPickers } from '../../../../components/ContactPerson/ContactPersonPickers';
 import styles from '../../../../components/ContactPerson/styles.module.scss';
 import type { ContactAdmin, TenantContactPerson, TenantContactPersonUpdate } from '../../../../types/contactPerson';
+import { contactEmailForSave } from '../../../../utils/contactEmailForSave';
 
 export interface TraegerContactPersonCardProps {
     data: TenantContactPerson;
@@ -17,6 +18,8 @@ export interface TraegerContactPersonCardProps {
     editMode?: boolean;
     /** BST admins see the Träger default but cannot set it. */
     readOnlyAccess?: boolean;
+    /** The stored state is still loading. */
+    isLoading?: boolean;
 }
 
 /**
@@ -31,12 +34,14 @@ export const TraegerContactPersonCard = ({
     onSave,
     editMode,
     readOnlyAccess,
+    isLoading,
 }: TraegerContactPersonCardProps) => {
     const { t } = useTranslation();
 
     return (
         <CardEditable
             allowUnsavedChanges
+            isLoading={isLoading}
             titleKey="tenants.contactPerson.title"
             headerIcon={<SupportAgentOutlinedIcon />}
             variant="dialog"
@@ -54,7 +59,11 @@ export const TraegerContactPersonCard = ({
                     {
                         contactAdminId: values.contactAdminId || null,
                         deputyAdminId: values.contactAdminId ? values.deputyAdminId || null : null,
-                        generalContactEmail: values.generalContactEmail?.trim() || null,
+                        generalContactEmail: contactEmailForSave(
+                            values.generalContactEmail,
+                            data.generalContactEmail,
+                            true,
+                        ),
                     },
                     options,
                 );
