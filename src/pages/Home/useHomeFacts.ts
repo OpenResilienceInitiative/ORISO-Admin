@@ -19,6 +19,8 @@ import removeEmbedded from '../../utils/removeEmbedded';
 import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import { isOwnSmtpServerComplete } from '../../utils/smtpCompleteness';
 import type { DpaStatusFact, HomeFacts, HomeRole, OwnTenantFacts } from './homeModel';
+import { postAgencyContactCoverage } from '../../api/contactPerson/contactPersonApi';
+import type { ContactCoverageRow } from './contactPersonTip';
 
 /**
  * The counts Home shows (ORISO-Admin#1323). One request per fact, page size 1,
@@ -116,6 +118,41 @@ export const agencyPageComplete = (agencies: any[], total?: number, topicsRequir
     return agencies.length > 0 && agencies.every((agency) => isAgencyComplete(agency, topicsRequired));
 };
 
+/** How many centres the contact-person tip inspects; the list endpoint returns the admin's own scope. */
+const COVERAGE_PAGE_SIZE = 500;
+
+/**
+ * ORISO-Admin#1534: coverage of the centres in the admin's scope, joined with
+ * their names and, for the platform admin's per-Träger summary, their Träger.
+ */
+export const loadContactCoverage = async (): Promise<ContactCoverageRow[] | undefined> => {
+    const result = await fetchData({
+        url: `${agencyEndpointBase}?q=*&page=1&perPage=${COVERAGE_PAGE_SIZE}&order=ASC&field=NAME`,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+    }).catch(() => undefined);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- list payload, four fields read
+    const agencies: any[] | undefined = result ? removeEmbedded(result)?.data : undefined;
+    if (!Array.isArray(agencies)) return undefined;
+    const ids = agencies.map((agency) => Number(agency.id)).filter((id) => Number.isFinite(id) && id > 0);
+    if (ids.length === 0) return [];
+    // No `tenantIdsByAgency`: the service looks up each centre's Träger itself, and a stale hint is a 400.
+    const coverage = await postAgencyContactCoverage(ids).catch(() => undefined);
+    if (!coverage || coverage.length === 0) return undefined;
+    const byId = new Map(agencies.map((agency) => [Number(agency.id), agency]));
+    return coverage.map((row) => {
+        const agency = byId.get(row.agencyId);
+        return {
+            agencyId: row.agencyId,
+            agencyName: agency?.name ?? `#${row.agencyId}`,
+            covered: row.covered,
+            tenantId: agency?.tenantId ?? null,
+            tenantName: agency?.tenantName ?? null,
+        };
+    });
+};
+
 export interface HomeFactAccess {
     role: HomeRole;
     /** From the token: 0 for the platform admin, null for an unreadable or missing claim. */
@@ -182,6 +219,14 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
         // there must show as soon as the admin comes back to Home.
         { staleTime: 0 },
     );
+    const contactCoverage = useFact(
+        tenantId,
+        'contact-coverage',
+        access.role !== 'other' && access.canReadAgencies,
+        loadContactCoverage,
+        // The tip links to the centre editor; a contact set there must clear it on return.
+        { staleTime: 0 },
+    );
     const tenants = useFact(tenantId, 'tenants', access.role === 'platform' && access.canReadTenants, () =>
         getTotal(`${tenantAdminEndpoint}/search?page=1&perPage=1&query=*&field=NAME&order=ASC`),
     );
@@ -212,5 +257,6 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
         acceptedCounsellorInvites: unitInvites ? unitInvites.DONE ?? 0 : undefined,
         openInvites: sum([...OPEN_PHASES], tenantInvites, unitInvites),
         needsActionInvites: sum(['NEEDS_ACTION'], tenantInvites, unitInvites),
+        contactCoverage: contactCoverage ?? undefined,
     };
 };
