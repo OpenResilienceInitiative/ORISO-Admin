@@ -88,9 +88,9 @@ vi.mock('../../../components/Card', () => ({
 vi.mock('../../../components/mui/MuiSelectField', async () => {
     const { Form, Input } = await vi.importActual<typeof import('antd')>('antd');
     return {
-        MuiSelectField: ({ name, label }: { name: string; label: string }) => (
+        MuiSelectField: ({ name, label, disabled }: { name: string; label: string; disabled?: boolean }) => (
             <Form.Item name={name}>
-                <Input aria-label={label} />
+                <Input aria-label={label} disabled={disabled} />
             </Form.Item>
         ),
     };
@@ -197,5 +197,33 @@ describe('admin edit: "Ansprechperson für" after a failed reload', () => {
             }),
         );
         expect(mocks.putAgencyContactPerson).toHaveBeenCalledTimes(1);
+    });
+
+    it('locks the role selectors while the role save runs', async () => {
+        let finishPut: () => void = () => undefined;
+        mocks.putAgencyContactPerson.mockImplementation(
+            () =>
+                new Promise<void>((resolve) => {
+                    finishPut = resolve;
+                }),
+        );
+        const user = userEvent.setup();
+        render(<Editor client={new QueryClient()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        const role = within(await screen.findByRole('group', { name: 'Springfield Süd' })).getByLabelText(
+            'admin.contactPersonFor.role',
+        );
+        await user.clear(role);
+        await user.type(role, 'DEPUTY');
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+        await waitFor(() => expect(mocks.putAgencyContactPerson).toHaveBeenCalledTimes(1));
+        // A change now would miss the running plan and be dropped by the admin save.
+        expect(role).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+
+        finishPut();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
     });
 });

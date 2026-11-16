@@ -1170,7 +1170,8 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                                 {showContactRoles && (
                                     <ContactPersonForSection
                                         centres={contactRoleCentres}
-                                        disabled={isReadOnly}
+                                        // The save plans from the values at Save; a later change would be lost.
+                                        disabled={isReadOnly || savingContactRoles}
                                         loading={contactPairsLoading}
                                         failedCentres={contactRoleFailedCentres}
                                         onRetry={retryContactPairs}
