@@ -1450,3 +1450,76 @@ describe('AgencyPageEdit section menu', () => {
         expect(tabTargets()).toEqual(['/admin/agency/add/general']);
     });
 });
+
+// ORISO-Frontend#2251: the switch must survive the real Edit save and reload path, not only a local form.
+describe('AgencyPageEdit live-chat further counselling', () => {
+    const SWITCH_NAME = 'agency.form.settings.liveChatFurtherCounselling.title';
+    const FIELD = 'featureLiveChatFurtherCounsellingEnabled';
+    const roles = {
+        trägerAdmin: { isSuperAdmin: false, isTenantScopedAdmin: true, tenantId: 7 },
+        restrictedAdmin: { isSuperAdmin: false, isTenantScopedAdmin: false, tenantId: 7 },
+    };
+
+    const renderEdit = (settings: Record<string, unknown>, flags = roles.trägerAdmin) => {
+        mocks.userRoles = { ...mocks.userRoles, ...flags };
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+            settings,
+        };
+        return renderWithClient(<AgencyPageEdit />);
+    };
+    const save = () => fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
+    const savedSettings = () => mocks.mutate.mock.calls[0][0].settings;
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.tenantTopics = [TOPIC];
+        mocks.hasConsultants = true;
+    });
+
+    it.each([
+        ['enables', false, true],
+        ['disables', true, false],
+    ])('%s it through the update payload and shows the saved value after a reload', async (_label, stored, next) => {
+        const user = setupUser();
+        const view = renderEdit({ [FIELD]: stored });
+
+        await user.click(screen.getByRole('switch', { name: SWITCH_NAME }));
+        save();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(savedSettings()).toMatchObject({ [FIELD]: next });
+
+        // Reload with what the server now holds.
+        view.unmount();
+        renderEdit(savedSettings());
+        const reloaded = screen.getByRole('switch', { name: SWITCH_NAME });
+        if (next) expect(reloaded).toBeChecked();
+        else expect(reloaded).not.toBeChecked();
+    });
+
+    it('shows a stored null as off', () => {
+        renderEdit({ [FIELD]: null });
+
+        expect(screen.getByRole('switch', { name: SWITCH_NAME })).not.toBeChecked();
+    });
+
+    it("leaves a stored true out of a restricted admin's unrelated save", async () => {
+        renderEdit({ [FIELD]: true }, roles.restrictedAdmin);
+
+        expect(screen.queryByRole('switch', { name: SWITCH_NAME })).not.toBeInTheDocument();
+        save();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        // Not sent, so useAgencyUpdate keeps the stored value (see its test) instead of overwriting it.
+        expect(savedSettings()?.[FIELD]).toBeUndefined();
+    });
+});

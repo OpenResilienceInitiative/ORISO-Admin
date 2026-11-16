@@ -2931,6 +2931,8 @@
     "links.selfAssign.cancel": "Cancel",
     "agency.form.settings.counsellorTopicPermission.title": "Topics & departments of new counsellors",
     "agency.form.settings.counsellorTopicPermission.help": "Default for every new invite into this counselling centre. It can be changed per person in the invite and later in the invite table.",
+    "agency.form.settings.liveChatFurtherCounselling.title": "Recommend further counselling in the live chat",
+    "agency.form.settings.liveChatFurtherCounselling.help": "When on, the counsellor who accepted an anonymous live chat can recommend further counselling on a topic. Off by default.",
     "links.csvImport.columnsHintV3": "Columns: e-mail, first name, name, provider ID, target (new/existing), role, template — only the e-mail is required. “existing” invites another provider admin into the provider with that number; empty provider IDs are assigned automatically for new providers; an empty template uses the one in the bar.",
     "links.composer.topics.noneShort": "No more",
     "links.composer.topics.selectExistingShort": "Select",
