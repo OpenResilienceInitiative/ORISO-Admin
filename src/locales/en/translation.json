@@ -1270,6 +1270,7 @@
     "settings.subhead.globalConfig": "Configuration",
     "settings.subhead.legal": "Legal",
     "settings.subhead.erstantwort": "Introduction for advice seekers",
+    "settings.subhead.topics": "Topics",
     "settings.subhead.permissions": "Permissions",
     "settings.subhead.smtp": "Email server",
     "settings.subhead.view": "Appearance",

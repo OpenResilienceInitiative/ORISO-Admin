@@ -130,6 +130,9 @@ export const useUserRolesToPermission = () => {
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
+            // The platform admin manages the platform-wide topic catalogue (Settings → Themen), whether
+            // or not the registration uses topics yet. Träger admins do not.
+            ...(isSuperAdmin ? { Topic: { read: true, create: true, update: true, delete: true } } : {}),
         },
         [UserRole.TopicAdmin]: {
             Topic: { read: isTopicsEnabled, create: isTopicsEnabled, update: isTopicsEnabled, delete: isTopicsEnabled },
