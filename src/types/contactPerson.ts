@@ -30,7 +30,7 @@ export interface ContactPair {
 /** `GET /useradmin/agencies/{agencyId}/contactperson`. */
 export interface AgencyContactPersonAdmin extends ContactPair {
     agencyId: number;
-    tenantId: number | null;
+    tenantId?: number | null;
     traegerDefault: ContactPair;
     effectiveSource: ContactSource;
 }
@@ -48,7 +48,8 @@ export interface ContactPersonUpdate {
 }
 
 export interface TenantContactPersonUpdate extends ContactPersonUpdate {
-    generalContactEmail?: string | null;
+    /** Absent keeps the stored address, "" clears it. */
+    generalContactEmail?: string;
 }
 
 /** One row of `POST /useradmin/agencycontacts/coverage`. */

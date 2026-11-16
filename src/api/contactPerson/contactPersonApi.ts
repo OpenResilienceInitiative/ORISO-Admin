@@ -14,9 +14,9 @@ import type {
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
 /**
- * Thin client for the contact-person contract (ORISO-Admin#1534). Not wired into
- * pages yet; the tiles take the same shapes as props. `tenantId` is only honoured
- * by the service for platform admins — Träger and BST admins always get their own.
+ * Thin client for the contact-person contract (ORISO-Admin#1534); the query
+ * hooks live in `hooks/useContactPerson`. `tenantId` is only honoured by the
+ * service for platform admins — Träger and BST admins always get their own.
  */
 
 const withTenant = (url: string, tenantId?: number | null) =>
@@ -76,7 +76,10 @@ export const putTenantContactPerson = (
         bodyData: JSON.stringify({
             contactAdminId: update.contactAdminId || null,
             deputyAdminId: update.deputyAdminId || null,
-            generalContactEmail: update.generalContactEmail?.trim() || null,
+            // Absent keeps the stored address, "" clears it.
+            ...(typeof update.generalContactEmail === 'string'
+                ? { generalContactEmail: update.generalContactEmail.trim() }
+                : {}),
         }),
         responseHandling: WRITE_HANDLING,
     });
