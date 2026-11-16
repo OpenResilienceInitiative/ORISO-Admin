@@ -40,6 +40,7 @@ import {
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
     LazyErstantwortSettingsPage,
+    LazyGreetingSettingsPage,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
@@ -221,6 +222,12 @@ export const App = () => {
                                         )}
                                         {canReadLegalText && (
                                             <Route path={tenantLegalSettingsPath} element={<LazyLegalSettingsPage />} />
+                                        )}
+                                        {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
+                                            <Route
+                                                path={`${routePathNames.themeSettings}/greeting`}
+                                                element={<LazyGreetingSettingsPage />}
+                                            />
                                         )}
                                         {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
                                             <Route

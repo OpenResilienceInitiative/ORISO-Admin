@@ -37,6 +37,10 @@ export const LazyErstantwortSettingsPage = lazyNamed(
     () => import('./TenantSettings/ErstantwortSettings'),
     'ErstantwortSettingsPage',
 );
+export const LazyGreetingSettingsPage = lazyNamed(
+    () => import('./TenantSettings/GreetingSettings'),
+    'GreetingSettingsPage',
+);
 export const LazyPermissionsSettingsPage = lazyNamed(
     () => import('./TenantSettings/PermissionsSettings'),
     'PermissionsSettingsPage',
