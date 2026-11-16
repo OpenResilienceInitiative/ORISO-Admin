@@ -105,6 +105,44 @@ describe('useContactRoleSaver (ORISO-Admin#1534)', () => {
         expect(mocks.putAgencyContactPerson).toHaveBeenCalledWith(2, { contactAdminId: 'other', deputyAdminId: 'me' });
     });
 
+    it('sends a role the admin changed back during the refetch, planned against the refreshed pair', async () => {
+        mocks.putAgencyContactPerson.mockImplementation((agencyId: number) =>
+            agencyId === 2 ? Promise.reject(new Error('400')) : Promise.resolve(undefined),
+        );
+        const { result, rerender, refetch } = setup();
+
+        let first: Promise<boolean> = Promise.resolve(true);
+        act(() => {
+            first = result.current.saveContactRoles({ '1': 'DEPUTY', '2': 'DEPUTY' });
+        });
+        await vi.waitFor(() => expect(result.current.saving).toBe(true));
+
+        // While the pairs reload, the admin takes Nord back. That save is refused for now.
+        const reverted = { '1': 'NONE' as const, '2': 'DEPUTY' as const };
+        let during = true;
+        await act(async () => {
+            during = await result.current.saveContactRoles(reverted);
+        });
+        expect(during).toBe(false);
+
+        await act(async () => {
+            refetch.resolve();
+            await first;
+        });
+        // The reload shows the first save: the admin is now Nord's deputy.
+        rerender({ currentPairs: { ...pairs, 1: { agencyId: 1, contact: admin('other'), deputy: admin('me') } } });
+        mocks.putAgencyContactPerson.mockReset().mockResolvedValue(undefined);
+
+        let retried = false;
+        await act(async () => {
+            retried = await result.current.saveContactRoles(reverted);
+        });
+        expect(retried).toBe(true);
+        expect(mocks.putAgencyContactPerson).toHaveBeenCalledTimes(2);
+        expect(mocks.putAgencyContactPerson).toHaveBeenCalledWith(1, { contactAdminId: 'other', deputyAdminId: null });
+        expect(mocks.putAgencyContactPerson).toHaveBeenCalledWith(2, { contactAdminId: 'other', deputyAdminId: 'me' });
+    });
+
     it('refuses to save when a centre the admin changed has no refreshed pair', async () => {
         const { result, rerender, invalidate, onSaveFailed } = setup({ changed: ['2'] });
         rerender({ currentPairs: { 1: pairs[1] } });
