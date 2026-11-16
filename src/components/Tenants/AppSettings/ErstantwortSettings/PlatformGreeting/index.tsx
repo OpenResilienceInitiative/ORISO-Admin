@@ -231,6 +231,8 @@ export const PlatformGreetingSettings = () => {
                                             title={t(`settings.greeting.${key}.label`)}
                                             value={content[key]?.[language] ?? ''}
                                             contentLanguage={language}
+                                            /* One language picker for the whole card (top), not one per editor. */
+                                            languageSlot={<span data-testid="platform-greeting-no-editor-language" />}
                                             fluid
                                             hideHeader
                                             plainText
