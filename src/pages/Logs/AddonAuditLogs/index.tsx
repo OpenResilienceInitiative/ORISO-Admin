@@ -100,7 +100,8 @@ export const AddonAuditLogsPage = () => {
         ...(combined ? [] : [{ key: 'action', label: t('addonAudit.table.action') }]),
         { key: 'summary', label: t('addonAudit.table.summary') },
         { key: 'actor', label: t('addonAudit.table.actor') },
-        { key: 'scope', label: t('addonAudit.table.scope') },
+        { key: 'tenant', label: t('addonAudit.table.tenant') },
+        { key: 'agency', label: t('addonAudit.table.agency') },
         ...(combined ? [] : [{ key: 'subject', label: t('addonAudit.table.subject') }]),
     ];
 
@@ -150,19 +151,20 @@ export const AddonAuditLogsPage = () => {
                     </span>
                 );
             }
-            case 'scope':
+            case 'tenant':
+                return tenantName(row.tenantId);
+            case 'agency':
                 return (
                     <span className={styles.pair}>
-                        <span>{tenantName(row.tenantId)}</span>
-                        {row.agencyId != null && (
-                            <span className={styles.secondary}>
-                                {agencyNames[row.agencyId] ??
-                                    t('addons.agencies.unnamed', {
-                                        id: row.agencyId,
-                                        defaultValue: `#${row.agencyId}`,
-                                    })}
-                            </span>
-                        )}
+                        <span>
+                            {row.agencyId == null
+                                ? '-'
+                                : agencyNames[row.agencyId] ??
+                                  t('addons.agencies.unnamed', {
+                                      id: row.agencyId,
+                                      defaultValue: `#${row.agencyId}`,
+                                  })}
+                        </span>
                         {combined && (row.subjectId || row.sessionId != null) && renderSubject(row)}
                     </span>
                 );

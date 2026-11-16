@@ -149,7 +149,7 @@ describe('AddonAuditLogsPage', () => {
     });
     afterEach(() => vi.unstubAllGlobals());
 
-    it('shows time, add-on and app, action, summary, actor, Träger and agency, and subject', () => {
+    it('shows time, add-on and app, action, summary, actor, Träger, agency and subject', () => {
         render(<AddonAuditLogsPage />);
 
         expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
@@ -158,7 +158,8 @@ describe('AddonAuditLogsPage', () => {
             'addonAudit.table.action',
             'addonAudit.table.summary',
             'addonAudit.table.actor',
-            'addonAudit.table.scope',
+            'addonAudit.table.tenant',
+            'addonAudit.table.agency',
             'addonAudit.table.subject',
         ]);
         const row = screen.getAllByRole('row')[1];
@@ -257,7 +258,7 @@ describe('AddonAuditLogsPage', () => {
         atWidth(1000);
         const { unmount } = render(<AddonAuditLogsPage />);
         expect(screen.getByTestId('addon-audit-log')).toHaveAttribute('data-layout', 'tablet');
-        expect(screen.getAllByRole('columnheader')).toHaveLength(5);
+        expect(screen.getAllByRole('columnheader')).toHaveLength(6);
         const row = screen.getAllByRole('row')[1];
         expect(within(row).getByText('tool.released')).toBeInTheDocument();
         expect(within(row).getByText('asker-9')).toBeInTheDocument();

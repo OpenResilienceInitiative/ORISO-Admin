@@ -1,4 +1,4 @@
-// Not browser-measured yet (docs/responsive-tables.md): estimates for seven and five columns.
+// Not browser-measured yet (docs/responsive-tables.md): estimates for eight and six columns.
 export const AUDIT_LIST_BANDS = { phoneBelow: 700, wideFrom: 1280 };
 
 const NOISE_ROLES = new Set(['offline_access', 'uma_authorization']);
