@@ -34,14 +34,9 @@ import {
     CONTACT_ROLES_FIELD,
     ContactPersonForSection,
 } from '../AdminContact';
-import {
-    centresForAdmin,
-    failedCentreNames,
-    planContactRoleChanges,
-    refreshedRoles,
-} from '../AdminContact/contactRolesModel';
+import { centresForAdmin, refreshedRoles } from '../AdminContact/contactRolesModel';
+import { useContactRoleSaver } from '../AdminContact/useContactRoleSaver';
 import { useAgencyContactPairs } from '../../../hooks/useContactPerson';
-import { putAgencyContactPerson } from '../../../api/contactPerson/contactPersonApi';
 import { contactEmailForSave } from '../../../utils/contactEmailForSave';
 import { ADMIN_REMARKS_ROLES } from '../../../utils/adminRemarksRoles';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
@@ -604,43 +599,33 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
         );
     }, [contactRoleCentres, form]);
 
-    /**
-     * #1534: one `PUT …/contactperson` per centre whose role changed. They are their own
-     * resource, so they run before the admin save, which navigates away on success.
-     * Returns false when a chosen role cannot be saved; the form then shows why.
-     */
-    const saveContactRoles = useCallback(
-        async (roles): Promise<boolean> => {
-            if (!showContactRoles || !id) return true;
-            const plan = planContactRoleChanges({ adminId: id, pairs: contactPairs, roles });
-            if (plan.errors.length > 0) {
-                form.setFields(
-                    plan.errors.map(({ agencyId, errorKey }) => ({
-                        name: [CONTACT_ROLES_FIELD, String(agencyId)],
-                        errors: [t(errorKey)],
-                    })),
-                );
-                return false;
-            }
-            if (plan.updates.length === 0) return true;
-            const results = await Promise.allSettled(
-                // No tenant hint: the service resolves the centre's Träger, and a stale one is a 400.
-                plan.updates.map(({ agencyId, update }) => putAgencyContactPerson(agencyId, update)),
-            );
-            // A retry must plan against the pairs as stored now, not the ones from before this save.
-            await queryClient.invalidateQueries({ queryKey: ['CONTACT_PERSON'] });
-            const failedNames = failedCentreNames(plan.updates, results, contactRoleCentres);
-            if (failedNames.length > 0) {
-                // Stop here: the admin save would navigate away and the unsaved role would be lost.
-                message.warning({
-                    content: t('admin.contactPersonFor.saveFailedFor', { centres: failedNames.join(', ') }),
-                });
-                return false;
-            }
-            return true;
-        },
-        [showContactRoles, id, contactPairs, contactRoleCentres, form, t, queryClient],
+    /** #1534: the role PUTs run before the admin save, which navigates away on success. */
+    const onContactRolePlanErrors = useCallback(
+        (errors: Array<{ agencyId: number; errorKey: string }>) =>
+            form.setFields(
+                errors.map(({ agencyId, errorKey }) => ({
+                    name: [CONTACT_ROLES_FIELD, String(agencyId)],
+                    errors: [t(errorKey)],
+                })),
+            ),
+        [form, t],
     );
+    // Stop here: the admin save would navigate away and the unsaved role would be lost.
+    const onContactRoleSaveFailed = useCallback(
+        (centreNames: string[]) =>
+            message.warning({
+                content: t('admin.contactPersonFor.saveFailedFor', { centres: centreNames.join(', ') }),
+            }),
+        [message, t],
+    );
+    const { saveContactRoles, saving: savingContactRoles } = useContactRoleSaver({
+        enabled: showContactRoles,
+        adminId: id,
+        pairs: contactPairs,
+        centres: contactRoleCentres,
+        onPlanErrors: onContactRolePlanErrors,
+        onSaveFailed: onContactRoleSaveFailed,
+    });
 
     const persist = useCallback(
         async (data, byCentre: TopicsByCentre, onError?: () => void) => {
@@ -1006,7 +991,7 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                             type="text"
                             className="admin-m3-text-button"
                             onClick={() => form.submit()}
-                            disabled={submitted}
+                            disabled={submitted || savingContactRoles}
                         >
                             {t('save')}
                         </Button>
