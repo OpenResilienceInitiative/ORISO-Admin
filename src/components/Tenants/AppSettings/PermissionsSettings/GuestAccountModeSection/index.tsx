@@ -57,6 +57,8 @@ export type GuestAccountModeSectionProps = {
     policyLevel?: 'platform' | 'tenant';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     fallbackValues?: Record<string, unknown>;
+    /** Values this level stored; they win over an inherited suggestion, which then shows as a hint. */
+    ownSettings?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
 };
@@ -66,6 +68,7 @@ export const GuestAccountModeSection = ({
     policyLevel = 'tenant',
     permissionPolicies,
     fallbackValues,
+    ownSettings,
     pendingPolicyFields,
     onPolicyChange,
 }: GuestAccountModeSectionProps) => {
@@ -73,7 +76,13 @@ export const GuestAccountModeSection = ({
     const idPrefix = useId();
 
     const policyFor = (field: string) =>
-        resolvePermissionPolicy(permissionPolicies, field, fallbackValues?.[field], restrictedFields);
+        resolvePermissionPolicy(
+            permissionPolicies,
+            field,
+            fallbackValues?.[field],
+            restrictedFields,
+            ownSettings?.[field],
+        );
 
     return (
         <div className={styles.media} data-testid="guest-account-mode-section">

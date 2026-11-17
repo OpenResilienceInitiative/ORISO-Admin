@@ -47,6 +47,18 @@ describe('GuestAccountModeSection', () => {
         expect(screen.queryByText('tenants.permissions.guestAccountModes.noneAllowed')).toBeNull();
     });
 
+    it("shows the Träger's stored value over an inherited suggestion that differs", () => {
+        renderSection({
+            policyLevel: 'tenant',
+            permissionPolicies: {
+                featureGuestAccountPermanentVideoEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            },
+            ownSettings: { featureGuestAccountPermanentVideoEnabled: false },
+        });
+
+        expect(roundButton(medium('video'), 'permanent', 'deactivated')).toBeTruthy();
+    });
+
     it('lets a Träger switch one mode off for one chat type only', async () => {
         const user = userEvent.setup();
         const onPolicyChange = vi.fn();

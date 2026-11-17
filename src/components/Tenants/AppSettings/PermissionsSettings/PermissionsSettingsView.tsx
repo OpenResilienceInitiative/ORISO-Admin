@@ -491,6 +491,7 @@ export const PermissionsSettingsView = ({
                                                                                     | Record<string, unknown>
                                                                                     | undefined
                                                                             }
+                                                                            ownSettings={ownSettings}
                                                                             pendingPolicyFields={pendingPolicyFields}
                                                                             onPolicyChange={(fieldKey, next) =>
                                                                                 changePolicy(fieldKey, next, form)
