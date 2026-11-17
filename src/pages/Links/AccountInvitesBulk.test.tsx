@@ -59,7 +59,7 @@ const mocks = vi.hoisted(() => ({
     createAccountInvite: vi.fn(),
     sendAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
-    revokeAccountInvite: vi.fn(),
+    deleteAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     searchTenantData: vi.fn(),
     parseUserAuthInfo: vi.fn(),
@@ -72,7 +72,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     createAccountInvite: mocks.createAccountInvite,
     sendAccountInvite: mocks.sendAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
-    revokeAccountInvite: mocks.revokeAccountInvite,
+    deleteAccountInvite: mocks.deleteAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     // E2: the editor's preview is rendered by the backend. Without this the real
     // fetch would run under jsdom — which is a load-dependent hang, not an
@@ -219,11 +219,11 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
 
     // Longest interaction chain in the file — CI runners need headroom beyond the 30s default.
     it(
-        'confirming the dialog revokes each selected id and collects failures into one summary',
+        'confirming the dialog deletes each selected id and collects failures into one summary',
         { timeout: 90_000 },
         async () => {
-            mocks.revokeAccountInvite.mockImplementation((id: number) =>
-                id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(invite(id, 'REVOKED')),
+            mocks.deleteAccountInvite.mockImplementation((id: number) =>
+                id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(),
             );
             renderCounsellorTab();
             const user = userEvent.setup();
@@ -233,18 +233,18 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
             await user.click(screen.getByRole('button', { name: 'Weitere Aktionen' }));
             await user.click(await screen.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
 
-            // House modal: title/body/labels resolve via i18n keys (real locales carry
-            // the German "Widerrufen" wording — revoke IS the delete here).
+            // House modal: title/body/labels resolve via i18n keys (ORISO-Admin#1522: a real
+            // delete — the rows leave the list).
             expect(await screen.findByText('links.bulk.deleteConfirmTitle')).toBeInTheDocument();
             expect(screen.getByText('links.bulk.deleteConfirmBody')).toBeInTheDocument();
-            expect(mocks.revokeAccountInvite).not.toHaveBeenCalled();
+            expect(mocks.deleteAccountInvite).not.toHaveBeenCalled();
 
             await user.click(screen.getByRole('button', { name: 'links.bulk.deleteConfirmOk' }));
 
-            await waitFor(() => expect(mocks.revokeAccountInvite).toHaveBeenCalledTimes(2));
-            expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(21);
-            expect(mocks.revokeAccountInvite).toHaveBeenCalledWith(22);
-            expect(await screen.findByText('1 widerrufen, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
+            await waitFor(() => expect(mocks.deleteAccountInvite).toHaveBeenCalledTimes(2));
+            expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(21);
+            expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(22);
+            expect(await screen.findByText('1 gelöscht, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
             // Table refresh + cleared selection.
             await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
             expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument();

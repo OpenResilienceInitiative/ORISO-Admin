@@ -14,7 +14,7 @@ import {
     InviteEmailTemplateKind,
     listInviteEmailTemplates,
     resendAccountInvite,
-    revokeAccountInvite,
+    deleteAccountInvite,
     updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
 import { addConsultantRole, changeAccountInviteRole } from '../../api/accountInvites/inviteRoles';
@@ -421,18 +421,21 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const onResendRef = useRef(onResend);
     onResendRef.current = onResend;
 
-    const onRevoke = useCallback(
-        async (invite: AccountInviteDTO) => {
-            try {
-                await revokeAccountInvite(invite.id);
-                message.success(t('links.accountInvites.revoked', 'Invite revoked'));
-                await loadInvites();
-            } catch {
-                message.error(t('links.accountInvites.revokeFailed', 'Could not revoke invite'));
-            }
-        },
-        [loadInvites, t],
-    );
+    // ORISO-Admin#1522: delete asks first; an open invite's link stops working at once.
+    const [deleteTarget, setDeleteTarget] = useState<AccountInviteDTO>();
+    const onDelete = useCallback((invite: AccountInviteDTO) => setDeleteTarget(invite), []);
+    const deleteConfirmed = useCallback(async () => {
+        const invite = deleteTarget;
+        setDeleteTarget(undefined);
+        if (!invite) return;
+        try {
+            await deleteAccountInvite(invite.id);
+            message.success(t('links.accountInvites.deleted', 'Einladung gelöscht'));
+            await loadInvites();
+        } catch {
+            message.error(t('links.accountInvites.deleteFailed', 'Einladung konnte nicht gelöscht werden'));
+        }
+    }, [deleteTarget, loadInvites, t]);
 
     const withRoleSaving = useCallback(async (inviteId: number, run: () => Promise<void>) => {
         setRoleSavingIds((ids) => [...ids, inviteId]);
@@ -532,7 +535,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         requiresTemplate: bulk.requiresTemplate,
         onSend: () => bulk.send(selectedTemplateId),
         onClear: () => bulk.setSelectedIds([]),
-        onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),
+        onDeleteSelected: () => bulk.setConfirmDeleteOpen(true),
     };
     const moreMenu = useInviteMoreMenu({
         tab,
@@ -649,7 +652,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         selectionDisabled={bulk.running || loading}
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
-                        onRevoke={onRevoke}
+                        onDelete={onDelete}
                         onInviteCta={isTenantInvite && isAgencyViewer ? undefined : focusComposer}
                         onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                         topicPermissionSavingIds={topicSavingIds}
@@ -670,7 +673,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     onAssigned={() => loadInvites()}
                 />
             )}
-            {bulk.confirmRevokeOpen && (
+            {deleteTarget && (
+                <Modal
+                    titleKey="links.accountInvites.deleteConfirmTitle"
+                    icon={<DeleteOutlineOutlinedIcon />}
+                    contentKey="links.accountInvites.deleteConfirmBody"
+                    contentKeyOptions={{ email: deleteTarget.recipientEmail }}
+                    okLabelKey="links.accountInvites.deleteConfirmOk"
+                    cancelLabelKey="links.bulk.deleteConfirmCancel"
+                    onConfirm={deleteConfirmed}
+                    onClose={() => setDeleteTarget(undefined)}
+                />
+            )}
+            {bulk.confirmDeleteOpen && (
                 <Modal
                     titleKey="links.bulk.deleteConfirmTitle"
                     icon={<DeleteOutlineOutlinedIcon />}
@@ -678,8 +693,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     contentKeyOptions={{ count: bulk.selectedInvites.length }}
                     okLabelKey="links.bulk.deleteConfirmOk"
                     cancelLabelKey="links.bulk.deleteConfirmCancel"
-                    onConfirm={bulk.revokeConfirmed}
-                    onClose={() => bulk.setConfirmRevokeOpen(false)}
+                    onConfirm={bulk.deleteConfirmed}
+                    onClose={() => bulk.setConfirmDeleteOpen(false)}
                 />
             )}
             {csvImport && (

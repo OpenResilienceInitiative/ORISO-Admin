@@ -402,14 +402,18 @@ export const resendAccountInvite = async (
     return withUtcInstants(await response.json());
 };
 
-export const revokeAccountInvite = async (inviteId: number): Promise<AccountInviteDTO> => {
-    const response = await fetchData({
-        url: `${accountInvitesEndpoint}/${inviteId}/revoke`,
-        method: FETCH_METHODS.POST,
+/**
+ * DELETE /useradmin/account-invites/{id} (ORISO-Admin#1522): an open invite is revoked at once (its
+ * link stops working, its address is free again) and the invite leaves every list; the nightly
+ * purge removes it. Answers 204, also when it was already deleted; 409 once its account exists.
+ */
+export const deleteAccountInvite = async (inviteId: number): Promise<void> => {
+    await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}`,
+        method: FETCH_METHODS.DELETE,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
-    return withUtcInstants(await response.json());
 };
 
 /** Also updates an existing account; 400/403 reject with the raw Response for the table to explain. */

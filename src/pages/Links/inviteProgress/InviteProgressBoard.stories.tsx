@@ -30,7 +30,7 @@ const meta = {
         isRowSelectable: () => false,
         onResend: () => {},
         onCopyLink: () => {},
-        onRevoke: () => {},
+        onDelete: () => {},
     },
 } satisfies Meta<typeof InviteProgressBoard>;
 
@@ -214,7 +214,7 @@ const Wired = ({ invites, targetRole }: { invites: AccountInviteDTO[]; targetRol
             isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onInviteCta={() => {}}
         />
     );
@@ -299,7 +299,7 @@ export const Loading: Story = {
             isRowSelectable={() => false}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
         />
     ),
 };
@@ -316,7 +316,7 @@ export const Empty: Story = {
             isRowSelectable={() => false}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onInviteCta={() => {}}
         />
     ),
@@ -409,7 +409,7 @@ const QueueBoard = ({
             isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onTopicPermissionChange={
                 locked
                     ? undefined
@@ -437,7 +437,7 @@ export const QueueWaitingStep: Story = {
             lena.getAllByText(/Beratungsstelle noch nicht angelegt|Beratungsstelle not created yet/).length,
         ).toBeGreaterThan(0);
         await expect(lena.getByRole('button', { name: /Erinnerung erneut senden|resend/i })).toBeDisabled();
-        await expect(lena.getByRole('button', { name: /Einladung widerrufen|revoke/i })).toBeEnabled();
+        await expect(lena.getByRole('button', { name: /Einladung löschen|Delete invite/i })).toBeEnabled();
     },
 };
 
@@ -576,7 +576,7 @@ const RoleBoard = ({
         isRowSelectable={() => false}
         onResend={() => {}}
         onCopyLink={() => {}}
-        onRevoke={() => {}}
+        onDelete={() => {}}
         onTopicPermissionChange={() => {}}
         onRoleChange={onRoleChange}
         onRoleAdd={onRoleAdd}
@@ -826,10 +826,10 @@ export const CounsellorCompact: Story = {
         );
         await userEvent.unhover(steps[3]);
         // Actions sit under the status chip in the same cell.
-        const revoke = anke.getByRole('button', { name: /Einladung widerrufen|revoke/i });
+        const deleteAction = anke.getByRole('button', { name: /Einladung löschen|Delete invite/i });
         const status = anke.getByText(/^(Angenommen|Accepted)$/);
-        await expect(revoke.closest('td')).toBe(status.closest('td'));
-        await expect(revoke.getBoundingClientRect().top).toBeGreaterThan(status.getBoundingClientRect().bottom - 1);
+        await expect(deleteAction.closest('td')).toBe(status.closest('td'));
+        await expect(deleteAction.getBoundingClientRect().top).toBeGreaterThan(status.getBoundingClientRect().bottom - 1);
     },
 };
 
