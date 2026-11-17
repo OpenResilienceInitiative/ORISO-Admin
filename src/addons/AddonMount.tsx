@@ -6,7 +6,20 @@ import type { AddonApp, AddonHostProps, AddonModule, AvailableAddon } from './ad
 import { loadAddonModule } from './loadAddonModule';
 import { type AddonTenant, useAddonHostProps } from './useAddonHostProps';
 
-const bootstrapped = new WeakSet<AddonModule>();
+const bootstraps = new WeakMap<AddonModule, Promise<void>>();
+
+/** Runs a module's bootstrap once; later mounts await the same promise, a failed one may be retried. */
+const bootstrapOnce = (module: AddonModule, props: AddonHostProps) => {
+    let pending = bootstraps.get(module);
+    if (!pending) {
+        pending = Promise.resolve().then(async () => {
+            await module.bootstrap?.(props);
+        });
+        bootstraps.set(module, pending);
+        pending.catch(() => bootstraps.delete(module));
+    }
+    return pending;
+};
 
 interface AddonMountProps {
     addon: AvailableAddon;
@@ -45,10 +58,7 @@ export const AddonMount = ({
             try {
                 const module = await loader(`${baseUrl}${addon.entry}`);
                 const props: AddonHostProps = { ...hostProps, domElement };
-                if (!bootstrapped.has(module)) {
-                    await module.bootstrap?.(props);
-                    bootstrapped.add(module);
-                }
+                await bootstrapOnce(module, props);
                 if (!active) {
                     return;
                 }

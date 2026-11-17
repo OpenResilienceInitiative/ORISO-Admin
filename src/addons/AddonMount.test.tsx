@@ -6,8 +6,12 @@ import { ADDON_SHARED_GLOBAL, installAddonShared } from './addonShared';
 import type { AddonHostProps, AddonModule, AvailableAddon } from './addonTypes';
 import { loadAddonModule, resetAddonModulesForTests } from './loadAddonModule';
 
+const i18nState = vi.hoisted(() => ({ language: 'de' }));
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: 'de', language: 'de' } }),
+    useTranslation: () => ({
+        t: (key: string) => key,
+        i18n: { resolvedLanguage: i18nState.language, language: i18nState.language },
+    }),
 }));
 
 const token = vi.hoisted(() => {
@@ -43,6 +47,7 @@ const renderMount = (loader: (url: string) => Promise<AddonModule>) =>
 
 beforeEach(() => {
     resetAddonModulesForTests();
+    i18nState.language = 'de';
 });
 
 afterEach(() => {
@@ -80,6 +85,44 @@ describe('AddonMount', () => {
 
         view.unmount();
         await waitFor(() => expect(module.unmount).toHaveBeenCalledTimes(1));
+    });
+
+    it('passes the informal German form of address to the add-on', async () => {
+        i18nState.language = 'de@informal';
+        const module: AddonModule = { mount: vi.fn(), unmount: vi.fn() };
+        renderMount(() => Promise.resolve(module));
+
+        await waitFor(() => expect(module.mount).toHaveBeenCalledTimes(1));
+        expect(vi.mocked(module.mount).mock.calls[0][0]).toMatchObject({ locale: 'de', informal: true });
+    });
+
+    it('runs a pending bootstrap only once for mounts that start meanwhile, and retries a failed one', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        let finishBootstrap: () => void = () => {};
+        const bootstrap = vi
+            .fn()
+            .mockImplementationOnce(() => Promise.reject(new Error('not yet')))
+            .mockImplementationOnce(
+                () =>
+                    new Promise<void>((resolve) => {
+                        finishBootstrap = resolve;
+                    }),
+            );
+        const module: AddonModule = { bootstrap, mount: vi.fn(), unmount: vi.fn() };
+        const loader = () => Promise.resolve(module);
+
+        const failed = renderMount(loader);
+        expect(await screen.findByText('addons.page.loadError')).toBeInTheDocument();
+        failed.unmount();
+
+        renderMount(loader);
+        renderMount(loader);
+        await waitFor(() => expect(bootstrap).toHaveBeenCalledTimes(2));
+        expect(module.mount).not.toHaveBeenCalled();
+        finishBootstrap();
+
+        await waitFor(() => expect(module.mount).toHaveBeenCalledTimes(2));
+        expect(bootstrap).toHaveBeenCalledTimes(2);
     });
 
     it('shows an error instead of breaking the page when the bundle fails', async () => {

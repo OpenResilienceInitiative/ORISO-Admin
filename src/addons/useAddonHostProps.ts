@@ -80,12 +80,12 @@ export const useAddonHostProps = (
             user: readAddonUser(),
             tenant: { id: tenant.id, name: tenant.name },
             locale,
-            informal: false,
+            informal: language === 'de@informal',
             theme: readThemeTokens(),
             api: addonApiCall(addon),
             navigate: goTo,
             notify: (notice: AddonNotice) => showAddonNotice(notice),
         }),
-        [addon, app.id, tenant.id, tenant.name, locale, goTo],
+        [addon, app.id, tenant.id, tenant.name, locale, language, goTo],
     );
 };
