@@ -79,7 +79,7 @@ const baseProps = () => ({
         candidate.inviteStatus === 'DRAFT' || candidate.inviteStatus === 'EMAIL_SENT',
     onResend: vi.fn(),
     onCopyLink: vi.fn(),
-    onRevoke: vi.fn(),
+    onDelete: vi.fn(),
 });
 
 const serverList = () => ({
@@ -328,7 +328,7 @@ describe('InviteProgressBoard', () => {
         expect(row.getByText(/^Fertig – abgeschlossen/)).toBeInTheDocument();
     });
 
-    it('wires resend/copy/revoke and disables ALL THREE actions on terminal rows (C4/C5)', async () => {
+    it('wires resend/copy/delete; terminal rows keep only delete, accepted rows none (C4/C5, #1522)', async () => {
         const user = userEvent.setup();
         const props = baseProps();
         render(<InviteProgressBoard {...props} />);
@@ -338,12 +338,14 @@ describe('InviteProgressBoard', () => {
         expect(props.onResend).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
         await user.click(liveRow.getByRole('button', { name: 'Einladungslink kopieren' }));
         expect(props.onCopyLink).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
-        await user.click(liveRow.getByRole('button', { name: 'Einladung widerrufen' }));
-        expect(props.onRevoke).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+        await user.click(liveRow.getByRole('button', { name: 'Einladung löschen' }));
+        expect(props.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
 
         const deadRow = within(screen.getByText('person4@example.org').closest('tr') as HTMLElement);
         expect(deadRow.getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
-        expect(deadRow.getByRole('button', { name: 'Einladung widerrufen' })).toBeDisabled();
+        // ORISO-Admin#1522: a dead invite can still be deleted, so it leaves the list.
+        await user.click(deadRow.getByRole('button', { name: 'Einladung löschen' }));
+        expect(props.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 4 }));
         // Copy used to stay live between two disabled neighbours and answered a
         // press with "link only visible after send" — an enabled control whose
         // only outcome is a refusal. It follows the same rule now.
@@ -353,6 +355,8 @@ describe('InviteProgressBoard', () => {
         // there is nothing left to copy either.
         const acceptedRow = within(screen.getByText('person2@example.org').closest('tr') as HTMLElement);
         expect(acceptedRow.getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
+        // An accepted invite goes with its account, never on its own.
+        expect(acceptedRow.getByRole('button', { name: 'Einladung löschen' })).toBeDisabled();
     });
 
     // C4 asked why disabled actions "render as links". They do not, and this
@@ -366,7 +370,7 @@ describe('InviteProgressBoard', () => {
         const actions = [
             acceptedRow.getByRole('button', { name: 'Erinnerung erneut senden' }),
             acceptedRow.getByRole('button', { name: 'Einladungslink kopieren' }),
-            acceptedRow.getByRole('button', { name: 'Einladung widerrufen' }),
+            acceptedRow.getByRole('button', { name: 'Einladung löschen' }),
         ];
 
         actions.forEach((action) => {
@@ -437,7 +441,7 @@ describe('InviteProgressBoard', () => {
         render(<InviteProgressBoard {...baseProps()} invites={[invite(11, { inviteStatus: 'EMAIL_SENT' })]} />);
 
         const row = within(screen.getByText('person11@example.org').closest('tr') as HTMLElement);
-        const names = ['Erinnerung erneut senden', 'Einladungslink kopieren', 'Einladung widerrufen'];
+        const names = ['Erinnerung erneut senden', 'Einladungslink kopieren', 'Einladung löschen'];
         await names.reduce<Promise<void>>(async (previous, name) => {
             await previous;
             const action = row.getByRole('button', { name });
@@ -618,7 +622,7 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         ...extra,
     });
 
-    it('shows a waiting invite with the new first step, resend disabled but revoke possible', () => {
+    it('shows a waiting invite with the new first step, resend disabled but delete possible', () => {
         render(<InviteProgressBoard {...counsellorProps([waiting])} />);
 
         const row = screen.getByText('person10@example.org').closest('tr') as HTMLElement;
@@ -626,7 +630,7 @@ describe('InviteProgressBoard — queue and topic permission', () => {
         expect(within(row).getByText('Wartet')).toBeInTheDocument();
         expect(within(row).getByRole('button', { name: 'Erinnerung erneut senden' })).toBeDisabled();
         expect(within(row).getByRole('button', { name: 'Einladungslink kopieren' })).toBeDisabled();
-        expect(within(row).getByRole('button', { name: 'Einladung widerrufen' })).toBeEnabled();
+        expect(within(row).getByRole('button', { name: 'Einladung löschen' })).toBeEnabled();
         expect(within(row).queryByTestId('queue-problem-badge')).toBeNull();
     });
 
@@ -1076,7 +1080,7 @@ describe('InviteProgressBoard — card toolbar, empty states and reflow', () => 
             expect(within(cells[3]).getByText('01.08.2026')).toBeInTheDocument();
             expect(cells[3].querySelectorAll('time')).toHaveLength(2);
             expect(within(cells[4]).getByText('Gesendet')).toBeInTheDocument();
-            expect(within(cells[4]).getByRole('button', { name: 'Einladung widerrufen' })).toBeInTheDocument();
+            expect(within(cells[4]).getByRole('button', { name: 'Einladung löschen' })).toBeInTheDocument();
             // The bounded track keeps a single scrollable line instead of forcing line breaks.
             expect(within(row).getByRole('list').style.getPropertyValue('--phase-stepper-per-line')).toBe('');
         });
