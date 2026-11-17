@@ -39,10 +39,19 @@ export const toCatalogueLayout = (catalogue: TopicCatalogueDto | undefined): Top
         };
     });
 
-/** Every language any text of the catalogue is written in, the source language first. */
-export const catalogueLanguageCodes = (catalogue: TopicCatalogueDto | undefined): string[] => {
-    const codes = new Set<string>([SOURCE_LANGUAGE]);
-    catalogue?.topics.forEach((topic) => Object.keys(topic.name ?? {}).forEach((code) => codes.add(code)));
+/**
+ * The languages to edit: the source language, every configured active language (so a first
+ * translation can be written) and every language any stored text already uses.
+ */
+export const catalogueLanguageCodes = (
+    catalogue: TopicCatalogueDto | undefined,
+    configured: readonly string[] = [],
+): string[] => {
+    const codes = new Set<string>([SOURCE_LANGUAGE, ...configured]);
+    catalogue?.topics.forEach((topic) => {
+        Object.keys(topic.name ?? {}).forEach((code) => codes.add(code));
+        Object.keys(topic.description ?? {}).forEach((code) => codes.add(code));
+    });
     catalogue?.groups.forEach((group) => Object.keys(group.name ?? {}).forEach((code) => codes.add(code)));
     return Array.from(codes);
 };

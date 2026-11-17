@@ -14,9 +14,12 @@ $amberSoft: #fff3dc;
 
 .sheet {
     display: grid;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
     grid-template-rows: auto 1fr;
     height: min(66vh, 680px);
-    background: #fff;
+    background: #ffffff;
     border: 1px solid $line;
     border-radius: 16px;
     overflow: hidden;
@@ -62,12 +65,12 @@ $amberSoft: #fff3dc;
 
 .languageActive {
     background: $brand;
-    color: #fff;
+    color: #ffffff;
     font-weight: 700;
 
     .languageMissing {
         background: rgb(255 255 255 / 25%);
-        color: #fff;
+        color: #ffffff;
     }
 }
 
@@ -106,7 +109,7 @@ $amberSoft: #fff3dc;
     padding: 5px 12px;
     border: 1px solid $brand;
     border-radius: 8px;
-    background: #fff;
+    background: #ffffff;
     color: $brand;
     font: inherit;
     font-weight: 600;
@@ -135,7 +138,7 @@ $amberSoft: #fff3dc;
     padding: 8px 10px;
     border: 1px solid $line;
     border-radius: 8px;
-    background: #fff;
+    background: #ffffff;
     color: $ink;
     font: inherit;
 }
@@ -146,6 +149,7 @@ $amberSoft: #fff3dc;
 
 .tiles {
     display: grid;
+    grid-auto-rows: max-content;
     grid-template-columns: repeat(3, 1fr);
     align-content: start;
     gap: 8px;
@@ -160,7 +164,7 @@ $amberSoft: #fff3dc;
     position: relative;
     border: 1px solid $line;
     border-radius: 12px;
-    background: #fff;
+    background: #ffffff;
     transition: box-shadow 0.15s;
     cursor: grab;
 
@@ -296,13 +300,14 @@ $amberSoft: #fff3dc;
     border: 0;
     border-radius: 8px;
     background: $brand;
-    color: #fff;
+    color: #ffffff;
     font: inherit;
     cursor: pointer;
 }
 
 .categories {
     display: grid;
+    grid-auto-rows: max-content;
     align-content: start;
     gap: 12px;
     min-height: 0;
@@ -531,7 +536,7 @@ $amberSoft: #fff3dc;
     padding: 0;
     border: 1px solid $line;
     border-radius: 50%;
-    background: #fff;
+    background: #ffffff;
     cursor: pointer;
 
     svg {
@@ -568,4 +573,29 @@ $amberSoft: #fff3dc;
 .fieldHead {
     display: flex;
     align-items: center;
+}
+
+// Narrow screens: pool above categories, each pane scrolls on its own.
+@media (max-width: 760px) {
+    .sheet {
+        height: min(78vh, 680px);
+    }
+
+    .columns {
+        grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .pool {
+        border-right: 0;
+        border-bottom: 1px solid $line;
+    }
+
+    .tiles {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .categories {
+        padding: 12px;
+    }
 }

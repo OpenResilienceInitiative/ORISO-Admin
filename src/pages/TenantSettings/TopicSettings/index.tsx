@@ -7,8 +7,12 @@ import { TopicCatalogue, type CatalogueLanguage } from '../../../components/Topi
 import { TopicCatalogueDialog } from '../../../components/TopicCatalogueDialog';
 import { TOPIC_CATALOGUE_KEY, useSaveTopicCatalogue, useTopicCatalogue } from '../../../hooks/useTopicCatalogue';
 import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
+import { useTenantData } from '../../../hooks/useTenantData.hook';
+import { withUnplacedTopics } from '../../../components/TopicCatalogue/topicLayout';
 import type { TopicCatalogueDto } from '../../../types/TopicCatalogue';
 import { SOURCE_LANGUAGE, catalogueLanguageCodes, toCatalogueLayout, toCatalogueTopics } from './topicCatalogueMapping';
+
+const UNPLACED_GROUP_ID = 'without-category';
 
 const languageLabel = (code: string, uiLanguage: string) => {
     try {
@@ -32,14 +36,25 @@ export const TopicSettingsPage = () => {
     const [editing, setEditing] = useState(false);
 
     const topics = useMemo(() => toCatalogueTopics(catalogue), [catalogue]);
-    const layout = useMemo(() => toCatalogueLayout(catalogue), [catalogue]);
+    const { data: tenantData } = useTenantData();
+    const configuredLanguages = tenantData?.settings?.activeLanguages;
+    // Topics in no category stay reachable (and switchable) in a display-only group that is never saved.
+    const layout = useMemo(
+        () =>
+            withUnplacedTopics(
+                toCatalogueLayout(catalogue),
+                topics.map((topic) => topic.id),
+                { id: UNPLACED_GROUP_ID, name: t('topicCatalogue.withoutCategory') },
+            ),
+        [catalogue, topics, t],
+    );
     const languages: CatalogueLanguage[] = useMemo(
         () =>
-            catalogueLanguageCodes(catalogue).map((code) => ({
+            catalogueLanguageCodes(catalogue, configuredLanguages).map((code) => ({
                 code,
                 label: languageLabel(code, i18n.language || SOURCE_LANGUAGE),
             })),
-        [catalogue, i18n.language],
+        [catalogue, configuredLanguages, i18n.language],
     );
 
     const onSave = useCallback(

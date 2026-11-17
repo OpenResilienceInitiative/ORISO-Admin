@@ -1760,6 +1760,7 @@
     "topics.title.text": "Create and edit topics",
     "topicCatalogue.title": "Topics",
     "topicCatalogue.allTopics": "All topics",
+    "topicCatalogue.withoutCategory": "Without category",
     "topicCatalogue.readOnly": "You can only view topics.",
     "topicCatalogue.changeError": "“{{name}}” could not be changed.",
     "topicCatalogue.registrationSwitch": "Activate topics across the application",

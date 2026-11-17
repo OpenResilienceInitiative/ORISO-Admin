@@ -232,6 +232,26 @@ describe('TopicCatalogueDialog', () => {
         expect(onSave).not.toHaveBeenCalled();
     });
 
+    it('freezes the draft and stays open while a save is running', async () => {
+        let finish: () => void = () => undefined;
+        const pending = new Promise<void>((resolve) => {
+            finish = resolve;
+        });
+        const { onClose, u } = open({ onSave: vi.fn().mockReturnValue(pending) });
+
+        await u.click(within(category('Krisen')).getByRole('button', { name: 'Kategorie nach oben' }));
+        await save(u);
+
+        expect(within(category('Alter')).getByRole('textbox', { name: 'Name der Kategorie' })).toBeDisabled();
+        screen.getAllByRole('button', { name: 'Neue Kategorie' }).forEach((button) => expect(button).toBeDisabled());
+        expect(screen.getByRole('button', { name: /Abbrechen/ })).toBeDisabled();
+        await u.click(screen.getByRole('button', { name: /close|schließen/i }));
+        expect(onClose).not.toHaveBeenCalled();
+
+        finish();
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled());
+    });
+
     it('keeps the dialog open with a message when saving fails', async () => {
         const { onClose, u } = open({ onSave: vi.fn().mockRejectedValue(new Error('500')) });
 

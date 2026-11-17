@@ -8,6 +8,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../i18n';
 import { clearSessionTokens, setSessionTokens } from '../../../api/auth/tokenSessionStore';
+import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import { TopicSettingsPage } from '.';
 
 vi.setConfig({ testTimeout: 60_000 });
@@ -65,12 +66,15 @@ const catalogue = {
 };
 
 let savedCatalogue: unknown;
+/** What the service holds: a save replaces it, so a reload shows what was saved. */
+let stored: typeof catalogue = catalogue;
 
 const server = setupServer(
-    http.get('*/service/topicadmin/catalogue', () => HttpResponse.json(catalogue)),
+    http.get('*/service/topicadmin/catalogue', () => HttpResponse.json(stored)),
     http.put('*/service/topicadmin/catalogue', async ({ request }) => {
         savedCatalogue = await request.json();
-        return HttpResponse.json(catalogue);
+        stored = { ...stored, groups: (savedCatalogue as typeof catalogue).groups };
+        return HttpResponse.json(stored);
     }),
 );
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
@@ -79,6 +83,7 @@ afterEach(() => {
     server.resetHandlers();
     clearSessionTokens();
     savedCatalogue = undefined;
+    stored = catalogue;
 });
 
 beforeEach(async () => {
@@ -92,14 +97,21 @@ beforeEach(async () => {
     await i18n.changeLanguage('de');
 });
 
-const showTab = () =>
-    render(
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+/** The platform tenant as the app already knows it; its active languages decide the editable ones. */
+const showTab = (activeLanguages: string[] = ['de', 'en']) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+    client.setQueryData([TENANT_DATA_KEY, 0], { id: 0, settings: { activeLanguages } });
+    return render(
+        <QueryClientProvider client={client}>
             <MemoryRouter>
                 <TopicSettingsPage />
             </MemoryRouter>
         </QueryClientProvider>,
     );
+};
+
+const groupOrder = () =>
+    Array.from(document.querySelectorAll('[data-group-id]')).map((group) => group.getAttribute('data-group-id'));
 
 const groupItems = (groupId: string) =>
     Array.from(document.querySelectorAll(`[data-group-id="${groupId}"] li[data-topic-id]`)).map(
@@ -145,4 +157,40 @@ it('edits in the dialog and saves the whole catalogue through the catalogue endp
         topics: [],
     });
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(groupOrder()).toEqual(['5', '1']));
+});
+
+it('keeps the dialog and the edit open when saving fails', async () => {
+    server.use(http.put('*/service/topicadmin/catalogue', () => new HttpResponse(null, { status: 500 })));
+    showTab();
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    const dialog = await screen.findByRole('dialog');
+    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('nicht gespeichert');
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    expect(groupOrder()).toEqual(['1', '5']);
+});
+
+it('shows a topic that is in no category, so it can still be switched on or off', async () => {
+    stored = { ...catalogue, groups: [{ ...catalogue.groups[0] }] };
+    showTab();
+
+    await waitFor(() => expect(groupItems('without-category')).toHaveLength(1));
+    expect(groupItems('without-category')[0]).toContain('Migration');
+});
+
+it('offers every active language for a first translation, even without any text in it yet', async () => {
+    showTab(['de', 'en', 'fr']);
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(within(dialog).getByRole('button', { name: /Französisch/ })).toBeInTheDocument();
 });

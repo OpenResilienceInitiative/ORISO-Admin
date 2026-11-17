@@ -327,6 +327,12 @@ export const TopicCatalogueDialog = ({
         }
     };
 
+    // While a save runs the draft is frozen and the dialog stays open, so nothing
+    // edited after the request was captured can be lost or close a newer editor.
+    const close = () => {
+        if (!saving) onClose();
+    };
+
     const missingTag = <span className={styles.missing}>{t('topicDialog.translationMissing')}</span>;
 
     const topicEditor = (topic: DraftTopic) => {
@@ -590,7 +596,7 @@ export const TopicCatalogueDialog = ({
             title={t('topicDialog.title')}
             description={t('topicDialog.description')}
             descriptionFullWidth
-            onClose={onClose}
+            onClose={close}
             maskClosable={false}
             className={styles.dialog}
             footer={
@@ -602,14 +608,16 @@ export const TopicCatalogueDialog = ({
                     ) : (
                         <span className={styles.footerHint}>{dirty ? t('topicDialog.unsaved') : ''}</span>
                     )}
-                    <DialogButton onClick={onClose}>{t('btn.cancel')}</DialogButton>
+                    <DialogButton onClick={close} disabled={saving}>
+                        {t('btn.cancel')}
+                    </DialogButton>
                     <DialogButton primary disabled={!dirty} loading={saving} onClick={submit}>
                         {t('save')}
                     </DialogButton>
                 </div>
             }
         >
-            <div className={styles.sheet}>
+            <fieldset className={styles.sheet} disabled={saving} aria-busy={saving}>
                 <div className={styles.languageBar}>
                     <span className={styles.languageLabel}>{t('topicDialog.language')}</span>
                     <nav aria-label={t('topicDialog.language')} className={styles.languages}>
@@ -677,7 +685,7 @@ export const TopicCatalogueDialog = ({
                         </button>
                     </div>
                 </div>
-            </div>
+            </fieldset>
         </Modal>
     );
 };

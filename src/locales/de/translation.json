@@ -2298,6 +2298,7 @@
     "topics.title.text": "Erstellen und bearbeiten Sie Themen",
     "topicCatalogue.title": "Themen",
     "topicCatalogue.allTopics": "Alle Themen",
+    "topicCatalogue.withoutCategory": "Ohne Kategorie",
     "topicCatalogue.readOnly": "Sie dürfen Themen nur ansehen.",
     "topicCatalogue.changeError": "„{{name}}“ konnte nicht geändert werden.",
     "topicCatalogue.registrationSwitch": "Themen übergreifend in der Anwendung aktivieren",
