@@ -53,6 +53,13 @@ export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout'
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
+/**
+ * Names-only lookups for the statistics page (ORISO-UserService#1666): every Träger (without the
+ * platform, id 0) and every Beratungsstelle with its Träger. Open to platform admins and
+ * Statistik-Leser·innen, who may not read the admin lists.
+ */
+export const statisticsTenantNamesEndpoint = `${tenantServiceURL}/service/tenant/statistics/names`;
+export const statisticsAgencyNamesEndpoint = `${agencyServiceURL}/service/agencies/statistics/names`;
 // See agencyIdNextFreeEndpoint above — tenant-ID space (U1).
 export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin/tenant-ids/next-free`;
 // Aggregated tenant/agency ID live validation (UserService U3):
@@ -73,6 +80,9 @@ export const tenantContactPersonEndpoint = (tenantId: number | string) =>
     `${userServiceURL}/service/useradmin/tenants/${tenantId}/contactperson`;
 export const agencyContactCoverageEndpoint = `${userServiceURL}/service/useradmin/agencycontacts/coverage`;
 export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/tenantadmins/search`;
+/** Statistik-Leser·innen (ORISO-UserService#1666): platform admin only, same DTOs as the tenant admins. */
+export const statisticsReadersEndpoint = `${userServiceURL}/service/useradmin/statisticsreaders`;
+export const statisticsReadersSearchEndpoint = `${statisticsReadersEndpoint}/search`;
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
@@ -162,6 +172,7 @@ const routePathNames = {
     usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     platformAdmins: '/admin/users/platform-admins',
+    statisticsReaders: '/admin/users/statistics-readers',
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',

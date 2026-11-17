@@ -1970,7 +1970,7 @@ export const Statistic = () => {
         data: agencyDirectoryData,
         isError: hasAgencyDirectoryError,
         isLoading: isAgencyDirectoryLoading,
-    } = useStatisticAgencyDirectory(hasPlatformView);
+    } = useStatisticAgencyDirectory(hasPlatformView, isStatisticsReader);
     const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
     const drillTenantId =
         hasPlatformView && activeScope === 'agency'
@@ -1982,7 +1982,7 @@ export const Statistic = () => {
         isLoading: isDashboardLoading,
         isUnavailable: isStatisticUnavailable,
         drill,
-    } = useStatisticDashboardData({ drillTenantId });
+    } = useStatisticDashboardData({ drillTenantId, isStatisticsReader });
     const { isLoading: isStatisticLoading, agencyLevelHint } = resolveStatisticView({
         isSuperAdmin: hasPlatformView,
         activeScope,
