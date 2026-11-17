@@ -46,11 +46,25 @@ describe('settings tabs', () => {
             '/settings/global-config',
             '/settings/master-data',
             '/settings/general',
+            '/settings/topics',
             '/settings/greeting',
             '/settings/legal',
             '/settings/smtp',
             '/settings/permissions',
         ]);
+    });
+
+    // Every installation ships the Caritas default topics; the platform admin overrides them here.
+    it('gives the platform admin a Themen tab, and nobody else', () => {
+        const topicsTab = { to: '/settings/topics', titleKey: 'settings.subhead.topics', iconName: 'topics' };
+        expect(getSettingsTabs({ ...baseContext, isSuperAdmin: true })).toContainEqual(topicsTab);
+        expect(getSettingsTabs(baseContext)).not.toContainEqual(topicsTab);
+        const withoutTopicRight = vi.fn(
+            (_action: PermissionAction | PermissionAction[], resource: Resource) => resource !== Resource.Topic,
+        );
+        expect(getSettingsTabs({ ...baseContext, isSuperAdmin: true, can: withoutTopicRight })).not.toContainEqual(
+            topicsTab,
+        );
     });
 
     // The platform admin overrides the built-in Caritas Erstantwort texts here (ADR-018 §6).

@@ -1,0 +1,96 @@
+// ORISO-Admin#1534: contact-person tiles (Beratungsstelle, Träger default, user panel).
+.description {
+    margin: 0 0 16px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+// Same surface as the inherited DPO hint of the legal contact tile (Admin#1067).
+.hint {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin: 0 0 16px;
+    background: var(--admin-field-surface, #fcf9f9);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+    gap: 8px;
+    line-height: 20px;
+
+    svg {
+        flex: none;
+        margin-top: 1px;
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 20px;
+    }
+}
+
+.hint[data-tone='warning'] {
+    box-shadow: inset 4px 0 0 var(--m3-error, #ba1a1a);
+
+    svg {
+        color: var(--m3-error, #ba1a1a);
+    }
+}
+
+.pickers {
+    margin-bottom: 24px;
+}
+
+.hintLabel {
+    font-weight: 600;
+}
+
+.chip {
+    display: inline-block;
+    padding: 0 8px;
+    border: 1px solid #c4c6cf;
+    border-radius: 8px;
+    margin-left: 4px;
+    color: rgb(68 71 72);
+    font-size: 12px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 12px;
+    list-style: none;
+}
+
+.row {
+    display: grid;
+    align-items: center;
+    gap: 4px 16px;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 220px);
+
+    @media (max-width: 599px) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.rowName {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+
+.rowHolder {
+    display: block;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 18px;
+}
+
+.empty {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+}

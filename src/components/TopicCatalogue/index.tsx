@@ -106,6 +106,8 @@ export interface TopicCatalogueProps {
      * server has nothing to keep them in yet, so the catalogue is shown as it is.
      */
     onSaveLayout?: (change: CatalogueChange) => Promise<void>;
+    /** Edits the catalogue somewhere else (the Settings dialog); the edit button then calls this instead. */
+    onEdit?: () => void;
     /** Switches a topic visible or hidden at once. Without it the switches stay locked. */
     onToggleActive?: (topicId: number, active: boolean) => void | Promise<void>;
     /** Ids of topics whose switch is saving right now. */
@@ -168,6 +170,7 @@ export const TopicCatalogue = ({
     loadError,
     onRetry,
     onSaveLayout,
+    onEdit,
     onToggleActive,
     pendingTopicIds = [],
     onOpenTopic,
@@ -211,7 +214,7 @@ export const TopicCatalogue = ({
     const shownLayout = editing ? draft : layout;
     const shownTopics = editing ? draftTopics : topics;
     const topicsById = new Map(shownTopics.map((topic) => [topic.id, topic]));
-    const canEdit = !!onSaveLayout && !readOnlyReason && topics.length > 0;
+    const canEdit = (!!onSaveLayout || !!onEdit) && !readOnlyReason && topics.length > 0;
     const multiLanguage = languages.length > 1;
     const editingOtherLanguage = editing && lang !== sourceLanguage;
     const changedTopics = editing
@@ -1048,7 +1051,7 @@ export const TopicCatalogue = ({
                         {t('topicCatalogue.add')}
                     </M3Button>
                 )}
-                {canEdit && <EditButton labelKey="topicCatalogue.edit" onClick={startEditing} />}
+                {canEdit && <EditButton labelKey="topicCatalogue.edit" onClick={onEdit ?? startEditing} />}
             </div>
         );
     }

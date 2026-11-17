@@ -47,6 +47,12 @@ export const getSettingsTabs = ({
                 titleKey: 'settings.subhead.view',
                 iconName: 'appearance',
             },
+            // The Caritas default topics ship with every installation; the platform admin overrides them here.
+            can(PermissionAction.Update, Resource.Topic) && {
+                to: `${base}/topics`,
+                titleKey: 'settings.subhead.topics',
+                iconName: 'topics',
+            },
             // Platform level of the Erstantwort chain: overrides the built-in Caritas texts.
             can(PermissionAction.Update, Resource.Tenant) && {
                 to: `${base}/greeting`,

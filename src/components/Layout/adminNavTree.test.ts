@@ -28,6 +28,7 @@ describe('buildAdminNavTree', () => {
             'settings:global-config',
             'settings:master-data',
             'settings:general',
+            'settings:topics',
             'settings:greeting',
             'settings:legal',
             'settings:smtp',

@@ -1,5 +1,5 @@
 import { Button, Form } from 'antd';
-import { ReactElement, useCallback, useEffect, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import ErrorOutlinedIcon from '@mui/icons-material/ErrorOutlined';
@@ -61,6 +61,14 @@ import { AgencyErstantwortSettings } from '../../../components/Tenants/AppSettin
 import type { ErstantwortContentMap } from '../../../components/Tenants/AppSettings/ErstantwortSettings/ErstantwortTextsCard';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
+import { AgencyContactPersonTile } from './components/ContactPersonSettings/AgencyContactPersonTile';
+import {
+    ContactPersonCreateCard,
+    contactPersonFromCreateForm,
+} from './components/ContactPersonSettings/ContactPersonCreateCard';
+import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
+import { putAgencyContactPerson } from '../../../api/contactPerson/contactPersonApi';
+import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { LiveChatLinks } from '../../../components/LiveChatLinks';
 import { resolveAgencyLiveChatLinksAccess } from '../../../constants/liveChatLinksAccess';
 import { useDpaGate } from '../../../hooks/useDpaGate.hook';
@@ -282,15 +290,38 @@ const AgencyPageEditForm = ({
         [initialValues],
     );
 
+    // Mutation callbacks are skipped after an unmount; the dependent contact write must not be (#1534).
+    const isMounted = useRef(true);
+    useEffect(() => {
+        isMounted.current = true;
+        return () => {
+            isMounted.current = false;
+        };
+    }, []);
+
     const persistAgency = useCallback(
         (formData) => {
             if (!isEditing && !canCreateAgency) return;
 
-            mutate(buildAgencyUpdateData(formData), {
-                onError: () => {
-                    setSubmitted(false);
-                },
-                onSuccess: (response) => {
+            mutateAsync(buildAgencyUpdateData(formData)).then(
+                (response) => {
+                    // #1534: the contact person needs the id of the new centre, so it is saved
+                    // after the centre exists, even if the user has left the page meanwhile.
+                    // A failure keeps the centre and says so.
+                    const contactPerson = isEditing ? null : contactPersonFromCreateForm(formData);
+                    const newAgencyId = Number(response?.id);
+                    if (contactPerson && Number.isFinite(newAgencyId) && newAgencyId > 0) {
+                        const newTenantId =
+                            Number(getEntityId(response?.tenantId)) ||
+                            resolveAgencyTenantId(formData.tenantId, parseUserAuthInfo().tenantId);
+                        putAgencyContactPerson(
+                            newAgencyId,
+                            contactPerson,
+                            isSuperAdmin ? newTenantId : undefined,
+                        ).catch(() => snackbar.warning({ message: t('message.agency.contactPersonFailed') }));
+                    }
+
+                    if (!isMounted.current) return;
                     navigate(routePathNames.agency);
 
                     snackbar.success({
@@ -305,9 +336,12 @@ const AgencyPageEditForm = ({
                     setSubmitted(false);
                     setReadOnly(true);
                 },
-            });
+                () => {
+                    if (isMounted.current) setSubmitted(false);
+                },
+            );
         },
-        [buildAgencyUpdateData, canCreateAgency, isEditing, mutate, navigate, t],
+        [buildAgencyUpdateData, canCreateAgency, isEditing, isSuperAdmin, mutateAsync, navigate, t],
     );
 
     /**
@@ -554,6 +588,12 @@ const AgencyPageEditForm = ({
                         />
                     ),
                 },
+                {
+                    id: 'contact-person',
+                    node: (
+                        <AgencyContactPersonTile agencyId={Number(id)} tenantId={Number(agencyTenantId) || undefined} />
+                    ),
+                },
             ];
 
             return (
@@ -586,6 +626,7 @@ const AgencyPageEditForm = ({
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
                         <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                        <ContactPersonCreateCard />
                     </CardGrid>
                 </Form>
             </ThemeProvider>
@@ -763,7 +804,6 @@ const AgencyPageEditForm = ({
                         ? agencyData?.name || t<string>('agency.edit.general.headline')
                         : t<string>('agency.edit.general.headline')
                 }
-                titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
                 {!isAgencyInaccessible &&

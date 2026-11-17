@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -158,8 +158,11 @@ const isInviteRole = (role: AccountInviteDTO['targetRole']): role is InviteRole 
 const isActionable = (invite: AccountInviteDTO) =>
     invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT';
 
-/** A waiting invite has no link yet: it can be revoked, not sent or copied. */
-const isRevocable = (invite: AccountInviteDTO) => isActionable(invite) || isWaitingForUnit(invite);
+/**
+ * Every invite but an accepted one can be deleted (ORISO-Admin#1522): an open one is revoked at
+ * once, a dead one just leaves the list. An accepted invite goes with its account.
+ */
+const isDeletable = (invite: AccountInviteDTO) => invite.inviteStatus !== 'ACCEPTED';
 
 /** The topic permission only exists for counsellors, and stays editable after the account exists. */
 const hasEditableTopicPermission = (invite: AccountInviteDTO) =>
@@ -198,7 +201,7 @@ export interface InviteProgressBoardProps {
     selectionDisabled?: boolean;
     onResend: (invite: AccountInviteDTO) => void;
     onCopyLink: (invite: AccountInviteDTO) => void;
-    onRevoke: (invite: AccountInviteDTO) => void;
+    onDelete: (invite: AccountInviteDTO) => void;
     /** Wired to the invite composer above the board (empty-state CTA). */
     onInviteCta?: () => void;
     /** Changes a counsellor's topic permission, also after the account exists; without it the chip is disabled. */
@@ -355,7 +358,7 @@ export const InviteProgressBoard = ({
     selectionDisabled = false,
     onResend,
     onCopyLink,
-    onRevoke,
+    onDelete,
     onInviteCta,
     onTopicPermissionChange,
     topicPermissionSavingIds = [],
@@ -711,7 +714,7 @@ export const InviteProgressBoard = ({
         // Icon-only actions: the hover tooltip spells out the same name screen readers get.
         const resendLabel = t('links.inviteProgress.action.resend', 'Erinnerung erneut senden');
         const copyLinkLabel = t('links.inviteProgress.action.copyLink', 'Einladungslink kopieren');
-        const revokeLabel = t('links.inviteProgress.action.revoke', 'Einladung widerrufen');
+        const deleteLabel = t('links.inviteProgress.action.delete', 'Einladung löschen');
         const actions = (
             <div className={styles.actions}>
                 {isWaitingForUnit(invite) ? (
@@ -758,13 +761,13 @@ export const InviteProgressBoard = ({
                         onClick={() => onCopyLink(invite)}
                     />
                 </M3Tooltip>
-                <M3Tooltip nameOnly portal text={revokeLabel}>
+                <M3Tooltip nameOnly portal text={deleteLabel}>
                     <IconButton
-                        icon={<BlockOutlinedIcon />}
-                        ariaLabel={revokeLabel}
-                        disabled={!isRevocable(invite)}
+                        icon={<DeleteOutlineOutlinedIcon />}
+                        ariaLabel={deleteLabel}
+                        disabled={!isDeletable(invite)}
                         className={styles.revokeAction}
-                        onClick={() => onRevoke(invite)}
+                        onClick={() => onDelete(invite)}
                     />
                 </M3Tooltip>
             </div>
