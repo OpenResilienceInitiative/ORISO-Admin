@@ -7,6 +7,9 @@ $amber: #9a5b00;
 $amberSoft: #fff3dc;
 
 .dialog {
+    // White dialog (Frank): the house modal reads its surface from this token.
+    --admin-form-card-surface: #fff;
+
     :global(.ant-modal-body) {
         padding-top: 0;
     }
@@ -125,10 +128,6 @@ $amberSoft: #fff3dc;
         color: $muted;
         font-size: 20px;
     }
-
-    input {
-        padding-left: 34px;
-    }
 }
 
 .search input,
@@ -142,6 +141,10 @@ $amberSoft: #fff3dc;
     background: #fff;
     color: $ink;
     font: inherit;
+}
+
+.search input {
+    padding-left: 34px;
 }
 
 .tiles {
@@ -265,8 +268,11 @@ $amberSoft: #fff3dc;
     font-size: 13px;
 
     legend {
+        width: auto;
         margin-bottom: 4px;
+        border: 0;
         color: $muted;
+        font-size: 13px;
     }
 }
 
