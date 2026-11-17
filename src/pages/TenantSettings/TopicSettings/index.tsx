@@ -103,7 +103,9 @@ export const TopicSettingsPage = () => {
                     languages={languages}
                     sourceLanguage={SOURCE_LANGUAGE}
                 />
-                {editing && catalogue && (
+                {/* A running visibility change ends with a reload; the editor waits for it, or its
+                    snapshot would carry the old status and undo the change on save. */}
+                {editing && catalogue && pendingTopicIds.length === 0 && (
                     <TopicCatalogueDialog
                         catalogue={catalogue}
                         languages={languages}

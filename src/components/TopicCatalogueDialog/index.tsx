@@ -231,7 +231,10 @@ export const TopicCatalogueDialog = ({
                 if (fromKey && group.key === fromKey && fromKey !== groupKey) ids = ids.filter((id) => id !== topicId);
                 if (group.key !== groupKey) return { ...group, topicIds: ids };
                 const without = ids.filter((id) => id !== topicId);
-                const position = at === undefined ? without.length : Math.min(at, without.length);
+                // `at` counts rows before the moved topic leaves its own category.
+                const from = ids.indexOf(topicId);
+                const target = at !== undefined && from >= 0 && from < at ? at - 1 : at;
+                const position = target === undefined ? without.length : Math.min(target, without.length);
                 return { ...group, topicIds: [...without.slice(0, position), topicId, ...without.slice(position)] };
             }),
         );

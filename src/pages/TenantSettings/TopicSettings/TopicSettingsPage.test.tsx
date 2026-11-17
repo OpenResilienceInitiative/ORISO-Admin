@@ -205,3 +205,43 @@ it('keeps the switch for the topic step of the registration, since /admin/topics
 
     expect(await screen.findByTestId('registration-switch')).toBeInTheDocument();
 });
+
+it('opens the editor only once a running visibility change and its reload are done', async () => {
+    let finishPut: () => void = () => undefined;
+    let catalogueReads = 0;
+    server.use(
+        http.get('*/service/topicadmin/catalogue', () => {
+            catalogueReads += 1;
+            return HttpResponse.json(stored);
+        }),
+        http.get('*/service/topicadmin/20', () => HttpResponse.json(catalogue.topics[2])),
+        http.put(
+            '*/service/topicadmin/20',
+            () =>
+                new Promise<Response>((resolve) => {
+                    finishPut = () => {
+                        stored = {
+                            ...stored,
+                            topics: stored.topics.map((topic) =>
+                                topic.id === 20 ? { ...topic, status: 'ACTIVE' } : topic,
+                            ),
+                        };
+                        resolve(HttpResponse.json({ ...catalogue.topics[2], status: 'ACTIVE' }));
+                    };
+                }),
+        ),
+    );
+    showTab();
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('5')).toHaveLength(1));
+
+    await u.click(screen.getByRole('switch', { name: /Migration/ }));
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    const readsBefore = catalogueReads;
+    finishPut();
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(catalogueReads).toBeGreaterThan(readsBefore);
+});

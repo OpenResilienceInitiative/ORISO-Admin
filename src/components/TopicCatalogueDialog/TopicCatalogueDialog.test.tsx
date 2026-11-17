@@ -120,6 +120,18 @@ describe('TopicCatalogueDialog', () => {
         expect(savedBody(onSave).groups[0].topicIds).toEqual([15, 20]);
     });
 
+    it('moves a topic forward within a category to just before the row it is dropped on', async () => {
+        const { onSave, u } = open();
+        drag(within(pool()).getByText('Migration').closest('li') as HTMLElement, category('Krisen'));
+        const row = (name: string) => within(category('Krisen')).getByText(name).closest('li') as HTMLElement;
+
+        drag(row('Schulden'), row('Migration'));
+        await save(u);
+
+        await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+        expect(savedBody(onSave).groups[1].topicIds).toEqual([15, 14, 20]);
+    });
+
     it('adds a topic to a category without a mouse, from the open topic', async () => {
         const { onSave, u } = open();
 
