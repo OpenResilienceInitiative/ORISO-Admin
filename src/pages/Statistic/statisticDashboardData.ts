@@ -6,6 +6,7 @@ import type {
 } from '../../api/statistic/getDashboardStatistics';
 import { conversationPeriodOptions } from './statisticConstants';
 import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
+import { toIntlLocale } from '../../utils/language';
 
 /**
  * Pure mapping from the UserService admin statistics response to the dashboard data
@@ -411,7 +412,7 @@ const readStandDay = (dataUntil: string | null, fallback: Date): Date => {
 export const formatStandDay = (dataUntil: string, language: string): string => {
     const [year, month, day] = dataUntil.split('-').map(Number);
     if (!year || !month || !day) return dataUntil;
-    return new Intl.DateTimeFormat(language, {
+    return new Intl.DateTimeFormat(toIntlLocale(language), {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

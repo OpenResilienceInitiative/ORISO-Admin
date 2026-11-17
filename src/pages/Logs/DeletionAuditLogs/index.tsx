@@ -19,6 +19,7 @@ import { useDeletionLogLayout } from './useDeletionLogLayout';
 import { LogFilterBar } from '../LogFilterBar';
 import styles from './deletionAuditLogs.module.scss';
 import { Notify } from '../../../components/Notify';
+import { toIntlLocale } from '../../../utils/language';
 
 const TARGET_TYPES = ['CONSULTANT', 'AGENCY_ADMIN', 'TENANT_ADMIN', 'AGENCY', 'TENANT'];
 const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'PARTIAL_FAILURE', 'CANCELLED'];
@@ -84,7 +85,7 @@ export const DeletionAuditLogsPage = () => {
             case 'createDate':
                 return (
                     <span className={styles.nowrap}>
-                        {row.createDate ? new Date(row.createDate).toLocaleString(i18n.language) : '-'}
+                        {row.createDate ? new Date(row.createDate).toLocaleString(toIntlLocale(i18n.language)) : '-'}
                     </span>
                 );
             case 'outcome': {

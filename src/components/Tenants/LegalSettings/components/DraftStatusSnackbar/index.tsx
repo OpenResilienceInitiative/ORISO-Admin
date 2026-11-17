@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import EditorHintSnackbar from '../../../../FormPluginEditor/EditorHintSnackbar';
 import type { TenantLegalDraftNoticeProps } from '../TenantLegalDraftNotice';
+import { toIntlLocale } from '../../../../../utils/language';
 
 /** Whether the notice would only inform (no decision pending) — the case that becomes a snackbar. */
 export const isDraftInfoState = ({
@@ -35,7 +36,7 @@ export const DraftStatusSnackbar = ({
     const parsed = raw ? new Date(raw) : undefined;
     const label =
         parsed && !Number.isNaN(parsed.getTime())
-            ? parsed.toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })
+            ? parsed.toLocaleString(toIntlLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' })
             : raw;
     return (
         <div data-testid="legal-draft-snackbar">
