@@ -5,6 +5,7 @@ import { UserRole } from '../../enums/UserRole';
 import type { NavGlyphName } from '../../components/NavGlyph';
 import type { AdminSidebarNavItem } from '../../components/Layout/AdminSidebar';
 import type { AdminNavSubsection } from '../../components/Layout/adminNavTree';
+import type { ContactCoverageRow } from './contactPersonTip';
 
 /**
  * The model behind Home (ORISO-Admin#1323, spec: docs/home-dashboard-spec.md).
@@ -59,6 +60,8 @@ export interface HomeFacts {
     acceptedCounsellorInvites?: number;
     openInvites?: number;
     needsActionInvites?: number;
+    /** ORISO-Admin#1534: whether each centre in scope has a contact person. */
+    contactCoverage?: ContactCoverageRow[];
 }
 
 export type HomeTileId = 'organisation' | 'invite' | 'accounts' | 'settings' | 'statistics' | 'logs';

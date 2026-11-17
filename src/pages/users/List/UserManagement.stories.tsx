@@ -1680,6 +1680,8 @@ export const UnifiedToolbarEightLongCentresPhone390: Story = {
     play: manyLongCentresPlay(8),
 };
 
+/** Room for the list's request chain (tenant, Träger, centres, saved sort, then search) on a slow runner. */
+const LIST_LOADED = { timeout: 8000 };
 const narrowedSpy = searchSpy(CONSULTANTS_ENDPOINT, [CONSULTANTS[0]], 1);
 /**
  * One search for the whole admin: the account list has no search field of its own any more (it used
@@ -1692,9 +1694,20 @@ export const NarrowedBySearch: Story = {
         route: '/admin/users/consultants?q=Anna',
         msw: { handlers: withDefaults([narrowedSpy.handler]) },
     },
+    // The spy is shared with the phone variant; each story checks only its own request.
+    beforeEach: () => {
+        narrowedSpy.urls.length = 0;
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByText('Anna Muster');
+        // Ready = the search was answered and the list (table or phone cards) is no longer busy. The search
+        // waits for the saved sort, so it comes after a chain of mocked requests; on a busy runner that
+        // chain outlasts findByText's 1 s default (Admin#1506). The name is then checked without waiting.
+        await waitFor(() => {
+            expect(narrowedSpy.urls).toHaveLength(1);
+            expect(canvas.getByTestId('account-list').querySelector('[aria-busy="true"]')).toBeNull();
+        }, LIST_LOADED);
+        await expect(canvas.getByText('Anna Muster')).toBeVisible();
         await expect(narrowedSpy.last().searchParams.get('query')).toBe('Anna');
         await expect(canvas.queryByRole('textbox')).toBeNull();
         await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
