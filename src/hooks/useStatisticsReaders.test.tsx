@@ -185,6 +185,7 @@ describe('Statistik-Leser API (ORISO-UserService#1666)', () => {
             expect(onError).toHaveBeenCalled();
             expect(client.getQueryData(DETAIL_KEY)).toEqual({ id: '44', firstname: 'Old' });
             expect(client.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+            expect(client.getQueryData(LIST_KEY)).toEqual({ total: 1, data: [{ id: '44' }] });
         });
 
         it('stores the saved reader and refreshes the lists after a save', async () => {
@@ -213,6 +214,7 @@ describe('Statistik-Leser API (ORISO-UserService#1666)', () => {
             await waitFor(() => expect(result.current.isError).toBe(true));
             expect(client.getQueryData(DETAIL_KEY)).toEqual({ id: '44', firstname: 'Old' });
             expect(client.getQueryState(LIST_KEY)?.isInvalidated).toBe(false);
+            expect(client.getQueryData(LIST_KEY)).toEqual({ total: 1, data: [{ id: '44' }] });
         });
     });
 });

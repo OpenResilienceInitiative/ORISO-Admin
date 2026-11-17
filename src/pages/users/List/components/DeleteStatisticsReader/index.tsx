@@ -19,10 +19,13 @@ export const DeleteStatisticsReaderModal = ({ user, onClose }: DeleteStatisticsR
             snackbar.success({ message: t('statisticsReaders.delete.success') });
             onClose();
         },
-        // An HTTP error already got its toast from fetchData (CATCH_ALL); a network failure or
-        // timeout did not. Either way the dialog stays open so the admin can retry.
+        // An HTTP error already got its toast from fetchData (CATCH_ALL), and so did an expired
+        // session (UNAUTHORIZED, "session expired" before logout); a network failure or timeout
+        // did not. Either way the dialog stays open so the admin can retry.
         onError: (error) => {
-            if (error?.message !== FETCH_ERRORS.CATCH_ALL) {
+            const alreadyReported =
+                error?.message === FETCH_ERRORS.CATCH_ALL || error?.message === FETCH_ERRORS.UNAUTHORIZED;
+            if (!alreadyReported) {
                 snackbar.error({ message: t('message.error.default') });
             }
         },

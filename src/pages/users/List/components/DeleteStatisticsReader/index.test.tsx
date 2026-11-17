@@ -62,6 +62,13 @@ describe('DeleteStatisticsReaderModal (ORISO-UserService#1666)', () => {
         expect(mocks.error).not.toHaveBeenCalled();
     });
 
+    it('does not add a second message when the session expired: fetchData already reported it', () => {
+        render(<DeleteStatisticsReaderModal user={reader} onClose={vi.fn()} />);
+
+        mocks.options?.onError?.(new Error(FETCH_ERRORS.UNAUTHORIZED));
+        expect(mocks.error).not.toHaveBeenCalled();
+    });
+
     it('disables the confirmation while the delete is pending', () => {
         mocks.isPending = true;
         render(<DeleteStatisticsReaderModal user={reader} onClose={vi.fn()} />);

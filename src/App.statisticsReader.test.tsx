@@ -45,7 +45,7 @@ vi.mock('./pages/lazyPages', async (importOriginal) => ({
     ...(await importOriginal<typeof import('./pages/lazyPages')>()),
     LazyStatistic: () => <h1>Statistics page</h1>,
     LazyUserProfile: () => <h1>Profile page</h1>,
-    LazyHome: () => <h1>Home page</h1>,
+    LazyHomePage: () => <h1>Home page</h1>,
 }));
 
 const open = (path: string) => {
