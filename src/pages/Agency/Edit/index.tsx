@@ -736,7 +736,6 @@ const AgencyPageEditForm = ({
                         ? agencyData?.name || t<string>('agency.edit.general.headline')
                         : t<string>('agency.edit.general.headline')
                 }
-                titleMaxLength={isEditing ? 10 : undefined}
                 tabs={agencySettingsTabs}
             >
                 {!isAgencyInaccessible &&

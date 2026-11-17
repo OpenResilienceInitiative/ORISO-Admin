@@ -155,3 +155,46 @@ export const SevenSettingsTabs: Story = {
         await expect(canvasElement.querySelector('[data-admin-page-deck-nav]')).toBeNull();
     },
 };
+
+/**
+ * Create and edit forms (Beratungsstelle, Träger, accounts): Cancel and Save wrap below the header bar. The row
+ * starts where the header bar and the cards start, not 24px further left in the arrow gutter (ORISO-Admin#1543).
+ */
+export const FormActionsAlignWithCards: Story = {
+    render: () => (
+        <Page>
+            <Page.BackWithActions path="/admin/agency" parentKey="sidebar.agency" title="Beratungsstelle Westhafen">
+                <button type="button">Abbrechen</button>
+                <button type="button">Speichern</button>
+            </Page.BackWithActions>
+            <Card titleKey="Allgemeine Informationen">
+                <p>Formularfelder</p>
+            </Card>
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const header = canvasElement.querySelector<HTMLElement>('[data-admin-page-header]');
+        await expect(header).not.toBeNull();
+        const actions = Array.from(header!.children).find((child) => /actions/.test(child.className)) as HTMLElement;
+        const card = header!.nextElementSibling as HTMLElement;
+        const left = (element: Element) => Math.round(element.getBoundingClientRect().left);
+        await expect(left(actions)).toBe(left(card));
+        const bar = header!.querySelector<HTMLElement>('[class*="backBar"]');
+        // The bar shows on desktop only; where it shows, the actions start on its edge too.
+        if (bar) await expect(left(actions)).toBe(left(bar));
+    },
+};
+
+/** A long record name keeps its full text up to the room the header has; only real overflow ends in "…". */
+export const LongRecordNameIsNotCutShort: Story = {
+    render: () => (
+        <Page>
+            <Page.BackWithActions path="/admin/agency" parentKey="sidebar.agency" title="Beratungsstelle Westhafen" />
+            <SampleContent />
+        </Page>
+    ),
+    play: async ({ canvasElement }) => {
+        const headline = canvasElement.querySelector('h3');
+        if (headline) await expect(headline.textContent).toBe('Beratungsstelle Westhafen');
+    },
+};
