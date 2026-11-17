@@ -76,6 +76,45 @@
     margin: 0;
 }
 
+.slotList {
+    display: flex;
+    flex-direction: column;
+    padding-left: 20px;
+    margin: 4px 0 8px;
+    gap: 8px;
+}
+
+.screenshots {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 4px;
+    gap: 8px;
+}
+
+.screenshot {
+    display: block;
+    overflow: hidden;
+    padding: 0;
+    border: 1px solid var(--m3-outline-variant);
+    border-radius: 8px;
+    background: var(--m3-surface);
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid var(--m3-primary);
+        outline-offset: 2px;
+    }
+
+    img {
+        display: block;
+        width: 128px;
+        max-width: 100%;
+        height: 80px;
+        object-fit: cover;
+        object-position: top left;
+    }
+}
+
 .stats {
     display: grid;
     gap: 12px;
@@ -354,4 +393,27 @@
     height: 1px;
     clip-path: inset(50%);
     white-space: nowrap;
+}
+
+.modeHelpButton {
+    margin-inline-start: 4px;
+    color: var(--m3-on-surface-variant);
+    font-size: 16px;
+    vertical-align: middle;
+}
+
+.modeHelp {
+    display: flex;
+    max-width: 320px;
+    flex-direction: column;
+    margin: 0;
+    gap: 8px;
+
+    dt {
+        font-weight: 600;
+    }
+
+    dd {
+        margin: 0;
+    }
 }

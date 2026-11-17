@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { AdminAddon } from '../../addons/addonTypes';
 import { AddonCard } from './AddonCard';
+import type { AdminPageEntry } from './AddonsLayout';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { resolvedLanguage: 'de', language: 'de' } }),
@@ -35,14 +36,20 @@ const addon = (overrides: Partial<AdminAddon> = {}): AdminAddon => ({
     ...overrides,
 });
 
-const renderCard = (value: AdminAddon, defaultOpen = false) =>
+const adminPage = (id: string, title: string): AdminPageEntry => ({
+    addon: { name: 'digisucht-tools', version: '1.4.0', entry: '/ui/e.js', apiBase: '/api', apps: [] },
+    app: { id, title: { de: title }, slots: ['admin.page'] },
+    to: `/addons/apps/digisucht-tools/${id}`,
+});
+
+const renderCard = (value: AdminAddon, defaultOpen = false, adminPages: AdminPageEntry[] = []) =>
     render(
         <QueryClientProvider client={new QueryClient()}>
             <MemoryRouter>
                 <AddonCard
                     addon={value}
                     tenantId={7}
-                    adminPages={[]}
+                    adminPages={adminPages}
                     canSwitch={!!value.tenantCanSwitch}
                     showReadme
                     defaultOpen={defaultOpen}
@@ -83,5 +90,18 @@ describe('AddonCard', () => {
 
         fireEvent.click(screen.getByRole('tab', { name: 'addons.settings.title' }));
         expect(screen.getByText('settings form')).toBeInTheDocument();
+    });
+
+    it('names the tab of a single admin page after its app', () => {
+        renderCard(addon(), true, [adminPage('report', 'Auswertung')]);
+        fireEvent.click(screen.getByRole('tab', { name: 'Auswertung' }));
+        expect(screen.getByRole('link', { name: 'Auswertung' })).toBeInTheDocument();
+    });
+
+    it('groups several admin pages under one tab', () => {
+        renderCard(addon(), true, [adminPage('report', 'Auswertung'), adminPage('export', 'Export')]);
+        fireEvent.click(screen.getByRole('tab', { name: 'addons.adminPages' }));
+        expect(screen.getByRole('link', { name: 'Auswertung' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Export' })).toBeInTheDocument();
     });
 });

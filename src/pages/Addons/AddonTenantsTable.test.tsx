@@ -73,6 +73,12 @@ describe('AddonTenantsTable', () => {
         expect(screen.getByText(/addons.tenant.unnamed/)).toBeInTheDocument();
     });
 
+    it('explains the modes from the mode column', async () => {
+        renderTable();
+        fireEvent.click(screen.getByRole('button', { name: 'addons.mode.help.open' }));
+        expect(await screen.findByText('addons.mode.help.ON_HIDDEN')).toBeInTheDocument();
+    });
+
     it('filters to Träger the add-on is available for', () => {
         renderTable();
         fireEvent.click(screen.getByText('addons.tenants.filter.available'));

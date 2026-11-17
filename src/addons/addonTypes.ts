@@ -6,10 +6,18 @@ export const ADMIN_PAGE_SLOT = 'admin.page';
 
 export type LocalizedText = Record<string, string>;
 
+/** An image of an app in one of its slots, on a host the AddonService allows. */
+export interface AddonScreenshot {
+    slot: string;
+    url: string;
+    caption?: LocalizedText;
+}
+
 export interface AddonApp {
     id: string;
     title?: LocalizedText;
     slots: string[];
+    screenshots?: AddonScreenshot[];
 }
 
 export interface AddonStatDefinition {

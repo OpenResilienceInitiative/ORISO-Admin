@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import type {
+    AddonApp,
     AddonMode,
     AddonRegistry,
     AddonSettings,
@@ -52,7 +53,28 @@ export const README_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="
 <text x="44" y="254" font-family="sans-serif" font-size="16" fill="#1b1b1c">Termin bei der Beratungsstelle</text>
 </svg>`;
 
-const APPS = [{ id: 'report', title: { de: 'Auswertung', en: 'Report' }, slots: ['admin.page'] }];
+const APPS: AddonApp[] = [{ id: 'report', title: { de: 'Auswertung', en: 'Report' }, slots: ['admin.page'] }];
+
+export const SCREENSHOT_SESSION =
+    'https://raw.githubusercontent.com/OpenResilienceInitiative/demo-tools/main/docs/goals-session.png';
+export const SCREENSHOT_PROFILE =
+    'https://raw.githubusercontent.com/OpenResilienceInitiative/demo-tools/main/docs/goals-profile.png';
+export const SCREENSHOT_CAPTION = 'Ziele in der Seitenleiste des Falls';
+
+/** An app in several slots, with screenshots for two of them; only the platform admin sees it. */
+const GOALS_APP: AddonApp = {
+    id: 'goals',
+    title: { de: 'Ziele', en: 'Goals' },
+    slots: ['asker.navigation', 'consultant.session', 'consultant.asker-profile'],
+    screenshots: [
+        {
+            slot: 'consultant.session',
+            url: SCREENSHOT_SESSION,
+            caption: { de: SCREENSHOT_CAPTION, en: 'Goals in the side panel of the case' },
+        },
+        { slot: 'consultant.asker-profile', url: SCREENSHOT_PROFILE },
+    ],
+};
 
 export const registry: AddonRegistry = {
     contract: 'oriso-addon/v1',
@@ -114,7 +136,7 @@ export const createAddonBackend = ({ readme = true }: { readme?: boolean } = {})
             name: ADDON,
             version: '1.2.0',
             contract: 'oriso-addon/v1',
-            apps: APPS,
+            apps: [GOALS_APP, ...APPS],
             stats: [
                 { id: 'sessions', label: { de: 'Sitzungen', en: 'Sessions' } },
                 { id: 'exports', label: { de: 'Exporte', en: 'Exports' } },
@@ -192,8 +214,8 @@ export const createAddonBackend = ({ readme = true }: { readme?: boolean } = {})
                 _embedded: TENANTS.map((tenant) => ({ _embedded: { ...tenant, adminEmails: [] } })),
             }),
         ),
-        http.get(README_IMAGE, () =>
-            HttpResponse.text(README_IMAGE_SVG, { headers: { 'Content-Type': 'image/svg+xml' } }),
+        ...[README_IMAGE, SCREENSHOT_SESSION, SCREENSHOT_PROFILE].map((url) =>
+            http.get(url, () => HttpResponse.text(README_IMAGE_SVG, { headers: { 'Content-Type': 'image/svg+xml' } })),
         ),
     ];
 

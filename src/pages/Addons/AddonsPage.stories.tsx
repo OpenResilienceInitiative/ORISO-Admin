@@ -15,6 +15,7 @@ import {
     AGENCIES,
     BUNDLE_PATH,
     NOTICE_ADDON,
+    SCREENSHOT_CAPTION,
     TENANTS,
     createAddonBackend,
 } from '../../utils/storybook/addonFixtures';
@@ -164,6 +165,21 @@ export const PlatformAdmin: Story = {
         await expect(within(info).getByRole('switch', { name: /Global aktiv|Active globally/ })).toBeChecked();
         await expect(within(info).getByRole('heading', { name: 'Demo-Tools' })).toBeVisible();
 
+        await expect(within(info).getByText(/^(Funktionen|Features)$/, { selector: 'span' })).toBeVisible();
+        await expect(
+            within(info).getByText(/^(Beratende: Seitenleiste im Fall|Counsellors: side panel in the case)$/),
+        ).toHaveAttribute('title', 'consultant.session');
+        await expect(
+            within(info).getByRole('img', { name: /Ziele, (Beratende: Kachel|Counsellors: tile)/ }),
+        ).toBeVisible();
+        await userEvent.click(within(info).getByRole('button', { name: SCREENSHOT_CAPTION }));
+        const preview = await within(canvasElement.ownerDocument.body).findByRole('dialog');
+        await waitFor(() =>
+            expect(preview.querySelector('img.ant-image-preview-img')).toHaveAttribute('alt', SCREENSHOT_CAPTION),
+        );
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(preview).not.toBeVisible());
+
         const table = await canvas.findByTestId('addon-tenants');
         const rowOf = async (name: string) =>
             (await within(table).findByText(new RegExp(`^${name} \\(`))).closest('tr') as HTMLElement;
@@ -187,6 +203,7 @@ export const PlatformAdmin: Story = {
         const card = await canvas.findByTestId(`addon-card-${ADDON}-${TENANT.id}`);
         await expect(within(card).getByText(`${TENANT.name} (${TENANT.id})`)).toBeVisible();
         await expect(await within(card).findByText(AGENCIES[0].name)).toBeVisible();
+        await expect(within(card).getByRole('tab', { name: /^(Auswertung|Report)$/ })).toBeVisible();
     },
 };
 
@@ -198,7 +215,7 @@ export const PlatformAdminWithoutReadme: Story = {
         const info = await canvas.findByTestId(`addon-info-${ADDON}`);
         await expect(within(info).getByText('Auswertung')).toBeVisible();
         await expect(within(info).queryByRole('heading', { name: 'Demo-Tools' })).toBeNull();
-        await expect(within(info).queryByRole('img')).toBeNull();
+        await expect(within(info).queryByRole('img', { name: 'Zielübersicht im Beratungsportal' })).toBeNull();
         await expect(within(info).queryByRole('button', { name: /Mehr anzeigen|Show more/ })).toBeNull();
     },
 };

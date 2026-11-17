@@ -15,6 +15,7 @@ import {
 import { M3Select } from '../../components/M3Select';
 import { snackbar } from '../../components/Snackbar';
 import { useMeasuredListLayout } from '../../hooks/useMeasuredListLayout';
+import { AddonModeHelp } from './AddonModeHelp';
 import { useAddonTenants, useAllTenants, useSetTenantMode, type TenantName } from './useAddons';
 import styles from './addons.module.scss';
 
@@ -108,9 +109,10 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
     }
 
     const wide = layout === 'wide';
+    const cards = layout === 'phone';
     const columns: DataTableColumn[] = [
         { key: 'tenant', label: t('addons.tenant.label') },
-        { key: 'mode', label: t('addons.mode.label') },
+        { key: 'mode', label: t('addons.mode.label'), addon: cards ? undefined : <AddonModeHelp /> },
         { key: 'agencies', label: t('addons.tenants.agencies') },
         ...(wide ? [{ key: 'updatedAt', label: t('addons.tenants.updatedAt') }] : []),
         { key: 'actions', label: '', ariaLabel: String(t('addons.agencies.actions')) },
@@ -205,8 +207,8 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
             </div>
             <DataTable
                 ariaLabel={String(t('addons.tenants.title'))}
-                className={classNames(styles.tenantTable, { [styles.cards]: layout === 'phone' })}
-                stacked={layout === 'phone'}
+                className={classNames(styles.tenantTable, { [styles.cards]: cards })}
+                stacked={cards}
                 header={<DataTableHeader columns={columns} />}
                 loading={tenants.isLoading || states.isLoading}
                 skeletonColumns={columns.length}
@@ -217,7 +219,12 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
                     <DataTableRow key={row.id} selected={row.id === selectedTenantId}>
                         {columns.map((column) => (
                             <DataTableCell key={column.key}>
-                                {column.label && <span className={styles.cellLabel}>{column.label}</span>}
+                                {column.label && (
+                                    <span className={styles.cellLabel}>
+                                        {column.label}
+                                        {cards && column.key === 'mode' && <AddonModeHelp />}
+                                    </span>
+                                )}
                                 {renderCell(column.key, row)}
                             </DataTableCell>
                         ))}

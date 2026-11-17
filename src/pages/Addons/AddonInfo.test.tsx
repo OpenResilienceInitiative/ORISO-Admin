@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import type { AdminAddon } from '../../addons/addonTypes';
+import type { AddonApp, AdminAddon } from '../../addons/addonTypes';
 import { AddonInfo } from './AddonInfo';
 
 vi.mock('react-i18next', () => ({
@@ -16,12 +16,14 @@ vi.mock('./useAddons', () => ({
     useAddonReadme: () => ({ data: '# Digisucht\n\nTools für die Beratung.' }),
 }));
 
-const addon = (enabled: boolean, hasReadme = false): AdminAddon => ({
+const SCREENSHOT = 'https://raw.githubusercontent.com/a/b/session.png';
+
+const addon = (enabled: boolean, hasReadme = false, apps?: AddonApp[]): AdminAddon => ({
     manifest: {
         name: 'digisucht-tools',
         version: '0.1.0',
         contract: 'oriso-addon/v1',
-        apps: [{ id: 'goals', title: { de: 'Ziele' }, slots: ['asker.navigation'] }],
+        apps: apps ?? [{ id: 'goals', title: { de: 'Ziele' }, slots: ['asker.navigation'] }],
     },
     global: { enabled },
     discoveredAt: '2026-11-12T10:00:00Z',
@@ -62,5 +64,48 @@ describe('AddonInfo', () => {
         expect(mutate).not.toHaveBeenCalled();
         fireEvent.click(await screen.findByText('addons.global.confirmOffOk'));
         await waitFor(() => expect(mutate).toHaveBeenCalledWith(false, expect.anything()));
+    });
+
+    it('names the places an app appears in and keeps the slot id as a hint', () => {
+        render(
+            <AddonInfo
+                addon={addon(false, false, [
+                    { id: 'goals', title: { de: 'Ziele' }, slots: ['consultant.session', 'host.unknown'] },
+                ])}
+            />,
+        );
+        expect(screen.getByText('addons.features')).toBeInTheDocument();
+        expect(screen.getByText('addons.slot.consultantSession')).toHaveAttribute('title', 'consultant.session');
+        expect(screen.getByText('host.unknown')).toBeInTheDocument();
+        expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+
+    it('shows https screenshots per slot as lazy thumbnails that open a larger view', async () => {
+        render(
+            <AddonInfo
+                addon={addon(false, false, [
+                    {
+                        id: 'goals',
+                        title: { de: 'Ziele' },
+                        slots: ['asker.navigation', 'consultant.session'],
+                        screenshots: [
+                            { slot: 'consultant.session', url: SCREENSHOT },
+                            { slot: 'asker.navigation', url: SCREENSHOT, caption: { de: 'Ziele im Menü', en: 'Menu' } },
+                            { slot: 'asker.navigation', url: 'http://raw.githubusercontent.com/a/b/insecure.png' },
+                        ],
+                    },
+                ])}
+            />,
+        );
+        const captioned = screen.getByRole('img', { name: 'Ziele im Menü' });
+        expect(captioned).toHaveAttribute('loading', 'lazy');
+        expect(screen.getByRole('img', { name: 'Ziele, addons.slot.consultantSession' })).toHaveAttribute(
+            'src',
+            SCREENSHOT,
+        );
+        expect(screen.getAllByRole('button')).toHaveLength(2);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Ziele im Menü' }));
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
     });
 });

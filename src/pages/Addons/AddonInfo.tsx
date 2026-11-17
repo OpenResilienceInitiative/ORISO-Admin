@@ -2,8 +2,9 @@ import { Card, Popconfirm, Switch, Tag } from 'antd';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../addons/intlLocale';
-import { localizedText, type AdminAddon } from '../../addons/addonTypes';
+import type { AdminAddon } from '../../addons/addonTypes';
 import { snackbar } from '../../components/Snackbar';
+import { AddonFeatures } from './AddonFeatures';
 import { AddonReadme } from './AddonReadme';
 import { useSetGlobalEnabled } from './useAddons';
 import styles from './addons.module.scss';
@@ -20,7 +21,6 @@ export const AddonInfo = ({ addon }: AddonInfoProps) => {
     const { t, i18n } = useTranslation();
     const language = i18n.resolvedLanguage || i18n.language || 'de';
     const { manifest, discoveredAt } = addon;
-    const apps = manifest.apps ?? [];
     const globallyEnabled = !!addon.global?.enabled;
     const setGlobal = useSetGlobalEnabled(manifest.name);
     const [confirmOff, setConfirmOff] = useState(false);
@@ -68,21 +68,7 @@ export const AddonInfo = ({ addon }: AddonInfoProps) => {
             }
         >
             <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />
-            {apps.length > 0 && (
-                <div className={styles.apps}>
-                    <span className={styles.label}>{t('addons.apps')}</span>
-                    <ul className={styles.appList}>
-                        {apps.map((app) => (
-                            <li key={app.id}>
-                                <strong>{localizedText(app.title, language, app.id)}</strong>{' '}
-                                {(app.slots ?? []).map((slot) => (
-                                    <Tag key={slot}>{slot}</Tag>
-                                ))}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
+            <AddonFeatures apps={manifest.apps ?? []} />
             {discoveredAt && (
                 <p className={styles.hint}>
                     {t('addons.discoveredAt', { date: formatDateTime(discoveredAt, language) })}

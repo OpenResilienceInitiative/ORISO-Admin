@@ -15,7 +15,7 @@ interface AddonDetailsProps {
     adminPages: AdminPageEntry[];
 }
 
-type DetailKey = 'agencies' | 'settings' | 'stats' | 'apps';
+type DetailKey = 'agencies' | 'settings' | 'stats' | 'adminPages';
 
 /** The parts of one add-on at one Träger, one tab at a time. */
 export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps) => {
@@ -25,12 +25,14 @@ export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps)
     const stats = manifest.stats ?? [];
     const pages = adminPages.filter((entry) => entry.addon.name === manifest.name);
     const agenciesApply = addon.mode !== 'OFF' && addon.mode !== 'ON_HIDDEN';
+    const adminPagesLabel =
+        pages.length === 1 ? localizedText(pages[0].app.title, language, pages[0].app.id) : t('addons.adminPages');
 
     const tabs: Array<SegmentedTab & { key: DetailKey }> = [
         ...(agenciesApply ? [{ key: 'agencies' as const, label: t('addons.agencies.title') }] : []),
         { key: 'settings', label: t('addons.settings.title') },
         ...(stats.length > 0 ? [{ key: 'stats' as const, label: t('addons.stats.title') }] : []),
-        ...(pages.length > 0 ? [{ key: 'apps' as const, label: t('addons.apps') }] : []),
+        ...(pages.length > 0 ? [{ key: 'adminPages' as const, label: adminPagesLabel }] : []),
     ];
     const [active, setActive] = useState<DetailKey>(tabs[0].key);
     const current = tabs.find((tab) => tab.key === active) ?? tabs[0];
@@ -41,7 +43,7 @@ export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps)
                 return <AgencyOverrides addon={addon} tenantId={tenantId} />;
             case 'stats':
                 return <AddonStatsTiles name={manifest.name} tenantId={tenantId} definitions={stats} />;
-            case 'apps':
+            case 'adminPages':
                 return (
                     <ul className={styles.appList}>
                         {pages.map((entry) => (

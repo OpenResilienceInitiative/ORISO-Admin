@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { AddonTenantState } from '../../addons/addonTypes';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
@@ -86,6 +86,15 @@ const expectLayout =
         if (layout !== 'phone') {
             await expect(canvas.getAllByRole('columnheader')).toHaveLength(columns);
         }
+        const helpButtons = canvas.getAllByRole('button', { name: /^(Modi erklären|Explain modes)$/ });
+        await expect(helpButtons.length).toBe(layout === 'phone' ? list.querySelectorAll('tbody tr').length : 1);
+        await userEvent.click(helpButtons[0]);
+        const body = within(canvasElement.ownerDocument.body);
+        const help = await body.findByText(
+            /^(Für den Träger aktiv, er kann es nicht abschalten\.|Active for the organisation, it cannot switch it off\.)$/,
+        );
+        await waitFor(() => expect(help).toBeVisible());
+        await userEvent.click(helpButtons[0]);
     };
 
 /** Wide reference: every column on one row. */
