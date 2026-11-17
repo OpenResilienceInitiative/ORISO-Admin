@@ -9,7 +9,7 @@ import { useAddonsOutletContext } from './AddonsLayout';
 export const AddonAdminPage = () => {
     const { t } = useTranslation();
     const { addonName, appId } = useParams();
-    const { adminPages, registryLoading, tenant } = useAddonsOutletContext();
+    const { adminPages, registryLoading, pageTenant } = useAddonsOutletContext();
     const entry = adminPages.find((candidate) => candidate.addon.name === addonName && candidate.app.id === appId);
 
     if (registryLoading) {
@@ -19,7 +19,7 @@ export const AddonAdminPage = () => {
         return <Alert type="warning" showIcon message={t('addons.page.notFound')} />;
     }
 
-    return <AddonMount key={entry.to} addon={entry.addon} app={entry.app} tenant={tenant ?? {}} />;
+    return <AddonMount key={entry.to} addon={entry.addon} app={entry.app} tenant={pageTenant ?? {}} />;
 };
 
 export default AddonAdminPage;

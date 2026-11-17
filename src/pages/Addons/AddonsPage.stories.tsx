@@ -203,7 +203,8 @@ export const PlatformAdmin: Story = {
         const card = await canvas.findByTestId(`addon-card-${ADDON}-${TENANT.id}`);
         await expect(within(card).getByText(`${TENANT.name} (${TENANT.id})`)).toBeVisible();
         await expect(await within(card).findByText(AGENCIES[0].name)).toBeVisible();
-        await expect(within(card).getByRole('tab', { name: /^(Auswertung|Report)$/ })).toBeVisible();
+        // Add-on pages act for the caller's own Träger, so a picked Träger offers none.
+        await expect(within(card).queryByRole('tab', { name: /^(Auswertung|Report)$/ })).toBeNull();
     },
 };
 

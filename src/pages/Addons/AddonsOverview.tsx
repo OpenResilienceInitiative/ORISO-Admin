@@ -33,18 +33,11 @@ const LoadState = ({ error }: { error: unknown }) => {
     );
 };
 
+/** Add-on pages act for the caller's own Träger, so they are not offered for a picked one. */
+const NO_ADMIN_PAGES: AdminPageEntry[] = [];
+
 /** The add-on at the Träger the platform admin picked in the table. */
-const TenantAddon = ({
-    name,
-    tenantId,
-    tenantName,
-    adminPages,
-}: {
-    name: string;
-    tenantId: number;
-    tenantName?: string;
-    adminPages: AdminPageEntry[];
-}) => {
+const TenantAddon = ({ name, tenantId, tenantName }: { name: string; tenantId: number; tenantName?: string }) => {
     const { t } = useTranslation();
     const addons = useAdminAddons(tenantId);
     if (addons.isLoading) {
@@ -58,7 +51,7 @@ const TenantAddon = ({
         <AddonCard
             addon={addon}
             tenantId={tenantId}
-            adminPages={adminPages}
+            adminPages={NO_ADMIN_PAGES}
             title={tenantName ? `${tenantName} (${tenantId})` : t('addons.tenant.unnamed', { id: tenantId })}
             tags={<Tag>{t(`addons.mode.${addon.mode ?? 'OFF'}`)}</Tag>}
             canSwitch={false}
@@ -70,7 +63,7 @@ const TenantAddon = ({
 /** Platform admin: pick an add-on, see what it is, set its mode per Träger and manage one Träger. */
 const PlatformAddons = ({ list }: { list: AdminAddon[] }) => {
     const { t } = useTranslation();
-    const { tenant, setTenant, adminPages } = useAddonsOutletContext();
+    const { tenant, setTenant } = useAddonsOutletContext();
     const [searchParams, setSearchParams] = useSearchParams();
     const detailsRef = useRef<HTMLDivElement>(null);
     const requested = searchParams.get(ADDON_PARAM);
@@ -138,7 +131,6 @@ const PlatformAddons = ({ list }: { list: AdminAddon[] }) => {
                         name={name}
                         tenantId={tenant.id}
                         tenantName={tenant.name}
-                        adminPages={adminPages}
                     />
                 )}
             </div>

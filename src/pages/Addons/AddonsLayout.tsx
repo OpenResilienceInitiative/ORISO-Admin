@@ -14,7 +14,13 @@ import type { AddonTenant } from '../../addons/useAddonHostProps';
 import { useAddonRegistry } from './useAddons';
 
 export interface AddonsOutletContext {
+    /** The Träger shown on the overview: the platform admin's pick, or the admin's own Träger. */
     tenant: AddonTenant | null;
+    /**
+     * The Träger an `admin.page` app is mounted for: always the caller's own, because the add-on's API
+     * calls carry the caller's token and act for that Träger only.
+     */
+    pageTenant: AddonTenant | null;
     setTenant: (tenant: AddonTenant | null) => void;
     isSuperAdmin: boolean;
     adminPages: AdminPageEntry[];
@@ -37,6 +43,20 @@ export const adminPageEntries = (addons: AvailableAddon[]): AdminPageEntry[] =>
             .map((app) => ({ addon, app, to: adminPagePath(addon.name, app.id) })),
     );
 
+/** The caller's own Träger; a platform admin's token carries tenant 0. */
+export const ownAddonTenant = (
+    isSuperAdmin: boolean,
+    tokenTenantId: number | null,
+    tenantData?: { id?: number | string | null; name?: string | null },
+): AddonTenant | null => {
+    const name = tenantData?.name ? decodeHTML(tenantData.name) : undefined;
+    if (isSuperAdmin) {
+        return { id: 0, name };
+    }
+    const id = tokenTenantId != null && tokenTenantId > 0 ? tokenTenantId : tenantData?.id;
+    return id != null ? { id: Number(id), name } : null;
+};
+
 export const useAddonsOutletContext = () => useOutletContext<AddonsOutletContext>();
 
 /** The "Add-ons" section: an overview tab plus one tab per `admin.page` app the registry offers. */
@@ -50,13 +70,11 @@ export const AddonsLayout = () => {
     const registry = useAddonRegistry();
     const language = i18n.resolvedLanguage || i18n.language || 'de';
 
-    const tenant: AddonTenant | null = useMemo(() => {
-        if (isSuperAdmin) {
-            return selectedTenant;
-        }
-        const id = tenantId != null && tenantId > 0 ? tenantId : ownTenant?.id;
-        return id != null ? { id: Number(id), name: ownTenant?.name ? decodeHTML(ownTenant.name) : undefined } : null;
-    }, [isSuperAdmin, selectedTenant, tenantId, ownTenant?.id, ownTenant?.name]);
+    const pageTenant = useMemo(
+        () => ownAddonTenant(isSuperAdmin, tenantId, { id: ownTenant?.id, name: ownTenant?.name }),
+        [isSuperAdmin, tenantId, ownTenant?.id, ownTenant?.name],
+    );
+    const tenant = isSuperAdmin ? selectedTenant : pageTenant;
 
     const adminPages = useMemo(() => adminPageEntries(registry.data?.addons ?? []), [registry.data]);
 
@@ -85,6 +103,7 @@ export const AddonsLayout = () => {
 
     const context: AddonsOutletContext = {
         tenant,
+        pageTenant,
         setTenant: setSelectedTenant,
         isSuperAdmin,
         adminPages,
