@@ -7,6 +7,7 @@ import { UserRole } from '../../../enums/UserRole';
 import { popupsOf } from '../../../test/storyPopups';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { AgencyPageEdit } from './index';
+import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
 
 /**
  * Creating a Beratungsstelle as a Träger admin (tenantId 21). Every authenticated call is mocked: an
@@ -20,6 +21,7 @@ const baseHandlers = [
     http.get('*/service/agencyadmin/agencies*', () => HttpResponse.json({ embedded: [], total: 0 })),
     http.get('*/service/tenant/*', () => HttpResponse.json({ id: 21, settings: {} })),
     http.get('*/service/tenantadmin/21', () => HttpResponse.json({ id: 21, name: 'Träger Nord', settings: {} })),
+    ...contactPersonReadHandlers(),
 ];
 
 const meta = {
