@@ -1,5 +1,6 @@
 import { addonServiceEndpoint } from '../../appConfig';
 import type {
+    AddonMode,
     AddonRegistry,
     AddonSettings,
     AddonSettingsValues,
@@ -67,6 +68,28 @@ export const setAddonEnabledForTenant = (name: string, tenantId: number, enabled
         method: FETCH_METHODS.PUT,
         bodyData: JSON.stringify({ enabled }),
         responseHandling: WRITE_HANDLING,
+    });
+
+export const setAddonModeForTenant = (name: string, tenantId: number, mode: AddonMode): Promise<unknown> =>
+    fetchData({
+        url: `${addonUrl(name)}/tenants/${tenantId}/mode`,
+        method: FETCH_METHODS.PUT,
+        bodyData: JSON.stringify({ mode }),
+        responseHandling: WRITE_HANDLING,
+    });
+
+/** The add-on's readme as Markdown with absolute image links, or `null` when it has none. */
+export const getAddonReadme = (name: string): Promise<string | null> =>
+    fetchData({
+        url: `${addonUrl(name)}/readme`,
+        method: FETCH_METHODS.GET,
+        headersData: { Accept: 'text/markdown, text/plain' },
+        responseHandling: [FETCH_SUCCESS.TEXT, ...READ_HANDLING],
+    }).catch((error: unknown) => {
+        if (error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
+            return null;
+        }
+        throw error;
     });
 
 export const setAddonEnabledForAgency = (

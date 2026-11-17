@@ -12,12 +12,13 @@ vi.mock('../fetchData', () => ({
         CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
         BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     },
-    FETCH_SUCCESS: { CONTENT: 'CONTENT' },
+    FETCH_SUCCESS: { CONTENT: 'CONTENT', TEXT: 'TEXT' },
 }));
 
 import {
     AddonSettingsValidationError,
     clearAddonAgencyOverride,
+    getAddonReadme,
     getAddonRegistry,
     getAddonSettings,
     getAddonStats,
@@ -25,6 +26,7 @@ import {
     saveAddonSettings,
     setAddonEnabledForAgency,
     setAddonEnabledForTenant,
+    setAddonModeForTenant,
 } from './addonsApi';
 
 const base = 'https://example.org/service/addons';
@@ -36,6 +38,28 @@ beforeEach(() => {
 });
 
 describe('addonsApi', () => {
+    it('sets the mode of an add-on for a Träger', async () => {
+        await setAddonModeForTenant('demo', 7, 'ON_HIDDEN');
+        expect(lastCall()).toMatchObject({
+            url: `${base}/admin/addons/demo/tenants/7/mode`,
+            method: 'PUT',
+            bodyData: '{"mode":"ON_HIDDEN"}',
+        });
+    });
+
+    it('reads the readme as text and treats a missing one as none', async () => {
+        mocks.fetchData.mockResolvedValue('# Demo');
+        await expect(getAddonReadme('demo')).resolves.toBe('# Demo');
+        expect(lastCall()).toMatchObject({ url: `${base}/admin/addons/demo/readme`, method: 'GET' });
+        expect(lastCall().responseHandling).toContain('TEXT');
+
+        mocks.fetchData.mockRejectedValue(new Error('NO_MATCH'));
+        await expect(getAddonReadme('demo')).resolves.toBeNull();
+
+        mocks.fetchData.mockRejectedValue(new Error('CATCH_ALL'));
+        await expect(getAddonReadme('demo')).rejects.toThrow('CATCH_ALL');
+    });
+
     it('lists the add-ons of a Träger and without one the caller’s own', async () => {
         mocks.fetchData.mockResolvedValue([{ manifest: { name: 'demo' } }]);
         await expect(getAdminAddons(7)).resolves.toEqual([{ manifest: { name: 'demo' } }]);

@@ -39,11 +39,19 @@ export interface AgencyOverride {
 }
 
 /**
+ * What the platform admin allows a Träger: `OFF` not available, `TENANT` the Träger decides,
+ * `ON` always on, `ON_HIDDEN` always on and not shown to Träger admins.
+ */
+export const ADDON_MODES = ['OFF', 'TENANT', 'ON', 'ON_HIDDEN'] as const;
+export type AddonMode = (typeof ADDON_MODES)[number];
+
+/**
  * One entry of `GET /service/addons/admin/addons/{name}/tenants` (SuperAdmins): a Träger with a
  * switch or agency overrides for the add-on. `updatedAt` is missing when only overrides exist.
  */
 export interface AddonTenantState {
     tenantId: number;
+    mode: AddonMode;
     enabled: boolean;
     updatedAt?: string | null;
     updatedBy?: string | null;
@@ -58,16 +66,16 @@ export interface AddonGlobalSwitch {
     updatedBy?: string | null;
 }
 
-/**
- * One entry of `GET /service/addons/admin/addons`. `enabled` is the Träger switch alone; the
- * add-on runs only while `global.enabled` is on too.
- */
+/** One entry of `GET /service/addons/admin/addons`; `enabled` is the effective state for the Träger. */
 export interface AdminAddon {
     manifest: AddonManifest;
     source?: string;
     discoveredAt?: string;
     global?: AddonGlobalSwitch;
     tenantId: number;
+    mode?: AddonMode;
+    tenantCanSwitch?: boolean;
+    hasReadme?: boolean;
     enabled: boolean;
     agencyOverrides: AgencyOverride[];
 }
