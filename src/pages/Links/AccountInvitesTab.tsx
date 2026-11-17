@@ -421,21 +421,29 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const onResendRef = useRef(onResend);
     onResendRef.current = onResend;
 
+    // The search may change while a DELETE runs: the reload must load the list shown by then.
+    const loadInvitesRef = useRef(loadInvites);
+    loadInvitesRef.current = loadInvites;
+
     // ORISO-Admin#1522: delete asks first; an open invite's link stops working at once.
     const [deleteTarget, setDeleteTarget] = useState<AccountInviteDTO>();
     const onDelete = useCallback((invite: AccountInviteDTO) => setDeleteTarget(invite), []);
+    const { setSelectedIds: setBulkSelectedIds } = bulk;
     const deleteConfirmed = useCallback(async () => {
         const invite = deleteTarget;
         setDeleteTarget(undefined);
         if (!invite) return;
         try {
             await deleteAccountInvite(invite.id);
-            message.success(t('links.accountInvites.deleted', 'Einladung gelöscht'));
-            await loadInvites();
         } catch {
             message.error(t('links.accountInvites.deleteFailed', 'Einladung konnte nicht gelöscht werden'));
+            return;
         }
-    }, [deleteTarget, loadInvites, t]);
+        // A deleted invite is no bulk target any more; a failed delete keeps the selection.
+        setBulkSelectedIds((ids) => ids.filter((id) => id !== invite.id));
+        message.success(t('links.accountInvites.deleted', 'Einladung gelöscht'));
+        await loadInvitesRef.current();
+    }, [deleteTarget, setBulkSelectedIds, t]);
 
     const withRoleSaving = useCallback(async (inviteId: number, run: () => Promise<void>) => {
         setRoleSavingIds((ids) => [...ids, inviteId]);

@@ -222,9 +222,14 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
         'confirming the dialog deletes each selected id and collects failures into one summary',
         { timeout: 90_000 },
         async () => {
-            mocks.deleteAccountInvite.mockImplementation((id: number) =>
-                id === 22 ? Promise.reject(new Error('boom')) : Promise.resolve(),
-            );
+            // The server drops a deleted row; a failed delete keeps it.
+            let listed = MIXED_INVITES;
+            mocks.listAccountInvites.mockImplementation(async () => invitesPage(listed));
+            mocks.deleteAccountInvite.mockImplementation((id: number) => {
+                if (id === 22) return Promise.reject(new Error('boom'));
+                listed = listed.filter((row) => row.id !== id);
+                return Promise.resolve();
+            });
             renderCounsellorTab();
             const user = userEvent.setup();
 
@@ -245,11 +250,35 @@ describe('AccountInvitesTab bulk selection (#316)', () => {
             expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(21);
             expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(22);
             expect(await screen.findByText('1 gelöscht, 1 fehlgeschlagen: person22@example.org')).toBeInTheDocument();
-            // Table refresh + cleared selection.
+            // Table refresh + cleared selection: the deleted row is gone, the failed one stays.
             await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
+            await waitFor(() => expect(screen.queryByText('person21@example.org')).not.toBeInTheDocument());
+            expect(screen.getByText('person22@example.org')).toBeInTheDocument();
             expect(screen.queryByText('2 ausgewählt')).not.toBeInTheDocument();
         },
     );
+
+    // Review of #1547: a row deleted on its own must not stay a target of the next bulk action.
+    it('drops a row deleted on its own from the bulk selection', { timeout: 90_000 }, async () => {
+        let listed = MIXED_INVITES;
+        mocks.listAccountInvites.mockImplementation(async () => invitesPage(listed));
+        mocks.deleteAccountInvite.mockImplementation(async (id: number) => {
+            listed = listed.filter((row) => row.id !== id);
+        });
+        renderCounsellorTab();
+        const user = userEvent.setup();
+
+        await user.click(await rowCheckbox('person21@example.org'));
+        await user.click(await rowCheckbox('person22@example.org'));
+        expect(await screen.findByText('2 ausgewählt')).toBeInTheDocument();
+
+        const row = within((await screen.findByText('person22@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+        await user.click(await screen.findByRole('button', { name: 'links.accountInvites.deleteConfirmOk' }));
+
+        await waitFor(() => expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(22));
+        expect(await screen.findByText('1 ausgewählt')).toBeInTheDocument();
+    });
 
     it('bulk send uses /send for a never-sent DRAFT and /resend only for an already sent invite', async () => {
         mocks.sendAccountInvite.mockImplementation((id: number) => Promise.resolve(invite(id, 'EMAIL_SENT')));

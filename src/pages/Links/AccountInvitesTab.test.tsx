@@ -424,8 +424,13 @@ describe('TenantInvitesTab single delete (ORISO-Admin#1522)', () => {
     });
 
     it('asks first, deletes on confirm and reloads the list', { timeout: 90_000 }, async () => {
-        mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(31, 3, 'EMAIL_SENT')]));
-        mocks.deleteAccountInvite.mockResolvedValue(undefined);
+        let deleted = false;
+        mocks.listAccountInvites.mockImplementation(async () =>
+            invitesPage(deleted ? [] : [invite(31, 3, 'EMAIL_SENT')]),
+        );
+        mocks.deleteAccountInvite.mockImplementation(async () => {
+            deleted = true;
+        });
         renderTenantTab();
         const user = userEvent.setup();
 
@@ -439,7 +444,8 @@ describe('TenantInvitesTab single delete (ORISO-Admin#1522)', () => {
 
         await waitFor(() => expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(31));
         expect(await screen.findByText('Einladung gelöscht')).toBeInTheDocument();
-        await waitFor(() => expect(mocks.listAccountInvites.mock.calls.length).toBeGreaterThanOrEqual(2));
+        // The reload shows the server's list: the deleted row is gone.
+        await waitFor(() => expect(screen.queryByText('taken31@example.org')).not.toBeInTheDocument());
     });
 
     it('deletes nothing when the confirmation is cancelled', { timeout: 90_000 }, async () => {
