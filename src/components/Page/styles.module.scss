@@ -248,6 +248,11 @@
 
             /* No header bar on a phone (the back button is in the bottom bar), so nothing to line up with. */
             --admin-subnav-inset: 0px;
+
+            /* Below 650px the header is a centred column; the action row still starts at the card edge. */
+            .actions {
+                align-self: flex-start;
+            }
         }
     }
 }
