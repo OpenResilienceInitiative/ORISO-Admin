@@ -75,7 +75,9 @@ export const useStatisticsReaderData = ({ id, ...options }: StatisticsReaderData
                 url: `${statisticsReadersEndpoint}/${id}`,
                 method: FETCH_METHODS.GET,
                 skipAuth: false,
-                responseHandling: [],
+                // 403 and 404 reject in place (no redirect) so the page can tell "no access / no
+                // such reader" apart from a failed request it should offer to retry.
+                responseHandling: [FETCH_ERRORS.FORBIDDEN, FETCH_ERRORS.NO_MATCH],
                 // eslint-disable-next-line no-underscore-dangle
             }).then((result: HalResponse<CounselorData>) => result?._embedded as CounselorData),
         ...(options as object),

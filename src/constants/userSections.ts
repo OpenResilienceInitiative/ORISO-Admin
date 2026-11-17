@@ -24,14 +24,6 @@ export const getUserSections = ({ isSuperAdmin, can }: { isSuperAdmin: boolean; 
             to: routePathNames.platformAdmins,
         });
     }
-    // ORISO-UserService#1666: read-only statistics accounts, managed by platform admins only.
-    if (isSuperAdmin && can(PermissionAction.Read, Resource.StatisticsReaderUser)) {
-        visible.push({
-            id: 'statistics-readers',
-            labelKey: 'users.sectionPills.statisticsReaders',
-            to: routePathNames.statisticsReaders,
-        });
-    }
     if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
         visible.push({
             id: 'tenant-admins',
@@ -58,6 +50,16 @@ export const getUserSections = ({ isSuperAdmin, can }: { isSuperAdmin: boolean; 
             id: 'advice-seekers',
             labelKey: 'users.sectionPills.adviceSeekers',
             to: routePathNames.adviceSeekers,
+        });
+    }
+
+    // ORISO-UserService#1666: read-only statistics accounts, managed by platform admins only.
+    // Last, so this rarely used list never pushes the everyday lists behind „Mehr“.
+    if (isSuperAdmin && can(PermissionAction.Read, Resource.StatisticsReaderUser)) {
+        visible.push({
+            id: 'statistics-readers',
+            labelKey: 'users.sectionPills.statisticsReaders',
+            to: routePathNames.statisticsReaders,
         });
     }
 

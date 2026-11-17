@@ -3986,5 +3986,8 @@
     "statisticsReaders.message.add": "Statistics reader created successfully.",
     "statisticsReaders.message.update": "Statistics reader updated successfully.",
     "statisticsReaders.delete.description": "Delete statistics reader {{name}}?",
-    "statisticsReaders.delete.success": "Statistics reader deleted successfully."
+    "statisticsReaders.delete.success": "Statistics reader deleted successfully.",
+    "statisticsReaders.loadError.title": "Statistics reader could not be loaded",
+    "statisticsReaders.loadError.text": "The data could not be loaded right now. Please try again.",
+    "statisticsReaders.loadError.retry": "Try again"
 }

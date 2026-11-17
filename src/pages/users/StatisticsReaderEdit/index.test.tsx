@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
     params: { id: 'add' } as { id: string },
     mutate: vi.fn(),
     record: undefined as Record<string, string> | undefined,
+    loadError: null as Error | null,
+    refetch: vi.fn(),
     mutationOptions: undefined as { onSuccess?: () => void } | undefined,
 }));
 
@@ -28,14 +30,37 @@ vi.mock('../../../hooks/useUserRoles.hook', () => ({
 }));
 vi.mock('../../../hooks/useStatisticsReaders', () => ({
     useStatisticsReaderData: ({ enabled }: { enabled: boolean }) => ({
-        data: enabled ? mocks.record : undefined,
+        data: enabled && !mocks.loadError ? mocks.record : undefined,
         isLoading: false,
-        isError: false,
+        isError: enabled && mocks.loadError !== null,
+        error: enabled ? mocks.loadError : null,
+        refetch: mocks.refetch,
     }),
     useAddOrUpdateStatisticsReader: (options: { onSuccess?: () => void }) => {
         mocks.mutationOptions = options;
         return { mutate: mocks.mutate, isPending: false };
     },
+}));
+vi.mock('../../../components/Notify', () => ({
+    Notify: ({
+        title,
+        children,
+        actions,
+    }: {
+        title: React.ReactNode;
+        children: React.ReactNode;
+        actions?: { label: string; onClick: () => void }[];
+    }) => (
+        <div role="status">
+            <strong>{title}</strong>
+            {children}
+            {actions?.map((action) => (
+                <button key={action.label} type="button" onClick={action.onClick}>
+                    {action.label}
+                </button>
+            ))}
+        </div>
+    ),
 }));
 vi.mock('../../ErrorPages/AccessDenied', () => ({ AccessDenied: () => <div role="alert">access-denied</div> }));
 vi.mock('../../../components/Page', () => {
@@ -58,8 +83,9 @@ vi.mock('../../../components/Card', () => ({
 }));
 vi.mock('../../../components/mui/MuiFormField', async () => {
     const { Form } = await import('antd');
-    const Field = ({ name, disabled }: { name: string; disabled?: boolean }) => (
-        <Form.Item name={name}>
+    // Forwards `rules` so the required and e-mail validation of the real field still runs.
+    const Field = ({ name, disabled, rules }: { name: string; disabled?: boolean; rules?: unknown[] }) => (
+        <Form.Item name={name} rules={rules as never}>
             <input aria-label={name} disabled={disabled} />
         </Form.Item>
     );
@@ -79,6 +105,8 @@ describe('StatisticsReaderEditOrAdd (ORISO-UserService#1666)', () => {
         mocks.isSuperAdmin = true;
         mocks.params = { id: 'add' };
         mocks.record = undefined;
+        mocks.loadError = null;
+        mocks.refetch.mockReset();
     });
 
     it('creates a reader from first name, last name, username and e-mail', async () => {
@@ -103,6 +131,53 @@ describe('StatisticsReaderEditOrAdd (ORISO-UserService#1666)', () => {
         mocks.mutationOptions?.onSuccess?.();
         expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/statistics-readers');
     });
+
+    it('does not save with required fields left empty', async () => {
+        render(<StatisticsReaderEditOrAdd />);
+
+        type('firstname', 'Sam');
+        fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+        expect(await screen.findAllByText('form.errors.required')).toHaveLength(3);
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('does not save with an invalid e-mail address', async () => {
+        render(<StatisticsReaderEditOrAdd />);
+
+        type('firstname', 'Sam');
+        type('lastname', 'Reader');
+        type('username', 'sam.reader');
+        type('email', 'not-an-address');
+        fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+        expect(await screen.findByText('message.error.email.incorrect')).toBeInTheDocument();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it.each(['FORBIDDEN', 'NO_MATCH'])('shows access denied when the server answers %s for the record', (message) => {
+        mocks.params = { id: '44' };
+        mocks.loadError = new Error(message);
+        render(<StatisticsReaderEditOrAdd />);
+
+        expect(screen.getByRole('alert')).toHaveTextContent('access-denied');
+        expect(screen.queryByLabelText('firstname')).not.toBeInTheDocument();
+    });
+
+    it.each([new Error('API call error: 500 Internal Server Error'), new TypeError('Failed to fetch')])(
+        'offers to load again instead of access denied after a failed request: %s',
+        (error) => {
+            mocks.params = { id: '44' };
+            mocks.loadError = error;
+            render(<StatisticsReaderEditOrAdd />);
+
+            expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+            expect(screen.getByRole('status')).toHaveTextContent('statisticsReaders.loadError.title');
+            expect(screen.queryByLabelText('firstname')).not.toBeInTheDocument();
+            fireEvent.click(screen.getByRole('button', { name: 'statisticsReaders.loadError.retry' }));
+            expect(mocks.refetch).toHaveBeenCalledTimes(1);
+        },
+    );
 
     it('explains the password e-mail and the 2FA setup', () => {
         render(<StatisticsReaderEditOrAdd />);

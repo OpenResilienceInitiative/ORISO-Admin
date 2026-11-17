@@ -3986,5 +3986,8 @@
     "statisticsReaders.message.add": "Statistik-Leser·in wurde angelegt.",
     "statisticsReaders.message.update": "Statistik-Leser·in wurde aktualisiert.",
     "statisticsReaders.delete.description": "Statistik-Leser·in {{name}} löschen?",
-    "statisticsReaders.delete.success": "Statistik-Leser·in wurde gelöscht."
+    "statisticsReaders.delete.success": "Statistik-Leser·in wurde gelöscht.",
+    "statisticsReaders.loadError.title": "Statistik-Leser·in konnte nicht geladen werden",
+    "statisticsReaders.loadError.text": "Die Daten konnten gerade nicht geladen werden. Bitte versuchen Sie es erneut.",
+    "statisticsReaders.loadError.retry": "Erneut versuchen"
 }

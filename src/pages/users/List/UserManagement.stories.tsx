@@ -813,12 +813,15 @@ export const ConsultantsTabAt960: Story = {
                 expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
                 expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
             });
-            // 664px of bar: the selected Beratende stays in the bar; Beratungsstellen Admins and
-            // Ratsuchende (ORISO-Admin#1521) move behind „Mehr“.
+            // 664px of bar: the selected Beratende stays in the bar next to Plattform and Träger Admins;
+            // Beratungsstellen Admins, Ratsuchende (ORISO-Admin#1521) and the platform-only
+            // Statistik-Leser·innen (ORISO-UserService#1666, listed last) move behind „Mehr“.
             await expect(active).toHaveTextContent('Beratende');
+            await expect(canvas.getByRole('tab', { name: 'Träger Admins' })).toBeVisible();
             await expect(canvas.queryByRole('tab', { name: 'Beratungsstellen Admins' })).toBeNull();
             await expect(canvas.queryByRole('tab', { name: 'Ratsuchende' })).toBeNull();
-            const more = within(bar).getByRole('button', { name: 'Mehr (2)' });
+            await expect(canvas.queryByRole('tab', { name: 'Statistik-Leser·innen' })).toBeNull();
+            const more = within(bar).getByRole('button', { name: 'Mehr (3)' });
             await expect(tablist).not.toContainElement(more);
             await expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(bar.getBoundingClientRect().right + 1);
             await noSideScroll(canvasElement);

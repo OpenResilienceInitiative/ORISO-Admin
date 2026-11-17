@@ -35,11 +35,11 @@ describe('buildAdminNavTree', () => {
         ]);
         expect(ids(tree, 'counselors')).toEqual([
             'users:platform-admins',
-            'users:statistics-readers',
             'users:tenant-admins',
             'users:agency-admins',
             'users:counsellors',
             'users:advice-seekers',
+            'users:statistics-readers',
         ]);
         expect(ids(tree, 'links')).toEqual(['links:tenants', 'links:counsellor']);
         expect(ids(tree, 'logs')).toContain('logs:inactive');

@@ -4,9 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Col, Form, Row } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
 import routePathNames from '../../../appConfig';
+import { FETCH_ERRORS } from '../../../api/fetchData';
 import { Card } from '../../../components/Card';
 import { HintText } from '../../../components/HintText';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
+import { Notify } from '../../../components/Notify';
 import { Page } from '../../../components/Page';
 import { snackbar } from '../../../components/Snackbar';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -23,6 +25,10 @@ import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { AccessDenied } from '../../ErrorPages/AccessDenied';
 
 const listPath = routePathNames.statisticsReaders;
+
+/** The server refused the record (403) or does not have it (404): no record to show, not a failed load. */
+const isNoAccessError = (error: Error | null) =>
+    error?.message === FETCH_ERRORS.FORBIDDEN || error?.message === FETCH_ERRORS.NO_MATCH;
 
 /**
  * Create or edit a Statistik-Leser·in (ORISO-UserService#1666): a read-only account for the
@@ -43,7 +49,13 @@ const StatisticsReaderEditor = () => {
     const canWrite =
         canRead && can(isEditing ? PermissionAction.Update : PermissionAction.Create, Resource.StatisticsReaderUser);
 
-    const { data, isLoading, isError } = useStatisticsReaderData({ id, enabled: isEditing && canRead });
+    const {
+        data,
+        isLoading,
+        isError,
+        error: loadError,
+        refetch,
+    } = useStatisticsReaderData({ id, enabled: isEditing && canRead });
 
     const { mutate, isPending } = useAddOrUpdateStatisticsReader({
         id: isEditing ? id : undefined,
@@ -73,8 +85,31 @@ const StatisticsReaderEditor = () => {
         }
     }, [form, isEditing, navigate]);
 
-    if (!canRead || (isEditing && !isLoading && (isError || !data))) {
+    const loadFailed = isEditing && !isLoading && isError && !isNoAccessError(loadError);
+    if (!canRead || (isEditing && !isLoading && !loadFailed && (isError || !data))) {
         return <AccessDenied />;
+    }
+
+    // A network error or 5xx is not a permission problem: say so and offer to load again.
+    if (loadFailed) {
+        return (
+            <Page>
+                <Page.BackWithActions
+                    path={listPath}
+                    parentKey="sidebar.users"
+                    title={t('users.sectionPills.statisticsReaders')}
+                />
+                <Notify
+                    severity="error"
+                    title={t('statisticsReaders.loadError.title')}
+                    quietText={t('notify.tile.notLoaded')}
+                    actions={[{ label: t('statisticsReaders.loadError.retry'), onClick: () => refetch() }]}
+                    testId="statistics-reader-load-error"
+                >
+                    {t('statisticsReaders.loadError.text')}
+                </Notify>
+            </Page>
+        );
     }
 
     const title = isEditing

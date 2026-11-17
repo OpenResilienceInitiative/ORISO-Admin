@@ -733,7 +733,7 @@ describe('Statistic page', () => {
                 roleState.roles = [UserRole.StatisticsReader];
             };
 
-            it('drills from the platform into a Träger and its Beratungsstellen like a platform admin', async () => {
+            it('drills from the platform into a Träger and shows its Beratungsstellen by name', async () => {
                 becomeReader();
                 const platformTarget = {
                     ...agencyRow(0),
@@ -742,19 +742,42 @@ describe('Statistic page', () => {
                     agencyId: null,
                 };
                 const tenantTarget = { ...agencyRow(0), targetType: 'TENANT' as const, tenantId: 5, agencyId: null };
+                // The drilled Träger answers with one Beratungsstelle whose figure differs from the platform's 12.
+                const drilledAgency = agencyRow(11, {
+                    tenantId: 5,
+                    metrics: { ...response.targets[0].metrics!, enquiriesCurrentMonth: 37 },
+                });
                 dashboardMock.mockImplementation((tenantId?: number) =>
                     tenantId == null
                         ? Promise.resolve({ ...response, scope: 'PLATFORM', targets: [platformTarget, tenantTarget] })
-                        : new Promise(() => {}),
+                        : Promise.resolve({ ...response, scope: 'TENANT', targets: [tenantTarget, drilledAgency] }),
                 );
+                // Names come from the names-only endpoints opened for the reader, never the admin lists.
+                fetchDataMock.mockImplementation(({ url }: { url: string }) => {
+                    if (url.includes('/service/agencies/statistics/names'))
+                        return Promise.resolve([{ id: 11, name: 'Beratungsstelle Nord', tenantId: 5 }]);
+                    if (url.includes('/service/tenantadmin/statistics/names'))
+                        return Promise.resolve([{ id: 5, name: 'Träger Süd' }]);
+                    return Promise.resolve({ total: 0, _embedded: [] });
+                });
                 renderStatistic();
                 await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
 
                 openScopePicker();
-                fireEvent.click(await screen.findByRole('option', { name: /Träger 5/ }));
+                fireEvent.click(await screen.findByRole('option', { name: /^Träger Süd/ }));
                 openScopePicker();
                 fireEvent.click(screen.getByRole('button', { name: /^(Beratungsstellen|Counselling centres)$/ }));
                 await waitFor(() => expect(dashboardMock).toHaveBeenCalledWith(5));
+
+                // The drilled Träger's figures replace the loading state …
+                expect((await screen.findAllByText('37')).length).toBeGreaterThan(0);
+                // … and its Beratungsstelle is offered by name, not by id.
+                openScopePicker();
+                expect(screen.getByRole('option', { name: /^Beratungsstelle Nord/ })).toBeInTheDocument();
+                expect(screen.queryByText('#11')).toBeNull();
+                const calledUrls = fetchDataMock.mock.calls.map(([props]) => props.url);
+                expect(calledUrls.some((url) => url.includes('agencyadmin'))).toBe(false);
+                expect(calledUrls.some((url) => url.includes('/service/tenantadmin/search'))).toBe(false);
             });
 
             it('shows the tutorial statistics like a platform admin', async () => {
