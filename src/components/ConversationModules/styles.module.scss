@@ -1,0 +1,344 @@
+@use '../../styles/muiSpacing' as mui;
+
+/* Conversation modules (ADR-035): one tile per conversation type, a dialog configurator, and the
+ * "registration per topic" tab. Colours come from the shared M3 tokens; sections are hairline-separated
+ * rows inside the dialog, not boxes inside boxes. */
+
+$hairline: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 28%, transparent);
+
+.grid {
+    display: grid;
+    gap: mui.$mui-unit * 3;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+}
+
+.intro,
+.help {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.help {
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit * 3;
+}
+
+.tileBody {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.tileField {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border-radius: 12px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    gap: 2px;
+}
+
+.tileFieldLabel {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+}
+
+.tileFieldValue {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 24px;
+}
+
+.chip {
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    padding: 2px mui.$mui-unit;
+    border: 1px solid var(--m3-outline-variant, #c4c7c7);
+    border-radius: 8px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.chipSafety {
+    border-color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #ba1a1a);
+}
+
+.dialogBody {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit * 2;
+}
+
+.warning {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border-left: 4px solid var(--m3-error, #ba1a1a);
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 12px;
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: mui.$mui-unit;
+
+    p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+.warningTitle {
+    color: var(--m3-error, #ba1a1a);
+    font-weight: 600;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.row {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: mui.$mui-unit * 1.5 0;
+    border-top: $hairline;
+    gap: mui.$mui-unit * 1.5;
+
+    &:last-child {
+        border-bottom: $hairline;
+    }
+}
+
+.rowHeader {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.rowToggle {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    padding: mui.$mui-unit 0;
+    border: 0;
+    background: none;
+    color: var(--m3-on-surface, #1b1b1c);
+    cursor: pointer;
+    font: inherit;
+    gap: mui.$mui-unit * 1.5;
+    text-align: left;
+
+    &:focus-visible {
+        border-radius: mui.$mui-unit;
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 2px;
+    }
+}
+
+.rowTitle {
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rowMeta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.rowActions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+.rowEditor {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 0 0 mui.$mui-unit 0;
+    gap: mui.$mui-unit * 2;
+}
+
+.addBar {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+.addButtons {
+    display: grid;
+    gap: mui.$mui-unit;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+
+.addButton {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: mui.$mui-unit * 1.5;
+    border: 1px dashed var(--m3-outline, #747878);
+    border-radius: 12px;
+    background: none;
+    color: var(--m3-on-surface, #1b1b1c);
+    cursor: pointer;
+    font: inherit;
+    gap: 2px;
+    text-align: left;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: 2px;
+    }
+
+    strong {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+    }
+
+    span {
+        color: var(--m3-on-surface-variant, #444748);
+        font-size: 12px;
+        line-height: 16px;
+    }
+}
+
+.question {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border-radius: 12px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    gap: mui.$mui-unit * 1.5;
+}
+
+.questionHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.fieldRow {
+    display: grid;
+    gap: mui.$mui-unit * 1.5;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+
+.option {
+    display: flex;
+    align-items: center;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.footerEnd {
+    display: flex;
+    flex-wrap: wrap;
+    gap: mui.$mui-unit;
+}
+
+.topicRow {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2 0;
+    border-top: $hairline;
+    gap: mui.$mui-unit;
+}
+
+.topicHeader {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.topicName {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+
+.steps {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.platformDefault {
+    padding: mui.$mui-unit * 2;
+    border-radius: 12px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+}
+
+/* Phone: the title wraps instead of being cut; kind and chevron move under it, the controls stay beside. */
+@media (max-width: 599px) {
+    .rowToggle {
+        flex-wrap: wrap;
+    }
+
+    .rowTitle {
+        flex-basis: 100%;
+        white-space: normal;
+    }
+}
