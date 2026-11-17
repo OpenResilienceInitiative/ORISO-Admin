@@ -6,8 +6,19 @@
  * metadata-suffixed keys such as `de__meta` pass through untouched).
  */
 
-/** HTML values TipTap emits for "nothing written". */
-export const isEmptyHtml = (html: string | undefined): boolean => !html || html === '<p></p>';
+/**
+ * True when the HTML shows no text: tags stripped, `&nbsp;` and non-breaking or zero-width spaces
+ * dropped. The editor emits more than `<p></p>` for "nothing written" (`<p> </p>`, `<p><br></p>`,
+ * `<p>&nbsp;</p>`), and the server treats all of them as empty, so a who-reads-along text like that
+ * must not count as filled (Admin#1341).
+ */
+export const isEmptyHtml = (html: string | undefined | null): boolean =>
+    !html ||
+    html
+        .replace(/<[^>]*>/g, '')
+        .replace(/&(?:nbsp|#160|#xa0);/gi, ' ')
+        .replace(/[\u00A0\u200B]/g, '')
+        .trim() === '';
 
 /**
  * Keys that we offer for editing: plain language codes like `de`, `en` or `de-CH`.
