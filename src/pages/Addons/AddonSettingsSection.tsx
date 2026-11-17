@@ -9,6 +9,7 @@ import { AddonSettingsForm } from './AddonSettingsForm';
 import { AgencySelect, type SelectOption } from './RemoteSearchSelect';
 import { initialSettingsValues, settingsFields } from './settingsSchema';
 import { useAddonSettings, useSaveAddonSettings } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
 
 interface AddonSettingsSectionProps {
@@ -53,6 +54,8 @@ const SettingsForScope = ({
             onError: (error) => {
                 if (error instanceof AddonSettingsValidationError) {
                     setInvalid(error.detail ?? '');
+                } else {
+                    reportAddonSaveError(error, t);
                 }
             },
         });

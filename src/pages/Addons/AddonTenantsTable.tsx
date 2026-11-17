@@ -17,6 +17,7 @@ import { snackbar } from '../../components/Snackbar';
 import { useMeasuredListLayout } from '../../hooks/useMeasuredListLayout';
 import { AddonModeHelp } from './AddonModeHelp';
 import { useAddonTenants, useAllTenants, useSetTenantMode, type TenantName } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
 
 export interface TenantRow {
@@ -86,7 +87,7 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
             { tenantId: row.id, mode },
             {
                 onSuccess: () => snackbar.success(String(t('addons.mode.saved'))),
-                onError: () => snackbar.error(String(t('addons.tenants.switchError'))),
+                onError: (error) => reportAddonSaveError(error, t),
             },
         );
 

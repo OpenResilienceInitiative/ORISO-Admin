@@ -7,6 +7,7 @@ import { snackbar } from '../../components/Snackbar';
 import { AddonFeatures } from './AddonFeatures';
 import { AddonReadme } from './AddonReadme';
 import { useSetGlobalEnabled } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
 
 interface AddonInfoProps {
@@ -29,7 +30,7 @@ export const AddonInfo = ({ addon }: AddonInfoProps) => {
     const apply = (enabled: boolean) =>
         setGlobal.mutate(enabled, {
             onSuccess: () => snackbar.success(String(t(enabled ? 'addons.global.enabled' : 'addons.global.disabled'))),
-            onError: () => snackbar.error(String(t('addons.tenants.switchError'))),
+            onError: (error) => reportAddonSaveError(error, t),
         });
 
     return (

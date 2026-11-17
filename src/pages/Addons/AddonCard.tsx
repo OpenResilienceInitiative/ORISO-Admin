@@ -7,6 +7,7 @@ import { AddonDetails } from './AddonDetails';
 import { AddonReadme } from './AddonReadme';
 import type { AdminPageEntry } from './AddonsLayout';
 import { useSetTenantEnabled } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
 
 interface AddonCardProps {
@@ -47,7 +48,7 @@ export const AddonCard = ({
     const onToggle = (enabled: boolean) =>
         setEnabled.mutate(enabled, {
             onSuccess: () => snackbar.success(String(t(enabled ? 'addons.tenant.enabled' : 'addons.tenant.disabled'))),
-            onError: () => snackbar.error(String(t('addons.tenants.switchError'))),
+            onError: (error) => reportAddonSaveError(error, t),
         });
 
     return (

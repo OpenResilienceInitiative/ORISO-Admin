@@ -5,6 +5,7 @@ import { snackbar } from '../../components/Snackbar';
 import type { AdminAddon } from '../../addons/addonTypes';
 import { AgencySelect, type SelectOption } from './RemoteSearchSelect';
 import { useAgencyNames, useClearAgencyOverride, useSetAgencyOverride } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
 
 interface AgencyOverridesProps {
@@ -34,6 +35,7 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
     const agencyLabel = (agencyId: number) => agencyNames[agencyId] ?? t('addons.agencies.unnamed', { id: agencyId });
 
     const saved = () => snackbar.success(String(t('addons.agencies.saved')));
+    const failed = (error: unknown) => reportAddonSaveError(error, t);
 
     const addOverride = () => {
         if (!newAgency) {
@@ -46,6 +48,7 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
                     setNewAgency(null);
                     saved();
                 },
+                onError: failed,
             },
         );
     };
@@ -68,7 +71,10 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
                                     t('addons.agencies.switchFor', { agency: agencyLabel(override.agencyId) }),
                                 )}
                                 onChange={(enabled) =>
-                                    setOverride.mutate({ agencyId: override.agencyId, enabled }, { onSuccess: saved })
+                                    setOverride.mutate(
+                                        { agencyId: override.agencyId, enabled },
+                                        { onSuccess: saved, onError: failed },
+                                    )
                                 }
                             />
                             <Popconfirm
@@ -78,6 +84,7 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
                                 onConfirm={() =>
                                     clearOverride.mutate(override.agencyId, {
                                         onSuccess: () => snackbar.success(String(t('addons.agencies.removed'))),
+                                        onError: failed,
                                     })
                                 }
                             >
