@@ -12,6 +12,7 @@ const USER_HUB_SECTIONS = new Set<string>([
     TypeOfUser.AgencyAdmins,
     TypeOfUser.TenantAdmins,
     TypeOfUser.PlatformAdmins,
+    TypeOfUser.StatisticsReaders,
 ]);
 
 export const UsersList = () => {

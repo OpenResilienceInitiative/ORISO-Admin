@@ -35,6 +35,7 @@ describe('buildAdminNavTree', () => {
         ]);
         expect(ids(tree, 'counselors')).toEqual([
             'users:platform-admins',
+            'users:statistics-readers',
             'users:tenant-admins',
             'users:agency-admins',
             'users:counsellors',
@@ -87,6 +88,13 @@ describe('buildAdminNavTree', () => {
         // The single tab stays in the tree, so the app-wide search still finds it.
         expect(ids(tree, 'theme')).toEqual(['settings:legal']);
         expect(tree.theme[0].to).toBe(`${routePathNames.themeSettings}/legal`);
+    });
+
+    // ORISO-UserService#1666: only a platform admin manages Statistik-Leser·innen.
+    it('keeps the Statistik-Leser list from a Träger admin even with every permission', () => {
+        const tree = buildAdminNavTree({ ...base, isSuperAdmin: false, hasRole: () => true, can: () => true });
+
+        expect(ids(tree, 'counselors')).not.toContain('users:statistics-readers');
     });
 
     it('returns empty lists for an admin without permissions', () => {

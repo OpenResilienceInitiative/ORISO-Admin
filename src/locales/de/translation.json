@@ -3975,5 +3975,16 @@
     "home.contactPersonTip.centres.one": "1 Beratungsstelle",
     "home.contactPersonTip.unknownTenant": "Ohne Träger",
     "home.contactPersonTip.openAgencies": "Zu den Beratungsstellen",
-    "home.contactPersonTip.note": "Bis dahin sehen Beratende die Admins der Beratungsstelle oder des Trägers."
+    "home.contactPersonTip.note": "Bis dahin sehen Beratende die Admins der Beratungsstelle oder des Trägers.",
+    "users.sectionPills.statisticsReaders": "Statistik-Leser·innen",
+    "home.link.admins.statistics-readers": "Statistik",
+    "statisticsReaders.title.text": "{{userCount}} Statistik-Leser·innen",
+    "statisticsReaders.card.personalDataTitle": "Persönliche Daten der Statistik-Leser·in",
+    "statisticsReaders.form.username": "Benutzername",
+    "statisticsReaders.hint.onboarding": "Die Person erhält eine E-Mail, um ihr Passwort festzulegen. Vor dem ersten Blick auf die Statistik richtet sie die Zwei-Faktor-Authentifizierung ein. Statistik-Leser·innen sehen nur die Statistik und können nichts ändern.",
+    "statisticsReaders.edit.back": "Statistik-Leser·in anlegen",
+    "statisticsReaders.message.add": "Statistik-Leser·in wurde angelegt.",
+    "statisticsReaders.message.update": "Statistik-Leser·in wurde aktualisiert.",
+    "statisticsReaders.delete.description": "Statistik-Leser·in {{name}} löschen?",
+    "statisticsReaders.delete.success": "Statistik-Leser·in wurde gelöscht."
 }

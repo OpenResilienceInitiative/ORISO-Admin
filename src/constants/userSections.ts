@@ -4,7 +4,7 @@ import { Resource } from '../enums/Resource';
 import type { CanFn } from './caseHandoverAccess';
 
 export type UserSection = {
-    id: 'platform-admins' | 'tenant-admins' | 'agency-admins' | 'counsellors' | 'advice-seekers';
+    id: 'platform-admins' | 'statistics-readers' | 'tenant-admins' | 'agency-admins' | 'counsellors' | 'advice-seekers';
     labelKey: string;
     to: string;
 };
@@ -22,6 +22,14 @@ export const getUserSections = ({ isSuperAdmin, can }: { isSuperAdmin: boolean; 
             id: 'platform-admins',
             labelKey: 'users.sectionPills.platformAdmins',
             to: routePathNames.platformAdmins,
+        });
+    }
+    // ORISO-UserService#1666: read-only statistics accounts, managed by platform admins only.
+    if (isSuperAdmin && can(PermissionAction.Read, Resource.StatisticsReaderUser)) {
+        visible.push({
+            id: 'statistics-readers',
+            labelKey: 'users.sectionPills.statisticsReaders',
+            to: routePathNames.statisticsReaders,
         });
     }
     if (can(PermissionAction.Read, Resource.TenantAdminUser)) {

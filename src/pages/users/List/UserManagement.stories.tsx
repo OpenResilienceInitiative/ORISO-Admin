@@ -288,6 +288,48 @@ export const TenantAdminsForPlatformAdmin: Story = {
     },
 };
 
+const STATISTICS_READERS_ENDPOINT = '*/service/useradmin/statisticsreaders/search';
+
+const STATISTICS_READERS: CounselorData[] = [
+    {
+        ...CONSULTANTS[0],
+        id: 'sr-1',
+        key: 'sr-1',
+        firstname: 'Sabine',
+        lastname: 'Zahl',
+        email: 'sabine.zahl@example.org',
+        username: 'szahl',
+        agencies: [],
+        agencyIds: [],
+        tenantId: '0',
+        otherIdentityTypes: [],
+    },
+];
+
+/**
+ * Statistik-Leser·innen tab (ORISO-UserService#1666), platform admins only: read-only statistics
+ * accounts, no Träger column, create/edit/delete like the platform admins.
+ */
+export const StatisticsReadersForPlatformAdmin: Story = {
+    render: () => (
+        <Routes location="/admin/users/statistics-readers">
+            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+        </Routes>
+    ),
+    parameters: {
+        msw: {
+            handlers: withDefaults([
+                http.get(STATISTICS_READERS_ENDPOINT, () => consultantsResponse(STATISTICS_READERS)),
+            ]),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('sabine.zahl@example.org')).toBeVisible();
+        await expect(canvas.queryByRole('columnheader', { name: 'Träger' })).toBeNull();
+    },
+};
+
 /** The same tab for a Träger admin: only their own Träger, so no Träger column. */
 export const TenantAdminsForTraegerAdmin: Story = {
     render: onTenantAdminsTab,
