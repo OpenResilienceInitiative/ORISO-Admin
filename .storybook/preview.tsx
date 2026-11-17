@@ -10,7 +10,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import de_DE from 'antd/es/locale/de_DE';
-import { getWorker, initialize, mswLoader } from 'msw-storybook-addon';
+import type { SetupWorker } from 'msw/browser';
+import { setupWorker } from 'msw/browser';
+import { mswLoader } from 'msw-storybook-addon/csf3';
 import { beginStoryVerification, recordUnexpectedRequest } from './verification';
 import { isProductRequest } from './verificationIntegrity';
 import { a11yVerification } from './a11yVerification';
@@ -30,18 +32,23 @@ import { SnackbarHost, snackbar } from '../src/components/Snackbar';
 import '../src/i18n';
 
 // Static modules and assets may load normally. Product requests must be backed
-// by story-local fixtures; a failed worker must never create a false-green test.
-initialize(
-    {
+// by story-local fixtures; a failed worker must never create a false-green test:
+// if `start()` rejects, the loader rejects and every story fails.
+// The shared handlers are initial handlers, so they survive the per-story reset.
+let storyWorker: SetupWorker | undefined;
+const startStoryWorker = async (): Promise<SetupWorker> => {
+    const worker = setupWorker(...createSharedStoryHandlers());
+    await worker.start({
         onUnhandledRequest(request) {
             if (isProductRequest(request.url)) {
                 recordUnexpectedRequest(request);
             }
         },
         serviceWorker: { url: new URL('mockServiceWorker.js', window.location.href).href },
-    },
-    createSharedStoryHandlers(),
-);
+    });
+    storyWorker = worker;
+    return worker;
+};
 
 /** The app-level snackbar host. A story that raises a pop-up shows it; leaving the story clears it. */
 const StorySnackbarHost = () => {
@@ -140,7 +147,7 @@ const preview: Preview = {
             },
         },
     },
-    loaders: [mswLoader],
+    loaders: [mswLoader(startStoryWorker)],
     async beforeEach(context) {
         if (import.meta.env.MODE === 'test') a11yVerification.begin(context);
         return beginStoryVerification(context.parameters.verification?.expectedErrors, async () => {
@@ -168,7 +175,7 @@ const preview: Preview = {
                 errors.push(error);
             }
             try {
-                getWorker().resetHandlers();
+                storyWorker?.resetHandlers();
             } catch (error) {
                 errors.push(error);
             }

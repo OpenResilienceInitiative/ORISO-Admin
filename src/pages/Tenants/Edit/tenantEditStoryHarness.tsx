@@ -15,6 +15,7 @@ import { TenantErstantwortSettings } from './ErstantwortSettings';
 import { TenantSmtpSettings } from './SmtpSettings';
 import { TenantAppSettings } from './AppSettings';
 import { TenantGlobalSettings } from './GlobalSettings';
+import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
 
 /** A Träger as the tenant service returns it, so the Träger pages can render without a backend. */
 export const storyTenant = {
@@ -41,6 +42,7 @@ export const storyTenant = {
 
 /** Every call the Träger edit pages make, answered with the story tenant (other calls are not needed to render). */
 export const tenantEditHandlers = [
+    ...contactPersonReadHandlers(),
     http.get('*/service/tenantadmin/controls', () =>
         HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
     ),

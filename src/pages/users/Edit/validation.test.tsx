@@ -90,6 +90,9 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
 vi.mock('../../../hooks/useCounselorById', () => ({
     useCounselorById: () => ({ data: undefined, isLoading: false }),
 }));
+vi.mock('../../../hooks/useContactPerson', () => ({
+    useAgencyContactPairs: () => ({ pairs: {}, failedIds: [], retryFailed: () => undefined, isLoading: false }),
+}));
 vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => false }) }));
 // `hasRole` as well as `isSuperAdmin`: the form gates its admin-remarks field on
 // `hasRole([TenantAdmin, SingleTenantAdmin])`. False keeps this test on the same

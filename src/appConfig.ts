@@ -67,6 +67,12 @@ export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
 export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
 export const topicAdminEndpoint = `${agencyServiceURL}/service/topicadmin`;
 export const tenantAdminsEndpoint = `${userServiceURL}/service/useradmin/tenantadmins`;
+// ORISO-Admin#1534: contact person per Beratungsstelle and the Träger default.
+export const agencyContactPersonEndpoint = (agencyId: number | string) =>
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/contactperson`;
+export const tenantContactPersonEndpoint = (tenantId: number | string) =>
+    `${userServiceURL}/service/useradmin/tenants/${tenantId}/contactperson`;
+export const agencyContactCoverageEndpoint = `${userServiceURL}/service/useradmin/agencycontacts/coverage`;
 export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/tenantadmins/search`;
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
