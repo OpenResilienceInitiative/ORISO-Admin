@@ -3,12 +3,15 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDateTime } from '../../addons/intlLocale';
 import type { AdminAddon } from '../../addons/addonTypes';
+import { SegmentedTabs } from '../../components/SegmentedTabs';
 import { snackbar } from '../../components/Snackbar';
 import { AddonFeatures } from './AddonFeatures';
 import { AddonReadme } from './AddonReadme';
 import { useSetGlobalEnabled } from './useAddons';
 import { reportAddonSaveError } from './mutationFeedback';
 import styles from './addons.module.scss';
+
+type InfoTab = 'readme' | 'features';
 
 interface AddonInfoProps {
     addon: AdminAddon;
@@ -26,6 +29,13 @@ export const AddonInfo = ({ addon }: AddonInfoProps) => {
     const setGlobal = useSetGlobalEnabled(manifest.name);
     const [confirmOff, setConfirmOff] = useState(false);
     const switchId = `addon-${manifest.name}-global`;
+    const idPrefix = `addon-${manifest.name}-info`;
+    const tabs = [
+        ...(addon.hasReadme ? [{ key: 'readme' as const, label: t('addons.tabs.readme') }] : []),
+        ...((manifest.apps ?? []).length > 0 ? [{ key: 'features' as const, label: t('addons.features') }] : []),
+    ];
+    const [active, setActive] = useState<InfoTab>('readme');
+    const current = tabs.find((tab) => tab.key === active) ?? tabs[0];
 
     const apply = (enabled: boolean) =>
         setGlobal.mutate(enabled, {
@@ -68,8 +78,29 @@ export const AddonInfo = ({ addon }: AddonInfoProps) => {
                 </div>
             }
         >
-            <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />
-            <AddonFeatures apps={manifest.apps ?? []} />
+            {current && (
+                <div className={styles.details}>
+                    <SegmentedTabs
+                        ariaLabel={String(t('addons.details.label', { addon: manifest.name }))}
+                        tabs={tabs}
+                        activeKey={current.key}
+                        onChange={(key) => setActive(key as InfoTab)}
+                        idPrefix={idPrefix}
+                    />
+                    <div
+                        role="tabpanel"
+                        id={`${idPrefix}-panel`}
+                        aria-labelledby={`${idPrefix}-tab-${current.key}`}
+                        className={styles.detailsPanel}
+                    >
+                        {current.key === 'readme' ? (
+                            <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />
+                        ) : (
+                            <AddonFeatures apps={manifest.apps ?? []} />
+                        )}
+                    </div>
+                </div>
+            )}
             {discoveredAt && (
                 <p className={styles.hint}>
                     {t('addons.discoveredAt', { date: formatDateTime(discoveredAt, language) })}

@@ -52,6 +52,22 @@ describe('AddonInfo', () => {
         expect(screen.queryByRole('heading', { name: 'Digisucht' })).not.toBeInTheDocument();
     });
 
+    it('shows the readme and the features as tabs, the readme first', () => {
+        render(<AddonInfo addon={addon(true, true)} />);
+        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+            'addons.tabs.readme',
+            'addons.features',
+        ]);
+        expect(screen.queryByText('Ziele')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('tab', { name: 'addons.features' }));
+        expect(screen.getByText('Ziele')).toBeInTheDocument();
+        expect(screen.queryByRole('heading', { name: 'Digisucht' })).not.toBeInTheDocument();
+        expect(screen.getByRole('tabpanel')).toHaveAttribute(
+            'aria-labelledby',
+            screen.getByRole('tab', { name: 'addons.features' }).id,
+        );
+    });
+
     it('switches the add-on on globally right away', () => {
         render(<AddonInfo addon={addon(false)} />);
         fireEvent.click(screen.getByRole('switch', { name: 'addons.global.switchLabel' }));

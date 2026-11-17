@@ -54,6 +54,42 @@
     gap: 8px;
 }
 
+.cardToggle {
+    width: 100%;
+    min-height: 40px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-align: start;
+
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid var(--m3-primary);
+        outline-offset: 2px;
+    }
+}
+
+.chevron {
+    flex: none;
+    transform: rotate(-90deg);
+    transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+    transform: none;
+}
+
+.cardCollapsed :global(.ant-card-head) {
+    border-bottom: 0;
+}
+
+.cardCollapsed :global(.ant-card-body) {
+    display: none;
+}
+
 .addonName {
     font-weight: 600;
 }
@@ -186,13 +222,6 @@
     padding-block: 8px;
 }
 
-.readme {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    margin-bottom: 12px;
-}
-
 .readmeContent {
     max-width: 75ch;
     color: var(--m3-on-surface);
@@ -279,12 +308,6 @@
     }
 }
 
-.readmeCollapsed {
-    overflow: hidden;
-    max-height: 280px;
-    mask-image: linear-gradient(to bottom, #000 75%, transparent);
-}
-
 .inlineLink {
     height: auto;
     padding-inline: 0;
@@ -296,10 +319,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 4px 12px;
-}
-
-.detailsToggle {
-    margin-top: 4px;
 }
 
 .details {

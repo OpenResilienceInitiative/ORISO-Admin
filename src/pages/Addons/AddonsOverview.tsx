@@ -1,5 +1,5 @@
 import { Alert, Tag } from 'antd';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { AdminEmpty } from '../../components/AdminEmpty';
@@ -55,7 +55,6 @@ const TenantAddon = ({ name, tenantId, tenantName }: { name: string; tenantId: n
             title={tenantName ? `${tenantName} (${tenantId})` : t('addons.tenant.unnamed', { id: tenantId })}
             tags={<Tag>{t(`addons.mode.${addon.mode ?? 'OFF'}`)}</Tag>}
             canSwitch={false}
-            detailsAlwaysOpen
         />
     );
 };
@@ -141,19 +140,30 @@ const PlatformAddons = ({ list }: { list: AdminAddon[] }) => {
 /** Träger admin: one card per add-on the platform admin made visible to the Träger. */
 const TenantAddons = ({ list, tenantId }: { list: AdminAddon[]; tenantId: number }) => {
     const { adminPages } = useAddonsOutletContext();
+    const [openName, setOpenName] = useState<string | null>(null);
     return (
         <>
-            {list.map((addon) => (
-                <AddonCard
-                    key={addon.manifest.name}
-                    addon={addon}
-                    tenantId={tenantId}
-                    adminPages={adminPages}
-                    canSwitch={!!addon.tenantCanSwitch}
-                    showReadme
-                    defaultOpen={list.length === 1}
-                />
-            ))}
+            {list.map((addon) => {
+                const { name } = addon.manifest;
+                return (
+                    <AddonCard
+                        key={name}
+                        addon={addon}
+                        tenantId={tenantId}
+                        adminPages={adminPages}
+                        canSwitch={!!addon.tenantCanSwitch}
+                        showReadme
+                        collapse={
+                            list.length > 1
+                                ? {
+                                      expanded: openName === name,
+                                      onToggle: () => setOpenName((current) => (current === name ? null : name)),
+                                  }
+                                : undefined
+                        }
+                    />
+                );
+            })}
         </>
     );
 };

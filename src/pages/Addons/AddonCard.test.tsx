@@ -42,7 +42,11 @@ const adminPage = (id: string, title: string): AdminPageEntry => ({
     to: `/addons/apps/digisucht-tools/${id}`,
 });
 
-const renderCard = (value: AdminAddon, defaultOpen = false, adminPages: AdminPageEntry[] = []) =>
+const renderCard = (
+    value: AdminAddon,
+    adminPages: AdminPageEntry[] = [],
+    collapse?: { expanded: boolean; onToggle: () => void },
+) =>
     render(
         <QueryClientProvider client={new QueryClient()}>
             <MemoryRouter>
@@ -52,7 +56,7 @@ const renderCard = (value: AdminAddon, defaultOpen = false, adminPages: AdminPag
                     adminPages={adminPages}
                     canSwitch={!!value.tenantCanSwitch}
                     showReadme
-                    defaultOpen={defaultOpen}
+                    collapse={collapse}
                 />
             </MemoryRouter>
         </QueryClientProvider>,
@@ -75,12 +79,21 @@ describe('AddonCard', () => {
         expect(screen.getByText('addons.status.active')).toBeInTheDocument();
     });
 
-    it('shows the readme and keeps the details folded until asked', () => {
+    it('opens on the readme tab, followed by the details tabs', () => {
         renderCard(addon());
+        expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+            'addons.tabs.readme',
+            'addons.agencies.title',
+            'addons.settings.title',
+            'addons.stats.title',
+        ]);
+        const readmeTab = screen.getByRole('tab', { name: 'addons.tabs.readme' });
+        expect(readmeTab).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', readmeTab.id);
         expect(screen.getByText('Zielen')).toBeInTheDocument();
-        expect(screen.queryByText('agency overrides')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /details/ })).not.toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'addons.details.show' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'addons.agencies.title' }));
         expect(screen.getByText('agency overrides')).toBeInTheDocument();
         expect(screen.queryByText('settings form')).not.toBeInTheDocument();
 
@@ -92,14 +105,36 @@ describe('AddonCard', () => {
         expect(screen.getByText('settings form')).toBeInTheDocument();
     });
 
+    it('leaves out the readme tab when the add-on has no readme', () => {
+        renderCard(addon({ hasReadme: false }));
+        expect(screen.getByRole('tab', { name: 'addons.agencies.title' })).toHaveAttribute('aria-selected', 'true');
+        expect(screen.queryByRole('tab', { name: 'addons.tabs.readme' })).not.toBeInTheDocument();
+    });
+
+    it('folds through its header when it is one of several add-ons', () => {
+        const onToggle = vi.fn();
+        const view = renderCard(addon(), [], { expanded: false, onToggle });
+        const header = screen.getByRole('button', { name: /digisucht-tools/ });
+        expect(header).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+        fireEvent.click(header);
+        expect(onToggle).toHaveBeenCalledTimes(1);
+        expect(mutate).not.toHaveBeenCalled();
+
+        view.unmount();
+        renderCard(addon(), [], { expanded: true, onToggle });
+        expect(screen.getByRole('button', { name: /digisucht-tools/ })).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('tablist')).toBeInTheDocument();
+    });
+
     it('names the tab of a single admin page after its app', () => {
-        renderCard(addon(), true, [adminPage('report', 'Auswertung')]);
+        renderCard(addon(), [adminPage('report', 'Auswertung')]);
         fireEvent.click(screen.getByRole('tab', { name: 'Auswertung' }));
         expect(screen.getByRole('link', { name: 'Auswertung' })).toBeInTheDocument();
     });
 
     it('groups several admin pages under one tab', () => {
-        renderCard(addon(), true, [adminPage('report', 'Auswertung'), adminPage('export', 'Export')]);
+        renderCard(addon(), [adminPage('report', 'Auswertung'), adminPage('export', 'Export')]);
         fireEvent.click(screen.getByRole('tab', { name: 'addons.adminPages' }));
         expect(screen.getByRole('link', { name: 'Auswertung' })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Export' })).toBeInTheDocument();

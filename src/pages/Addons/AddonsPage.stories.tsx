@@ -57,6 +57,7 @@ const bundleHandler = http.get(`*${BUNDLE_PATH}`, () =>
 
 const backend = createAddonBackend();
 const backendWithoutReadme = createAddonBackend({ readme: false });
+const singleAddonBackend = createAddonBackend({ noticeBoard: false });
 
 const withAddonsRoutes =
     (roles: UserRole[], tenantId: number, initialPath: string = routePathNames.addons) =>
@@ -82,6 +83,7 @@ const meta = {
     beforeEach: () => {
         backend.reset();
         backendWithoutReadme.reset();
+        singleAddonBackend.reset();
     },
 } satisfies Meta<typeof AddonsLayout>;
 
@@ -112,8 +114,8 @@ const readmeImage = (scope: HTMLElement) =>
     within(scope).getByRole('img', { name: 'Zielübersicht im Beratungsportal' }) as HTMLImageElement;
 
 /**
- * Träger admin: one card per add-on the platform admin made visible. The switch appears only
- * where the Träger decides; an add-on that is always on shows its state. Details open on demand.
+ * Träger admin with several add-ons: one card each, folded by its header like an accordion. The
+ * switch appears only where the Träger decides; an add-on that is always on shows its state.
  */
 export const TraegerAdmin: Story = {
     decorators: [withAddonsRoutes([UserRole.TenantAdmin], TENANT.id)],
@@ -122,38 +124,62 @@ export const TraegerAdmin: Story = {
         // Re-query on every step: the narrow layout may remount the page once the mobile navigation registers.
         const demo = () => within(canvas.getByTestId(`addon-card-${ADDON}-${TENANT.id}`));
         const notice = () => within(canvas.getByTestId(`addon-card-${NOTICE_ADDON}-${TENANT.id}`));
+        const header = (scope: () => ReturnType<typeof within>, name: string) =>
+            scope().getByRole('button', { name: new RegExp(name) });
 
+        await expect(demo().getByRole('switch', { name: /^(Aktiv|Active)$/ })).toBeChecked();
+        await expect(notice().queryByRole('switch')).toBeNull();
+        await expect(notice().getByText(/^(Aktiv|Active)$/)).toBeVisible();
+        await expect(header(demo, ADDON)).toHaveAttribute('aria-expanded', 'false');
+        await expect(header(notice, NOTICE_ADDON)).toHaveAttribute('aria-expanded', 'false');
+        await expect(demo().queryByRole('tablist')).toBeNull();
+        await expect(notice().queryByRole('tablist')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: /Details|Mehr anzeigen|Show more/ })).toBeNull();
+
+        header(demo, ADDON).focus();
+        await userEvent.keyboard('{Enter}');
+        await waitFor(() => expect(header(demo, ADDON)).toHaveAttribute('aria-expanded', 'true'));
+        await expect(demo().getByRole('tab', { name: /^(Beschreibung|Description)$/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
         await waitFor(() =>
             expect(readmeImage(canvas.getByTestId(`addon-card-${ADDON}-${TENANT.id}`)).naturalWidth).toBeGreaterThan(0),
         );
         await expect(demo().getByRole('heading', { name: 'Demo-Tools' })).toBeVisible();
-        await expect(demo().getByRole('switch', { name: /^(Aktiv|Active)$/ })).toBeChecked();
-        await expect(notice().queryByRole('switch')).toBeNull();
-        await expect(notice().getByText(/^(Aktiv|Active)$/)).toBeVisible();
-        await expect(notice().queryByRole('heading')).toBeNull();
         await expect(demo().getByRole('link', { name: 'Handbuch' })).toHaveAttribute('target', '_blank');
 
-        await userEvent.click(await demo().findByRole('button', { name: /Mehr anzeigen|Show more/ }));
-        await expect(demo().getByRole('button', { name: /Weniger anzeigen|Show less/ })).toHaveAttribute(
-            'aria-expanded',
-            'true',
-        );
-
-        await expect(demo().queryByRole('tablist')).toBeNull();
-        await userEvent.click(demo().getByRole('button', { name: /Details anzeigen|Show details/ }));
+        await userEvent.click(demo().getByRole('tab', { name: /^(Beratungsstellen|Agencies)$/ }));
         await expect(await demo().findByText(AGENCIES[0].name)).toBeVisible();
-        await expect(demo().queryByText(/Beratungsstelle 12/)).toBeNull();
-
         await userEvent.click(demo().getByRole('tab', { name: /Einstellungen|Settings/ }));
         await waitFor(() => expect(demo().getByDisplayValue('Schön, dass Sie da sind')).toBeVisible());
-        await expect(demo().getByRole('switch', { name: 'Erinnerung anzeigen' })).toBeChecked();
-
         await userEvent.click(demo().getByRole('tab', { name: /Statistik|Statistics/ }));
         await expect(await demo().findByText('128')).toBeVisible();
+
+        await userEvent.click(header(notice, NOTICE_ADDON));
+        await waitFor(() => expect(header(notice, NOTICE_ADDON)).toHaveAttribute('aria-expanded', 'true'));
+        await expect(header(demo, ADDON)).toHaveAttribute('aria-expanded', 'false');
+        await expect(notice().queryByRole('tab', { name: /^(Beschreibung|Description)$/ })).toBeNull();
     },
 };
 
-/** Platform admin: readme and global switch on top, then the mode per Träger, then one Träger. */
+/** Träger admin with one add-on: the card is open, no header button, tabs right below the header. */
+export const TraegerAdminSingleAddon: Story = {
+    parameters: { msw: { handlers: [...singleAddonBackend.handlers, bundleHandler] } },
+    decorators: [withAddonsRoutes([UserRole.TenantAdmin], TENANT.id)],
+    play: async ({ canvas }) => {
+        const card = await canvas.findByTestId(`addon-card-${ADDON}-${TENANT.id}`);
+        await expect(within(card).queryByRole('button', { name: new RegExp(ADDON) })).toBeNull();
+        const tabs = within(card)
+            .getAllByRole('tab')
+            .map((tab) => tab.textContent);
+        await expect(tabs[0]).toMatch(/^(Beschreibung|Description)$/);
+        await waitFor(() => expect(readmeImage(card).naturalWidth).toBeGreaterThan(0));
+        await expect(within(card).getByRole('tab', { name: /^(Auswertung|Report)$/ })).toBeVisible();
+    },
+};
+
+/** Platform admin: global switch, description and features as tabs, then the mode per Träger, then one Träger. */
 export const PlatformAdmin: Story = {
     decorators: [withAddonsRoutes(SUPER_ADMIN, 0)],
     play: async ({ canvas, canvasElement }) => {
@@ -165,7 +191,12 @@ export const PlatformAdmin: Story = {
         await expect(within(info).getByRole('switch', { name: /Global aktiv|Active globally/ })).toBeChecked();
         await expect(within(info).getByRole('heading', { name: 'Demo-Tools' })).toBeVisible();
 
-        await expect(within(info).getByText(/^(Funktionen|Features)$/, { selector: 'span' })).toBeVisible();
+        await expect(within(info).getByRole('tab', { name: /^(Beschreibung|Description)$/ })).toHaveAttribute(
+            'aria-selected',
+            'true',
+        );
+        await expect(within(info).queryByRole('button', { name: /Mehr anzeigen|Show more/ })).toBeNull();
+        await userEvent.click(within(info).getByRole('tab', { name: /^(Funktionen|Features)$/ }));
         await expect(
             within(info).getByText(/^(Beratende: Seitenleiste im Fall|Counsellors: side panel in the case)$/),
         ).toHaveAttribute('title', 'consultant.session');

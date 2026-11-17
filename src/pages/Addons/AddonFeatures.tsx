@@ -62,7 +62,6 @@ export const AddonFeatures = ({ apps }: AddonFeaturesProps) => {
 
     return (
         <div className={styles.apps}>
-            <span className={styles.label}>{t('addons.features')}</span>
             <ul className={styles.appList}>
                 {features.map((app) => (
                     <li key={app.id}>

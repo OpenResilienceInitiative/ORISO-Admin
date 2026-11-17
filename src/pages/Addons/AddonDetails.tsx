@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { localizedText, type AdminAddon } from '../../addons/addonTypes';
 import { SegmentedTabs, type SegmentedTab } from '../../components/SegmentedTabs';
 import type { AdminPageEntry } from './AddonsLayout';
+import { AddonReadme } from './AddonReadme';
 import { AddonSettingsSection } from './AddonSettingsSection';
 import { AddonStatsTiles } from './AddonStatsTiles';
 import { AgencyOverrides } from './AgencyOverrides';
@@ -13,12 +14,14 @@ interface AddonDetailsProps {
     addon: AdminAddon;
     tenantId: number;
     adminPages: AdminPageEntry[];
+    /** Starts with the add-on's readme when it has one. */
+    showReadme?: boolean;
 }
 
-type DetailKey = 'agencies' | 'settings' | 'stats' | 'adminPages';
+type DetailKey = 'readme' | 'agencies' | 'settings' | 'stats' | 'adminPages';
 
 /** The parts of one add-on at one Träger, one tab at a time. */
-export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps) => {
+export const AddonDetails = ({ addon, tenantId, adminPages, showReadme = false }: AddonDetailsProps) => {
     const { t, i18n } = useTranslation();
     const language = i18n.resolvedLanguage || i18n.language || 'de';
     const { manifest } = addon;
@@ -28,7 +31,10 @@ export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps)
     const adminPagesLabel =
         pages.length === 1 ? localizedText(pages[0].app.title, language, pages[0].app.id) : t('addons.adminPages');
 
+    const idPrefix = `addon-${manifest.name}-${tenantId}`;
+
     const tabs: Array<SegmentedTab & { key: DetailKey }> = [
+        ...(showReadme && addon.hasReadme ? [{ key: 'readme' as const, label: t('addons.tabs.readme') }] : []),
         ...(agenciesApply ? [{ key: 'agencies' as const, label: t('addons.agencies.title') }] : []),
         { key: 'settings', label: t('addons.settings.title') },
         ...(stats.length > 0 ? [{ key: 'stats' as const, label: t('addons.stats.title') }] : []),
@@ -39,6 +45,8 @@ export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps)
 
     const renderPanel = () => {
         switch (current.key) {
+            case 'readme':
+                return <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />;
             case 'agencies':
                 return <AgencyOverrides addon={addon} tenantId={tenantId} />;
             case 'stats':
@@ -65,8 +73,14 @@ export const AddonDetails = ({ addon, tenantId, adminPages }: AddonDetailsProps)
                 tabs={tabs}
                 activeKey={current.key}
                 onChange={(key) => setActive(key as DetailKey)}
+                idPrefix={idPrefix}
             />
-            <div role="tabpanel" aria-label={String(current.label)} className={styles.detailsPanel}>
+            <div
+                role="tabpanel"
+                id={`${idPrefix}-panel`}
+                aria-labelledby={`${idPrefix}-tab-${current.key}`}
+                className={styles.detailsPanel}
+            >
                 {renderPanel()}
             </div>
         </div>

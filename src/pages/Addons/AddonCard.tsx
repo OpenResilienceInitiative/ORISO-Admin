@@ -1,10 +1,11 @@
-import { Button, Card, Switch, Tag } from 'antd';
-import { useState, type ReactNode } from 'react';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { Card, Switch, Tag } from 'antd';
+import classNames from 'classnames';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AdminAddon } from '../../addons/addonTypes';
 import { snackbar } from '../../components/Snackbar';
 import { AddonDetails } from './AddonDetails';
-import { AddonReadme } from './AddonReadme';
 import type { AdminPageEntry } from './AddonsLayout';
 import { useSetTenantEnabled } from './useAddons';
 import { reportAddonSaveError } from './mutationFeedback';
@@ -20,13 +21,13 @@ interface AddonCardProps {
     tags?: ReactNode;
     /** Renders the Träger switch; only when the viewer may change it. */
     canSwitch: boolean;
+    /** Adds the readme as the first tab. */
     showReadme?: boolean;
-    /** Details start open and cannot be folded away. */
-    detailsAlwaysOpen?: boolean;
-    defaultOpen?: boolean;
+    /** With several add-ons the header folds the card; without it the card is always open. */
+    collapse?: { expanded: boolean; onToggle: () => void };
 }
 
-/** One add-on at one Träger: state, readme and its details (agencies, settings, statistics, apps). */
+/** One add-on at one Träger: its state in the header, its readme and details as tabs. */
 export const AddonCard = ({
     addon,
     tenantId,
@@ -35,15 +36,14 @@ export const AddonCard = ({
     tags,
     canSwitch,
     showReadme = false,
-    detailsAlwaysOpen = false,
-    defaultOpen = false,
+    collapse,
 }: AddonCardProps) => {
     const { t } = useTranslation();
     const { manifest } = addon;
     const setEnabled = useSetTenantEnabled(manifest.name, tenantId);
-    const [open, setOpen] = useState(detailsAlwaysOpen || defaultOpen);
     const switchId = `addon-${manifest.name}-${tenantId}-enabled`;
-    const detailsId = `addon-${manifest.name}-${tenantId}-details`;
+    const bodyId = `addon-${manifest.name}-${tenantId}-body`;
+    const expanded = collapse?.expanded ?? true;
 
     const onToggle = (enabled: boolean) =>
         setEnabled.mutate(enabled, {
@@ -51,20 +51,41 @@ export const AddonCard = ({
             onError: (error) => reportAddonSaveError(error, t),
         });
 
+    const heading = (
+        <>
+            <span className={styles.addonName}>{title ?? manifest.name}</span>
+            {tags}
+            {!canSwitch && (
+                <Tag className={addon.enabled ? styles.statusActive : undefined}>
+                    {t(addon.enabled ? 'addons.status.active' : 'addons.status.inactive')}
+                </Tag>
+            )}
+        </>
+    );
+
     return (
         <Card
-            className={styles.card}
+            className={classNames(styles.card, { [styles.cardCollapsed]: !expanded })}
             data-testid={`addon-card-${manifest.name}-${tenantId}`}
             title={
-                <div className={styles.cardTitle}>
-                    <span className={styles.addonName}>{title ?? manifest.name}</span>
-                    {tags}
-                    {!canSwitch && (
-                        <Tag className={addon.enabled ? styles.statusActive : undefined}>
-                            {t(addon.enabled ? 'addons.status.active' : 'addons.status.inactive')}
-                        </Tag>
-                    )}
-                </div>
+                collapse ? (
+                    <button
+                        type="button"
+                        className={classNames(styles.cardTitle, styles.cardToggle)}
+                        aria-expanded={expanded}
+                        aria-controls={bodyId}
+                        onClick={collapse.onToggle}
+                    >
+                        <KeyboardArrowDownIcon
+                            aria-hidden
+                            fontSize="small"
+                            className={classNames(styles.chevron, { [styles.chevronOpen]: expanded })}
+                        />
+                        {heading}
+                    </button>
+                ) : (
+                    <div className={styles.cardTitle}>{heading}</div>
+                )
             }
             extra={
                 canSwitch && (
@@ -80,22 +101,11 @@ export const AddonCard = ({
                 )
             }
         >
-            {showReadme && <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />}
-            {!detailsAlwaysOpen && (
-                <Button
-                    className={styles.detailsToggle}
-                    aria-expanded={open}
-                    aria-controls={detailsId}
-                    onClick={() => setOpen((current) => !current)}
-                >
-                    {t(open ? 'addons.details.hide' : 'addons.details.show')}
-                </Button>
-            )}
-            {open && (
-                <div id={detailsId}>
-                    <AddonDetails addon={addon} tenantId={tenantId} adminPages={adminPages} />
-                </div>
-            )}
+            <div id={bodyId} hidden={!expanded}>
+                {expanded && (
+                    <AddonDetails addon={addon} tenantId={tenantId} adminPages={adminPages} showReadme={showReadme} />
+                )}
+            </div>
         </Card>
     );
 };

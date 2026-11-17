@@ -121,7 +121,10 @@ const initialSetup = (): Record<number, TenantSetup> => ({
 });
 
 /** Per story: what the platform admin has set; PUTs change it so a refetch shows the change. */
-export const createAddonBackend = ({ readme = true }: { readme?: boolean } = {}) => {
+export const createAddonBackend = ({
+    readme = true,
+    noticeBoard = true,
+}: { readme?: boolean; noticeBoard?: boolean } = {}) => {
     let setup = initialSetup();
     const reset = () => {
         setup = initialSetup();
@@ -177,7 +180,12 @@ export const createAddonBackend = ({ readme = true }: { readme?: boolean } = {})
         http.get('*/service/addons/registry', () => HttpResponse.json(registry)),
         http.get('*/service/addons/admin/addons', ({ request }) => {
             const tenantId = Number(new URL(request.url).searchParams.get('tenantId') ?? 0);
-            return HttpResponse.json(tenantId > 0 ? [demoAddon(tenantId), noticeAddon(tenantId)] : [demoAddon(0)]);
+            if (tenantId <= 0) {
+                return HttpResponse.json([demoAddon(0)]);
+            }
+            return HttpResponse.json(
+                noticeBoard ? [demoAddon(tenantId), noticeAddon(tenantId)] : [demoAddon(tenantId)],
+            );
         }),
         http.get(`*/service/addons/admin/addons/${ADDON}/readme`, () =>
             readme
