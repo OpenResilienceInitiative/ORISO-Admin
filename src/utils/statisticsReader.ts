@@ -1,4 +1,3 @@
-import routePathNames from '../appConfig';
 import { UserRole } from '../enums/UserRole';
 import { ADMIN_PORTAL_ROLES } from './adminPortalAccess';
 
@@ -16,19 +15,3 @@ const OTHER_ADMIN_ROLES = ADMIN_PORTAL_ROLES.filter((role) => role !== UserRole.
  */
 export const isStatisticsReaderOnly = (roles: readonly string[]): boolean =>
     roles.includes(UserRole.StatisticsReader) && !OTHER_ADMIN_ROLES.some((role) => roles.includes(role));
-
-const isOrBelow = (pathname: string, base: string) => {
-    const trimmed = base.replace(/\/$/, '');
-    return pathname === trimmed || pathname.startsWith(`${trimmed}/`);
-};
-
-/**
- * Where a Statistik-Leser·in is sent instead of `pathname`, or `null` to stay. Statistics and
- * the own profile (password, 2FA) stay reachable; every other admin route lands on statistics.
- */
-export const statisticsReaderRedirect = (pathname: string): string | null => {
-    if (isOrBelow(pathname, routePathNames.statistic) || isOrBelow(pathname, routePathNames.userProfile)) {
-        return null;
-    }
-    return routePathNames.statistic;
-};

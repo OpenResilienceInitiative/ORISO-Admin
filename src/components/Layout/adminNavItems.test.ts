@@ -41,6 +41,40 @@ describe('resolveLogsPage', () => {
 });
 
 describe('buildAdminNavItems', () => {
+    // ORISO-UserService#1666: a Statistik-Leser·in has exactly one destination.
+    it('shows a Statistik-Leser·in only the statistics entry, without Home', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(Resource.Statistic),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([
+            {
+                key: 'statistics',
+                to: routePathNames.statistic,
+                label: 'Statistics',
+                iconPath: routePathNames.statistic,
+            },
+        ]);
+    });
+
+    it('shows a Statistik-Leser·in no statistics entry either when the permission is missing', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([]);
+    });
+
     // ORISO-Admin#1323: every admin starts at Home, whatever else they may open.
     it.each([
         ['platform admin', true, hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin), canFor(Resource.Tenant)],
