@@ -73,6 +73,8 @@ export interface ModalProps {
      * dialogs keep the cap.
      */
     descriptionFullWidth?: boolean;
+    /** Scroll the body within the viewport while keeping header and footer visible. */
+    scrollableBody?: boolean;
 }
 
 /**
@@ -111,6 +113,7 @@ export const Modal = ({
     keyboard = true,
     className,
     descriptionFullWidth = false,
+    scrollableBody = false,
 }: ModalProps) => {
     const { t } = useTranslation();
 
@@ -141,7 +144,7 @@ export const Modal = ({
 
     return (
         <AntModal
-            className={classNames(styles.modal, className)}
+            className={classNames(styles.modal, { [styles.scrollableBody]: scrollableBody }, className)}
             styles={{
                 mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
             }}

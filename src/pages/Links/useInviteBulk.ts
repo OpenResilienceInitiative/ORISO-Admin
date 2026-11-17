@@ -4,7 +4,7 @@ import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
     acceptBaseUrlForRole,
     resendAccountInvite,
-    revokeAccountInvite,
+    deleteAccountInvite,
     sendAccountInvite,
     type AccountInviteDTO,
     type AccountInviteTargetRole,
@@ -25,7 +25,7 @@ interface UseInviteBulkOptions {
     rememberGeneratedLink: (invite: AccountInviteDTO) => void;
 }
 
-/** The checked rows and what can be done with them: send and revoke, one request per row. */
+/** The checked rows and what can be done with them: send and delete, one request per row. */
 export const useInviteBulk = ({
     invites,
     selectionScope,
@@ -36,7 +36,7 @@ export const useInviteBulk = ({
     const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const [confirmRevokeOpen, setConfirmRevokeOpen] = useState(false);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [running, setRunning] = useState(false);
     const previousScope = useRef(selectionScope);
     const remembered = useRef(new Map<number, AccountInviteDTO>());
@@ -72,9 +72,9 @@ export const useInviteBulk = ({
 
     const requiresTemplate = selectedInvites.some((invite) => invite.onboardingPurpose !== 'EXISTING_ACCOUNT_SETUP');
 
-    // Revoke is the delete here; failures are collected into one summary.
-    const revokeConfirmed = useCallback(async () => {
-        setConfirmRevokeOpen(false);
+    // Deletes each row (revoked at once, gone from the list); failures are collected into one summary.
+    const deleteConfirmed = useCallback(async () => {
+        setConfirmDeleteOpen(false);
         const targets = selectedInvites;
         if (targets.length === 0) return;
         setRunning(true);
@@ -82,7 +82,7 @@ export const useInviteBulk = ({
         for (let i = 0; i < targets.length; i += 1) {
             try {
                 // eslint-disable-next-line no-await-in-loop -- sequential on purpose: per-row attribution, no backend burst
-                await revokeAccountInvite(targets[i].id);
+                await deleteAccountInvite(targets[i].id);
             } catch {
                 failedEmails.push(targets[i].recipientEmail);
             }
@@ -90,12 +90,12 @@ export const useInviteBulk = ({
         setRunning(false);
         if (failedEmails.length === 0) {
             message.success(
-                t('links.bulk.revokeSummaryAll', '{{count}} Einladungen widerrufen', { count: targets.length }),
+                t('links.bulk.deleteSummaryAll', '{{count}} Einladungen gelöscht', { count: targets.length }),
             );
         } else {
             message.warning(
-                t('links.bulk.revokeSummaryPartial', '{{revoked}} widerrufen, {{failed}} fehlgeschlagen: {{emails}}', {
-                    revoked: targets.length - failedEmails.length,
+                t('links.bulk.deleteSummaryPartial', '{{deleted}} gelöscht, {{failed}} fehlgeschlagen: {{emails}}', {
+                    deleted: targets.length - failedEmails.length,
                     failed: failedEmails.length,
                     emails: failedEmails.join(', '),
                 }),
@@ -179,9 +179,9 @@ export const useInviteBulk = ({
         selectedInvites,
         requiresTemplate,
         running,
-        confirmRevokeOpen,
-        setConfirmRevokeOpen,
-        revokeConfirmed,
+        confirmDeleteOpen,
+        setConfirmDeleteOpen,
+        deleteConfirmed,
         send,
     };
 };

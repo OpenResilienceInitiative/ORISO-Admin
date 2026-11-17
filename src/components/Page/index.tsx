@@ -5,6 +5,7 @@ import {
     CategoryOutlined,
     ChatOutlined,
     EmailOutlined,
+    InterestsOutlined,
     ManageAccountsOutlined,
     SettingsApplicationsOutlined,
     SettingsOutlined,
@@ -75,6 +76,7 @@ export const tabIcons: Record<string, SvgIconComponent> = {
     global_settings: SettingsApplicationsOutlined,
     legal: BalanceOutlined,
     master_data: ManageAccountsOutlined,
+    topics: InterestsOutlined,
 };
 
 type PageTab = { to: string; titleKey; iconName?: string; icon?: JSX.Element };

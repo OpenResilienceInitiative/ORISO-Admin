@@ -265,3 +265,23 @@ describe('useUserRolesToPermission — TenantAdminUser', () => {
         expect(permissions.Tenant).toEqual({ read: true, update: true, create: true, delete: true });
     });
 });
+
+describe('useUserRolesToPermission — Topic', () => {
+    const resolvePermissions = (roles: UserRole[], isSuperAdmin: boolean): UserPermissions => {
+        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin: !isSuperAdmin });
+
+        return renderHook(() => useUserRolesToPermission()).result.current;
+    };
+
+    it('lets the platform admin manage the topic catalogue without the topic-admin role', () => {
+        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true);
+
+        expect(permissions.Topic).toEqual({ read: true, create: true, update: true, delete: true });
+    });
+
+    it('keeps the topic catalogue closed to a Träger admin', () => {
+        const permissions = resolvePermissions([UserRole.TenantAdmin], false);
+
+        expect(permissions.Topic?.update ?? false).toBe(false);
+    });
+});
