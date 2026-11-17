@@ -7,9 +7,6 @@ $amber: #9a5b00;
 $amberSoft: #fff3dc;
 
 .dialog {
-    // White dialog (Frank): the house modal reads its surface from this token.
-    --admin-form-card-surface: #fff;
-
     :global(.ant-modal-body) {
         padding-top: 0;
     }
