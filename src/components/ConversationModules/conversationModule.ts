@@ -1,5 +1,5 @@
 /**
- * Conversation modules (ADR-035 part A) and the shared question model (part B).
+ * Conversation modules (ADR-036 part A) and the shared question model (part B).
  *
  * A module is the ordered list of sections a person sees when a conversation of one type
  * starts (field "greeting", which may contain question blocks for moment 2) and when it ends

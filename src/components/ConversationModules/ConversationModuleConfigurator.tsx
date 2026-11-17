@@ -33,7 +33,7 @@ export interface ConversationModuleConfiguratorProps {
     module: ConversationModule;
     prototype: ConversationModule;
     initialTab?: ConfiguratorTab;
-    /** Registration per topic (ADR-035 part C): Mailberatung at platform level only. */
+    /** Registration per topic (ADR-036 part C): Mailberatung at platform level only. */
     registration?: { settings: RegistrationSettings; topics: RegistrationTopic[] };
     onSave: (module: ConversationModule, registration?: RegistrationSettings) => void;
     onClose: () => void;
@@ -46,7 +46,7 @@ const nextSectionId = () => {
 };
 
 /**
- * The shared configurator (ADR-035 decision 4): one dialog per conversation type with the
+ * The shared configurator (ADR-036 decision 4): one dialog per conversation type with the
  * greeting and the closing questions as an ordered list of sections. The same component is meant
  * for the Admin levels and for the Frontend's conversation level.
  */

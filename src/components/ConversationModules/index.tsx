@@ -40,7 +40,7 @@ export interface ConversationModulesSettingsProps {
 }
 
 /**
- * Conversation modules (ADR-035): a tile per conversation type with the two fields
+ * Conversation modules (ADR-036): a tile per conversation type with the two fields
  * "Begrüßung" and "Abschließende Fragen" and a button that opens the configurator.
  * Prototype — local state only until the UserService storage exists.
  */

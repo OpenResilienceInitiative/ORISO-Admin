@@ -30,7 +30,7 @@ const nextQuestionId = () => {
 };
 
 /**
- * The shared question model (ADR-035 decision 9): free text, single choice (radio buttons or
+ * The shared question model (ADR-036 decision 9): free text, single choice (radio buttons or
  * dropdown — one type, two looks), multiple choice, and a hint without an answer. Required is set
  * per question. The same editor serves registration, the greeting's question blocks and the survey.
  */

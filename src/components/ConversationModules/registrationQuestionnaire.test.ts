@@ -19,7 +19,7 @@ const topics = [
 
 const base = (): RegistrationSettings => ({ platformDefault: CARITAS_PLATFORM_DEFAULT, topics: {} });
 
-describe('registration per topic (ADR-035 part C)', () => {
+describe('registration per topic (ADR-036 part C)', () => {
     it('ships the Caritas platform default: postcode on, nothing else', () => {
         expect(CARITAS_PLATFORM_DEFAULT.postcode).toBe(true);
         expect(CARITAS_PLATFORM_DEFAULT.questions).toEqual([]);

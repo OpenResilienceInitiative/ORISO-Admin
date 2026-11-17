@@ -2,7 +2,7 @@ import type { Question } from './conversationModule';
 
 /**
  * Moment 1 of the question model: registration questions per topic, Mailberatung only
- * (ADR-035 part C). The topic decides; a topic without its own setting inherits the platform
+ * (ADR-036 part C). The topic decides; a topic without its own setting inherits the platform
  * default. On Dev the only switchable question is the postcode (decision 16).
  */
 export interface Questionnaire {

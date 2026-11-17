@@ -18,7 +18,7 @@ import {
 const ids = (module: ConversationModule, field: 'greeting' | 'closingQuestions' = 'greeting') =>
     sectionsOf(module, field).map((section) => section.id);
 
-describe('prototypes (ADR-035 decisions 1–3)', () => {
+describe('prototypes (ADR-036 decisions 1–3)', () => {
     it('ships one module per conversation type, and the internal group ships empty', () => {
         expect(prototypeFor('AGENCY_COUNSELLING').sections.length).toBeGreaterThan(0);
         expect(prototypeFor('LIVE_CHAT').sections.length).toBeGreaterThan(0);

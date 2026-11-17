@@ -20,7 +20,7 @@ interface RegistrationPerTopicTabProps {
 }
 
 /**
- * ADR-035 part C, first step: per topic, the platform admin switches the postcode on or off and
+ * ADR-036 part C, first step: per topic, the platform admin switches the postcode on or off and
  * may hide the topic from the normal registration. Without a postcode the advice seeker picks
  * the Beratungsstelle from the topic's list.
  */
