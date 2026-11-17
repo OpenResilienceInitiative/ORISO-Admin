@@ -206,30 +206,28 @@ describe('buildSectionTabIconSvg', () => {
         expect(svg).not.toContain('url(x)');
     });
 
-    describe('fits: the glyph cropped to its ink (Frank: small = little padding, more weight)', () => {
+    describe('fits: the glyph cropped to its ink (Frank: small = little padding, large = more air)', () => {
         const box = { x: 6, y: 5, width: 28, height: 30 };
         const inner = (svg: string) => parse(svg).querySelector('g.glyph svg')!;
 
-        it("'tab' fills 46 of 64 and thickens the lines by 4.5 % of the glyph", () => {
+        it("'tab' fills 46 of 64, cropped to the ink, with no extra line weight", () => {
             const svg = buildSectionTabIconSvg(UsersActiveIcon, colors, { fit: 'tab', box });
             const glyph = inner(svg);
             expect(glyph.getAttribute('width')).toBe('46');
             expect(glyph.getAttribute('height')).toBe('46');
             expect(glyph.getAttribute('x')).toBe('9');
-            // stroke = 30 * 0.045 = 1.35; the viewBox makes room for half of it on every side.
-            expect(glyph.getAttribute('stroke-width')).toBe('1.35');
-            expect(glyph.getAttribute('viewBox')).toBe('5.325 4.325 29.35 31.35');
-            expect(svg).toContain('.glyph path,.glyph circle,.glyph ellipse,.glyph polygon{stroke:#f4f4f4');
+            expect(glyph.getAttribute('viewBox')).toBe('6 5 28 30');
+            expect(glyph.hasAttribute('stroke-width')).toBe(false);
+            expect(svg).not.toContain('stroke');
         });
 
-        it("'large' fills 38 of 64 with more air and no extra weight", () => {
+        it("'large' fills 38 of 64 with more air, cropped to the ink", () => {
             const svg = buildSectionTabIconSvg(UsersActiveIcon, colors, { fit: 'large', box });
             const glyph = inner(svg);
             expect(glyph.getAttribute('width')).toBe('38');
             expect(glyph.getAttribute('x')).toBe('13');
-            expect(glyph.hasAttribute('stroke-width')).toBe(false);
             expect(glyph.getAttribute('viewBox')).toBe('6 5 28 30');
-            expect(svg).not.toContain('stroke:');
+            expect(svg).not.toContain('stroke');
         });
 
         it('falls back to the icon viewBox at 40 of 64 when the ink is not measured', () => {

@@ -72,7 +72,7 @@ const tenantColors = (tenant: TenantKey): SectionTabColors => {
 const IconRow = ({ item, colors }: { item: AdminSidebarNavItem; colors: SectionTabColors }) => {
     const Icon = activeNavIconFor(item.iconPath) as ComponentType<object>;
     const box = measureGlyphBox(Icon);
-    // Frank: the real tab icon (16–32 px) gets little padding and more weight; the 64 px preview more air.
+    // Frank: the real tab icon (16–32 px) gets little padding; the 64 px preview more air.
     const svg = buildSectionTabIconSvg(Icon, colors, { fit: 'tab', box });
     const large = buildSectionTabIconSvg(Icon, colors, { fit: 'large', box });
     const href = toSvgDataUrl(svg);
@@ -206,15 +206,15 @@ export const TwoTenants: Story = {
                         (attr(svg, 'g.glyph svg path', 'd')?.length ?? 0) > 40
                     );
                 }),
-                // Ink measured in the browser: tab = 46/64 with extra weight, large = 38/64 without.
+                // Ink measured in the browser: tab = 46/64, large = 38/64, never an added stroke.
                 fits: rows.every((row) => {
                     const tab = row.dataset.svg ?? '';
                     const large = row.dataset.svgLarge ?? '';
                     return (
                         attr(tab, 'g.glyph svg', 'width') === '46' &&
-                        Number(attr(tab, 'g.glyph svg', 'stroke-width')) > 0 &&
+                        !tab.includes('stroke') &&
                         attr(large, 'g.glyph svg', 'width') === '38' &&
-                        !attr(large, 'g.glyph svg', 'stroke-width')
+                        !large.includes('stroke')
                     );
                 }),
                 // Tab mock: only the section name, no platform name.

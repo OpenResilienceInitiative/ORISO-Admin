@@ -19,16 +19,16 @@ const TILE_SIZE = 64;
 const TILE_RADIUS = 14;
 
 /**
- * How much of the tile the glyph's ink fills, and how much its lines are thickened (share of the
- * glyph size). Frank, 2026-11-17: small icons need little padding and a bit more weight to stay
- * readable; a large preview looks right with more air around the glyph.
+ * How much of the 64-unit tile the glyph's ink fills. Frank, 2026-11-17: small icons need little
+ * padding to stay readable; a large preview looks right with more air around the glyph. No extra
+ * line weight (Frank: it filled the glyphs' inner details).
  *   tab   — the real browser tab icon (shown at 16–32 px)
  *   large — previews (Storybook, 64 px and up)
  */
 export type SectionTabFit = 'tab' | 'large';
-export const SECTION_TAB_FITS: Record<SectionTabFit, { glyph: number; weight: number }> = {
-    tab: { glyph: 46, weight: 0.045 },
-    large: { glyph: 38, weight: 0 },
+export const SECTION_TAB_FITS: Record<SectionTabFit, number> = {
+    tab: 46,
+    large: 38,
 };
 /** Without a measured ink box, the icon's own viewBox (with its padding) is used. */
 const UNMEASURED_GLYPH = 40;
@@ -148,25 +148,20 @@ export const measureGlyphBox = (Icon: IconComponent): GlyphBox | null => {
 const placeGlyph = (markup: string, fit: SectionTabFit, box: GlyphBox | null): string =>
     markup.replace(/^<svg\b([^>]*)>/, (_match, attrs: string) => {
         const stripped = attrs.replace(
-            /\s(?:width|height|x|y|class|role|focusable|aria-hidden|aria-label|stroke-width)="[^"]*"/g,
+            /\s(?:width|height|x|y|class|role|focusable|aria-hidden|aria-label)="[^"]*"/g,
             '',
         );
-        const size = box ? SECTION_TAB_FITS[fit].glyph : UNMEASURED_GLYPH;
+        const size = box ? SECTION_TAB_FITS[fit] : UNMEASURED_GLYPH;
         const offset = (TILE_SIZE - size) / 2;
-        let rest = stripped;
-        let weight = '';
-        if (box) {
-            // Crop to the ink, with room for the added line weight.
-            const stroke = Math.max(box.width, box.height) * SECTION_TAB_FITS[fit].weight;
-            const pad = stroke / 2;
-            rest = rest.replace(/\sviewBox="[^"]*"/, '');
-            rest += ` viewBox="${round(box.x - pad)} ${round(box.y - pad)} ${round(box.width + stroke)} ${round(
-                box.height + stroke,
-            )}"`;
-            if (stroke > 0) weight = ` stroke-width="${round(stroke)}"`;
-        }
-        rest = rest.trim();
-        return `<svg x="${offset}" y="${offset}" width="${size}" height="${size}"${weight}${rest ? ` ${rest}` : ''}>`;
+        // Crop to the ink so every glyph fills the tile equally.
+        const rest = (
+            box
+                ? `${stripped.replace(/\sviewBox="[^"]*"/, '')} viewBox="${round(box.x)} ${round(box.y)} ${round(
+                      box.width,
+                  )} ${round(box.height)}"`
+                : stripped
+        ).trim();
+        return `<svg x="${offset}" y="${offset}" width="${size}" height="${size}"${rest ? ` ${rest}` : ''}>`;
     });
 
 /** The tab icon as standalone SVG markup. */
@@ -179,16 +174,11 @@ export const buildSectionTabIconSvg = (
     const tile = resolveTabColor(colors.tile, fallback.tile);
     const glyphColor = resolveTabColor(colors.glyph, fallback.glyph);
     const glyph = placeGlyph(renderToStaticMarkup(createElement(Icon)), fit, box);
-    const bold = box && SECTION_TAB_FITS[fit].weight > 0;
-    // At tab size thin lines get a little weight: a stroke in the glyph colour.
-    const weight = bold
-        ? `.glyph path,.glyph circle,.glyph ellipse,.glyph polygon{stroke:${glyphColor};stroke-linejoin:round}`
-        : '';
     // The navbar glyph files hard-code their fill (#141C25); the style recolours every filled shape.
     return [
         `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${TILE_SIZE} ${TILE_SIZE}" width="${TILE_SIZE}" height="${TILE_SIZE}">`,
         `<rect width="${TILE_SIZE}" height="${TILE_SIZE}" rx="${TILE_RADIUS}" fill="${tile}"/>`,
-        `<style>.glyph [fill]:not([fill="none"]){fill:${glyphColor}}${weight}</style>`,
+        `<style>.glyph [fill]:not([fill="none"]){fill:${glyphColor}}</style>`,
         `<g class="glyph" fill="${glyphColor}" color="${glyphColor}">${glyph}</g>`,
         `</svg>`,
     ].join('');
