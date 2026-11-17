@@ -222,9 +222,9 @@ const CASES: Case[] = [
     { options: PLATFORM_DE, query: 'Logo', top: 'appearance:images' },
     { options: TENANT_DE, query: 'Sprachen', top: 'appearance:languages' },
     { options: PLATFORM_DE, query: 'Sprache', top: 'account:language' },
-    // Topics and Fachbereiche must be reachable (the page has no menu entry)
-    { options: PLATFORM_DE, query: 'Themen', top: 'page:topics' },
-    { options: PLATFORM_EN, query: 'topics', top: 'page:topics', within: ['global:one-topic'] },
+    // Topics and Fachbereiche must be reachable; the platform admin edits topics in Settings → Themen
+    { options: PLATFORM_DE, query: 'Themen', top: 'settings:topics', within: ['page:topics'] },
+    { options: PLATFORM_EN, query: 'topics', top: 'settings:topics', within: ['page:topics', 'global:one-topic'] },
     { options: PLATFORM_DE, query: 'Fachbereiche', top: ['global:one-topic', 'page:topics'], within: ['page:topics'] },
     // Pages and lists
     { options: PLATFORM_DE, query: 'Träger', top: 'page:tenants' },
