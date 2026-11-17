@@ -1,5 +1,5 @@
-// Not browser-measured yet (docs/responsive-tables.md): estimates for eight and six columns.
-export const AUDIT_LIST_BANDS = { phoneBelow: 700, wideFrom: 1280 };
+// Measured in AddonAuditLogs.stories.tsx (docs/responsive-tables.md): eight columns need 1030px, six need 724px.
+export const AUDIT_LIST_BANDS = { phoneBelow: 730, wideFrom: 1040 };
 
 const NOISE_ROLES = new Set(['offline_access', 'uma_authorization']);
 
