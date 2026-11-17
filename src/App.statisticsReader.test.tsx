@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { PropsWithChildren } from 'react';
 import { AdminApp } from './AdminApp';
@@ -16,6 +17,14 @@ const mocks = vi.hoisted(() => ({
     getPublicTenantData: vi.fn(),
     apiServerSettings: vi.fn(),
     userData: { twoFactorAuth: { isActive: true } } as Record<string, unknown>,
+    loginAsync: vi.fn(),
+}));
+
+// Sign-in goes to Keycloak in production; here a successful sign-in stores the reader's session,
+// exactly what the real mutation does before LoginForm navigates on.
+vi.mock('./hooks/useLoginMutation.hook', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('./hooks/useLoginMutation.hook')>()),
+    useLoginMutation: () => ({ mutate: vi.fn(), mutateAsync: mocks.loginAsync }),
 }));
 
 vi.mock('./api/tenant/getPublicTenantData', () => ({ default: mocks.getPublicTenantData }));
@@ -75,6 +84,24 @@ describe('App for a Statistik-Leser·in (ORISO-UserService#1666)', () => {
         expect(await screen.findByRole('heading', { name: 'Statistics page' })).toBeInTheDocument();
         await waitFor(() => expect(window.location.pathname).toBe('/admin/statistic'));
         expect(screen.queryByRole('heading', { name: 'Home page' })).not.toBeInTheDocument();
+    });
+
+    it('signs in through the login form and ends on statistics', async () => {
+        mocks.loginAsync.mockImplementation(async () => {
+            setStoryAuth([UserRole.StatisticsReader], 0);
+        });
+        window.history.pushState({}, '', '/admin/login');
+        render(<AdminApp />);
+        const user = userEvent.setup({ delay: null });
+
+        const [username] = await screen.findAllByRole('textbox');
+        await user.type(username, 'stats.reader');
+        await user.type(document.querySelector('input[type="password"]') as HTMLInputElement, 'secret');
+        await user.click(screen.getByRole('button', { name: /anmelden|sign in/i }));
+
+        expect(await screen.findByRole('heading', { name: 'Statistics page' })).toBeInTheDocument();
+        await waitFor(() => expect(window.location.pathname).toBe('/admin/statistic'));
+        expect(mocks.loginAsync).toHaveBeenCalledTimes(1);
     });
 
     it.each(['/admin/home', '/admin/agency', '/admin/users/consultants', '/admin/settings', '/admin/logs'])(
