@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import type { ReactNode } from 'react';
+import { Children, isValidElement, type CSSProperties, type ReactNode } from 'react';
 import styles from './styles.module.scss';
 
 interface TileSectionsProps {
@@ -25,15 +25,6 @@ interface TileSectionProps {
     wide?: boolean;
     children?: ReactNode;
 }
-
-/**
- * The inside of a wide tile: its topics side by side as white panels. As many columns as fit, one
- * on a phone, so a long tile stays short on a wide screen without any per-page breakpoints. Panels
- * of a row are equally tall; `footer` and `picture` use up what a shorter panel has left.
- */
-const TileSectionsRoot = ({ children, className }: TileSectionsProps) => (
-    <div className={classNames(styles.sections, className)}>{children}</div>
-);
 
 const TileSection = ({
     id,
@@ -72,6 +63,36 @@ const TileSection = ({
                 </div>
             )}
         </section>
+    );
+};
+
+/**
+ * The inside of a wide tile: its topics side by side as white panels. As many columns as fit, one
+ * on a phone, so a long tile stays short on a wide screen without any per-page breakpoints. Panels
+ * of a row are equally tall; `footer` and `picture` use up what a shorter panel has left.
+ */
+/**
+ * Panels that take one column. A `wide` panel spans the row and never needs a column of its own, so it does not count.
+ * `Children.toArray` drops `false`/`null`, so a panel hidden by a condition does not count either.
+ */
+export const countColumnPanels = (children: ReactNode): number =>
+    Children.toArray(children).filter(
+        (child) => !(isValidElement<{ wide?: boolean }>(child) && child.type === TileSection && child.props.wide),
+    ).length;
+
+const TileSectionsRoot = ({ children, className }: TileSectionsProps) => {
+    // Never more columns than there are panels to fill them. Without the cap a `wide` panel keeps every
+    // auto-fit column alive, and the row below it shows empty columns beside narrow panels (ORISO-Admin#1543).
+    const columns = Math.max(1, countColumnPanels(children));
+
+    return (
+        <div
+            className={classNames(styles.sections, { [styles.fewColumns]: columns <= 2 }, className)}
+            style={{ '--tile-sections-columns': columns } as CSSProperties}
+            data-admin-tile-sections
+        >
+            {children}
+        </div>
     );
 };
 

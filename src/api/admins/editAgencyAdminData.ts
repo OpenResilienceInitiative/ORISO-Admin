@@ -11,7 +11,7 @@ import { putAgenciesForAgencyAdmin } from '../agency/putAgenciesForAdmin';
  * @return data
  */
 export const editAgencyAdminData = async (id: string, formData: AdminData): Promise<AdminData> => {
-    const { firstname, lastname, email, username, twoFactorAuth } = formData;
+    const { firstname, lastname, email, username, twoFactorAuth, contactEmail } = formData;
 
     const ids = ((formData.agencies as LabeledValue[])?.map(({ value }) => value) || []) as string[];
     await putAgenciesForAgencyAdmin(id, ids);
@@ -28,6 +28,8 @@ export const editAgencyAdminData = async (id: string, formData: AdminData): Prom
                 email,
                 username, // MATRIX MIGRATION: backend handles encoding
                 twoFactorAuth,
+                // Absent keeps the stored contact e-mail, "" clears it (PatchAdminDTO).
+                ...(typeof contactEmail === 'string' ? { contactEmail: contactEmail.trim() } : {}),
             }),
         })
             .then((response) => response.json())

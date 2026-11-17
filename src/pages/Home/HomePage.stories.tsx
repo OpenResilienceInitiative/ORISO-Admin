@@ -8,6 +8,7 @@ import { USER_DATA_KEY } from '../../hooks/useUserData.hook';
 import { setStoryAuth, withSeededAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { HomePage } from './HomePage';
 import { homeFactKey } from './useHomeFacts';
+import { contactCoverageHandlers } from '../../utils/storybook/contactPersonStoryHandlers';
 
 /** Counts as `useHomeFacts` caches them for the story's tenant; a story needs no network. */
 const seedFacts = (tenantId: number, facts: Record<string, unknown>) => (client: QueryClient) => {
@@ -81,7 +82,7 @@ type Story = StoryObj<typeof meta>;
 
 /** Platform admin at the very start: no Träger yet, so the checklist leads. */
 export const PlatformAdminFirstLogin: Story = {
-    parameters: { msw: { handlers: [...BASE_HANDLERS, ...ownTenant('platform')] } },
+    parameters: { msw: { handlers: [...BASE_HANDLERS, ...ownTenant('platform'), ...contactCoverageHandlers([])] } },
     decorators: [
         (Story) => {
             setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
@@ -119,7 +120,16 @@ export const PlatformAdminFirstLogin: Story = {
 
 /** Träger admin (usual role bundle) halfway through: one Beratungsstelle, invitations out, one stuck. */
 export const TraegerAdmin: Story = {
-    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('UNSIGNED'), ...ownTenant('own-incomplete')] } },
+    parameters: {
+        msw: {
+            handlers: [
+                ...BASE_HANDLERS,
+                dpaStatus('UNSIGNED'),
+                ...ownTenant('own-incomplete'),
+                ...contactCoverageHandlers([{ id: 11, name: 'Beratungsstelle Mitte', covered: true }]),
+            ],
+        },
+    },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
@@ -165,6 +175,8 @@ export const BeratungsstellenAdmin: Story = {
                 http.get('*/service/agencyadmin/agencies', () =>
                     HttpResponse.json({ _embedded: [{ _embedded: { id: 1, postcode: '' } }], total: 1 }),
                 ),
+                // Only the coverage POST is used; the centre list above wins over its GET.
+                ...contactCoverageHandlers([{ id: 1, name: '', covered: true }]),
             ],
         },
     },
@@ -197,7 +209,20 @@ export const BeratungsstellenAdmin: Story = {
 
 /** Träger admin with everything set up: the checklist is gone, the own mail server reads "set up". */
 export const AllStepsDone: Story = {
-    parameters: { msw: { handlers: [...BASE_HANDLERS, dpaStatus('VALID'), ...ownTenant('own-complete')] } },
+    parameters: {
+        msw: {
+            handlers: [
+                ...BASE_HANDLERS,
+                dpaStatus('VALID'),
+                ...ownTenant('own-complete'),
+                ...contactCoverageHandlers([
+                    { id: 11, name: 'Beratungsstelle Mitte', covered: true },
+                    { id: 12, name: 'Beratungsstelle Nord', covered: true },
+                    { id: 13, name: 'Beratungsstelle Süd', covered: true },
+                ]),
+            ],
+        },
+    },
     decorators: [
         (Story) => {
             setStoryAuth(TRAEGER_ROLES, 7);
