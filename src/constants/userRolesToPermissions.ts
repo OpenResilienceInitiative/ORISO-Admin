@@ -11,6 +11,7 @@ const rolesPriority: UserRole[] = [
     UserRole.UserAdmin,
     UserRole.SingleTenantAdmin,
     UserRole.TenantAdmin,
+    UserRole.StatisticsReader,
 ];
 
 export const getEffectivePermissionRoles = (roles: UserRole[]): UserRole[] => {
@@ -130,6 +131,14 @@ export const useUserRolesToPermission = () => {
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
+            // Statistik-Leser·innen see platform-wide numbers, so only a platform admin manages
+            // them (ORISO-UserService#1666); the server answers 403 to everyone else.
+            StatisticsReaderUser: {
+                read: isSuperAdmin,
+                create: isSuperAdmin,
+                update: isSuperAdmin,
+                delete: isSuperAdmin,
+            },
         },
         [UserRole.TopicAdmin]: {
             Topic: { read: isTopicsEnabled, create: isTopicsEnabled, update: isTopicsEnabled, delete: isTopicsEnabled },
@@ -141,6 +150,11 @@ export const useUserRolesToPermission = () => {
                 read: isMultiTenancyWithSingleDomain || singleCanEditLegalText,
                 update: singleCanEditLegalText,
             },
+            Statistic: { read: true },
+        },
+        // ORISO-UserService#1666: reading statistics is the whole role. Nothing else is granted, so
+        // the OR-merge can never widen a pure reader beyond Statistic.read.
+        [UserRole.StatisticsReader]: {
             Statistic: { read: true },
         },
         [UserRole.UserAdmin]: {
