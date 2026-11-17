@@ -20,6 +20,8 @@ vi.mock('../../../../components/CardEditable', () => ({
         <section data-testid="traeger-card" data-title={titleKey} data-has-icon={String(!!headerIcon)} />
     ),
 }));
+// The contact-person tile (#1534) loads its own data and has its own tests.
+vi.mock('./TraegerContactPersonTile', () => ({ TraegerContactPersonTile: () => null }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
     GeneralSettings: ({
         tenantId,

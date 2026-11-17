@@ -467,6 +467,7 @@ describe('AgencyPageEdit create flow', () => {
         expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('keeps an existing agency readable without the agency creation permission', async () => {
@@ -495,6 +496,7 @@ describe('AgencyPageEdit create flow', () => {
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('names the missing required field in a notification when the save is blocked', async () => {
@@ -518,6 +520,7 @@ describe('AgencyPageEdit create flow', () => {
             { timeout: 5000 },
         );
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
         notificationSpy.mockRestore();
     });
 
@@ -748,6 +751,7 @@ const goLiveWithTopicsAvailable = async (user: ReturnType<typeof userEvent.setup
 describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({
@@ -788,6 +792,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
             within(dialog).getByText('Sie haben kein Thema ausgewählt. Möchten Sie die Beratung trotzdem aktivieren?'),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('keeps the form values and does not save when the no-topic dialog is cancelled', async () => {
@@ -800,6 +805,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
 
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Name')).toHaveValue('Neue Beratungsstelle');
         expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
         expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
@@ -813,8 +819,8 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         const dialog = await screen.findByRole('dialog');
         fireEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
     });
 
     it('saves without a dialog when going live with a topic selected', async () => {
@@ -825,9 +831,11 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         await user.click(await screen.findByRole('option', { name: 'Debt counselling' }));
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: ['7'] }));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(
+            expect.objectContaining({ offline: false, topicIds: ['7'] }),
+        );
     });
 
     it('does not warn when an already-online agency is saved without topics', async () => {
@@ -856,9 +864,9 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         await user.click(toggle);
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
     });
 
     const renderOfflineAgencyEdit = (topics: Array<{ id: number; name: string }> = []) => {
@@ -1057,6 +1065,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
 
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
@@ -1244,8 +1253,8 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
             expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '8' });
 
             fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-            const saved = mocks.mutate.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
+            await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+            const saved = mocks.mutateAsync.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
             expect(JSON.stringify(saved.tenantId)).toContain('8');
             // Nothing of Träger 7 may reach addAgencyData -> assignAgencyToConsultants for Träger 8.
             expect(saved.consultantIds ?? []).toEqual([]);

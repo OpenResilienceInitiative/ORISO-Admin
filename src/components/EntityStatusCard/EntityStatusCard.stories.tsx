@@ -12,6 +12,7 @@ import { UserRole } from '../../enums/UserRole';
 import { AgencyPageEdit } from '../../pages/Agency/Edit';
 import { GeneralTenantSettings } from '../../pages/Tenants/Edit/General';
 import { TenantAdminEditOrAdd } from '../../pages/users/TenantAdminEdit';
+import { contactPersonReadHandlers } from '../../utils/storybook/contactPersonStoryHandlers';
 
 const account = {
     accountId: 'account-1197',
@@ -526,6 +527,7 @@ export const TenantMetadataPreservesStatus: Story = {
                 ),
                 http.get('*/service/tenantadmin/1', () => HttpResponse.json(tenantFixture)),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json(tenantFixture)),
+                ...contactPersonReadHandlers(),
                 http.put('*/service/tenantadmin/1', async ({ request }) => {
                     const body = (await request.json()) as Record<string, unknown>;
                     return 'active' in body
@@ -627,6 +629,7 @@ const centreFixture = {
 };
 /** What the master data tile of the centre page reads besides the centre itself. */
 const centreTileHandlers = () => [
+    ...contactPersonReadHandlers(),
     http.get('*/service/useradmin/agencies/7/consultants*', () => HttpResponse.json({ total: 0, _embedded: [] })),
     http.get('*/service/users/consultants/search*', () => HttpResponse.json({ total: 0, _embedded: [] })),
     http.get('*/service/agencyadmin/postcoderanges/7', () =>
@@ -860,6 +863,7 @@ export const TopiclessCentreActivationConfirmation: Story = {
     parameters: {
         msw: {
             handlers: [
+                ...contactPersonReadHandlers(),
                 http.get('*/service/agencyadmin/agencies/7/status', () =>
                     HttpResponse.json({
                         agencyId: 7,
