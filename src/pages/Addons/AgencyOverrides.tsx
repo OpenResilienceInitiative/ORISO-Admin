@@ -1,8 +1,8 @@
-import { Button, Empty, Popconfirm, Switch, Table } from 'antd';
+import { Button, Popconfirm, Switch } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { snackbar } from '../../components/Snackbar';
-import type { AdminAddon, AgencyOverride } from '../../addons/addonTypes';
+import type { AdminAddon } from '../../addons/addonTypes';
 import { AgencySelect, type SelectOption } from './RemoteSearchSelect';
 import { useAgencyNames, useClearAgencyOverride, useSetAgencyOverride } from './useAddons';
 import styles from './addons.module.scss';
@@ -12,6 +12,7 @@ interface AgencyOverridesProps {
     tenantId: number;
 }
 
+/** Beratungsstellen that differ from the Träger: switch each one, remove the exception, add one. */
 export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
     const { t } = useTranslation();
     const { name } = addon.manifest;
@@ -19,18 +20,18 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
         () => (addon.agencyOverrides ?? []).filter((override) => override.agencyId != null),
         [addon.agencyOverrides],
     );
-    const agencyNames = useAgencyNames(overrides.map((override) => override.agencyId));
+    const agencyNames = useAgencyNames(
+        overrides.map((override) => override.agencyId),
+        tenantId,
+    );
     const setOverride = useSetAgencyOverride(name, tenantId);
     const clearOverride = useClearAgencyOverride(name, tenantId);
     const [newAgency, setNewAgency] = useState<SelectOption | null>(null);
     const [newEnabled, setNewEnabled] = useState(!addon.enabled);
-    const pickerId = `addon-${name}-agency`;
-    const newSwitchId = `addon-${name}-agency-enabled`;
+    const pickerId = `addon-${name}-${tenantId}-agency`;
+    const newSwitchId = `addon-${name}-${tenantId}-agency-enabled`;
 
-    const agencyLabel = (agencyId: number) =>
-        agencyNames[agencyId]
-            ? `${agencyNames[agencyId]} (${agencyId})`
-            : t('addons.agencies.unnamed', { id: agencyId });
+    const agencyLabel = (agencyId: number) => agencyNames[agencyId] ?? t('addons.agencies.unnamed', { id: agencyId });
 
     const saved = () => snackbar.success(String(t('addons.agencies.saved')));
 
@@ -51,61 +52,48 @@ export const AgencyOverrides = ({ addon, tenantId }: AgencyOverridesProps) => {
 
     return (
         <div className={styles.overrides}>
-            <p className={styles.hint}>
-                {t(addon.enabled ? 'addons.agencies.hintEnabled' : 'addons.agencies.hintDisabled')}
-            </p>
+            {!addon.enabled && overrides.length > 0 && (
+                <p className={styles.hint}>{t('addons.agencies.hintDisabled')}</p>
+            )}
             {overrides.length === 0 ? (
-                <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t('addons.agencies.empty')} />
+                <p className={styles.hint}>{t('addons.agencies.empty')}</p>
             ) : (
-                <Table<AgencyOverride>
-                    size="small"
-                    rowKey="agencyId"
-                    pagination={false}
-                    dataSource={overrides}
-                    columns={[
-                        {
-                            key: 'agency',
-                            title: t('addons.agencies.agency'),
-                            render: (_, override) => agencyLabel(override.agencyId),
-                        },
-                        {
-                            key: 'enabled',
-                            title: t('addons.agencies.enabled'),
-                            render: (_, override) => (
-                                <Switch
-                                    checked={override.enabled}
+                <ul className={styles.overrideList} aria-label={String(t('addons.agencies.title'))}>
+                    {overrides.map((override) => (
+                        <li key={override.agencyId} className={styles.overrideRow}>
+                            <span className={styles.overrideName}>{agencyLabel(override.agencyId)}</span>
+                            <Switch
+                                checked={override.enabled}
+                                aria-label={String(
+                                    t('addons.agencies.switchFor', { agency: agencyLabel(override.agencyId) }),
+                                )}
+                                onChange={(enabled) =>
+                                    setOverride.mutate({ agencyId: override.agencyId, enabled }, { onSuccess: saved })
+                                }
+                            />
+                            <Popconfirm
+                                title={t('addons.agencies.removeConfirm')}
+                                okText={t('addons.agencies.remove')}
+                                cancelText={t('btn.cancel')}
+                                onConfirm={() =>
+                                    clearOverride.mutate(override.agencyId, {
+                                        onSuccess: () => snackbar.success(String(t('addons.agencies.removed'))),
+                                    })
+                                }
+                            >
+                                <Button
+                                    type="link"
+                                    className={styles.inlineLink}
                                     aria-label={String(
-                                        t('addons.agencies.switchFor', { agency: agencyLabel(override.agencyId) }),
+                                        t('addons.agencies.removeFor', { agency: agencyLabel(override.agencyId) }),
                                     )}
-                                    onChange={(enabled) =>
-                                        setOverride.mutate(
-                                            { agencyId: override.agencyId, enabled },
-                                            { onSuccess: saved },
-                                        )
-                                    }
-                                />
-                            ),
-                        },
-                        {
-                            key: 'actions',
-                            title: t('addons.agencies.actions'),
-                            render: (_, override) => (
-                                <Popconfirm
-                                    title={t('addons.agencies.removeConfirm')}
-                                    okText={t('addons.agencies.remove')}
-                                    cancelText={t('btn.cancel')}
-                                    onConfirm={() =>
-                                        clearOverride.mutate(override.agencyId, {
-                                            onSuccess: () => snackbar.success(String(t('addons.agencies.removed'))),
-                                        })
-                                    }
                                 >
-                                    <Button type="link">{t('addons.agencies.remove')}</Button>
-                                </Popconfirm>
-                            ),
-                        },
-                    ]}
-                />
+                                    {t('addons.agencies.remove')}
+                                </Button>
+                            </Popconfirm>
+                        </li>
+                    ))}
+                </ul>
             )}
             <div className={styles.addOverride}>
                 <label htmlFor={pickerId} className={styles.label}>

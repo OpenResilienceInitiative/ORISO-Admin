@@ -1,24 +1,36 @@
 import { Button, Form, Input, InputNumber, Switch } from 'antd';
 import type { Rule } from 'antd/es/form';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Select } from '../../components/M3Select';
 import type { AddonSettingsValues, JsonSchema } from '../../addons/addonTypes';
-import { collectSettingsValues, initialSettingsValues, settingsFields, type SettingsField } from './settingsSchema';
+import {
+    collectSettingsValues,
+    explicitSettingNames,
+    initialSettingsValues,
+    settingsFields,
+    type SettingsField,
+} from './settingsSchema';
+import styles from './addons.module.scss';
 
 interface AddonSettingsFormProps {
     formId: string;
     schema: JsonSchema | null;
     values: AddonSettingsValues;
+    /**
+     * Effective values one level up (the Träger's, with schema defaults). When given, only fields set here
+     * are saved; the others are shown with the inherited value and stay inherited.
+     */
+    inherited?: AddonSettingsValues;
     saving?: boolean;
     onSubmit: (values: AddonSettingsValues) => void;
 }
 
 const useFieldRules = () => {
     const { t } = useTranslation();
-    return (field: SettingsField): Rule[] => {
+    return (field: SettingsField, inheriting: boolean): Rule[] => {
         const rules: Rule[] = [];
-        if (field.required && field.kind !== 'switch') {
+        if (field.required && field.kind !== 'switch' && !inheriting) {
             rules.push({ required: true, message: String(t('addons.validation.required')) });
         }
         if ((field.kind === 'integer' || field.kind === 'number') && field.minimum !== undefined) {
@@ -76,20 +88,71 @@ const renderControl = (field: SettingsField, id: string) => {
 };
 
 /** A settings form generated from the add-on's JSON Schema (ADR-034, section 5). */
-export const AddonSettingsForm = ({ formId, schema, values, saving, onSubmit }: AddonSettingsFormProps) => {
+export const AddonSettingsForm = ({ formId, schema, values, inherited, saving, onSubmit }: AddonSettingsFormProps) => {
     const { t } = useTranslation();
     const [form] = Form.useForm();
     const rulesFor = useFieldRules();
     const fields = useMemo(() => settingsFields(schema), [schema]);
-    const initialValues = useMemo(() => initialSettingsValues(fields, values), [fields, values]);
+    const storedExplicit = useMemo(() => explicitSettingNames(fields, values), [fields, values]);
+    const [explicit, setExplicit] = useState<Set<string>>(storedExplicit);
+    const initialValues = useMemo(
+        () =>
+            inherited
+                ? Object.fromEntries(
+                      fields.map((field) => [
+                          field.name,
+                          storedExplicit.has(field.name) ? values[field.name] : inherited[field.name],
+                      ]),
+                  )
+                : initialSettingsValues(fields, values),
+        [fields, values, inherited, storedExplicit],
+    );
 
     useEffect(() => {
+        setExplicit(storedExplicit);
         form.setFieldsValue(initialValues);
-    }, [form, initialValues]);
+    }, [form, initialValues, storedExplicit]);
 
     if (fields.length === 0) {
         return <p>{t('addons.settings.none')}</p>;
     }
+
+    const revertToInherited = (name: string) => {
+        setExplicit((current) => {
+            const next = new Set(current);
+            next.delete(name);
+            return next;
+        });
+        form.setFieldValue(name, inherited?.[name]);
+    };
+
+    const extraFor = (field: SettingsField) => {
+        if (!inherited) {
+            return field.description;
+        }
+        return (
+            <span className={styles.fieldExtra}>
+                {field.description && <span>{field.description}</span>}
+                {explicit.has(field.name) ? (
+                    <Button
+                        type="link"
+                        size="small"
+                        className={styles.inlineLink}
+                        onClick={() => revertToInherited(field.name)}
+                    >
+                        {t('addons.settings.useInherited')}
+                    </Button>
+                ) : (
+                    <span>{t('addons.settings.inherited')}</span>
+                )}
+            </span>
+        );
+    };
+
+    const submit = (formValues: AddonSettingsValues) => {
+        const saved = inherited ? fields.filter((field) => explicit.has(field.name)) : fields;
+        onSubmit(collectSettingsValues(saved, formValues));
+    };
 
     return (
         <Form
@@ -97,7 +160,10 @@ export const AddonSettingsForm = ({ formId, schema, values, saving, onSubmit }: 
             layout="vertical"
             name={formId}
             initialValues={initialValues}
-            onFinish={(formValues) => onSubmit(collectSettingsValues(fields, formValues))}
+            onValuesChange={(changed: AddonSettingsValues) =>
+                setExplicit((current) => new Set([...current, ...Object.keys(changed)]))
+            }
+            onFinish={submit}
         >
             {fields.map((field) => {
                 const id = `${formId}-${field.name}`;
@@ -107,9 +173,9 @@ export const AddonSettingsForm = ({ formId, schema, values, saving, onSubmit }: 
                         name={field.name}
                         htmlFor={id}
                         label={field.label}
-                        extra={field.description}
-                        required={field.required}
-                        rules={rulesFor(field)}
+                        extra={extraFor(field)}
+                        required={!inherited && field.required}
+                        rules={rulesFor(field, !!inherited)}
                         valuePropName={field.kind === 'switch' ? 'checked' : 'value'}
                     >
                         {renderControl(field, id)}

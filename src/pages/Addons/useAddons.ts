@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     clearAddonAgencyOverride,
+    getAddonReadme,
     getAddonRegistry,
     getAddonSettings,
     getAddonStats,
@@ -10,11 +11,12 @@ import {
     setAddonEnabledForAgency,
     setAddonEnabledGlobally,
     setAddonEnabledForTenant,
+    setAddonModeForTenant,
 } from '../../api/addons/addonsApi';
 import { getAddonAuditEntries } from '../../api/addons/addonAuditApi';
-import getAgencyDataById from '../../api/agency/getAgencyById';
+import { fetchAgencyName, fetchTenantAgencyNames } from '../../api/agency/agencyNames';
 import { searchTenantData } from '../../api/tenant/searchTenantData';
-import type { AddonAuditQuery, AddonSettingsValues } from '../../addons/addonTypes';
+import type { AddonAuditQuery, AddonMode, AddonSettingsValues } from '../../addons/addonTypes';
 import decodeHTML from '../../utils/decodeHTML';
 
 export const ADMIN_ADDONS_KEY = 'admin-addons';
@@ -22,6 +24,9 @@ export const ADDON_REGISTRY_KEY = 'addon-registry';
 const ADDON_SETTINGS_KEY = 'addon-settings';
 const ADDON_STATS_KEY = 'addon-stats';
 const ADDON_AUDIT_KEY = 'addon-audit';
+const ADDON_README_KEY = 'addon-readme';
+const TENANT_AGENCY_NAMES_KEY = 'addon-tenant-agency-names';
+const AGENCY_NAME_KEY = 'addon-agency-name';
 export const ADDON_TENANTS_KEY = 'addon-tenants';
 const ALL_TENANTS_KEY = 'addon-all-tenants';
 
@@ -86,10 +91,11 @@ export const useAddonRegistry = (enabled = true) =>
         staleTime: 60_000,
     });
 
-export const useAddonSettings = (name: string, tenantId: number, agencyId: number | null) =>
+export const useAddonSettings = (name: string, tenantId: number, agencyId: number | null, enabled = true) =>
     useQuery({
         queryKey: [ADDON_SETTINGS_KEY, name, tenantId, agencyId],
         queryFn: () => getAddonSettings(name, tenantId, agencyId),
+        enabled,
         retry: false,
     });
 
@@ -110,22 +116,42 @@ export const useAddonAuditEntries = (params: AddonAuditQuery) =>
         refetchOnWindowFocus: false,
     });
 
-export const useAgencyNames = (agencyIds: number[]) =>
-    useQueries({
-        queries: agencyIds.map((agencyId) => ({
-            queryKey: ['addon-agency-name', agencyId],
-            queryFn: () =>
-                getAgencyDataById(String(agencyId))
-                    .then((agency: { name?: string }) => (agency?.name ? decodeHTML(agency.name) : null))
-                    .catch(() => null),
+export const useAddonReadme = (name: string, enabled: boolean) =>
+    useQuery({
+        queryKey: [ADDON_README_KEY, name],
+        queryFn: () => getAddonReadme(name),
+        enabled,
+        retry: false,
+        staleTime: 10 * 60_000,
+    });
+
+/**
+ * Names for agency ids: one list request per Träger, then single lookups only for ids that list does not
+ * contain (or for every id when no Träger is known). An id stays unnamed when no name can be loaded.
+ */
+export const useAgencyNames = (agencyIds: number[], tenantId?: number | null): Record<number, string | null> => {
+    const tenantList = useQuery({
+        queryKey: [TENANT_AGENCY_NAMES_KEY, tenantId],
+        queryFn: () => fetchTenantAgencyNames(tenantId as number),
+        enabled: tenantId != null && tenantId > 0 && agencyIds.length > 0,
+        retry: false,
+        staleTime: 5 * 60_000,
+    });
+    const listSettled = tenantId == null || tenantId <= 0 || !tenantList.isLoading;
+    const known = tenantList.data ?? {};
+    const missing = listSettled ? agencyIds.filter((agencyId) => !known[agencyId]) : [];
+    const single = useQueries({
+        queries: missing.map((agencyId) => ({
+            queryKey: [AGENCY_NAME_KEY, agencyId],
+            queryFn: () => fetchAgencyName(agencyId).catch(() => null),
+            retry: false,
             staleTime: 5 * 60_000,
         })),
         combine: (results) =>
-            Object.fromEntries(agencyIds.map((agencyId, index) => [agencyId, results[index]?.data ?? null])) as Record<
-                number,
-                string | null
-            >,
+            Object.fromEntries(missing.map((agencyId, index) => [agencyId, results[index]?.data ?? null])),
     });
+    return Object.fromEntries(agencyIds.map((agencyId) => [agencyId, known[agencyId] ?? single[agencyId] ?? null]));
+};
 
 const useInvalidateAddons = (tenantId: number) => {
     const queryClient = useQueryClient();
@@ -156,6 +182,20 @@ export const useSetTenantEnabled = (name: string, tenantId: number) => {
     return useMutation({
         mutationFn: (enabled: boolean) => setAddonEnabledForTenant(name, tenantId, enabled),
         onSettled: invalidate,
+    });
+};
+
+export const useSetTenantMode = (name: string) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ tenantId, mode }: { tenantId: number; mode: AddonMode }) =>
+            setAddonModeForTenant(name, tenantId, mode),
+        onSettled: (_data, _error, { tenantId }) =>
+            Promise.all([
+                queryClient.invalidateQueries({ queryKey: [ADDON_TENANTS_KEY, name] }),
+                queryClient.invalidateQueries({ queryKey: [ADMIN_ADDONS_KEY, tenantId] }),
+                queryClient.invalidateQueries({ queryKey: [ADDON_REGISTRY_KEY] }),
+            ]),
     });
 };
 

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { AddonTenantState } from '../../addons/addonTypes';
-import { AddonTenantsTable, tenantRows } from './AddonTenantsTable';
+import { AddonTenantsTable, isActiveForTenant, tenantRows } from './AddonTenantsTable';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -11,12 +11,19 @@ vi.mock('react-i18next', () => ({
     }),
 }));
 
-const setEnabled = vi.hoisted(() => vi.fn());
-vi.mock('../../api/addons/addonsApi', () => ({ setAddonEnabledForTenant: setEnabled }));
+const setMode = vi.hoisted(() => vi.fn());
+vi.mock('../../api/addons/addonsApi', () => ({ setAddonModeForTenant: setMode }));
 
 const states: AddonTenantState[] = [
-    { tenantId: 1, enabled: true, updatedAt: '2026-11-12T16:36:22Z', agenciesEnabled: 0, agenciesDisabled: 1 },
-    { tenantId: 9, enabled: false, agenciesEnabled: 2, agenciesDisabled: 0 },
+    {
+        tenantId: 1,
+        mode: 'TENANT',
+        enabled: true,
+        updatedAt: '2026-11-12T16:36:22Z',
+        agenciesEnabled: 0,
+        agenciesDisabled: 1,
+    },
+    { tenantId: 9, mode: 'ON_HIDDEN', enabled: false, agenciesEnabled: 2, agenciesDisabled: 0 },
 ];
 const tenants = [
     { id: 1, name: 'DigiSucht' },
@@ -38,48 +45,52 @@ const renderTable = (onSelect = vi.fn()) => {
     return onSelect;
 };
 
-beforeEach(() => setEnabled.mockReset().mockResolvedValue({}));
+const rowOf = (text: string) => screen.getByText(text).closest('tr') as HTMLElement;
+
+beforeEach(() => setMode.mockReset().mockResolvedValue({}));
 
 describe('tenantRows', () => {
-    it('joins Träger with their switches and keeps Träger the list does not know', () => {
+    it('joins Träger with their state and keeps Träger the list does not know', () => {
         const rows = tenantRows(tenants, states);
-        expect(rows.map((row) => [row.id, row.state?.enabled ?? null])).toEqual([
+        expect(rows.map((row) => [row.id, row.state?.mode ?? null])).toEqual([
             [6, null],
-            [1, true],
-            [9, false],
+            [1, 'TENANT'],
+            [9, 'ON_HIDDEN'],
         ]);
+        expect(rows.map(isActiveForTenant)).toEqual([false, true, true]);
     });
 });
 
 describe('AddonTenantsTable', () => {
-    it('lists every Träger with switch, overrides and last change', () => {
+    it('shows each Träger with its mode, no switch, and the Träger choice in TENANT mode', () => {
         renderTable();
-        const digisucht = screen.getByText('DigiSucht (1)').closest('tr') as HTMLElement;
-        expect(within(digisucht).getByRole('switch')).toBeChecked();
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+        const digisucht = rowOf('DigiSucht (1)');
+        expect(within(digisucht).getByText('addons.mode.TENANT')).toBeInTheDocument();
+        expect(within(digisucht).getByText('addons.mode.tenantOn')).toBeInTheDocument();
         expect(within(digisucht).getByText(/addons.tenants.agenciesOff/)).toBeInTheDocument();
-        const bits = screen.getByText('Bits (6)').closest('tr') as HTMLElement;
-        expect(within(bits).getByRole('switch')).not.toBeChecked();
+        expect(within(rowOf('Bits (6)')).getByText('addons.mode.OFF')).toBeInTheDocument();
         expect(screen.getByText(/addons.tenant.unnamed/)).toBeInTheDocument();
     });
 
-    it('filters to active Träger', () => {
+    it('filters to Träger the add-on is available for', () => {
         renderTable();
-        fireEvent.click(screen.getByText('addons.tenants.filter.active'));
+        fireEvent.click(screen.getByText('addons.tenants.filter.available'));
         expect(screen.getByText('DigiSucht (1)')).toBeInTheDocument();
         expect(screen.queryByText('Bits (6)')).not.toBeInTheDocument();
     });
 
-    it('switches a Träger without selecting the row', async () => {
-        const onSelect = renderTable();
-        const bits = screen.getByText('Bits (6)').closest('tr') as HTMLElement;
-        fireEvent.click(within(bits).getByRole('switch'));
-        await waitFor(() => expect(setEnabled).toHaveBeenCalledWith('digisucht-tools', 6, true));
-        expect(onSelect).not.toHaveBeenCalled();
+    it('sets the mode of a Träger', async () => {
+        renderTable();
+        const select = within(rowOf('Bits (6)')).getByRole('combobox');
+        fireEvent.mouseDown(select);
+        fireEvent.click(await screen.findByTitle('addons.mode.ON'));
+        await waitFor(() => expect(setMode).toHaveBeenCalledWith('digisucht-tools', 6, 'ON'));
     });
 
-    it('selects a Träger by clicking its row', () => {
+    it('selects a Träger with its manage button', () => {
         const onSelect = renderTable();
-        fireEvent.click(screen.getByText('Bits (6)'));
+        fireEvent.click(within(rowOf('Bits (6)')).getByRole('button', { name: /addons.tenants.manageFor/ }));
         expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 6, name: 'Bits' }));
     });
 });

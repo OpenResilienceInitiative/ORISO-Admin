@@ -6,65 +6,20 @@ import { http, HttpResponse } from 'msw';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import routePathNames from '../../appConfig';
 import { installAddonShared } from '../../addons/addonShared';
-import type { AddonRegistry, AddonSettings, AddonStats, AdminAddon } from '../../addons/addonTypes';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { AddonAdminPage, AddonsLayout, AddonsOverview } from './index';
 import { adminPagePath } from './AddonsLayout';
+import {
+    ADDON,
+    AGENCIES,
+    BUNDLE_PATH,
+    NOTICE_ADDON,
+    TENANTS,
+    createAddonBackend,
+} from '../../utils/storybook/addonFixtures';
 
-const ADDON = 'demo-tools';
-const TENANT = { id: 1, name: 'Demo-Mandant' };
-const AGENCY = { id: 12, name: 'Suchtberatung Freiburg' };
-const BUNDLE_PATH = `/service/addons/${ADDON}/ui/index.js`;
-
-const adminAddon = (tenantId: number): AdminAddon => ({
-    manifest: {
-        name: ADDON,
-        version: '1.2.0',
-        contract: 'oriso-addon/v1',
-        apps: [{ id: 'report', title: { de: 'Auswertung', en: 'Report' }, slots: ['admin.page'] }],
-        stats: [
-            { id: 'sessions', label: { de: 'Sitzungen', en: 'Sessions' } },
-            { id: 'exports', label: { de: 'Exporte', en: 'Exports' } },
-        ],
-    },
-    tenantId,
-    enabled: true,
-    agencyOverrides: [{ tenantId, agencyId: AGENCY.id, enabled: false }],
-});
-
-const registry: AddonRegistry = {
-    contract: 'oriso-addon/v1',
-    addons: [
-        {
-            name: ADDON,
-            version: '1.2.0',
-            entry: BUNDLE_PATH,
-            apiBase: `/service/addons/${ADDON}/api`,
-            apps: [{ id: 'report', title: { de: 'Auswertung', en: 'Report' }, slots: ['admin.page'] }],
-        },
-    ],
-};
-
-const settings: AddonSettings = {
-    schema: {
-        type: 'object',
-        required: ['greeting'],
-        properties: {
-            greeting: { type: 'string', title: 'Begrüßungstext', default: 'Willkommen', maxLength: 80 },
-            showReminder: { type: 'boolean', title: 'Erinnerung anzeigen', default: true },
-            reminderDays: { type: 'integer', title: 'Erinnerung nach Tagen', minimum: 1, maximum: 30, default: 7 },
-        },
-    },
-    values: { greeting: 'Schön, dass Sie da sind' },
-};
-
-const stats: AddonStats = {
-    stats: [
-        { id: 'sessions', value: 128 },
-        { id: 'exports', value: null },
-    ],
-};
+const TENANT = TENANTS[0];
 
 /**
  * A complete `oriso-addon/v1` bundle: an ES module that takes React from the host
@@ -95,24 +50,12 @@ export const unmount = (props) => {
 };
 `;
 
-const handlers = [
-    http.get('*/service/addons/registry', () => HttpResponse.json(registry)),
-    http.get('*/service/addons/admin/addons', ({ request }) =>
-        HttpResponse.json([adminAddon(Number(new URL(request.url).searchParams.get('tenantId')))]),
-    ),
-    http.get(`*/service/addons/admin/addons/${ADDON}/stats`, () => HttpResponse.json(stats)),
-    http.get(`*/service/addons/admin/addons/${ADDON}/settings`, () => HttpResponse.json(settings)),
-    http.get(`*/service/agencyadmin/agencies/${AGENCY.id}`, () => HttpResponse.json(AGENCY)),
-    http.get('*/service/agencyadmin/agencies', () =>
-        HttpResponse.json({ total: 1, _embedded: [{ _embedded: { ...AGENCY, tenantId: TENANT.id } }] }),
-    ),
-    http.get('*/service/tenantadmin/search', () =>
-        HttpResponse.json({ total: 1, _embedded: [{ _embedded: { ...TENANT, adminEmails: [] } }] }),
-    ),
-    http.get(`*${BUNDLE_PATH}`, () =>
-        HttpResponse.text(BUNDLE_SOURCE, { headers: { 'Content-Type': 'text/javascript' } }),
-    ),
-];
+const bundleHandler = http.get(`*${BUNDLE_PATH}`, () =>
+    HttpResponse.text(BUNDLE_SOURCE, { headers: { 'Content-Type': 'text/javascript' } }),
+);
+
+const backend = createAddonBackend();
+const backendWithoutReadme = createAddonBackend({ readme: false });
 
 const withAddonsRoutes =
     (roles: UserRole[], tenantId: number, initialPath: string = routePathNames.addons) =>
@@ -133,66 +76,147 @@ const withAddonsRoutes =
 const meta = {
     title: 'Organisms/Pages/Addons/AddonsPage',
     component: AddonsLayout,
-    parameters: { layout: 'fullscreen', msw: { handlers } },
+    parameters: { layout: 'fullscreen', msw: { handlers: [...backend.handlers, bundleHandler] } },
     decorators: [withAdminProviders],
+    beforeEach: () => {
+        backend.reset();
+        backendWithoutReadme.reset();
+    },
 } satisfies Meta<typeof AddonsLayout>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const openSection = async (card: HTMLElement, name: RegExp) => {
-    await userEvent.click(within(card).getByRole('button', { name }));
+const SUPER_ADMIN = [UserRole.TenantAdmin, UserRole.AgencyAdmin];
+
+const pickOption = async (canvasElement: HTMLElement, combobox: HTMLElement, label: RegExp) => {
+    await userEvent.click(combobox);
+    await waitFor(() =>
+        expect(
+            canvasElement.ownerDocument.querySelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+        ).not.toBeNull(),
+    );
+    const open = canvasElement.ownerDocument.querySelector(
+        '.ant-select-dropdown:not(.ant-select-dropdown-hidden)',
+    ) as HTMLElement;
+    await userEvent.click(within(open).getByTitle(label));
+    await waitFor(() =>
+        expect(
+            canvasElement.ownerDocument.querySelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+        ).toBeNull(),
+    );
 };
 
+const readmeImage = (scope: HTMLElement) =>
+    within(scope).getByRole('img', { name: 'Zielübersicht im Beratungsportal' }) as HTMLImageElement;
+
 /**
- * Träger admin: sees the add-on, its statistics, the agency exception and the settings
- * form generated from the JSON Schema. Only a platform admin may switch the add-on itself.
+ * Träger admin: one card per add-on the platform admin made visible. The switch appears only
+ * where the Träger decides; an add-on that is always on shows its state. Details open on demand.
  */
 export const TraegerAdmin: Story = {
     decorators: [withAddonsRoutes([UserRole.TenantAdmin], TENANT.id)],
     play: async ({ canvas }) => {
-        const card = await canvas.findByTestId(`addon-card-${ADDON}`);
-        const scoped = within(card);
+        await canvas.findByTestId(`addon-card-${ADDON}-${TENANT.id}`);
+        // Re-query on every step: the narrow layout may remount the page once the mobile navigation registers.
+        const demo = () => within(canvas.getByTestId(`addon-card-${ADDON}-${TENANT.id}`));
+        const notice = () => within(canvas.getByTestId(`addon-card-${NOTICE_ADDON}-${TENANT.id}`));
 
-        await expect(
-            scoped.getByRole('switch', { name: /Für den Träger aktiv|Active for the organisation/ }),
-        ).toBeDisabled();
-        await expect(await scoped.findByText('128')).toBeVisible();
-        await expect(scoped.getByText(/Keine Daten|No data/)).toBeVisible();
+        await waitFor(() =>
+            expect(readmeImage(canvas.getByTestId(`addon-card-${ADDON}-${TENANT.id}`)).naturalWidth).toBeGreaterThan(0),
+        );
+        await expect(demo().getByRole('heading', { name: 'Demo-Tools' })).toBeVisible();
+        await expect(demo().getByRole('switch', { name: /^(Aktiv|Active)$/ })).toBeChecked();
+        await expect(notice().queryByRole('switch')).toBeNull();
+        await expect(notice().getByText(/^(Aktiv|Active)$/)).toBeVisible();
+        await expect(notice().queryByRole('heading')).toBeNull();
+        await expect(demo().getByRole('link', { name: 'Handbuch' })).toHaveAttribute('target', '_blank');
 
-        await openSection(card, /Beratungsstellen|Agencies/);
-        await expect(await scoped.findByText(`${AGENCY.name} (${AGENCY.id})`)).toBeVisible();
+        await userEvent.click(await demo().findByRole('button', { name: /Mehr anzeigen|Show more/ }));
+        await expect(demo().getByRole('button', { name: /Weniger anzeigen|Show less/ })).toHaveAttribute(
+            'aria-expanded',
+            'true',
+        );
 
-        await openSection(card, /Einstellungen|Settings/);
-        const greeting = await scoped.findByDisplayValue('Schön, dass Sie da sind');
-        await waitFor(() => expect(greeting).toBeVisible());
-        await expect(scoped.getByRole('switch', { name: 'Erinnerung anzeigen' })).toBeChecked();
-        await expect(scoped.getByDisplayValue('7')).toBeVisible();
+        await expect(demo().queryByRole('tablist')).toBeNull();
+        await userEvent.click(demo().getByRole('button', { name: /Details anzeigen|Show details/ }));
+        await expect(await demo().findByText(AGENCIES[0].name)).toBeVisible();
+        await expect(demo().queryByText(/Beratungsstelle 12/)).toBeNull();
+
+        await userEvent.click(demo().getByRole('tab', { name: /Einstellungen|Settings/ }));
+        await waitFor(() => expect(demo().getByDisplayValue('Schön, dass Sie da sind')).toBeVisible());
+        await expect(demo().getByRole('switch', { name: 'Erinnerung anzeigen' })).toBeChecked();
+
+        await userEvent.click(demo().getByRole('tab', { name: /Statistik|Statistics/ }));
+        await expect(await demo().findByText('128')).toBeVisible();
     },
 };
 
-/** Platform admin: picks a Träger first, then may switch the add-on for it. */
+/** Platform admin: readme and global switch on top, then the mode per Träger, then one Träger. */
 export const PlatformAdmin: Story = {
-    decorators: [withAddonsRoutes([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0)],
+    decorators: [withAddonsRoutes(SUPER_ADMIN, 0)],
     play: async ({ canvas, canvasElement }) => {
-        const tenantPicker = await canvas.findByRole('combobox', { name: /Träger|Organisation/ });
-        await expect(canvas.queryByTestId(`addon-card-${ADDON}`)).toBeNull();
-
-        await userEvent.click(tenantPicker);
-        const option = await within(canvasElement.ownerDocument.body).findByTitle(`${TENANT.name} (${TENANT.id})`);
-        await userEvent.click(option);
+        await canvas.findByTestId(`addon-info-${ADDON}`);
         await waitFor(() =>
-            expect(
-                canvasElement.ownerDocument.querySelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
-            ).toBeNull(),
+            expect(readmeImage(canvas.getByTestId(`addon-info-${ADDON}`)).naturalWidth).toBeGreaterThan(0),
+        );
+        const info = canvas.getByTestId(`addon-info-${ADDON}`);
+        await expect(within(info).getByRole('switch', { name: /Global aktiv|Active globally/ })).toBeChecked();
+        await expect(within(info).getByRole('heading', { name: 'Demo-Tools' })).toBeVisible();
+
+        const table = await canvas.findByTestId('addon-tenants');
+        const rowOf = async (name: string) =>
+            (await within(table).findByText(new RegExp(`^${name} \\(`))).closest('tr') as HTMLElement;
+        const demoRow = await rowOf(TENANT.name);
+        await expect(within(demoRow).getByText(/Träger: an|Organisation: on/)).toBeVisible();
+        await expect(within(table).queryByRole('switch')).toBeNull();
+
+        const diakonie = await rowOf(TENANTS[2].name);
+        await pickOption(
+            canvasElement,
+            within(diakonie).getByRole('combobox'),
+            /^(Träger entscheidet|Organisation decides)$/,
+        );
+        await waitFor(async () =>
+            expect(within(await rowOf(TENANTS[2].name)).getByText(/Träger: aus|Organisation: off/)).toBeVisible(),
         );
 
-        const card = await canvas.findByTestId(`addon-card-${ADDON}`);
-        await waitFor(() =>
-            expect(
-                within(card).getByRole('switch', { name: /Für den Träger aktiv|Active for the organisation/ }),
-            ).toBeEnabled(),
+        await userEvent.click(
+            within(demoRow).getByRole('button', { name: new RegExp(`${TENANT.name} \\(${TENANT.id}\\)`) }),
         );
+        const card = await canvas.findByTestId(`addon-card-${ADDON}-${TENANT.id}`);
+        await expect(within(card).getByText(`${TENANT.name} (${TENANT.id})`)).toBeVisible();
+        await expect(await within(card).findByText(AGENCIES[0].name)).toBeVisible();
+    },
+};
+
+/** An add-on without a readme shows no description block, only its facts. */
+export const PlatformAdminWithoutReadme: Story = {
+    parameters: { msw: { handlers: [...backendWithoutReadme.handlers, bundleHandler] } },
+    decorators: [withAddonsRoutes(SUPER_ADMIN, 0)],
+    play: async ({ canvas }) => {
+        const info = await canvas.findByTestId(`addon-info-${ADDON}`);
+        await expect(within(info).getByText('Auswertung')).toBeVisible();
+        await expect(within(info).queryByRole('heading', { name: 'Demo-Tools' })).toBeNull();
+        await expect(within(info).queryByRole('img')).toBeNull();
+        await expect(within(info).queryByRole('button', { name: /Mehr anzeigen|Show more/ })).toBeNull();
+    },
+};
+
+/** The AddonService is optional: when it is not deployed the section is empty, not an error. */
+export const ServiceNotDeployed: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/addons/registry', () => new HttpResponse(null, { status: 404 })),
+                http.get('*/service/addons/admin/addons', () => new HttpResponse(null, { status: 404 })),
+            ],
+        },
+    },
+    decorators: [withAddonsRoutes(SUPER_ADMIN, 0)],
+    play: async ({ canvas }) => {
+        await expect(await canvas.findByText(/Keine Add-ons verfügbar|No add-ons available/)).toBeVisible();
+        await expect(canvas.queryByRole('alert')).toBeNull();
     },
 };
 

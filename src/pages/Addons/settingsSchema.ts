@@ -95,6 +95,12 @@ export const initialSettingsValues = (fields: SettingsField[], values: AddonSett
         }),
     );
 
+/** The fields that have a stored value of their own at this level. */
+export const explicitSettingNames = (fields: SettingsField[], values: AddonSettingsValues): Set<string> =>
+    new Set(
+        fields.filter((field) => values[field.name] !== undefined && values[field.name] !== null).map((f) => f.name),
+    );
+
 const toNumber = (value: unknown, integer: boolean): number | undefined => {
     if (value === '' || value === null || value === undefined) {
         return undefined;

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { AdminAddon } from '../../addons/addonTypes';
 import { AddonCard } from './AddonCard';
@@ -14,10 +15,11 @@ vi.mock('./AddonSettingsSection', () => ({ AddonSettingsSection: () => <div>sett
 const mutate = vi.hoisted(() => vi.fn());
 vi.mock('./useAddons', () => ({
     useSetTenantEnabled: () => ({ mutate, isPending: false }),
+    useAddonReadme: () => ({ data: 'Hilft bei **Zielen**.' }),
     useAddonStats: () => ({ isLoading: false, isError: false, data: { stats: [{ id: 'tools.released', value: 12 }] } }),
 }));
 
-const addon: AdminAddon = {
+const addon = (overrides: Partial<AdminAddon> = {}): AdminAddon => ({
     manifest: {
         name: 'digisucht-tools',
         version: '1.4.0',
@@ -25,48 +27,61 @@ const addon: AdminAddon = {
         stats: [{ id: 'tools.released', label: { de: 'Freigegebene Tools' }, type: 'count' }],
     },
     tenantId: 7,
+    mode: 'TENANT',
+    tenantCanSwitch: true,
+    hasReadme: true,
     enabled: true,
     agencyOverrides: [],
-};
+    ...overrides,
+});
 
-const renderCard = (isSuperAdmin: boolean) =>
+const renderCard = (value: AdminAddon, defaultOpen = false) =>
     render(
         <QueryClientProvider client={new QueryClient()}>
-            <AddonCard addon={addon} tenantId={7} tenantName="Caritas Musterstadt" isSuperAdmin={isSuperAdmin} />
+            <MemoryRouter>
+                <AddonCard
+                    addon={value}
+                    tenantId={7}
+                    adminPages={[]}
+                    canSwitch={!!value.tenantCanSwitch}
+                    showReadme
+                    defaultOpen={defaultOpen}
+                />
+            </MemoryRouter>
         </QueryClientProvider>,
     );
 
 beforeEach(() => mutate.mockReset());
 
 describe('AddonCard', () => {
-    it('shows the Träger, its state and statistics', () => {
-        renderCard(false);
-        expect(screen.getByText('Caritas Musterstadt (7)')).toBeInTheDocument();
-        expect(screen.getByText('addons.status.active')).toBeInTheDocument();
-        expect(screen.getByText('Freigegebene Tools')).toBeInTheDocument();
-        expect(screen.getByText('12')).toBeInTheDocument();
-        expect(screen.getByText('agency overrides')).toBeInTheDocument();
-        expect(screen.getByText('settings form')).toBeInTheDocument();
-    });
-
-    it('lets a SuperAdmin switch the add-on for the Träger', () => {
-        renderCard(true);
-        const toggle = screen.getByRole('switch', { name: 'addons.tenant.switchLabel' });
-        expect(toggle).toBeEnabled();
+    it('lets the Träger switch the add-on when the platform admin leaves it to them', () => {
+        renderCard(addon());
+        const toggle = screen.getByRole('switch', { name: 'addons.status.active' });
         expect(toggle).toBeChecked();
-        expect(screen.queryByText('addons.tenant.readOnly')).not.toBeInTheDocument();
-
         fireEvent.click(toggle);
         expect(mutate).toHaveBeenCalledWith(false, expect.anything());
     });
 
-    it('shows a Träger admin the switch read-only', () => {
-        renderCard(false);
-        const toggle = screen.getByRole('switch', { name: 'addons.tenant.switchLabel' });
-        expect(toggle).toBeDisabled();
-        expect(toggle).toHaveAccessibleDescription('addons.tenant.readOnly');
+    it('shows only the state, without a switch, when the add-on is always on', () => {
+        renderCard(addon({ mode: 'ON', tenantCanSwitch: false }));
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+        expect(screen.getByText('addons.status.active')).toBeInTheDocument();
+    });
 
-        fireEvent.click(toggle);
-        expect(mutate).not.toHaveBeenCalled();
+    it('shows the readme and keeps the details folded until asked', () => {
+        renderCard(addon());
+        expect(screen.getByText('Zielen')).toBeInTheDocument();
+        expect(screen.queryByText('agency overrides')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'addons.details.show' }));
+        expect(screen.getByText('agency overrides')).toBeInTheDocument();
+        expect(screen.queryByText('settings form')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: 'addons.stats.title' }));
+        expect(screen.getByText('Freigegebene Tools')).toBeInTheDocument();
+        expect(screen.getByText('12')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('tab', { name: 'addons.settings.title' }));
+        expect(screen.getByText('settings form')).toBeInTheDocument();
     });
 });

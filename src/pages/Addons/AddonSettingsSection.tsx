@@ -1,5 +1,5 @@
 import { Alert, Radio } from 'antd';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AddonsLoading } from './AddonsLoading';
 import { snackbar } from '../../components/Snackbar';
@@ -7,6 +7,7 @@ import { AddonSettingsValidationError } from '../../api/addons/addonsApi';
 import type { AddonSettingsValues } from '../../addons/addonTypes';
 import { AddonSettingsForm } from './AddonSettingsForm';
 import { AgencySelect, type SelectOption } from './RemoteSearchSelect';
+import { initialSettingsValues, settingsFields } from './settingsSchema';
 import { useAddonSettings, useSaveAddonSettings } from './useAddons';
 import styles from './addons.module.scss';
 
@@ -28,13 +29,20 @@ const SettingsForScope = ({
 }) => {
     const { t } = useTranslation();
     const settings = useAddonSettings(name, tenantId, agencyId);
+    const tenantSettings = useAddonSettings(name, tenantId, null, agencyId != null);
     const save = useSaveAddonSettings(name, tenantId, agencyId);
     const [invalid, setInvalid] = useState<string | null>(null);
+    const inherited = useMemo(() => {
+        if (agencyId == null || !tenantSettings.data) {
+            return undefined;
+        }
+        return initialSettingsValues(settingsFields(tenantSettings.data.schema), tenantSettings.data.values);
+    }, [agencyId, tenantSettings.data]);
 
-    if (settings.isLoading) {
+    if (settings.isLoading || (agencyId != null && tenantSettings.isLoading)) {
         return <AddonsLoading />;
     }
-    if (settings.isError || !settings.data) {
+    if (settings.isError || !settings.data || (agencyId != null && !inherited)) {
         return <Alert type="error" showIcon role="alert" message={t('addons.settings.loadError')} />;
     }
 
@@ -66,6 +74,7 @@ const SettingsForScope = ({
                 formId={`addon-settings-${name}-${agencyId ?? 'tenant'}`}
                 schema={settings.data.schema}
                 values={settings.data.values}
+                inherited={inherited}
                 saving={save.isPending}
                 onSubmit={onSubmit}
             />
@@ -106,7 +115,6 @@ export const AddonSettingsSection = ({ name, tenantId }: AddonSettingsSectionPro
                         selectedOption={agency}
                         onChange={setAgency}
                     />
-                    <p className={styles.hint}>{t('addons.settings.scope.agencyHint')}</p>
                 </div>
             )}
             {scope === 'tenant' && <SettingsForScope key="tenant" name={name} tenantId={tenantId} agencyId={null} />}

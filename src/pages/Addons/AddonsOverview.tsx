@@ -1,7 +1,8 @@
-import { Alert, Empty } from 'antd';
+import { Alert, Tag } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { AdminEmpty } from '../../components/AdminEmpty';
 import { FETCH_ERRORS } from '../../api/fetchData';
 import { M3Select } from '../../components/M3Select';
 import type { AdminAddon } from '../../addons/addonTypes';
@@ -9,25 +10,40 @@ import { AddonCard } from './AddonCard';
 import { AddonInfo } from './AddonInfo';
 import { AddonsLoading } from './AddonsLoading';
 import { AddonTenantsTable } from './AddonTenantsTable';
-import { useAddonsOutletContext } from './AddonsLayout';
+import { useAddonsOutletContext, type AdminPageEntry } from './AddonsLayout';
 import { useAdminAddons } from './useAddons';
 import styles from './addons.module.scss';
 
-const isForbidden = (error: unknown) => error instanceof Error && error.message === FETCH_ERRORS.FORBIDDEN;
+const errorCode = (error: unknown) => (error instanceof Error ? error.message : '');
 
 const ADDON_PARAM = 'addon';
 
-/** The add-on of one Träger, loaded with that Träger's switch and agency overrides. */
+const LoadState = ({ error }: { error: unknown }) => {
+    const { t } = useTranslation();
+    if (errorCode(error) === FETCH_ERRORS.NO_MATCH) {
+        return <AdminEmpty description={t('addons.empty')} />;
+    }
+    return (
+        <Alert
+            type="error"
+            showIcon
+            role="alert"
+            message={t(errorCode(error) === FETCH_ERRORS.FORBIDDEN ? 'addons.error.forbidden' : 'addons.error.load')}
+        />
+    );
+};
+
+/** The add-on at the Träger the platform admin picked in the table. */
 const TenantAddon = ({
     name,
     tenantId,
     tenantName,
-    isSuperAdmin,
+    adminPages,
 }: {
     name: string;
     tenantId: number;
     tenantName?: string;
-    isSuperAdmin: boolean;
+    adminPages: AdminPageEntry[];
 }) => {
     const { t } = useTranslation();
     const addons = useAdminAddons(tenantId);
@@ -36,37 +52,32 @@ const TenantAddon = ({
     }
     const addon = addons.data?.find((candidate) => candidate.manifest.name === name);
     if (addons.isError || !addon) {
-        return (
-            <Alert
-                type="error"
-                showIcon
-                role="alert"
-                message={t(isForbidden(addons.error) ? 'addons.error.forbidden' : 'addons.error.load')}
-            />
-        );
+        return <LoadState error={addons.error ?? new Error(FETCH_ERRORS.NO_MATCH)} />;
     }
-    return <AddonCard addon={addon} tenantId={tenantId} tenantName={tenantName} isSuperAdmin={isSuperAdmin} />;
+    return (
+        <AddonCard
+            addon={addon}
+            tenantId={tenantId}
+            adminPages={adminPages}
+            title={tenantName ? `${tenantName} (${tenantId})` : t('addons.tenant.unnamed', { id: tenantId })}
+            tags={<Tag>{t(`addons.mode.${addon.mode ?? 'OFF'}`)}</Tag>}
+            canSwitch={false}
+            detailsAlwaysOpen
+        />
+    );
 };
 
-/**
- * Add-on centred view: pick an add-on, see what it is, then (SuperAdmins) which Träger use it and,
- * for one Träger, its agencies, settings and statistics. Träger admins see their own Träger only.
- */
-export const AddonsOverview = () => {
+/** Platform admin: pick an add-on, see what it is, set its mode per Träger and manage one Träger. */
+const PlatformAddons = ({ list }: { list: AdminAddon[] }) => {
     const { t } = useTranslation();
-    const { tenant, setTenant, isSuperAdmin } = useAddonsOutletContext();
+    const { tenant, setTenant, adminPages } = useAddonsOutletContext();
     const [searchParams, setSearchParams] = useSearchParams();
-    // SuperAdmins list the add-ons for the platform (tenant 0 in their token); Träger admins for theirs.
-    const listTenantId = isSuperAdmin ? null : tenant?.id ?? null;
-    const addons = useAdminAddons(listTenantId, isSuperAdmin || listTenantId != null);
     const detailsRef = useRef<HTMLDivElement>(null);
-
-    const list: AdminAddon[] = useMemo(() => addons.data ?? [], [addons.data]);
     const requested = searchParams.get(ADDON_PARAM);
-    const selected = list.find((addon) => addon.manifest.name === requested) ?? (list.length ? list[0] : null);
+    const selected = list.find((addon) => addon.manifest.name === requested) ?? list[0];
 
     useEffect(() => {
-        if (selected && requested !== selected.manifest.name) {
+        if (requested !== selected.manifest.name) {
             setSearchParams(
                 (params) => {
                     params.set(ADDON_PARAM, selected.manifest.name);
@@ -82,34 +93,13 @@ export const AddonsOverview = () => {
             params.set(ADDON_PARAM, name);
             return params;
         });
-        if (isSuperAdmin) {
-            setTenant(null);
-        }
+        setTenant(null);
     };
 
-    const renderContent = () => {
-        if (!isSuperAdmin && listTenantId == null) {
-            return <AddonsLoading />;
-        }
-        if (addons.isLoading) {
-            return <AddonsLoading />;
-        }
-        if (addons.isError) {
-            return (
-                <Alert
-                    type="error"
-                    showIcon
-                    role="alert"
-                    message={t(isForbidden(addons.error) ? 'addons.error.forbidden' : 'addons.error.load')}
-                />
-            );
-        }
-        if (!selected) {
-            return <Empty description={t('addons.empty')} />;
-        }
-        const { name } = selected.manifest;
-        return (
-            <>
+    const { name } = selected.manifest;
+    return (
+        <>
+            {list.length > 1 && (
                 <div className={styles.tenantPicker}>
                     <label htmlFor="addons-addon" className={styles.label}>
                         {t('addons.addon.label')}
@@ -126,55 +116,84 @@ export const AddonsOverview = () => {
                         }))}
                     />
                 </div>
-                <AddonInfo addon={selected} isSuperAdmin={isSuperAdmin} />
-                {!selected.global?.enabled && <Alert type="warning" showIcon message={t('addons.global.offHint')} />}
-                {isSuperAdmin ? (
-                    <>
-                        <AddonTenantsTable
-                            addonName={name}
-                            selectedTenantId={tenant?.id ?? null}
-                            onSelect={(row) => {
-                                setTenant({ id: row.id, name: row.name || undefined });
-                                window.setTimeout(
-                                    () => detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-                                    0,
-                                );
-                            }}
-                        />
-                        <div ref={detailsRef}>
-                            {tenant ? (
-                                <TenantAddon
-                                    key={`${name}-${tenant.id}`}
-                                    name={name}
-                                    tenantId={tenant.id}
-                                    tenantName={tenant.name}
-                                    isSuperAdmin
-                                />
-                            ) : (
-                                <Alert type="info" showIcon message={t('addons.tenant.chooseFirst')} />
-                            )}
-                        </div>
-                    </>
-                ) : (
-                    tenant && (
-                        <AddonCard
-                            addon={selected}
-                            tenantId={tenant.id}
-                            tenantName={tenant.name}
-                            isSuperAdmin={false}
-                        />
-                    )
+            )}
+            <AddonInfo key={name} addon={selected} />
+            {!selected.global?.enabled && <Alert type="warning" showIcon message={t('addons.global.offHint')} />}
+            <AddonTenantsTable
+                key={`tenants-${name}`}
+                addonName={name}
+                selectedTenantId={tenant?.id ?? null}
+                onSelect={(row) => {
+                    setTenant({ id: row.id, name: row.name || undefined });
+                    window.setTimeout(
+                        () => detailsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }),
+                        0,
+                    );
+                }}
+            />
+            <div ref={detailsRef}>
+                {tenant && (
+                    <TenantAddon
+                        key={`${name}-${tenant.id}`}
+                        name={name}
+                        tenantId={tenant.id}
+                        tenantName={tenant.name}
+                        adminPages={adminPages}
+                    />
                 )}
-            </>
+            </div>
+        </>
+    );
+};
+
+/** Träger admin: one card per add-on the platform admin made visible to the Träger. */
+const TenantAddons = ({ list, tenantId }: { list: AdminAddon[]; tenantId: number }) => {
+    const { adminPages } = useAddonsOutletContext();
+    return (
+        <>
+            {list.map((addon) => (
+                <AddonCard
+                    key={addon.manifest.name}
+                    addon={addon}
+                    tenantId={tenantId}
+                    adminPages={adminPages}
+                    canSwitch={!!addon.tenantCanSwitch}
+                    showReadme
+                    defaultOpen={list.length === 1}
+                />
+            ))}
+        </>
+    );
+};
+
+export const AddonsOverview = () => {
+    const { t } = useTranslation();
+    const { tenant, isSuperAdmin } = useAddonsOutletContext();
+    // SuperAdmins list the add-ons for the platform (tenant 0 in their token); Träger admins for theirs.
+    const listTenantId = isSuperAdmin ? null : tenant?.id ?? null;
+    const addons = useAdminAddons(listTenantId, isSuperAdmin || listTenantId != null);
+    const list: AdminAddon[] = useMemo(() => addons.data ?? [], [addons.data]);
+
+    const renderContent = () => {
+        if ((!isSuperAdmin && listTenantId == null) || addons.isLoading) {
+            return <AddonsLoading />;
+        }
+        if (addons.isError) {
+            return <LoadState error={addons.error} />;
+        }
+        if (list.length === 0) {
+            return <AdminEmpty description={t('addons.empty')} />;
+        }
+        return isSuperAdmin ? (
+            <PlatformAddons list={list} />
+        ) : (
+            <TenantAddons list={list} tenantId={listTenantId as number} />
         );
     };
 
     return (
         <div className={styles.overview}>
-            <div className={styles.intro}>
-                <h2 className={styles.heading}>{t('addons.title')}</h2>
-                <p className={styles.description}>{t('addons.description')}</p>
-            </div>
+            <h2 className={styles.heading}>{t('addons.title')}</h2>
             <div className={styles.list}>{renderContent()}</div>
         </div>
     );

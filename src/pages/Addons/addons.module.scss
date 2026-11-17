@@ -5,12 +5,6 @@
     padding: 0 var(--admin-page-edge, 24px) 24px;
 }
 
-.intro {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
 .heading {
     margin: 0;
     color: var(--m3-on-surface);
@@ -19,7 +13,6 @@
     font-weight: 500;
 }
 
-.description,
 .hint {
     margin: 0;
     color: var(--m3-on-surface-variant);
@@ -148,12 +141,210 @@
     font-weight: 500;
 }
 
-.tenants :global(.ant-table-row) {
-    cursor: pointer;
+.card :global(.ant-card-head-wrapper) {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-block: 8px;
 }
 
-.selectedRow > td {
-    background: var(--m3-secondary-container, #f4ece6) !important;
+.readme {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.readmeContent {
+    max-width: 75ch;
+    color: var(--m3-on-surface);
+    font-family: var(--m3-body-font-family);
+    overflow-wrap: anywhere;
+
+    h1,
+    h2,
+    h3,
+    h4 {
+        margin: 16px 0 8px;
+        font-weight: 500;
+        line-height: 1.3;
+    }
+
+    h1 {
+        font-size: 20px;
+    }
+
+    h2 {
+        font-size: 18px;
+    }
+
+    h3,
+    h4 {
+        font-size: 16px;
+    }
+
+    > :first-child {
+        margin-top: 0;
+    }
+
+    p,
+    ul,
+    ol {
+        margin: 0 0 8px;
+    }
+
+    img {
+        display: block;
+        max-width: min(100%, 640px);
+        height: auto;
+        max-height: 400px;
+        border: 1px solid var(--m3-outline-variant);
+        margin-block: 8px;
+        border-radius: 8px;
+        object-fit: contain;
+    }
+
+    a {
+        color: var(--m3-primary);
+        text-decoration: underline;
+    }
+
+    code {
+        padding: 0 4px;
+        background: var(--m3-surface-container-high, #ebe7e7);
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    pre {
+        overflow-x: auto;
+        padding: 8px 12px;
+        background: var(--m3-surface-container-high, #ebe7e7);
+        border-radius: 8px;
+    }
+
+    pre code {
+        padding: 0;
+        background: none;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+        border-collapse: collapse;
+    }
+
+    th,
+    td {
+        padding: 4px 8px;
+        border: 1px solid var(--m3-outline-variant);
+    }
+}
+
+.readmeCollapsed {
+    overflow: hidden;
+    max-height: 280px;
+    mask-image: linear-gradient(to bottom, #000 75%, transparent);
+}
+
+.inlineLink {
+    height: auto;
+    padding-inline: 0;
+    color: var(--m3-primary);
+}
+
+.fieldExtra {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+}
+
+.detailsToggle {
+    margin-top: 4px;
+}
+
+.details {
+    display: flex;
+    flex-direction: column;
+    margin-top: 12px;
+    gap: 16px;
+}
+
+.detailsPanel {
+    min-width: 0;
+}
+
+.overrideList {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.overrideRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-block: 8px;
+    border-bottom: 1px solid var(--m3-outline-variant);
+    gap: 8px 16px;
+}
+
+.overrideName {
+    min-width: 0;
+    flex: 1 1 200px;
+    overflow-wrap: anywhere;
+}
+
+.tenantTable {
+    table {
+        table-layout: auto;
+    }
+
+    td {
+        overflow-wrap: anywhere;
+    }
+}
+
+.modeCell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.modeSelect {
+    width: 200px;
+    max-width: 100%;
+}
+
+.pair {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+.secondary {
+    color: var(--m3-on-surface-variant);
+    font: 400 13px/18px var(--m3-body-font-family);
+}
+
+.nowrap {
+    white-space: nowrap;
+}
+
+.cellLabel {
+    display: none;
+}
+
+.cards .cellLabel {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--m3-on-surface-variant);
+    font: 500 12px/16px var(--m3-body-font-family);
 }
 
 .srOnly {

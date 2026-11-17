@@ -1,19 +1,22 @@
-import { Alert, Button, Input, Radio, Switch, Table } from 'antd';
-import { useMemo, useState } from 'react';
+import { Alert, Button, Input, Radio, Tag } from 'antd';
+import classNames from 'classnames';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
-import type { AddonTenantState } from '../../addons/addonTypes';
-import { setAddonEnabledForTenant } from '../../api/addons/addonsApi';
+import { ADDON_MODES, type AddonMode, type AddonTenantState } from '../../addons/addonTypes';
+import { formatDateTime } from '../../addons/intlLocale';
+import { AdminEmpty } from '../../components/AdminEmpty';
 import {
-    ADDON_REGISTRY_KEY,
-    ADDON_TENANTS_KEY,
-    ADMIN_ADDONS_KEY,
-    useAddonTenants,
-    useAllTenants,
-    type TenantName,
-} from './useAddons';
-import styles from './addons.module.scss';
+    DataTable,
+    DataTableCell,
+    DataTableHeader,
+    DataTableRow,
+    type DataTableColumn,
+} from '../../components/DataTable';
+import { M3Select } from '../../components/M3Select';
 import { snackbar } from '../../components/Snackbar';
+import { useMeasuredListLayout } from '../../hooks/useMeasuredListLayout';
+import { useAddonTenants, useAllTenants, useSetTenantMode, type TenantName } from './useAddons';
+import styles from './addons.module.scss';
 
 export interface TenantRow {
     id: number;
@@ -21,9 +24,20 @@ export interface TenantRow {
     state: AddonTenantState | null;
 }
 
-type Filter = 'all' | 'active';
+type Filter = 'all' | 'available';
 
-/** Joins every Träger with the add-on's switches; Träger the tenant list does not know still appear. */
+// Measured in Storybook with a long Träger name: five columns fit from 730px, the tablet row (date folded into the
+// Träger cell) from 560px. Each band keeps 10px of slack.
+export const TENANT_LIST_BANDS = { phoneBelow: 570, wideFrom: 740 };
+
+export const tenantMode = (row: TenantRow): AddonMode => row.state?.mode ?? 'OFF';
+
+export const isActiveForTenant = (row: TenantRow): boolean => {
+    const mode = tenantMode(row);
+    return mode === 'ON' || mode === 'ON_HIDDEN' || (mode === 'TENANT' && !!row.state?.enabled);
+};
+
+/** Joins every Träger with the add-on's state; Träger the tenant list does not know still appear. */
 export const tenantRows = (tenants: TenantName[], states: AddonTenantState[]): TenantRow[] => {
     const byId = new Map(states.map((state) => [state.tenantId, state]));
     const rows: TenantRow[] = tenants.map((tenant) => ({ ...tenant, state: byId.get(tenant.id) ?? null }));
@@ -40,48 +54,40 @@ interface AddonTenantsTableProps {
     onSelect: (row: TenantRow) => void;
 }
 
-/** SuperAdmin view: every Träger with the add-on's switch, its agency overrides and the last change. */
+/** Platform admin: every Träger with the add-on's mode, its agency exceptions and the last change. */
 export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: AddonTenantsTableProps) => {
     const { t, i18n } = useTranslation();
     const language = i18n.resolvedLanguage || i18n.language || 'de';
-    const queryClient = useQueryClient();
     const tenants = useAllTenants(true);
     const states = useAddonTenants(addonName, true);
+    const setMode = useSetTenantMode(addonName);
     const [filter, setFilter] = useState<Filter>('all');
     const [search, setSearch] = useState('');
-    const [pending, setPending] = useState<number | null>(null);
+    const containerRef = useRef<HTMLElement>(null);
+    const layout = useMeasuredListLayout(containerRef, TENANT_LIST_BANDS);
 
+    const allRows = useMemo(() => tenantRows(tenants.data ?? [], states.data ?? []), [tenants.data, states.data]);
     const rows = useMemo(() => {
-        const all = tenantRows(tenants.data ?? [], states.data ?? []);
         const query = search.trim().toLowerCase();
-        return all.filter(
+        return allRows.filter(
             (row) =>
-                (filter === 'all' || row.state?.enabled) &&
+                (filter === 'all' || tenantMode(row) !== 'OFF') &&
                 (!query || row.name.toLowerCase().includes(query) || String(row.id) === query),
         );
-    }, [tenants.data, states.data, filter, search]);
-
-    const activeCount = (states.data ?? []).filter((state) => state.enabled).length;
-
-    const toggle = async (row: TenantRow, enabled: boolean) => {
-        setPending(row.id);
-        try {
-            await setAddonEnabledForTenant(addonName, row.id, enabled);
-            snackbar.success(String(t(enabled ? 'addons.tenant.enabled' : 'addons.tenant.disabled')));
-        } catch {
-            snackbar.error(String(t('addons.tenants.switchError')));
-        } finally {
-            setPending(null);
-            await Promise.all([
-                queryClient.invalidateQueries({ queryKey: [ADDON_TENANTS_KEY, addonName] }),
-                queryClient.invalidateQueries({ queryKey: [ADMIN_ADDONS_KEY, row.id] }),
-                queryClient.invalidateQueries({ queryKey: [ADDON_REGISTRY_KEY] }),
-            ]);
-        }
-    };
+    }, [allRows, filter, search]);
+    const activeCount = allRows.filter(isActiveForTenant).length;
 
     const tenantLabel = (row: TenantRow) =>
         row.name ? `${row.name} (${row.id})` : String(t('addons.tenant.unnamed', { id: row.id }));
+
+    const changeMode = (row: TenantRow, mode: AddonMode) =>
+        setMode.mutate(
+            { tenantId: row.id, mode },
+            {
+                onSuccess: () => snackbar.success(String(t('addons.mode.saved'))),
+                onError: () => snackbar.error(String(t('addons.tenants.switchError'))),
+            },
+        );
 
     const overridesLabel = (state: AddonTenantState | null) => {
         const parts = [];
@@ -91,15 +97,87 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
         if (state?.agenciesDisabled) {
             parts.push(t('addons.tenants.agenciesOff', { count: state.agenciesDisabled }));
         }
-        return parts.length ? parts.join(', ') : '–';
+        return parts.length ? parts.join(', ') : '-';
     };
+
+    const updatedLabel = (row: TenantRow) =>
+        row.state?.updatedAt ? formatDateTime(row.state.updatedAt, language) : '-';
 
     if (tenants.isError || states.isError) {
         return <Alert type="error" showIcon role="alert" message={t('addons.tenants.loadError')} />;
     }
 
+    const wide = layout === 'wide';
+    const columns: DataTableColumn[] = [
+        { key: 'tenant', label: t('addons.tenant.label') },
+        { key: 'mode', label: t('addons.mode.label') },
+        { key: 'agencies', label: t('addons.tenants.agencies') },
+        ...(wide ? [{ key: 'updatedAt', label: t('addons.tenants.updatedAt') }] : []),
+        { key: 'actions', label: '', ariaLabel: String(t('addons.agencies.actions')) },
+    ];
+
+    const renderCell = (key: string, row: TenantRow) => {
+        const mode = tenantMode(row);
+        switch (key) {
+            case 'tenant':
+                return (
+                    <span className={styles.pair}>
+                        <span>{tenantLabel(row)}</span>
+                        {!wide && row.state?.updatedAt && (
+                            <span className={styles.secondary}>
+                                {t('addons.tenants.updatedAtValue', { date: updatedLabel(row) })}
+                            </span>
+                        )}
+                    </span>
+                );
+            case 'mode':
+                return (
+                    <span className={styles.modeCell}>
+                        <M3Select<AddonMode>
+                            size="small"
+                            className={styles.modeSelect}
+                            aria-label={String(t('addons.mode.for', { tenant: tenantLabel(row) }))}
+                            value={mode}
+                            loading={setMode.isPending && setMode.variables?.tenantId === row.id}
+                            onChange={(next) => changeMode(row, next)}
+                            options={ADDON_MODES.map((value) => ({ value, label: t(`addons.mode.${value}`) }))}
+                        />
+                        {mode === 'TENANT' && (
+                            <Tag className={row.state?.enabled ? styles.statusActive : undefined}>
+                                {t(row.state?.enabled ? 'addons.mode.tenantOn' : 'addons.mode.tenantOff')}
+                            </Tag>
+                        )}
+                    </span>
+                );
+            case 'agencies':
+                return overridesLabel(row.state);
+            case 'updatedAt':
+                return <span className={styles.nowrap}>{updatedLabel(row)}</span>;
+            case 'actions':
+                return (
+                    <Button
+                        type="link"
+                        className={styles.inlineLink}
+                        aria-label={String(t('addons.tenants.manageFor', { tenant: tenantLabel(row) }))}
+                        aria-pressed={row.id === selectedTenantId}
+                        onClick={() => onSelect(row)}
+                    >
+                        {t('addons.tenants.manage')}
+                    </Button>
+                );
+            default:
+                return null;
+        }
+    };
+
     return (
-        <section className={styles.tenants} aria-label={String(t('addons.tenants.title'))}>
+        <section
+            ref={containerRef}
+            className={styles.tenants}
+            aria-label={String(t('addons.tenants.title'))}
+            data-testid="addon-tenants"
+            data-layout={layout}
+        >
             <div className={styles.tenantsHeader}>
                 <h3 className={styles.subheading}>
                     {t('addons.tenants.title')}{' '}
@@ -120,70 +198,32 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
                         optionType="button"
                         options={[
                             { value: 'all', label: t('addons.tenants.filter.all') },
-                            { value: 'active', label: t('addons.tenants.filter.active') },
+                            { value: 'available', label: t('addons.tenants.filter.available') },
                         ]}
                     />
                 </div>
             </div>
-            <Table<TenantRow>
-                size="small"
-                rowKey="id"
+            <DataTable
+                ariaLabel={String(t('addons.tenants.title'))}
+                className={classNames(styles.tenantTable, { [styles.cards]: layout === 'phone' })}
+                stacked={layout === 'phone'}
+                header={<DataTableHeader columns={columns} />}
                 loading={tenants.isLoading || states.isLoading}
-                dataSource={rows}
-                pagination={rows.length > 20 ? { pageSize: 20, showSizeChanger: false } : false}
-                rowClassName={(row) => (row.id === selectedTenantId ? styles.selectedRow : '')}
-                onRow={(row) => ({ onClick: () => onSelect(row) })}
-                locale={{ emptyText: t('addons.tenants.empty') }}
-                columns={[
-                    {
-                        key: 'tenant',
-                        title: t('addons.tenant.label'),
-                        render: (_, row) => tenantLabel(row),
-                    },
-                    {
-                        key: 'enabled',
-                        title: t('addons.status.active'),
-                        width: 90,
-                        render: (_, row) => (
-                            <Switch
-                                checked={!!row.state?.enabled}
-                                loading={pending === row.id}
-                                aria-label={String(t('addons.tenants.switchFor', { tenant: tenantLabel(row) }))}
-                                onClick={(_checked, event) => event.stopPropagation()}
-                                onChange={(enabled) => toggle(row, enabled)}
-                            />
-                        ),
-                    },
-                    {
-                        key: 'agencies',
-                        title: t('addons.tenants.agencies'),
-                        render: (_, row) => overridesLabel(row.state),
-                    },
-                    {
-                        key: 'updatedAt',
-                        title: t('addons.tenants.updatedAt'),
-                        render: (_, row) =>
-                            row.state?.updatedAt ? new Date(row.state.updatedAt).toLocaleString(language) : '–',
-                    },
-                    {
-                        key: 'actions',
-                        title: <span className={styles.srOnly}>{t('addons.agencies.actions')}</span>,
-                        width: 110,
-                        render: (_, row) => (
-                            <Button
-                                type="link"
-                                aria-label={String(t('addons.tenants.manageFor', { tenant: tenantLabel(row) }))}
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    onSelect(row);
-                                }}
-                            >
-                                {t('addons.tenants.manage')}
-                            </Button>
-                        ),
-                    },
-                ]}
-            />
+                skeletonColumns={columns.length}
+                isEmpty={rows.length === 0}
+                empty={<AdminEmpty description={t('addons.tenants.empty')} />}
+            >
+                {rows.map((row) => (
+                    <DataTableRow key={row.id} selected={row.id === selectedTenantId}>
+                        {columns.map((column) => (
+                            <DataTableCell key={column.key}>
+                                {column.label && <span className={styles.cellLabel}>{column.label}</span>}
+                                {renderCell(column.key, row)}
+                            </DataTableCell>
+                        ))}
+                    </DataTableRow>
+                ))}
+            </DataTable>
         </section>
     );
 };

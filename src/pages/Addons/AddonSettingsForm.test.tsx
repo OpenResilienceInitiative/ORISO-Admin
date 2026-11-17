@@ -62,6 +62,47 @@ describe('AddonSettingsForm', () => {
         expect(onSubmit).not.toHaveBeenCalled();
     });
 
+    it('saves only the agency values set on purpose and keeps the rest inherited', async () => {
+        const onSubmit = vi.fn();
+        render(
+            <AddonSettingsForm
+                formId="agency"
+                schema={schema}
+                values={{ mode: 'expert' }}
+                inherited={{ greeting: 'Hallo vom Träger', showTips: true, maxTools: 3 }}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        expect(screen.getByLabelText('Greeting')).toHaveValue('Hallo vom Träger');
+        expect(screen.getAllByText('addons.settings.inherited').length).toBeGreaterThan(0);
+        const maxTools = screen.getByRole('spinbutton', { name: 'Max tools' });
+        await userEvent.clear(maxTools);
+        await userEvent.type(maxTools, '4');
+        fireEvent.click(screen.getByRole('button', { name: 'addons.settings.save' }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ mode: 'expert', maxTools: 4 }));
+    });
+
+    it('turns an agency value back into the inherited one', async () => {
+        const onSubmit = vi.fn();
+        render(
+            <AddonSettingsForm
+                formId="agency"
+                schema={schema}
+                values={{ greeting: 'Eigener Text' }}
+                inherited={{ greeting: 'Hallo vom Träger' }}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'addons.settings.useInherited' }));
+        expect(screen.getByLabelText('Greeting')).toHaveValue('Hallo vom Träger');
+        fireEvent.click(screen.getByRole('button', { name: 'addons.settings.save' }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({}));
+    });
+
     it('says so when the add-on has no settings', () => {
         render(<AddonSettingsForm formId="form" schema={null} values={{}} onSubmit={vi.fn()} />);
         expect(screen.getByText('addons.settings.none')).toBeInTheDocument();
