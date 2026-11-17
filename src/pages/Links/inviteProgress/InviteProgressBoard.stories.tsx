@@ -829,7 +829,9 @@ export const CounsellorCompact: Story = {
         const deleteAction = anke.getByRole('button', { name: /Einladung löschen|Delete invite/i });
         const status = anke.getByText(/^(Angenommen|Accepted)$/);
         await expect(deleteAction.closest('td')).toBe(status.closest('td'));
-        await expect(deleteAction.getBoundingClientRect().top).toBeGreaterThan(status.getBoundingClientRect().bottom - 1);
+        await expect(deleteAction.getBoundingClientRect().top).toBeGreaterThan(
+            status.getBoundingClientRect().bottom - 1,
+        );
     },
 };
 
