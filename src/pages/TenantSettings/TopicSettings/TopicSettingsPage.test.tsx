@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -116,32 +116,33 @@ it('shows the saved categories in their order, with their topics in order and th
     expect(document.querySelector(`img[src="${OWN_ICON}"]`)).not.toBeNull();
 });
 
-it('saves a new order of the topics through the catalogue endpoint', async () => {
+it('edits in the dialog and saves the whole catalogue through the catalogue endpoint', async () => {
     showTab();
     const u = userEvent.setup({ delay: null });
     await waitFor(() => expect(groupItems('1')).toHaveLength(2));
 
     await u.click(screen.getByLabelText('Bearbeiten'));
-    screen.getByLabelText('„Leben im Alter“ verschieben').focus();
-    await u.keyboard('{ArrowDown}');
-    await u.click(screen.getByText('Speichern').closest('button') as HTMLButtonElement);
+    const dialog = await screen.findByRole('dialog');
+    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => expect(savedCatalogue).toBeDefined());
     expect(savedCatalogue).toEqual({
         groups: [
-            {
-                id: 1,
-                name: { de: 'Alter', en: 'Ageing, Older Adults' },
-                icon: '/service/topic/public/icons/cat-02.png',
-                topicIds: [14, 15],
-            },
             {
                 id: 5,
                 name: { de: 'Migration', en: 'Migration & Integration' },
                 icon: '/service/topic/public/icons/cat-03.png',
                 topicIds: [20],
             },
+            {
+                id: 1,
+                name: { de: 'Alter', en: 'Ageing, Older Adults' },
+                icon: '/service/topic/public/icons/cat-02.png',
+                topicIds: [15, 14],
+            },
         ],
         topics: [],
     });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });

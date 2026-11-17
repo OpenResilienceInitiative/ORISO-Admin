@@ -1,20 +1,14 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import routePathNames from '../../../appConfig';
 import { CardGrid } from '../../../components/CardGrid';
 import { snackbar } from '../../../components/Snackbar';
-import { TopicCatalogue, type CatalogueChange, type CatalogueLanguage } from '../../../components/TopicCatalogue';
+import { TopicCatalogue, type CatalogueLanguage } from '../../../components/TopicCatalogue';
+import { TopicCatalogueDialog } from '../../../components/TopicCatalogueDialog';
 import { TOPIC_CATALOGUE_KEY, useSaveTopicCatalogue, useTopicCatalogue } from '../../../hooks/useTopicCatalogue';
 import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
-import {
-    SOURCE_LANGUAGE,
-    catalogueLanguageCodes,
-    toCatalogueLayout,
-    toCatalogueSave,
-    toCatalogueTopics,
-} from './topicCatalogueMapping';
+import type { TopicCatalogueDto } from '../../../types/TopicCatalogue';
+import { SOURCE_LANGUAGE, catalogueLanguageCodes, toCatalogueLayout, toCatalogueTopics } from './topicCatalogueMapping';
 
 const languageLabel = (code: string, uiLanguage: string) => {
     try {
@@ -30,12 +24,12 @@ const languageLabel = (code: string, uiLanguage: string) => {
  */
 export const TopicSettingsPage = () => {
     const { t, i18n } = useTranslation();
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const { data: catalogue, isLoading, isError, refetch } = useTopicCatalogue();
     const { mutateAsync: saveCatalogue } = useSaveTopicCatalogue();
     const { mutateAsync: setActive } = useTopicActiveMutation();
     const [pendingTopicIds, setPendingTopicIds] = useState<number[]>([]);
+    const [editing, setEditing] = useState(false);
 
     const topics = useMemo(() => toCatalogueTopics(catalogue), [catalogue]);
     const layout = useMemo(() => toCatalogueLayout(catalogue), [catalogue]);
@@ -48,13 +42,13 @@ export const TopicSettingsPage = () => {
         [catalogue, i18n.language],
     );
 
-    const onSaveLayout = useCallback(
-        async (change: CatalogueChange) => {
-            if (!catalogue) return;
-            // A rejected promise keeps the catalogue in edit mode with its own error message.
-            await saveCatalogue(await toCatalogueSave(change, catalogue));
+    const onSave = useCallback(
+        async (body: TopicCatalogueDto) => {
+            // A rejected promise keeps the dialog open with its own error message.
+            await saveCatalogue(body);
+            setEditing(false);
         },
-        [catalogue, saveCatalogue],
+        [saveCatalogue],
     );
 
     const onToggleActive = useCallback(
@@ -83,14 +77,23 @@ export const TopicSettingsPage = () => {
                     isLoading={isLoading}
                     loadError={isError}
                     onRetry={() => refetch()}
-                    onSaveLayout={onSaveLayout}
+                    onEdit={() => setEditing(true)}
                     onToggleActive={onToggleActive}
                     pendingTopicIds={pendingTopicIds}
-                    onOpenTopic={(id) => navigate(`${routePathNames.topics}/${id}`)}
-                    onAddTopic={() => navigate(`${routePathNames.topics}/add`)}
+                    onOpenTopic={() => setEditing(true)}
+                    onAddTopic={() => setEditing(true)}
                     languages={languages}
                     sourceLanguage={SOURCE_LANGUAGE}
                 />
+                {editing && catalogue && (
+                    <TopicCatalogueDialog
+                        catalogue={catalogue}
+                        languages={languages}
+                        sourceLanguage={SOURCE_LANGUAGE}
+                        onSave={onSave}
+                        onClose={() => setEditing(false)}
+                    />
+                )}
             </CardGrid.Item>
         </CardGrid>
     );
