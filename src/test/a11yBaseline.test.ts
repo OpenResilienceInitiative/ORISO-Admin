@@ -23,7 +23,7 @@ const violation = (color = '#aaa', target = '#contrast') => ({
     ],
 });
 const result = (violations: ReturnType<typeof violation>[] = [violation()]) => ({
-    testEngine: { name: 'axe-core', version: '4.12.1' },
+    testEngine: { name: 'axe-core', version: '4.14.0' },
     testEnvironment: { userAgent: 'controlled-browser' },
     violations,
     passes: [],
