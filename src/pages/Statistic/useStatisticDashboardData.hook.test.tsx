@@ -49,6 +49,11 @@ const target = (targetType: 'PLATFORM' | 'TENANT', tenantId: number | null) => (
 const urls = () => fetchData.mock.calls.map(([options]) => options.url as string);
 
 describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1666)', () => {
+    it('asks the routed names-only endpoints', () => {
+        expect(statisticsTenantNamesEndpoint).toMatch(/\/service\/tenantadmin\/statistics\/names$/);
+        expect(statisticsAgencyNamesEndpoint).toMatch(/\/service\/agencies\/statistics\/names$/);
+    });
+
     beforeEach(() => {
         fetchData.mockReset();
         getDashboardStatistics.mockReset();
@@ -74,7 +79,7 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
         await waitFor(() =>
             expect(result.current.data.targetsByScope.tenant.map((entry) => entry.label)).toContain('Caritas Köln'),
         );
-        expect(urls().some((url) => url.startsWith(tenantAdminEndpoint))).toBe(false);
+        expect(urls().some((url) => url.startsWith(`${tenantAdminEndpoint}/search`))).toBe(false);
         expect(urls().some((url) => url.startsWith(agencyEndpointBase))).toBe(false);
         expect(urls().some((url) => url.startsWith(topicAdminEndpoint))).toBe(false);
     });

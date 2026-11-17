@@ -58,7 +58,7 @@ export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
  * platform, id 0) and every Beratungsstelle with its Träger. Open to platform admins and
  * Statistik-Leser·innen, who may not read the admin lists.
  */
-export const statisticsTenantNamesEndpoint = `${tenantServiceURL}/service/tenant/statistics/names`;
+export const statisticsTenantNamesEndpoint = `${tenantServiceURL}/service/tenantadmin/statistics/names`;
 export const statisticsAgencyNamesEndpoint = `${agencyServiceURL}/service/agencies/statistics/names`;
 // See agencyIdNextFreeEndpoint above — tenant-ID space (U1).
 export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin/tenant-ids/next-free`;
