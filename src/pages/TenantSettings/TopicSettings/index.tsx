@@ -5,6 +5,7 @@ import { CardGrid } from '../../../components/CardGrid';
 import { snackbar } from '../../../components/Snackbar';
 import { TopicCatalogue, type CatalogueLanguage } from '../../../components/TopicCatalogue';
 import { TopicCatalogueDialog } from '../../../components/TopicCatalogueDialog';
+import { TopicRegistrationSwitch } from '../../Topics/List/TopicRegistrationSwitch';
 import { TOPIC_CATALOGUE_KEY, useSaveTopicCatalogue, useTopicCatalogue } from '../../../hooks/useTopicCatalogue';
 import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
@@ -85,6 +86,8 @@ export const TopicSettingsPage = () => {
 
     return (
         <CardGrid raster>
+            {/* /admin/topics sends the platform admin here, so the registration switch must live here too. */}
+            <TopicRegistrationSwitch />
             <CardGrid.Item span={3}>
                 <TopicCatalogue
                     topics={topics}

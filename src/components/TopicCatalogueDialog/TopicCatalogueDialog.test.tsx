@@ -252,6 +252,32 @@ describe('TopicCatalogueDialog', () => {
         await waitFor(() => expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled());
     });
 
+    it('waits for a picture that is still being read before it lets the catalogue be saved', async () => {
+        let finishRead: () => void = () => undefined;
+        const read = vi
+            .spyOn(FileReader.prototype, 'readAsDataURL')
+            .mockImplementation(function readLater(this: FileReader) {
+                finishRead = () => {
+                    Object.defineProperty(this, 'result', { value: OWN, configurable: true });
+                    this.onload?.(new ProgressEvent('load') as ProgressEvent<FileReader>);
+                };
+            });
+        const { onSave, u } = open();
+
+        await u.click(within(category('Krisen')).getByRole('button', { name: 'Kategorie nach oben' }));
+        const picture = new File(['png'], 'krise.png', { type: 'image/png' });
+        const field = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await u.upload(field, picture);
+
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        await save(u);
+        expect(onSave).not.toHaveBeenCalled();
+
+        finishRead();
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled());
+        read.mockRestore();
+    });
+
     it('keeps the dialog open with a message when saving fails', async () => {
         const { onClose, u } = open({ onSave: vi.fn().mockRejectedValue(new Error('500')) });
 

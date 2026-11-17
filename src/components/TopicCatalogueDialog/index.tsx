@@ -9,7 +9,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InterestsOutlinedIcon from '@mui/icons-material/InterestsOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import classNames from 'classnames';
-import { useMemo, useRef, useState, type DragEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LocalizedText, TopicCatalogueDto, TopicCatalogueTopicDto } from '../../types/TopicCatalogue';
 import { DialogButton, Modal } from '../Modal';
@@ -60,6 +60,7 @@ const IconSlot = ({
     onPick,
     onRemove,
     onProblem,
+    onReading,
 }: {
     icon?: string | null;
     round?: boolean;
@@ -69,6 +70,8 @@ const IconSlot = ({
     onPick?: (dataUrl: string) => void;
     onRemove?: () => void;
     onProblem?: () => void;
+    /** True while a picked file is still being read, false once it is applied (or failed). */
+    onReading?: (busy: boolean) => void;
 }) => {
     const { t } = useTranslation();
     const input = useRef<HTMLInputElement>(null);
@@ -115,7 +118,14 @@ const IconSlot = ({
                                 onProblem?.();
                                 return;
                             }
-                            onPick?.(await readAsDataUrl(file));
+                            onReading?.(true);
+                            try {
+                                onPick?.(await readAsDataUrl(file));
+                            } catch {
+                                onProblem?.();
+                            } finally {
+                                onReading?.(false);
+                            }
                         }}
                     />
                 </>
@@ -158,6 +168,12 @@ export const TopicCatalogueDialog = ({
     const [query, setQuery] = useState('');
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    // Pictures still being read: saving waits for them, so none lands after the request was captured.
+    const [picturesReading, setPicturesReading] = useState(0);
+    const trackPictureRead = useCallback(
+        (busy: boolean) => setPicturesReading((count) => Math.max(0, count + (busy ? 1 : -1))),
+        [],
+    );
     const [problem, setProblem] = useState<string | null>(null);
     const drag = useRef<DragPayload | null>(null);
     const nextTempId = useRef(-1);
@@ -311,6 +327,7 @@ export const TopicCatalogueDialog = ({
     });
 
     const submit = async () => {
+        if (picturesReading > 0) return;
         if (topics.some((topic) => topic.id < 0 && !text(topic.name, sourceLanguage).trim())) {
             setProblem(t('topicDialog.nameMissing'));
             return;
@@ -348,6 +365,7 @@ export const TopicCatalogueDialog = ({
                         onPick={(icon) => patchTopic(topic.id, { icon })}
                         onRemove={() => patchTopic(topic.id, { icon: '' })}
                         onProblem={() => setProblem(t('topicDialog.pictureProblem'))}
+                        onReading={trackPictureRead}
                     />
                     <div className={styles.fields}>
                         <div className={styles.field}>
@@ -470,6 +488,7 @@ export const TopicCatalogueDialog = ({
                         onPick={(icon) => patchGroup(group.key, { icon, iconChanged: true })}
                         onRemove={() => patchGroup(group.key, { icon: null, iconChanged: true })}
                         onProblem={() => setProblem(t('topicDialog.pictureProblem'))}
+                        onReading={trackPictureRead}
                     />
                     <div className={styles.categoryTitle}>
                         <div className={styles.nameField}>
@@ -611,7 +630,7 @@ export const TopicCatalogueDialog = ({
                     <DialogButton onClick={close} disabled={saving}>
                         {t('btn.cancel')}
                     </DialogButton>
-                    <DialogButton primary disabled={!dirty} loading={saving} onClick={submit}>
+                    <DialogButton primary disabled={!dirty || picturesReading > 0} loading={saving} onClick={submit}>
                         {t('save')}
                     </DialogButton>
                 </div>

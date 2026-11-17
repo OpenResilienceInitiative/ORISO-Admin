@@ -13,6 +13,11 @@ import { TopicSettingsPage } from '.';
 
 vi.setConfig({ testTimeout: 60_000 });
 
+/* The registration switch has its own gating (feature, permission, role); here it only has to be on the page. */
+vi.mock('../../Topics/List/TopicRegistrationSwitch', () => ({
+    TopicRegistrationSwitch: () => <div data-testid="registration-switch" />,
+}));
+
 const OWN_ICON = 'data:image/png;base64,iVBORw0KGgo=';
 
 /** What the ConsultingTypeService answers on GET /topicadmin/catalogue (trimmed to three topics). */
@@ -193,4 +198,10 @@ it('offers every active language for a first translation, even without any text 
     const dialog = await screen.findByRole('dialog');
 
     expect(within(dialog).getByRole('button', { name: /Französisch/ })).toBeInTheDocument();
+});
+
+it('keeps the switch for the topic step of the registration, since /admin/topics redirects here', async () => {
+    showTab();
+
+    expect(await screen.findByTestId('registration-switch')).toBeInTheDocument();
 });
