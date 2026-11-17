@@ -32,6 +32,9 @@ export const TopicRegistrationSwitch = () => {
     const { hasRole } = useUserRoles();
     const { mutate: updateTenantData, isPending: isTopicsSwitchPending } = useTenantAdminDataMutation({
         id: tenant?.id != null ? `${tenant.id}` : '',
+        // Hook-level, so the saved setting reaches the feature context even if this card
+        // unmounts before the PUT returns; per-call callbacks are dropped on unmount.
+        onSuccess: () => toggleFeature(FeatureFlag.TopicsInRegistration),
     });
     const [switchConfirmOpen, setSwitchConfirmOpen] = useState(false);
     const isTopicsFeatureActive = isEnabled(FeatureFlag.TopicsInRegistration);
@@ -42,17 +45,14 @@ export const TopicRegistrationSwitch = () => {
             {
                 // Keep the confirmation open until the request actually succeeds: a failed PUT
                 // must not vanish and leave the user thinking the switch went through.
-                onSuccess: () => {
-                    toggleFeature(FeatureFlag.TopicsInRegistration);
-                    setSwitchConfirmOpen(false);
-                },
+                onSuccess: () => setSwitchConfirmOpen(false),
                 onError: async (error) => {
                     const content = await extractApiErrorMessage(error);
                     snackbar.error({ content });
                 },
             },
         );
-    }, [isTopicsFeatureActive, toggleFeature, updateTenantData]);
+    }, [isTopicsFeatureActive, updateTenantData]);
 
     // With multitenancy on a single domain only the tenant admin may decide this for the tenant.
     const canShowTopicSwitch =
