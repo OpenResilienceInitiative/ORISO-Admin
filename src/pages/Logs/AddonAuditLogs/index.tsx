@@ -19,15 +19,15 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import decodeHTML from '../../../utils/decodeHTML';
 import { localizedText, type AddonAuditEntry } from '../../../addons/addonTypes';
+import { formatDateTime } from '../../../addons/intlLocale';
 import { TenantSelect, type SelectOption } from '../../Addons/RemoteSearchSelect';
 import { useAddonAuditEntries, useAddonRegistry, useAdminAddons, useAgencyNames } from '../../Addons/useAddons';
-import { AUDIT_LIST_BANDS, dayEnd, dayStart, visibleRoles } from './auditFilters';
+import { AUDIT_LIST_BANDS, dayStart, nextDayStart, visibleRoles } from './auditFilters';
 import styles from './addonAuditLogs.module.scss';
 
 const errorKey = (error: unknown) => {
     const code = error instanceof Error ? error.message : '';
     if (code === FETCH_ERRORS.FORBIDDEN) return 'addonAudit.error.forbidden';
-    if (code === FETCH_ERRORS.NO_MATCH) return 'addonAudit.error.unavailable';
     return 'addonAudit.error.load';
 };
 
@@ -50,13 +50,16 @@ export const AddonAuditLogsPage = () => {
         tenantId: isSuperAdmin ? tenant?.id ?? null : null,
         addon,
         from: dayStart(fromDay),
-        to: dayEnd(toDay),
+        to: nextDayStart(toDay),
         page: page - 1,
         size: perPage,
     });
     const registry = useAddonRegistry();
     const tenantAddons = useAdminAddons(scopeTenantId, scopeTenantId != null);
     const rows = audit.data?.items ?? [];
+    // The AddonService is optional: when it is not deployed the log is simply empty.
+    const unavailable = audit.isError && audit.error instanceof Error && audit.error.message === FETCH_ERRORS.NO_MATCH;
+    const failed = audit.isError && !unavailable;
 
     const appTitles = useMemo(() => {
         const titles = new Map<string, string>();
@@ -81,7 +84,7 @@ export const AddonAuditLogsPage = () => {
         () => [...new Set(rows.map((row) => row.agencyId).filter((id): id is number => typeof id === 'number'))],
         [rows],
     );
-    const agencyNames = useAgencyNames(agencyIds);
+    const agencyNames = useAgencyNames(agencyIds, scopeTenantId);
 
     const tenantName = (id: number | null | undefined) => {
         if (id == null) return '-';
@@ -119,7 +122,7 @@ export const AddonAuditLogsPage = () => {
             case 'createdAt':
                 return (
                     <span className={styles.nowrap}>
-                        {row.createdAt ? new Date(row.createdAt).toLocaleString(language) : '-'}
+                        {row.createdAt ? formatDateTime(row.createdAt, language) : '-'}
                     </span>
                 );
             case 'addon':
@@ -179,7 +182,7 @@ export const AddonAuditLogsPage = () => {
 
     return (
         <div ref={containerRef} className={styles.list} data-testid="addon-audit-log" data-layout={layout}>
-            {audit.isError && (
+            {failed && (
                 <Alert className={styles.alert} type="error" role="alert" message={t(errorKey(audit.error))} showIcon />
             )}
             <div
@@ -257,7 +260,7 @@ export const AddonAuditLogsPage = () => {
                 header={<DataTableHeader columns={columns} />}
                 loading={audit.isLoading}
                 skeletonColumns={columns.length}
-                isEmpty={!audit.isError && rows.length === 0}
+                isEmpty={!failed && rows.length === 0}
                 empty={<AdminEmpty />}
                 footer={
                     <DataTablePagination

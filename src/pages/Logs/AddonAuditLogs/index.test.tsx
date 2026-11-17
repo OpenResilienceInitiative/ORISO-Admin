@@ -2,10 +2,10 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { AddonAuditLogsPage } from './index';
-import { dayEnd, dayStart, visibleRoles } from './auditFilters';
+import { dayStart, nextDayStart, visibleRoles } from './auditFilters';
 
-const t = (key: string, options?: Record<string, unknown>) =>
-    options && 'id' in options ? `${key}:${options.id}` : key;
+const t = (key: string, options?: unknown) =>
+    options && typeof options === 'object' && 'id' in options ? `${key}:${(options as { id: unknown }).id}` : key;
 
 const mocks = vi.hoisted(() => ({
     params: [] as any[],
@@ -213,7 +213,7 @@ describe('AddonAuditLogsPage', () => {
 
         fireEvent.change(screen.getByLabelText('addonAudit.filters.from'), { target: { value: '2026-11-01' } });
         fireEvent.change(screen.getByLabelText('addonAudit.filters.to'), { target: { value: '2026-11-12' } });
-        expect(last()).toMatchObject({ from: dayStart('2026-11-01'), to: dayEnd('2026-11-12'), page: 0 });
+        expect(last()).toMatchObject({ from: dayStart('2026-11-01'), to: nextDayStart('2026-11-12'), page: 0 });
 
         fireEvent.click(screen.getByRole('button', { name: 'addonAudit.filters.reset' }));
         expect(last()).toMatchObject({ from: undefined, to: undefined, addon: undefined, page: 0 });
@@ -237,7 +237,7 @@ describe('AddonAuditLogsPage', () => {
         expect(last()).toMatchObject({ page: 0, size: 30 });
     });
 
-    it('tells missing permission and a missing endpoint apart from other failures', () => {
+    it('tells missing permission apart from other failures and shows a missing service as empty', () => {
         mocks.error = new Error('FORBIDDEN');
         const { unmount } = render(<AddonAuditLogsPage />);
         expect(screen.getByRole('alert')).toHaveTextContent('addonAudit.error.forbidden');
@@ -246,7 +246,8 @@ describe('AddonAuditLogsPage', () => {
 
         mocks.error = new Error('NO_MATCH');
         const second = render(<AddonAuditLogsPage />);
-        expect(screen.getByRole('alert')).toHaveTextContent('addonAudit.error.unavailable');
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.getByTestId('admin-empty')).toBeInTheDocument();
         second.unmount();
 
         mocks.error = new Error('boom');
@@ -268,6 +269,14 @@ describe('AddonAuditLogsPage', () => {
         render(<AddonAuditLogsPage />);
         expect(screen.getByTestId('addon-audit-log')).toHaveAttribute('data-layout', 'phone');
         expect(within(screen.getAllByRole('row')[1]).getByText('addonAudit.table.actor')).toBeInTheDocument();
+    });
+});
+
+describe('nextDayStart', () => {
+    it('is the local midnight after the picked day, so the day is included in full', () => {
+        expect(nextDayStart('2026-11-12')).toBe(new Date(2026, 10, 13).toISOString());
+        expect(nextDayStart('2026-12-31')).toBe(new Date(2027, 0, 1).toISOString());
+        expect(nextDayStart('')).toBeUndefined();
     });
 });
 
