@@ -22,6 +22,7 @@
     "consultant-search-placeholder": "Vorname, Nachname, Anzeigename, E-Mail, ID oder Beratungsstelle",
     "password": "Passwort",
     "toHomePage": "Zur Startseite",
+    "errorPages.notFound.title": "Seite nicht gefunden",
     "errorPages.notFound.description": "Die Web-Adresse, die Sie eingegeben haben, gibt es auf unserer Website nicht.",
     "otp": "Einmalkennwort",
     "password.forgot": "Passwort vergessen?",

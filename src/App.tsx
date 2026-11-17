@@ -4,6 +4,7 @@ import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AdminNotFound } from './pages/ErrorPages/AdminNotFound';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
@@ -309,6 +310,11 @@ export const App = () => {
                                 )}
                                 {/* Start page for every role (ORISO-Admin#1323). */}
                                 <Route path={routePathNames.home} element={<LazyHomePage />} />
+                                {/* Bare /admin goes to Home; without this the catch-all below would flash "not found". */}
+                                <Route
+                                    path={routePathNames.root}
+                                    element={<Navigate to={routePathNames.home} replace />}
+                                />
                                 <Route
                                     path={routePathNames.statisticPreview}
                                     element={<Navigate to={routePathNames.statistic} replace />}
@@ -461,6 +467,9 @@ export const App = () => {
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}
+                                {/* Last on purpose: an address no route above answers gets a clear
+                                    "page not found" inside the shell, not a blank content area (#1513). */}
+                                <Route path="*" element={<AdminNotFound />} />
                             </Routes>
                         </Suspense>
                     </ErrorBoundary>
