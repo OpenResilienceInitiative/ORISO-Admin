@@ -3981,6 +3981,7 @@
     "topicDialog.pictureProblem": "Das Bild passt nicht: PNG oder SVG, höchstens 100 KB.",
     "topicDialog.nameMissing": "Ein neues Thema braucht einen deutschen Namen.",
     "topicDialog.saveError": "Die Themen wurden nicht gespeichert. Bitte noch einmal versuchen.",
+    "topicDialog.nameTaken": "Diesen Namen hat schon ein anderes Thema. Bitte einen anderen Namen wählen.",
     "topicDialog.unsaved": "Ungespeicherte Änderungen",
     "topicDialog.descriptionField": "Beschreibung",
     "contactPerson.type.agency": "BST-Admin",

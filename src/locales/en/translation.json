@@ -3981,6 +3981,7 @@
     "topicDialog.pictureProblem": "The picture does not fit: PNG or SVG, at most 100 KB.",
     "topicDialog.nameMissing": "A new topic needs a German name.",
     "topicDialog.saveError": "The topics were not saved. Please try again.",
+    "topicDialog.nameTaken": "Another topic already has this name. Please choose a different name.",
     "topicDialog.unsaved": "Unsaved changes",
     "topicDialog.descriptionField": "Description",
     "contactPerson.type.agency": "Centre admin",
