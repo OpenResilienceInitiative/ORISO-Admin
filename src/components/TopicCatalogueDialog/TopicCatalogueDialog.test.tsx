@@ -132,6 +132,21 @@ describe('TopicCatalogueDialog', () => {
         expect(savedBody(onSave).groups[1].topicIds).toEqual([15, 14, 20]);
     });
 
+    it('reorders topics within a category without a mouse', async () => {
+        const { onSave, u } = open();
+        const krisen = within(category('Krisen'));
+
+        expect(krisen.getByRole('button', { name: '„Schulden“ nach oben' })).toBeDisabled();
+        await u.click(krisen.getByRole('button', { name: '„Schulden“ nach unten' }));
+        expect(krisen.getByRole('button', { name: '„Schulden“ nach unten' })).toBeDisabled();
+        await u.click(krisen.getByRole('button', { name: '„Schulden“ nach oben' }));
+        await u.click(krisen.getByRole('button', { name: '„Leben im Alter“ nach oben' }));
+        await save(u);
+
+        await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+        expect(savedBody(onSave).groups[1].topicIds).toEqual([15, 14]);
+    });
+
     it('adds a topic to a category without a mouse, from the open topic', async () => {
         const { onSave, u } = open();
 
@@ -288,6 +303,19 @@ describe('TopicCatalogueDialog', () => {
         finishRead();
         await waitFor(() => expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled());
         read.mockRestore();
+    });
+
+    it('refuses an SVG picture that carries a script', async () => {
+        const { onSave, u } = open();
+        const unsafe = new File(['<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'], 'x.svg', {
+            type: 'image/svg+xml',
+        });
+        const field = document.querySelector('input[type="file"]') as HTMLInputElement;
+        await u.upload(field, unsafe);
+
+        expect(await screen.findByText(/Das Bild passt nicht/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        expect(onSave).not.toHaveBeenCalled();
     });
 
     it('keeps the dialog open with a message when saving fails', async () => {

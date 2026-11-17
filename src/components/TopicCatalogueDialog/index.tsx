@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import type { LocalizedText, TopicCatalogueDto, TopicCatalogueTopicDto } from '../../types/TopicCatalogue';
 import { DialogButton, Modal } from '../Modal';
 import { ICON_MAX_BYTES, ICON_TYPES } from '../TopicCatalogue/TopicIconSlot';
+import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
 import styles from './styles.module.scss';
 
 export interface TopicCatalogueDialogProps {
@@ -120,7 +121,10 @@ const IconSlot = ({
                             }
                             onReading?.(true);
                             try {
-                                onPick?.(await readAsDataUrl(file));
+                                const dataUrl = await readAsDataUrl(file);
+                                // Same passive-SVG rule as the topic list: no scripts, no external references.
+                                if (assistantIconUploadPolicy.validate?.(dataUrl, file) === false) onProblem?.();
+                                else onPick?.(dataUrl);
                             } catch {
                                 onProblem?.();
                             } finally {
@@ -580,6 +584,25 @@ export const TopicCatalogueDialog = ({
                                         <strong>{topicName}</strong>
                                         <span>{shown(topic.description)}</span>
                                     </div>
+                                    {/* Keyboard alternative to dragging a row. */}
+                                    <button
+                                        type="button"
+                                        className={styles.iconButton}
+                                        aria-label={t('topicCatalogue.moveUp', { name: topicName })}
+                                        disabled={row === 0}
+                                        onClick={() => placeTopic(group.key, id, row - 1)}
+                                    >
+                                        <ArrowUpwardIcon fontSize="small" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={styles.iconButton}
+                                        aria-label={t('topicCatalogue.moveDown', { name: topicName })}
+                                        disabled={row === group.topicIds.length - 1}
+                                        onClick={() => placeTopic(group.key, id, row + 2)}
+                                    >
+                                        <ArrowDownwardIcon fontSize="small" />
+                                    </button>
                                     <button
                                         type="button"
                                         className={styles.iconButton}

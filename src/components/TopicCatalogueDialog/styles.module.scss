@@ -2,7 +2,8 @@
 $line: #e4e1de;
 $muted: #6b6b6b;
 $ink: #1f1f1f;
-$brand: var(--color-primary, #a8001c);
+// The Träger brand colour; the neutral greys match the approved dialog design.
+$brand: var(--m3-primary, #a5000a);
 $amber: #9a5b00;
 $amberSoft: #fff3dc;
 
