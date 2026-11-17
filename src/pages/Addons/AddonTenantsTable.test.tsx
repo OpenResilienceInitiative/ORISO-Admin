@@ -47,7 +47,9 @@ const renderTable = (onSelect = vi.fn()) => {
 
 const rowOf = (text: string) => screen.getByText(text).closest('tr') as HTMLElement;
 
-beforeEach(() => setMode.mockReset().mockResolvedValue({}));
+beforeEach(() => {
+    setMode.mockReset().mockResolvedValue({});
+});
 
 describe('tenantRows', () => {
     it('joins Träger with their state and keeps Träger the list does not know', () => {
@@ -112,6 +114,31 @@ describe('AddonTenantsTable', () => {
 
         finishSave();
         await waitFor(() => expect(select()).not.toBeDisabled());
+    });
+
+    it('unlocks each Träger when its own save finishes, also with saves overlapping', async () => {
+        const finishSave: Record<number, () => void> = {};
+        setMode.mockImplementation(
+            (_name: string, tenantId: number) =>
+                new Promise((resolve) => {
+                    finishSave[tenantId] = () => resolve({});
+                }),
+        );
+        renderTable();
+        const select = (row: string) => within(rowOf(row)).getByRole('combobox');
+        fireEvent.mouseDown(select('Bits (6)'));
+        fireEvent.click(await screen.findByTitle('addons.mode.ON'));
+        await waitFor(() => expect(select('Bits (6)')).toBeDisabled());
+        fireEvent.mouseDown(select('DigiSucht (1)'));
+        fireEvent.click((await screen.findAllByTitle('addons.mode.OFF')).at(-1) as HTMLElement);
+        await waitFor(() => expect(select('DigiSucht (1)')).toBeDisabled());
+
+        finishSave[1]();
+        await waitFor(() => expect(select('DigiSucht (1)')).not.toBeDisabled());
+        expect(select('Bits (6)')).toBeDisabled();
+
+        finishSave[6]();
+        await waitFor(() => expect(select('Bits (6)')).not.toBeDisabled());
     });
 
     it('selects a Träger with its manage button', () => {

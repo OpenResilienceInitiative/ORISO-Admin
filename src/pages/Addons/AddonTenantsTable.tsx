@@ -83,21 +83,20 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
     const tenantLabel = (row: TenantRow) =>
         row.name ? `${row.name} (${row.id})` : String(t('addons.tenant.unnamed', { id: row.id }));
 
-    const changeMode = (row: TenantRow, mode: AddonMode) => {
+    const changeMode = async (row: TenantRow, mode: AddonMode) => {
         setSavingTenantIds((current) => new Set(current).add(row.id));
-        setMode.mutate(
-            { tenantId: row.id, mode },
-            {
-                onSuccess: () => snackbar.success(String(t('addons.mode.saved'))),
-                onError: (error) => reportAddonSaveError(error, t),
-                onSettled: () =>
-                    setSavingTenantIds((current) => {
-                        const next = new Set(current);
-                        next.delete(row.id);
-                        return next;
-                    }),
-            },
-        );
+        try {
+            await setMode.mutateAsync({ tenantId: row.id, mode });
+            snackbar.success(String(t('addons.mode.saved')));
+        } catch (error) {
+            reportAddonSaveError(error, t);
+        } finally {
+            setSavingTenantIds((current) => {
+                const next = new Set(current);
+                next.delete(row.id);
+                return next;
+            });
+        }
     };
 
     const overridesLabel = (state: AddonTenantState | null) => {
