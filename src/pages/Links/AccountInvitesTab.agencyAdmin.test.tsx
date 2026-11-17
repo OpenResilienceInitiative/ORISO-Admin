@@ -68,7 +68,7 @@ const mocks = vi.hoisted(() => ({
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
-    revokeAccountInvite: vi.fn(),
+    deleteAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     updateAccountInviteTopicPermission: vi.fn(),
     searchTenantData: vi.fn(),
@@ -96,7 +96,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
-    revokeAccountInvite: mocks.revokeAccountInvite,
+    deleteAccountInvite: mocks.deleteAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     updateAccountInviteTopicPermission: mocks.updateAccountInviteTopicPermission,
     // The real preview fetch hangs under jsdom instead of failing.

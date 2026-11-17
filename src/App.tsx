@@ -67,6 +67,7 @@ import {
     LazyTenantsList,
     LazyTopicEditOrAdd,
     LazyTopicList,
+    LazyTopicSettingsPage,
     LazyUnifiedSmtpSettingsPage,
     LazyUserEditOrAdd,
     LazyUserProfile,
@@ -258,6 +259,12 @@ export const App = () => {
                                                 element={<LazyErstantwortSettingsPage />}
                                             />
                                         )}
+                                        {isSuperAdmin && can(PermissionAction.Update, Resource.Topic) && (
+                                            <Route
+                                                path={`${routePathNames.themeSettings}/topics`}
+                                                element={<LazyTopicSettingsPage />}
+                                            />
+                                        )}
                                         {can(PermissionAction.Read, Resource.Tenant) && (
                                             <Route
                                                 path={`${routePathNames.themeSettings}/app-settings`}
@@ -315,7 +322,17 @@ export const App = () => {
                                     element={<AgencyInitialMeetingRedirect />}
                                 />
                                 {can(PermissionAction.Read, Resource.Topic) && (
-                                    <Route path={routePathNames.topics} element={<LazyTopicList />} />
+                                    <Route
+                                        path={routePathNames.topics}
+                                        element={
+                                            isSuperAdmin ? (
+                                                // The platform admin keeps the catalogue under Settings → Themen.
+                                                <Navigate to={`${routePathNames.themeSettings}/topics`} replace />
+                                            ) : (
+                                                <LazyTopicList />
+                                            )
+                                        }
+                                    />
                                 )}
                                 {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                                     <Route path={`${routePathNames.topics}/:id`} element={<LazyTopicEditOrAdd />} />

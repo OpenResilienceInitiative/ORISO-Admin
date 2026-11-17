@@ -43,9 +43,12 @@ window.matchMedia ??= ((query: string) => ({
 })) as typeof window.matchMedia;
 
 // Interpolating t-mock so counts land in the asserted button labels.
-const t = (key: string, fallback?: string, options?: Record<string, unknown>) => {
+// Accepts i18next's t(key, options) as well, which the house Modal uses.
+const t = (key: string, fallbackOrOptions?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
+    const fallback = typeof fallbackOrOptions === 'string' ? fallbackOrOptions : undefined;
+    const values = typeof fallbackOrOptions === 'object' ? fallbackOrOptions : options;
     let text = fallback ?? key;
-    Object.entries(options ?? {}).forEach(([name, value]) => {
+    Object.entries(values ?? {}).forEach(([name, value]) => {
         text = text.replaceAll(`{{${name}}}`, String(value));
     });
     return text;
@@ -101,7 +104,7 @@ const mocks = vi.hoisted(() => ({
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
-    revokeAccountInvite: vi.fn(),
+    deleteAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     updateAccountInviteTopicPermission: vi.fn(),
     changeAccountInviteRole: vi.fn(),
@@ -125,7 +128,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
-    revokeAccountInvite: mocks.revokeAccountInvite,
+    deleteAccountInvite: mocks.deleteAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     updateAccountInviteTopicPermission: mocks.updateAccountInviteTopicPermission,
     // E2: the editor's preview is rendered by the backend. Without this the real
@@ -426,6 +429,69 @@ describe('TenantInvitesTab Träger-ID field', () => {
  * into the generic "Could not create link" left the admin guessing — the toast
  * must explain the role problem, preferring the backend's own message.
  */
+describe('TenantInvitesTab single delete (ORISO-Admin#1522)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    it('asks first, deletes on confirm and reloads the list', { timeout: 90_000 }, async () => {
+        let deleted = false;
+        mocks.listAccountInvites.mockImplementation(async () =>
+            invitesPage(deleted ? [] : [invite(31, 3, 'EMAIL_SENT')]),
+        );
+        mocks.deleteAccountInvite.mockImplementation(async () => {
+            deleted = true;
+        });
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken31@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+
+        expect(await screen.findByText('links.accountInvites.deleteConfirmTitle')).toBeInTheDocument();
+        expect(mocks.deleteAccountInvite).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole('button', { name: 'links.accountInvites.deleteConfirmOk' }));
+
+        await waitFor(() => expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(31));
+        expect(await screen.findByText('Einladung gelöscht')).toBeInTheDocument();
+        // The reload shows the server's list: the deleted row is gone.
+        await waitFor(() => expect(screen.queryByText('taken31@example.org')).not.toBeInTheDocument());
+    });
+
+    it('deletes nothing when the confirmation is cancelled', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(32, 3, 'EXPIRED')]));
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken32@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+        await user.click(await screen.findByRole('button', { name: 'links.bulk.deleteConfirmCancel' }));
+
+        await waitFor(() =>
+            expect(screen.queryByText('links.accountInvites.deleteConfirmTitle')).not.toBeInTheDocument(),
+        );
+        expect(mocks.deleteAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('says so when the delete fails', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(33, 3, 'DRAFT')]));
+        mocks.deleteAccountInvite.mockRejectedValue(new Error('409'));
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken33@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+        await user.click(await screen.findByRole('button', { name: 'links.accountInvites.deleteConfirmOk' }));
+
+        expect(await screen.findByText('Einladung konnte nicht gelöscht werden')).toBeInTheDocument();
+    });
+});
+
 describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
     beforeEach(() => {
         vi.clearAllMocks();

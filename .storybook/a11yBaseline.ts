@@ -78,7 +78,7 @@ const isAuditResult = (value: unknown): value is AuditResult =>
     !value.error &&
     isRecord(value.testEngine) &&
     value.testEngine.name === 'axe-core' &&
-    value.testEngine.version === '4.12.1' &&
+    value.testEngine.version === '4.14.0' &&
     isRecord(value.testEnvironment) &&
     typeof value.testEnvironment.userAgent === 'string' &&
     value.testEnvironment.userAgent.length > 0 &&
