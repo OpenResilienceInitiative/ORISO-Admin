@@ -80,6 +80,23 @@ export const settingsFields = (schema: JsonSchema | null | undefined): SettingsF
     });
 };
 
+/**
+ * Stored values of schema properties the form cannot edit. The AddonService replaces the stored settings on save,
+ * so they are sent back unchanged.
+ */
+export const uneditableStoredValues = (
+    schema: JsonSchema | null | undefined,
+    fields: SettingsField[],
+    values: AddonSettingsValues,
+): AddonSettingsValues => {
+    const editable = new Set(fields.map((field) => field.name));
+    return Object.fromEntries(
+        Object.keys(schema?.properties ?? {})
+            .filter((name) => !editable.has(name) && values[name] !== undefined)
+            .map((name) => [name, values[name]]),
+    );
+};
+
 /** Stored values with schema defaults filled in, as the form's initial values. */
 export const initialSettingsValues = (fields: SettingsField[], values: AddonSettingsValues): AddonSettingsValues =>
     Object.fromEntries(

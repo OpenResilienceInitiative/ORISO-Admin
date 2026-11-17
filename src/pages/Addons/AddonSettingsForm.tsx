@@ -10,6 +10,7 @@ import {
     initialSettingsValues,
     settingsFields,
     type SettingsField,
+    uneditableStoredValues,
 } from './settingsSchema';
 import styles from './addons.module.scss';
 
@@ -151,7 +152,7 @@ export const AddonSettingsForm = ({ formId, schema, values, inherited, saving, o
 
     const submit = (formValues: AddonSettingsValues) => {
         const saved = inherited ? fields.filter((field) => explicit.has(field.name)) : fields;
-        onSubmit(collectSettingsValues(saved, formValues));
+        onSubmit({ ...uneditableStoredValues(schema, fields, values), ...collectSettingsValues(saved, formValues) });
     };
 
     return (

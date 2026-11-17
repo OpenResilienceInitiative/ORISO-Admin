@@ -22,7 +22,10 @@ const token = vi.hoisted(() => {
         realm_access: { roles: ['tenant-admin'] },
     })}.sig`;
 });
-vi.mock('../api/auth/auth', () => ({ getAccessTokenForRequests: () => token }));
+vi.mock('../api/auth/auth', () => ({
+    getAccessTokenForRequests: () => token,
+    tryRefreshAccessToken: () => Promise.resolve(false),
+}));
 
 const addon: AvailableAddon = {
     name: 'demo',
@@ -32,12 +35,12 @@ const addon: AvailableAddon = {
     apps: [{ id: 'editor', title: { de: 'Editor' }, slots: ['admin.page'] }],
 };
 
-const renderMount = (loader: (url: string) => Promise<AddonModule>) =>
+const renderMount = (loader: (url: string) => Promise<AddonModule>, mountedAddon: AvailableAddon = addon) =>
     render(
         <MemoryRouter>
             <AddonMount
-                addon={addon}
-                app={addon.apps[0]}
+                addon={mountedAddon}
+                app={mountedAddon.apps[0]}
                 tenant={{ id: 7, name: 'Caritas' }}
                 loader={loader}
                 baseUrl="https://example.org"
@@ -67,7 +70,7 @@ describe('AddonMount', () => {
         const view = renderMount(loader);
 
         expect(await screen.findByText('hello from the add-on')).toBeInTheDocument();
-        expect(loader).toHaveBeenCalledWith('https://example.org/service/addons/demo/ui/entry.js');
+        expect(loader).toHaveBeenCalledWith('https://example.org/service/addons/demo/ui/entry.js?v=0.1.0');
         expect(module.bootstrap).toHaveBeenCalledTimes(1);
         const props = vi.mocked(module.mount).mock.calls[0][0];
         expect(props).toMatchObject({
@@ -123,6 +126,34 @@ describe('AddonMount', () => {
 
         await waitFor(() => expect(module.mount).toHaveBeenCalledTimes(2));
         expect(bootstrap).toHaveBeenCalledTimes(2);
+    });
+
+    it('loads the new bundle after an upgrade that keeps the entry path', async () => {
+        const oldModule: AddonModule = { mount: vi.fn(), unmount: vi.fn() };
+        const newModule: AddonModule = { mount: vi.fn(), unmount: vi.fn() };
+        const load = vi.fn((url: string) => Promise.resolve(url.endsWith('v=0.2.0') ? newModule : oldModule));
+        const loader = (url: string) => loadAddonModule(url, load);
+
+        const before = renderMount(loader);
+        await waitFor(() => expect(oldModule.mount).toHaveBeenCalledTimes(1));
+        before.unmount();
+
+        renderMount(loader, { ...addon, version: '0.2.0' });
+        await waitFor(() => expect(newModule.mount).toHaveBeenCalledTimes(1));
+        expect(load).toHaveBeenLastCalledWith('https://example.org/service/addons/demo/ui/entry.js?v=0.2.0');
+    });
+
+    it('unmounts an app whose mount failed after it started', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const module: AddonModule = {
+            mount: vi.fn(() => Promise.reject(new Error('half mounted'))),
+            unmount: vi.fn(),
+        };
+        const view = renderMount(() => Promise.resolve(module));
+        expect(await screen.findByText('addons.page.loadError')).toBeInTheDocument();
+
+        view.unmount();
+        await waitFor(() => expect(module.unmount).toHaveBeenCalledTimes(1));
     });
 
     it('shows an error instead of breaking the page when the bundle fails', async () => {

@@ -110,9 +110,12 @@ vi.mock('../../Addons/useAddons', () => ({
             ],
         },
     }),
-    useAdminAddons: (tenantId: number | null) => {
+    useAdminAddons: (tenantId: number | null, enabled = true) => {
+        if (!enabled) {
+            return { data: undefined };
+        }
         mocks.adminAddonsTenant.push(tenantId);
-        return { data: [{ manifest: { name: 'calendar-addon' } }] };
+        return { data: [{ manifest: { name: tenantId == null ? 'platform-addon' : 'calendar-addon' } }] };
     },
     useAgencyNames: (ids: number[]) =>
         Object.fromEntries(ids.map((id) => [id, id === 42 ? 'Suchtberatung Mitte' : null])),
@@ -217,6 +220,15 @@ describe('AddonAuditLogsPage', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'addonAudit.filters.reset' }));
         expect(last()).toMatchObject({ from: undefined, to: undefined, addon: undefined, page: 0 });
+    });
+
+    it('offers the platform add-ons to a SuperAdmin looking at all organisations', () => {
+        mocks.isSuperAdmin = true;
+        render(<AddonAuditLogsPage />);
+
+        expect(mocks.adminAddonsTenant).toContain(null);
+        const select = screen.getByLabelText('addonAudit.filters.addon');
+        expect(within(select).getByRole('option', { name: 'platform-addon' })).toBeInTheDocument();
     });
 
     it('lets a SuperAdmin narrow the log to one Träger', () => {

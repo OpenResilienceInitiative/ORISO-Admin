@@ -21,6 +21,11 @@ const bootstrapOnce = (module: AddonModule, props: AddonHostProps) => {
     return pending;
 };
 
+export const addonEntryUrl = (baseUrl: string, addon: Pick<AvailableAddon, 'entry' | 'version'>) => {
+    const separator = addon.entry.includes('?') ? '&' : '?';
+    return `${baseUrl}${addon.entry}${separator}v=${encodeURIComponent(addon.version)}`;
+};
+
 interface AddonMountProps {
     addon: AvailableAddon;
     app: AddonApp;
@@ -56,14 +61,14 @@ export const AddonMount = ({
         // Mounting waits until the previous app on this element has unmounted; both share one DOM node.
         const mounting = lifecycle.current.then(async () => {
             try {
-                const module = await loader(`${baseUrl}${addon.entry}`);
+                const module = await loader(addonEntryUrl(baseUrl, addon));
                 const props: AddonHostProps = { ...hostProps, domElement };
                 await bootstrapOnce(module, props);
                 if (!active) {
                     return;
                 }
-                await module.mount(props);
                 mounted = { module, props };
+                await module.mount(props);
             } catch (error) {
                 // eslint-disable-next-line no-console
                 console.error(`Add-on ${addon.name}/${app.id} failed`, error);

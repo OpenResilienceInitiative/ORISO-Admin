@@ -55,7 +55,7 @@ export const AddonAuditLogsPage = () => {
         size: perPage,
     });
     const registry = useAddonRegistry();
-    const tenantAddons = useAdminAddons(scopeTenantId, scopeTenantId != null);
+    const tenantAddons = useAdminAddons(scopeTenantId, isSuperAdmin || scopeTenantId != null);
     const rows = audit.data?.items ?? [];
     // The AddonService is optional: when it is not deployed the log is simply empty.
     const unavailable = audit.isError && audit.error instanceof Error && audit.error.message === FETCH_ERRORS.NO_MATCH;

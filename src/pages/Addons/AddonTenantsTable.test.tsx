@@ -94,6 +94,26 @@ describe('AddonTenantsTable', () => {
         await waitFor(() => expect(setMode).toHaveBeenCalledWith('digisucht-tools', 6, 'ON'));
     });
 
+    it('locks the mode of a Träger until its change is saved', async () => {
+        let finishSave: () => void = () => {};
+        setMode.mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    finishSave = () => resolve({});
+                }),
+        );
+        renderTable();
+        const select = () => within(rowOf('Bits (6)')).getByRole('combobox');
+        fireEvent.mouseDown(select());
+        fireEvent.click(await screen.findByTitle('addons.mode.ON'));
+
+        await waitFor(() => expect(select()).toBeDisabled());
+        expect(within(rowOf('DigiSucht (1)')).getByRole('combobox')).not.toBeDisabled();
+
+        finishSave();
+        await waitFor(() => expect(select()).not.toBeDisabled());
+    });
+
     it('selects a Träger with its manage button', () => {
         const onSelect = renderTable();
         fireEvent.click(within(rowOf('Bits (6)')).getByRole('button', { name: /addons.tenants.manageFor/ }));

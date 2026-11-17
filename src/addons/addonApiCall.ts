@@ -1,5 +1,5 @@
 import { addonServiceURL, CSRF_WHITELIST_HEADER } from '../appConfig';
-import { getAccessTokenForRequests } from '../api/auth/auth';
+import { getAccessTokenForRequests, tryRefreshAccessToken } from '../api/auth/auth';
 import generateCsrfToken from '../utils/generateCsrfToken';
 import type { AvailableAddon } from './addonTypes';
 
@@ -7,18 +7,23 @@ interface AddonApiCallOptions {
     baseUrl?: string;
     token?: () => string | null | undefined;
     csrfToken?: () => string;
+    refreshToken?: () => Promise<boolean>;
 }
 
-/** The `api` function handed to an add-on: its own route, with the admin's bearer token and CSRF header. */
+/**
+ * The `api` function handed to an add-on: its own route, with the admin's bearer token and CSRF header.
+ * A 401 refreshes the session once and repeats the request, like `fetchData`.
+ */
 export const addonApiCall = (
     addon: Pick<AvailableAddon, 'apiBase'>,
     {
         baseUrl = addonServiceURL,
         token = getAccessTokenForRequests,
         csrfToken = () => generateCsrfToken(),
+        refreshToken = tryRefreshAccessToken,
     }: AddonApiCallOptions = {},
 ) => {
-    return (path: string, init: RequestInit = {}) => {
+    const send = (url: string, init: RequestInit) => {
         const headers = new Headers(init.headers);
         const accessToken = token();
         if (accessToken) {
@@ -29,11 +34,16 @@ export const addonApiCall = (
         if (import.meta.env.DEV && CSRF_WHITELIST_HEADER) {
             headers.set(CSRF_WHITELIST_HEADER, csrf);
         }
+        return fetch(url, { ...init, headers, credentials: 'include' });
+    };
+
+    return async (path: string, init: RequestInit = {}) => {
         const relative = path.startsWith('/') ? path : `/${path}`;
-        return fetch(`${baseUrl}${addon.apiBase}${relative}`, {
-            ...init,
-            headers,
-            credentials: 'include',
-        });
+        const url = `${baseUrl}${addon.apiBase}${relative}`;
+        const response = await send(url, init);
+        if (response.status !== 401 || !(await refreshToken())) {
+            return response;
+        }
+        return send(url, init);
     };
 };

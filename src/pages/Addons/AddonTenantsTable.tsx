@@ -65,6 +65,7 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
     const setMode = useSetTenantMode(addonName);
     const [filter, setFilter] = useState<Filter>('all');
     const [search, setSearch] = useState('');
+    const [savingTenantIds, setSavingTenantIds] = useState<ReadonlySet<number>>(new Set());
     const containerRef = useRef<HTMLElement>(null);
     const layout = useMeasuredListLayout(containerRef, TENANT_LIST_BANDS);
 
@@ -82,14 +83,22 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
     const tenantLabel = (row: TenantRow) =>
         row.name ? `${row.name} (${row.id})` : String(t('addons.tenant.unnamed', { id: row.id }));
 
-    const changeMode = (row: TenantRow, mode: AddonMode) =>
+    const changeMode = (row: TenantRow, mode: AddonMode) => {
+        setSavingTenantIds((current) => new Set(current).add(row.id));
         setMode.mutate(
             { tenantId: row.id, mode },
             {
                 onSuccess: () => snackbar.success(String(t('addons.mode.saved'))),
                 onError: (error) => reportAddonSaveError(error, t),
+                onSettled: () =>
+                    setSavingTenantIds((current) => {
+                        const next = new Set(current);
+                        next.delete(row.id);
+                        return next;
+                    }),
             },
         );
+    };
 
     const overridesLabel = (state: AddonTenantState | null) => {
         const parts = [];
@@ -141,7 +150,8 @@ export const AddonTenantsTable = ({ addonName, selectedTenantId, onSelect }: Add
                             className={styles.modeSelect}
                             aria-label={String(t('addons.mode.for', { tenant: tenantLabel(row) }))}
                             value={mode}
-                            loading={setMode.isPending && setMode.variables?.tenantId === row.id}
+                            loading={savingTenantIds.has(row.id)}
+                            disabled={savingTenantIds.has(row.id)}
                             onChange={(next) => changeMode(row, next)}
                             options={ADDON_MODES.map((value) => ({ value, label: t(`addons.mode.${value}`) }))}
                         />

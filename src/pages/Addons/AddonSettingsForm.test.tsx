@@ -103,6 +103,34 @@ describe('AddonSettingsForm', () => {
         await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({}));
     });
 
+    it('keeps stored values of properties the form cannot edit', async () => {
+        const onSubmit = vi.fn();
+        const withObject: JsonSchema = {
+            type: 'object',
+            properties: {
+                greeting: { type: 'string', title: 'Greeting' },
+                layout: { type: 'object' },
+                tags: { type: 'array' },
+            },
+        };
+        render(
+            <AddonSettingsForm
+                formId="form"
+                schema={withObject}
+                values={{ greeting: 'Hallo', layout: { columns: 2 }, tags: ['a'], removed: 'gone' }}
+                onSubmit={onSubmit}
+            />,
+        );
+
+        await userEvent.clear(screen.getByLabelText('Greeting'));
+        await userEvent.type(screen.getByLabelText('Greeting'), 'Moin');
+        fireEvent.click(screen.getByRole('button', { name: 'addons.settings.save' }));
+
+        await waitFor(() =>
+            expect(onSubmit).toHaveBeenCalledWith({ greeting: 'Moin', layout: { columns: 2 }, tags: ['a'] }),
+        );
+    });
+
     it('says so when the add-on has no settings', () => {
         render(<AddonSettingsForm formId="form" schema={null} values={{}} onSubmit={vi.fn()} />);
         expect(screen.getByText('addons.settings.none')).toBeInTheDocument();
