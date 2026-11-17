@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
     record: undefined as Record<string, string> | undefined,
     loadError: null as Error | null,
     refetch: vi.fn(),
+    isFetching: false,
     mutationOptions: undefined as { onSuccess?: () => void } | undefined,
 }));
 
@@ -32,6 +33,7 @@ vi.mock('../../../hooks/useStatisticsReaders', () => ({
     useStatisticsReaderData: ({ enabled }: { enabled: boolean }) => ({
         data: enabled && !mocks.loadError ? mocks.record : undefined,
         isLoading: false,
+        isFetching: enabled && mocks.isFetching,
         isError: enabled && mocks.loadError !== null,
         error: enabled ? mocks.loadError : null,
         refetch: mocks.refetch,
@@ -105,6 +107,7 @@ describe('StatisticsReaderEditOrAdd (ORISO-UserService#1666)', () => {
         mocks.isSuperAdmin = true;
         mocks.params = { id: 'add' };
         mocks.record = undefined;
+        mocks.isFetching = false;
         mocks.loadError = null;
         mocks.refetch.mockReset();
     });
@@ -194,6 +197,63 @@ describe('StatisticsReaderEditOrAdd (ORISO-UserService#1666)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'edit' }));
         expect(screen.getByLabelText('firstname')).not.toBeDisabled();
         expect(screen.getByLabelText('username')).toBeDisabled();
+    });
+
+    it('saves an edited reader with the changed and the unchanged fields', async () => {
+        mocks.params = { id: '44' };
+        mocks.record = { id: '44', firstname: 'Sam', lastname: 'Reader', username: 'sam', email: 'sam@example.test' };
+        render(<StatisticsReaderEditOrAdd />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        type('firstname', 'Samuel');
+        fireEvent.click(screen.getByRole('button', { name: 'save' }));
+
+        await waitFor(() =>
+            expect(mocks.mutate).toHaveBeenCalledWith(
+                expect.objectContaining({ firstname: 'Samuel', lastname: 'Reader', email: 'sam@example.test' }),
+            ),
+        );
+    });
+
+    it('restores the record and saves nothing when editing is cancelled', () => {
+        mocks.params = { id: '44' };
+        mocks.record = { id: '44', firstname: 'Sam', lastname: 'Reader', username: 'sam', email: 'sam@example.test' };
+        render(<StatisticsReaderEditOrAdd />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'edit' }));
+        type('firstname', 'Samuel');
+        fireEvent.click(screen.getByRole('button', { name: 'btn.cancel' }));
+
+        expect(screen.getByLabelText('firstname')).toHaveValue('Sam');
+        expect(screen.getByLabelText('firstname')).toBeDisabled();
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
+    it('shows a refreshed record instead of the cached one and waits for it before editing', () => {
+        mocks.params = { id: '44' };
+        mocks.record = { id: '44', firstname: 'Sam', lastname: 'Reader', username: 'sam', email: 'old@example.test' };
+        mocks.isFetching = true;
+        const { rerender } = render(<StatisticsReaderEditOrAdd />);
+
+        expect(screen.getByRole('button', { name: 'edit' })).toBeDisabled();
+
+        mocks.record = { ...mocks.record, email: 'new@example.test' };
+        mocks.isFetching = false;
+        rerender(<StatisticsReaderEditOrAdd />);
+
+        expect(screen.getByLabelText('email')).toHaveValue('new@example.test');
+        expect(screen.getByRole('button', { name: 'edit' })).toBeEnabled();
+    });
+
+    it('lets a platform admin with read but not update permission only look', () => {
+        mocks.params = { id: '44' };
+        mocks.record = { id: '44', firstname: 'Sam', lastname: 'Reader', username: 'sam', email: 'sam@example.test' };
+        mocks.can.mockImplementation((action: PermissionAction) => action === PermissionAction.Read);
+        render(<StatisticsReaderEditOrAdd />);
+
+        expect(screen.getByLabelText('firstname')).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'save' })).not.toBeInTheDocument();
     });
 
     it('denies everyone but a platform admin', () => {

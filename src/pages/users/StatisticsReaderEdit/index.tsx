@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button, Col, Form, Row } from 'antd';
@@ -52,10 +52,19 @@ const StatisticsReaderEditor = () => {
     const {
         data,
         isLoading,
+        isFetching,
         isError,
         error: loadError,
         refetch,
     } = useStatisticsReaderData({ id, enabled: isEditing && canRead });
+
+    // A cached record is shown at once and refreshed in the background. antd applies
+    // initialValues only once, so the refreshed record is written into the form while it is still
+    // read-only; editing starts only after the refresh (the edit button waits for it), so a save
+    // never sends a stale e-mail back.
+    useEffect(() => {
+        if (isEditing && isReadOnly && data) form.setFieldsValue(data);
+    }, [data, form, isEditing, isReadOnly]);
 
     const { mutate, isPending } = useAddOrUpdateStatisticsReader({
         id: isEditing ? id : undefined,
@@ -79,11 +88,12 @@ const StatisticsReaderEditor = () => {
     const onCancel = useCallback(() => {
         if (isEditing) {
             form.resetFields();
+            if (data) form.setFieldsValue(data);
             setReadOnly(true);
         } else {
             navigate(listPath);
         }
-    }, [form, isEditing, navigate]);
+    }, [data, form, isEditing, navigate]);
 
     const loadFailed = isEditing && !isLoading && isError && !isNoAccessError(loadError);
     if (!canRead || (isEditing && !isLoading && !loadFailed && (isError || !data))) {
@@ -122,7 +132,7 @@ const StatisticsReaderEditor = () => {
         <Page isLoading={isEditing && isLoading}>
             <Page.BackWithActions path={listPath} parentKey="sidebar.users" title={title}>
                 {isReadOnly && canWrite && (
-                    <Button type="primary" onClick={() => setReadOnly(false)}>
+                    <Button type="primary" disabled={isFetching} onClick={() => setReadOnly(false)}>
                         {t('edit')}
                     </Button>
                 )}
