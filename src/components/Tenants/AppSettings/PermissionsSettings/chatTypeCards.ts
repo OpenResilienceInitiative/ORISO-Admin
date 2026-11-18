@@ -4,6 +4,9 @@ import { ReactComponent as GroupIcon } from '../../../../resources/img/svg/permi
 import { ReactComponent as GroupInternalIcon } from '../../../../resources/img/svg/permissions/group_internal.svg';
 import type { ChatTypeCardDef, ChatTypeParticipantToggle } from './types';
 
+/** Said once per tile whose switches only the app obeys (ORISO-Helm#466). */
+export const APP_ONLY_HINT_KEY = 'tenants.permissions.feature.appOnlyHint';
+
 const askerNamePolicy = (setting: string): ChatTypeParticipantToggle => ({
     setting,
     labelKey: 'tenants.permissions.asker.displayName.conversationLabel',
@@ -29,6 +32,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.voiceMessages',
                 field: ['settings', 'featureVoiceMessagesOneOnOneChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.threads',
@@ -41,6 +45,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaUpload',
                 field: ['settings', 'featureMediaUploadOneOnOneChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
@@ -93,6 +98,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.voiceMessages',
                 field: ['settings', 'featureVoiceMessagesAnonymousChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.threads',
@@ -105,6 +111,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaUpload',
                 field: ['settings', 'featureMediaUploadAnonymousChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
@@ -151,6 +158,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.voiceMessages',
                 field: ['settings', 'featureVoiceMessagesGroupChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.threads',
@@ -159,6 +167,7 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
             {
                 labelKey: 'tenants.permissions.feature.mediaUpload',
                 field: ['settings', 'featureMediaUploadGroupChatsEnabled'],
+                appOnly: true,
             },
             {
                 labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
