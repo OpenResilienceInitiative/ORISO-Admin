@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import classNames from 'classnames';
 import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FETCH_ERRORS } from '../../api/fetchData';
 import type { LocalizedText, TopicCatalogueDto, TopicCatalogueTopicDto } from '../../types/TopicCatalogue';
 import { DialogButton, Modal } from '../Modal';
 import { ICON_MAX_BYTES, ICON_TYPES } from '../TopicCatalogue/TopicIconSlot';
@@ -344,8 +345,9 @@ export const TopicCatalogueDialog = ({
         try {
             await onSave(toSaveBody());
             setDirty(false);
-        } catch {
-            setProblem(t('topicDialog.saveError'));
+        } catch (error) {
+            const nameTaken = error instanceof Error && error.message === FETCH_ERRORS.CONFLICT;
+            setProblem(t(nameTaken ? 'topicDialog.nameTaken' : 'topicDialog.saveError'));
         } finally {
             setSaving(false);
         }
