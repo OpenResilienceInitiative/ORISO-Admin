@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { cloneElement, useState, type JSX } from 'react';
+import { cloneElement, useState, type ComponentType, type JSX, type SVGProps } from 'react';
 import routePathNames from '../../appConfig';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { ReactComponent as HomeActiveIcon } from '../../resources/img/svg/navbar/home_active.svg';
@@ -48,8 +48,6 @@ const decorateIcon = (icon: JSX.Element) =>
         role: 'presentation',
     });
 
-const selectIcon = (state: IconState, icons: Record<IconState, JSX.Element>) => decorateIcon(icons[state]);
-
 const getIconState = (isActive: boolean, hover: boolean): IconState => {
     if (isActive) {
         return 'active';
@@ -63,87 +61,78 @@ const getIconState = (isActive: boolean, hover: boolean): IconState => {
 const isCurrentPathActive = (currentPath: string, path: string): boolean =>
     currentPath === path || currentPath.startsWith(`${path}/`);
 
+type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+type IconSet = Record<IconState, IconComponent>;
+
+/** Topics ships no hover variant: it shows the active glyph on hover. */
+const withoutHover = (active: IconComponent, inactive: IconComponent): IconSet => ({
+    active,
+    hover: active,
+    inactive,
+});
+
+/**
+ * The glyphs the navigation shows for `path` (an `AdminSidebarNavItem.iconPath`), or null for an
+ * unknown path. Pure, so the browser tab (SectionTabIdentity) can draw the very glyph the sidebar
+ * shows for the active section without rendering the sidebar.
+ */
+export const navIconSetFor = (path: string): IconSet | null => {
+    switch (path) {
+        case routePathNames.home:
+            return { active: HomeActiveIcon, hover: HomeHoverIcon, inactive: HomeInactiveIcon };
+        case routePathNames.themeSettings:
+            return {
+                active: DisplaySettingsActiveIcon,
+                hover: DisplaySettingsHoverIcon,
+                inactive: DisplaySettingsInactiveIcon,
+            };
+        case '/admin/users':
+            return { active: UsersActiveIcon, hover: UsersHoverIcon, inactive: UsersInactiveIcon };
+        case '/admin/tenants':
+            return { active: TenantsActiveIcon, hover: TenantsHoverIcon, inactive: TenantsInactiveIcon };
+        case routePathNames.agency:
+        case routePathNames.agencyAdd:
+        case routePathNames.agencyAddGeneral:
+        case routePathNames.agencyEdit:
+            return { active: CounselingActiveIcon, hover: CounselingHoverIcon, inactive: CounselingInactiveIcon };
+        case routePathNames.topics:
+            return withoutHover(TopicsActiveIcon, TopicsInactiveIcon);
+        case routePathNames.statistic:
+            return { active: StatisticsActiveIcon, hover: StatisticsHoverIcon, inactive: StatisticsInactiveIcon };
+        case routePathNames.logs:
+        case routePathNames.caseHandoverLogs:
+        case routePathNames.inactiveAccountAuditLogs:
+        case routePathNames.deletionAuditLogs:
+            return { active: LogsActiveIcon, hover: LogsHoverIcon, inactive: LogsInactiveIcon };
+        // The invite area: an envelope, since inviting means sending a mail (#1374).
+        case routePathNames.links:
+        case routePathNames.linksTenants:
+        case routePathNames.linksCounsellor:
+            return { active: InviteActiveIcon, hover: InviteHoverIcon, inactive: InviteInactiveIcon };
+        case routePathNames.userProfile:
+            return { active: ProfileActiveIcon, hover: ProfileHoverIcon, inactive: ProfileInactiveIcon };
+        case 'logout':
+            return { active: LogoutActiveIcon, hover: LogoutHoverIcon, inactive: LogoutInactiveIcon };
+        default:
+            return null;
+    }
+};
+
+/** The glyph the navigation shows for `path` while its section is active. */
+export const activeNavIconFor = (path: string): IconComponent | null => navIconSetFor(path)?.active ?? null;
+
 const Icon = ({ path, hover }: { path: string; hover: boolean }) => {
     const currentPath = useLocation().pathname;
     const isActivePath = isCurrentPathActive(currentPath, path);
     const isDesktopSidebar = useIsDesktopLayout();
     const iconState = getIconState(isActivePath && isDesktopSidebar, hover);
+    const icons = navIconSetFor(path);
 
-    switch (path) {
-        case routePathNames.home:
-            return selectIcon(iconState, {
-                active: <HomeActiveIcon />,
-                hover: <HomeHoverIcon />,
-                inactive: <HomeInactiveIcon />,
-            });
-        case routePathNames.themeSettings:
-            return selectIcon(iconState, {
-                active: <DisplaySettingsActiveIcon />,
-                hover: <DisplaySettingsHoverIcon />,
-                inactive: <DisplaySettingsInactiveIcon />,
-            });
-        case '/admin/users':
-            return selectIcon(iconState, {
-                active: <UsersActiveIcon />,
-                hover: <UsersHoverIcon />,
-                inactive: <UsersInactiveIcon />,
-            });
-        case '/admin/tenants':
-            return selectIcon(iconState, {
-                active: <TenantsActiveIcon />,
-                hover: <TenantsHoverIcon />,
-                inactive: <TenantsInactiveIcon />,
-            });
-        case routePathNames.agency:
-        case routePathNames.agencyAdd:
-        case routePathNames.agencyAddGeneral:
-        case routePathNames.agencyEdit:
-            return selectIcon(iconState, {
-                active: <CounselingActiveIcon />,
-                hover: <CounselingHoverIcon />,
-                inactive: <CounselingInactiveIcon />,
-            });
-        case routePathNames.topics:
-            return decorateIcon(iconState === 'inactive' ? <TopicsInactiveIcon /> : <TopicsActiveIcon />);
-        case routePathNames.statistic:
-            return selectIcon(iconState, {
-                active: <StatisticsActiveIcon />,
-                hover: <StatisticsHoverIcon />,
-                inactive: <StatisticsInactiveIcon />,
-            });
-        case routePathNames.logs:
-        case routePathNames.caseHandoverLogs:
-        case routePathNames.inactiveAccountAuditLogs:
-        case routePathNames.deletionAuditLogs:
-            return selectIcon(iconState, {
-                active: <LogsActiveIcon />,
-                hover: <LogsHoverIcon />,
-                inactive: <LogsInactiveIcon />,
-            });
-        // The invite area: an envelope, since inviting means sending a mail (#1374).
-        case routePathNames.links:
-        case routePathNames.linksTenants:
-        case routePathNames.linksCounsellor:
-            return selectIcon(iconState, {
-                active: <InviteActiveIcon />,
-                hover: <InviteHoverIcon />,
-                inactive: <InviteInactiveIcon />,
-            });
-        case routePathNames.userProfile:
-            return selectIcon(iconState, {
-                active: <ProfileActiveIcon />,
-                hover: <ProfileHoverIcon />,
-                inactive: <ProfileInactiveIcon />,
-            });
-        case 'logout':
-            return selectIcon(iconState, {
-                active: <LogoutActiveIcon />,
-                hover: <LogoutHoverIcon />,
-                inactive: <LogoutInactiveIcon />,
-            });
-        default:
-            return <div aria-hidden="true" />;
+    if (!icons) {
+        return <div aria-hidden="true" />;
     }
+    const Glyph = icons[iconState];
+    return decorateIcon(<Glyph />);
 };
 
 export const NavIcon = ({ path }: Props) => {
