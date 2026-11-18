@@ -150,6 +150,15 @@ export const SEARCH_TILES: RegistryTile[] = [
         'src/components/GlobalSettings/TopicDuplicateSettingsCard/index.tsx',
     ),
     tile(
+        'global:live-chat-free-choice',
+        'globalSettings.liveChatFreeChoice.title',
+        ['settings:global-config'],
+        'src/components/GlobalSettings/LiveChatFreeChoiceSettingsCard/index.tsx',
+        {
+            fieldKeys: ['globalSettings.liveChatFreeChoice.switch'],
+        },
+    ),
+    tile(
         'global:tutorials',
         'globalSettings.tutorials.title',
         ['settings:global-config'],
