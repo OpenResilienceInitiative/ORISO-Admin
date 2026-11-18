@@ -1,7 +1,7 @@
 import { translateLegalTexts } from '../../api/tenant/translation';
 import type { TranslateRequest, TranslateResponse } from '../../types/translation';
 import { MODULE_SOURCE_LANGUAGE } from '../ConversationModules/conversationModule';
-import { textsOf, translationStatus, type JourneyStep } from './journey';
+import { hasText, textEntries, translationStatus, type JourneyStep } from './journey';
 
 /**
  * Machine translation as the Admin has it: one call translates many texts into many languages,
@@ -12,8 +12,6 @@ export type Translator = (request: TranslateRequest) => Promise<TranslateRespons
 
 /** The real one. Only offer it where the admin may call it (a centre-only admin may not). */
 export const adminTranslator: Translator = translateLegalTexts;
-
-const hasText = (value: string | undefined) => !!value && value.replace(/<[^>]*>/g, '').trim() !== '';
 
 /** One text into one language. */
 export const translateText = async (
@@ -27,63 +25,59 @@ export const translateText = async (
 };
 
 /**
- * Fills every missing text of a step in every missing language with ONE call, and marks those
- * languages as machine-made. Texts a person wrote stay untouched.
+ * Machine texts for a step, addressed by the path of each field (see `textEntries`). Applied to
+ * the step as it is when the answer arrives: a field that is gone is skipped, and a field is only
+ * written while it still holds what it held when the request went out (`expected`, empty when not
+ * given). So nothing typed, deleted or split in the meantime is overwritten.
  */
-export const translateStepMissing = async (step: JourneyStep, translator: Translator): Promise<JourneyStep> => {
-    const { missing } = translationStatus(step);
-    if (missing.length === 0) return step;
+export interface TranslationFill {
+    texts: { path: string; language: string; text: string; expected?: string }[];
+}
+
+export const applyTranslationFill = (step: JourneyStep, fill: TranslationFill): JourneyStep => {
     const next = structuredClone(step);
-    const texts = textsOf(next);
-    const request: Record<string, string> = {};
-    texts.forEach((text, index) => {
-        const source = text[MODULE_SOURCE_LANGUAGE];
-        if (hasText(source)) request[`t${index}`] = source as string;
+    const fields = new Map(textEntries(next).map((entry) => [entry.path, entry.text]));
+    const written = new Set<string>();
+    fill.texts.forEach(({ path, language, text, expected }) => {
+        const field = fields.get(path);
+        if (!field || !hasText(text)) return;
+        const current = field[language] ?? '';
+        if (expected === undefined ? hasText(current) : current !== expected) return;
+        field[language] = text;
+        written.add(language);
     });
-    if (Object.keys(request).length === 0) return step;
+    if (written.size === 0) return step;
+    return { ...next, machine: [...new Set([...(next.machine ?? []), ...written])] };
+};
+
+/**
+ * Asks for every missing text of a step in every missing language with ONE call. The answer is a
+ * fill to apply to the step as it is then; texts a person wrote are never part of it.
+ */
+export const requestStepTranslation = async (step: JourneyStep, translator: Translator): Promise<TranslationFill> => {
+    const { missing } = translationStatus(step);
+    const entries = textEntries(step).filter((entry) => hasText(entry.text[MODULE_SOURCE_LANGUAGE]));
+    if (missing.length === 0 || entries.length === 0) return { texts: [] };
     const response = await translator({
         sourceLang: MODULE_SOURCE_LANGUAGE,
         targetLangs: missing,
-        texts: request,
+        texts: Object.fromEntries(
+            entries.map((entry, index) => [`t${index}`, entry.text[MODULE_SOURCE_LANGUAGE] as string]),
+        ),
     });
-    const filled = new Set<string>();
-    texts.forEach((text, index) => {
-        missing.forEach((language) => {
-            const translated = response.translations[language]?.[`t${index}`];
-            if (translated && !hasText(text[language])) {
-                // eslint-disable-next-line no-param-reassign -- `next` is our own deep copy
-                text[language] = translated;
-                filled.add(language);
-            }
-        });
-    });
-    return { ...next, machine: [...new Set([...(next.machine ?? []), ...filled])] };
+    return {
+        texts: missing.flatMap((language) =>
+            entries.flatMap((entry, index) => {
+                const text = response.translations[language]?.[`t${index}`];
+                return text && !hasText(entry.text[language]) ? [{ path: entry.path, language, text }] : [];
+            }),
+        ),
+    };
 };
 
-/** Stands in for the service in stories and tests: marks the text instead of translating it. */
-/** A few real words, so the stories show search terms as they would look; anything else is marked. */
-const STORY_LEXICON: Record<string, Partial<Record<string, string>>> = {
-    Schulden: { en: 'debt', fr: 'dettes', ru: 'долги', ti: 'ዕዳ', tr: 'borç' },
-    Pfändung: { en: 'seizure', fr: 'saisie', ru: 'арест имущества', tr: 'haciz' },
-    Gläubiger: { en: 'creditor', fr: 'créancier', ru: 'кредитор', tr: 'alacaklı' },
-    Mahnung: { en: 'payment reminder', fr: 'relance', ru: 'напоминание об оплате', tr: 'ihtarname' },
-    Inkasso: { en: 'debt collection', fr: 'recouvrement', ru: 'коллекторы', tr: 'tahsilat' },
-    Miete: { en: 'rent', fr: 'loyer', ru: 'аренда', tr: 'kira' },
-};
-
-const storyTranslation = (text: string, language: string) =>
-    language === 'de@informal' ? text : STORY_LEXICON[text]?.[language] ?? `${text} (${language})`;
-
-export const fakeTranslator: Translator = async ({ targetLangs, texts }) => ({
-    translations: Object.fromEntries(
-        targetLangs.map((language) => [
-            language,
-            Object.fromEntries(Object.entries(texts).map(([key, text]) => [key, storyTranslation(text, language)])),
-        ]),
-    ),
-    provider: 'story',
-    model: 'story',
-});
+/** Request and apply in one go, for a step nobody edits meanwhile (tests, the card's button). */
+export const translateStepMissing = async (step: JourneyStep, translator: Translator): Promise<JourneyStep> =>
+    applyTranslationFill(step, await requestStepTranslation(step, translator));
 
 /**
  * Suggests further search terms in one language: everyday words people use for what the block is
@@ -104,37 +98,23 @@ export const SUGGEST_TERMS_PROMPT =
     '{existing}. One per line.';
 
 /**
- * Translates the German search terms of a block into the given languages in one call. Terms are
- * added, never replaced; each language keeps its own words too.
+ * Translates the German search terms of a block into the given languages in one call. Returns the
+ * terms per language; merge them into the block as it is then (`addKeywords`), never replace.
  */
 export const translateKeywords = async (
-    keywords: Partial<Record<string, string[]>>,
+    germanTerms: string[],
     targetLanguages: string[],
     translator: Translator,
 ): Promise<Partial<Record<string, string[]>>> => {
-    const source = keywords[MODULE_SOURCE_LANGUAGE] ?? [];
-    if (source.length === 0 || targetLanguages.length === 0) return keywords;
-    const texts = Object.fromEntries(source.map((term, index) => [`k${index}`, term]));
+    if (germanTerms.length === 0 || targetLanguages.length === 0) return {};
+    const texts = Object.fromEntries(germanTerms.map((term, index) => [`k${index}`, term]));
     const response = await translator({ sourceLang: MODULE_SOURCE_LANGUAGE, targetLangs: targetLanguages, texts });
-    const next = { ...keywords };
-    targetLanguages.forEach((language) => {
-        const current = next[language] ?? [];
-        const added = Object.values(response.translations[language] ?? {})
-            .map((term) => term.replace(/<[^>]*>/g, '').trim())
-            .filter((term) => term && !current.some((existing) => existing.toLowerCase() === term.toLowerCase()));
-        next[language] = [...current, ...new Set(added)];
-    });
-    return next;
-};
-
-/** Stands in for the endpoint in stories and tests. */
-export const fakeSuggester: KeywordSuggester = async ({ language, existing }) => {
-    const pool: Record<string, string[]> = {
-        de: ['Schulden', 'Inkasso', 'Mahnung', 'Pfändung', 'Kredit', 'Miete', 'Stromsperre', 'Gerichtsvollzieher'],
-        en: ['debt', 'collection', 'overdue bill', 'bailiff', 'loan', 'rent arrears'],
-        tr: ['borç', 'icra', 'kredi', 'kira borcu', 'haciz'],
-    };
-    return (pool[language] ?? [`${language}-1`, `${language}-2`, `${language}-3`]).filter(
-        (term) => !existing.some((entry) => entry.toLowerCase() === term.toLowerCase()),
+    return Object.fromEntries(
+        targetLanguages.map((language) => [
+            language,
+            Object.values(response.translations[language] ?? {})
+                .map((term) => term.replace(/<[^>]*>/g, '').trim())
+                .filter(Boolean),
+        ]),
     );
 };

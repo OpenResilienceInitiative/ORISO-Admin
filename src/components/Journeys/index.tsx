@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
@@ -12,8 +12,9 @@ import { nameOf, type AppearanceSettings } from '../ConversationTypeAppearance/a
 import { ConversationTypeSettingsDialog } from '../ConversationTypeAppearance/ConversationTypeSettingsDialog';
 import { TypeIcon } from '../ConversationTypeAppearance/TypeIcon';
 import {
-    coveredTopics,
+    coveredTopicsOf,
     hasRegistrationRoute,
+    pruneUnknownTopics,
     journeysOf,
     phasesOf,
     shippedJourneys,
@@ -26,7 +27,10 @@ import {
 import { FlightPath } from './FlightPath';
 import { JourneysDialog, type JourneysDialogOpen } from './JourneysDialog';
 import type { KeywordSuggester, Translator } from './journeyTranslation';
+import { effectiveJourneys, inheritedJourneys, layersFrom, type JourneyLayer } from './journeyEditing';
 import styles from './styles.module.scss';
+
+const NO_LAYERS: JourneyLayer[] = [];
 
 /** Topic chips on a tile before the rest is folded into "+ n". */
 const SHOWN_TOPICS = 5;
@@ -49,14 +53,7 @@ export const JourneyTileEntry = ({ type, journeys, topics, onOpen, onEditAppeara
     const { t } = useTranslation();
     const summary = typeSummary(journeys, type);
     const nameOfTopic = (id: number) => topics.find((topic) => topic.id === id)?.name ?? `#${id}`;
-    const seen = new Set<number>();
-    const covered = journeysOf(journeys, type)
-        .flatMap(coveredTopics)
-        .filter(({ topicId }) => {
-            if (seen.has(topicId)) return false;
-            seen.add(topicId);
-            return true;
-        });
+    const covered = coveredTopicsOf(journeysOf(journeys, type));
     const unrouted = hasRegistrationRoute(type) ? topicsWithoutRoute(journeys, type, topics) : [];
 
     return (
@@ -108,8 +105,15 @@ export const JourneyTileEntry = ({ type, journeys, topics, onOpen, onEditAppeara
 export interface JourneysSettingsProps {
     /** Topics of the installation; they are what journeys lead to. */
     topics: JourneyTopic[];
-    /** Stored journeys of every conversation type. Without any, the shipped ones are shown. */
+    /**
+     * The platform's journeys of every conversation type. Without any, the shipped ones are shown.
+     * May arrive after the first render (loading); the section follows until something is edited.
+     */
     journeys?: Journey[];
+    /** Below the platform: the layers of the viewer's Träger and Beratungsstelle (decision 29). */
+    layers?: JourneyLayer[];
+    /** Below the platform: the Träger or Beratungsstelle whose layer is edited. */
+    ownerId?: string;
     /** Name and icon per conversation type, from the global configuration. */
     appearance?: AppearanceSettings;
     /** Only the platform admin renames conversation types and changes their icons. */
@@ -124,7 +128,10 @@ export interface JourneysSettingsProps {
     blocked?: readonly string[];
     /** Opens one dialog right away (stories). */
     initiallyOpen?: { type: ConversationType; appearance?: boolean } & Partial<JourneysDialogOpen>;
+    /** Platform: the changed platform journeys. */
     onSave?: (journeys: Journey[]) => void;
+    /** Below the platform: the viewer's own layers; the platform journeys never change there. */
+    onSaveLayers?: (layers: JourneyLayer[]) => void;
     onSaveAppearance?: (appearance: AppearanceSettings) => void;
 }
 
@@ -135,6 +142,8 @@ export interface JourneysSettingsProps {
 export const JourneysSettings = ({
     topics,
     journeys: initial,
+    layers: initialLayers = NO_LAYERS,
+    ownerId = '',
     appearance: initialAppearance = {},
     canEditAppearance = false,
     translator,
@@ -143,10 +152,23 @@ export const JourneysSettings = ({
     blocked = [],
     initiallyOpen,
     onSave,
+    onSaveLayers,
     onSaveAppearance,
 }: JourneysSettingsProps) => {
     const { t, i18n } = useTranslation();
-    const [journeys, setJourneys] = useState<Journey[]>(() => initial ?? shippedJourneys(topics));
+    // Topics deleted since a journey was saved drop out of its routes; the section says which.
+    const loaded = useMemo(() => pruneUnknownTopics(initial ?? shippedJourneys(topics), topics), [initial, topics]);
+    const [platformJourneys, setPlatformJourneys] = useState<Journey[]>(loaded.journeys);
+    const [layers, setLayers] = useState<JourneyLayer[]>(initialLayers);
+    const [edited, setEdited] = useState(false);
+    useEffect(() => {
+        if (!edited) setPlatformJourneys(loaded.journeys);
+    }, [loaded, edited]);
+    useEffect(() => {
+        if (!edited) setLayers(initialLayers);
+    }, [initialLayers, edited]);
+    const isPlatform = level === 'platform';
+    const journeys = isPlatform ? platformJourneys : effectiveJourneys(platformJourneys, layers);
     const [appearance, setAppearance] = useState<AppearanceSettings>(initialAppearance);
     const [open, setOpen] = useState<ConversationType | undefined>(
         initiallyOpen && !initiallyOpen.appearance ? initiallyOpen.type : undefined,
@@ -160,6 +182,11 @@ export const JourneysSettings = ({
     return (
         <div className={styles.page}>
             <p className={styles.intro}>{t('journeys.intro')}</p>
+            {loaded.removed.length > 0 && (
+                <div className={styles.notice} role="status" data-testid="journeys-pruned-topics">
+                    <p>{t('journeys.prunedTopics', { count: loaded.removed.length })}</p>
+                </div>
+            )}
             <div className={styles.grid}>
                 {CONVERSATION_TYPES.map((type) => (
                     <Card
@@ -197,8 +224,20 @@ export const JourneysSettings = ({
                             : undefined
                     }
                     onSave={(next) => {
-                        setJourneys(next);
-                        onSave?.(next);
+                        setEdited(true);
+                        if (level === 'platform') {
+                            setPlatformJourneys(next);
+                            onSave?.(next);
+                        } else {
+                            const own = layersFrom(
+                                next,
+                                inheritedJourneys(platformJourneys, layers, level),
+                                level,
+                                ownerId,
+                            );
+                            setLayers([...layers.filter((layer) => layer.level !== level), ...own]);
+                            onSaveLayers?.(own);
+                        }
                         setOpen(undefined);
                     }}
                     onClose={() => setOpen(undefined)}

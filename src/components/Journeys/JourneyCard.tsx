@@ -34,10 +34,14 @@ interface JourneyCardProps {
     /** Träger and Beratungsstelle see the platform's check-in but cannot change it (decision 29). */
     level?: JourneyLevel;
     onOpenPhase: (phase: JourneyPhase) => void;
-    onOpenDestinations: () => void;
-    onRename: () => void;
-    onDuplicate: () => void;
-    onRemove: () => void;
+    /** Without it (below the platform) the destinations are shown, not opened. */
+    onOpenDestinations?: () => void;
+    /** Journey actions; each is missing where the level may not use it. */
+    onRename?: () => void;
+    onDuplicate?: () => void;
+    onRemove?: () => void;
+    /** Whether anything leads to the journey (see `isReachable`). */
+    reachable?: boolean;
 }
 
 /**
@@ -53,6 +57,7 @@ export const JourneyCard = ({
     onRename,
     onDuplicate,
     onRemove,
+    reachable = true,
 }: JourneyCardProps) => {
     const { t, i18n } = useTranslation();
     const label = journeyLabel(journey, t);
@@ -62,7 +67,7 @@ export const JourneyCard = ({
     const nameOf = (id: number) => topics.find((topic) => topic.id === id)?.name ?? `#${id}`;
     const registration = journey.routes.registration.map(nameOf);
     const { links } = journey.routes;
-    const unreachable = registration.length === 0 && links.length === 0;
+    const unreachable = !reachable;
 
     const more = (count: number) =>
         count > SHOWN && (
@@ -78,30 +83,44 @@ export const JourneyCard = ({
                     </span>
                     {journey.name && <span>{journey.name}</span>}
                 </h3>
-                <RowMenu
-                    ariaLabel={t('journeys.journey.menu', { journey: label })}
-                    items={[
-                        {
-                            key: 'rename',
-                            label: t('journeys.journey.rename'),
-                            icon: <EditOutlined />,
-                            onSelect: onRename,
-                        },
-                        {
-                            key: 'duplicate',
-                            label: t('journeys.journey.duplicate'),
-                            icon: <ContentCopyOutlined />,
-                            onSelect: onDuplicate,
-                        },
-                        {
-                            key: 'remove',
-                            label: t('journeys.journey.remove'),
-                            icon: <DeleteOutline />,
-                            tone: 'error',
-                            onSelect: onRemove,
-                        },
-                    ]}
-                />
+                {(onRename || onDuplicate || onRemove) && (
+                    <RowMenu
+                        ariaLabel={t('journeys.journey.menu', { journey: label })}
+                        items={[
+                            ...(onRename
+                                ? [
+                                      {
+                                          key: 'rename',
+                                          label: t('journeys.journey.rename'),
+                                          icon: <EditOutlined />,
+                                          onSelect: onRename,
+                                      },
+                                  ]
+                                : []),
+                            ...(onDuplicate
+                                ? [
+                                      {
+                                          key: 'duplicate',
+                                          label: t('journeys.journey.duplicate'),
+                                          icon: <ContentCopyOutlined />,
+                                          onSelect: onDuplicate,
+                                      },
+                                  ]
+                                : []),
+                            ...(onRemove
+                                ? [
+                                      {
+                                          key: 'remove',
+                                          label: t('journeys.journey.remove'),
+                                          icon: <DeleteOutline />,
+                                          tone: 'error' as const,
+                                          onSelect: onRemove,
+                                      },
+                                  ]
+                                : []),
+                        ]}
+                    />
+                )}
             </div>
 
             <div className={styles.phases}>
@@ -192,6 +211,7 @@ export const JourneyCard = ({
                     type="button"
                     className={classNames(styles.phase, styles.phaseDestinations)}
                     onClick={onOpenDestinations}
+                    disabled={!onOpenDestinations}
                     data-testid={`journey-${journey.id}-destinations`}
                 >
                     <span className={styles.phaseHead}>

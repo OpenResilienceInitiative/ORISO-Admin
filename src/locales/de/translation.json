@@ -4616,5 +4616,15 @@
     "journeys.profileDialog.context": "{{kind}} · {{journey}} · {{phase}} · Schritt {{position}}",
     "journeys.keywordsDialog.title": "Suchbegriffe: {{name}}",
     "journeys.keywordsDialog.open": "Suchbegriffe",
-    "journeys.keywords.remove": "Suchbegriff {{term}} entfernen"
+    "journeys.keywords.remove": "Suchbegriff {{term}} entfernen",
+    "journeys.step.cannotMove": "„{{name}}“ kann dort nicht hin: Das Thema bleibt vorn, die Postleitzahl kommt vor der Beratungsstelle.",
+    "journeys.journey.copyOf": "Kopie von {{name}}",
+    "journeys.link.pathFixed": "Diese Adresse ist gespeichert und ändert sich nicht mehr, auch nicht beim Umbenennen.",
+    "journeys.prunedTopics_one": "Ein Thema gibt es nicht mehr. Es wurde aus den Zielen der Reisen entfernt.",
+    "journeys.prunedTopics_other": "{{count}} Themen gibt es nicht mehr. Sie wurden aus den Zielen der Reisen entfernt.",
+    "journeys.discard.title": "Änderungen verwerfen?",
+    "journeys.discard.text": "Sie haben in diesem Dialog etwas geändert. Beim Schließen geht das verloren.",
+    "journeys.discard.discard": "Verwerfen",
+    "journeys.discard.keep": "Weiter bearbeiten",
+    "journeys.step.removeOfHigherLevel": "Löschen (nicht möglich: gehört der Plattform)"
 }

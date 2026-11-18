@@ -8,10 +8,10 @@ import { FloatingLabelInput } from '../FloatingLabelInput';
 import type { ConversationType } from '../ConversationModules/conversationModule';
 import { FlightPath } from './FlightPath';
 import {
-    duplicateJourney,
+    fixLinkSlugs,
     hasRegistrationRoute,
+    isReachable,
     journeysOf,
-    newJourney,
     phasesOf,
     prepareJourneyForPublish,
     topicsWithoutRoute,
@@ -26,6 +26,8 @@ import { JourneyCard } from './JourneyCard';
 import { PhaseDialog } from './PhaseDialog';
 import { journeyLabel } from './stepText';
 import type { KeywordSuggester, Translator } from './journeyTranslation';
+import { editJourneys, mayEditJourneys, type EditingContext, type JourneysCommand } from './journeyEditing';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 export interface JourneysDialogOpen {
@@ -78,12 +80,22 @@ export const JourneysDialog = ({
 }: JourneysDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<Journey[]>(stored);
+    const guard = useDiscardGuard(draft, stored, onClose);
     const [phaseOf, setPhaseOf] = useState(
         initially?.phase ? { id: initially.journeyId, phase: initially.phase } : undefined,
     );
     const [destinationsOf, setDestinationsOf] = useState(initially?.destinations ? initially.journeyId : undefined);
     const [renaming, setRenaming] = useState<{ id: string; name: string }>();
     const [removingId, setRemovingId] = useState<string>();
+
+    const context: EditingContext = { level, blocked };
+    const isPlatform = level === 'platform';
+    /** Every change goes through the rules of `journeyEditing`; a refused one changes nothing. */
+    const edit = (command: JourneysCommand) =>
+        setDraft((current) => {
+            const result = editJourneys(current, command, context);
+            return result.ok ? result.value : current;
+        });
 
     const own = journeysOf(draft, type);
     const typeLabel = typeName ?? t(`conversationModules.type.${type}`);
@@ -95,9 +107,10 @@ export const JourneysDialog = ({
     const phaseJourney = find(phaseOf?.id);
     const removing = find(removingId);
 
+    // Saving fixes the link addresses for good and raises the versions of changed questions.
     const save = () =>
         onSave(
-            draft.map((journey) => {
+            fixLinkSlugs(draft).map((journey) => {
                 const before = stored.find((candidate) => candidate.id === journey.id);
                 return before ? prepareJourneyForPublish(journey, before) : journey;
             }),
@@ -122,10 +135,12 @@ export const JourneysDialog = ({
                     </div>
                 }
                 onClose={onClose}
+                onDismiss={guard.onDismiss}
                 wrapperTestId="journeys-dialog"
                 scrollableBody
             >
                 <div className={styles.dialogBody}>
+                    {guard.confirm}
                     <FlightPath available={phasesOf(type)} captions />
                     {unrouted.length > 0 && (
                         <div className={styles.notice} data-testid="journeys-unrouted">
@@ -149,31 +164,43 @@ export const JourneysDialog = ({
                                     journey={journey}
                                     topics={topics}
                                     level={level}
+                                    reachable={isReachable(draft, journey)}
                                     onOpenPhase={(phase) => setPhaseOf({ id: journey.id, phase })}
-                                    onOpenDestinations={() => setDestinationsOf(journey.id)}
-                                    onRename={() => setRenaming({ id: journey.id, name: journey.name })}
-                                    onDuplicate={() =>
-                                        setDraft((current) => {
-                                            const copy = duplicateJourney(current, journey.id, nextId('journey'));
-                                            return copy ? [...current, copy] : current;
-                                        })
+                                    onOpenDestinations={isPlatform ? () => setDestinationsOf(journey.id) : undefined}
+                                    onRename={
+                                        isPlatform
+                                            ? () => setRenaming({ id: journey.id, name: journey.name })
+                                            : undefined
                                     }
-                                    onRemove={() => setRemovingId(journey.id)}
+                                    onDuplicate={
+                                        isPlatform
+                                            ? () =>
+                                                  edit({
+                                                      type: 'duplicate',
+                                                      sourceId: journey.id,
+                                                      id: nextId('journey'),
+                                                      name: journey.name
+                                                          ? t('journeys.journey.copyOf', { name: journey.name })
+                                                          : '',
+                                                  })
+                                            : undefined
+                                    }
+                                    onRemove={isPlatform ? () => setRemovingId(journey.id) : undefined}
                                 />
                             ))}
                         </ul>
                     )}
-                    <div>
-                        <M3Button
-                            variant="tonal"
-                            icon={<Add />}
-                            onClick={() =>
-                                setDraft((current) => [...current, newJourney(current, type, nextId('journey'))])
-                            }
-                        >
-                            {t('journeys.dialog.add')}
-                        </M3Button>
-                    </div>
+                    {mayEditJourneys(draft, { type: 'create', conversationType: type, id: 'probe' }, context) && (
+                        <div>
+                            <M3Button
+                                variant="tonal"
+                                icon={<Add />}
+                                onClick={() => edit({ type: 'create', conversationType: type, id: nextId('journey') })}
+                            >
+                                {t('journeys.dialog.add')}
+                            </M3Button>
+                        </div>
+                    )}
                 </div>
             </Modal>
 
@@ -185,6 +212,7 @@ export const JourneysDialog = ({
                     translator={translator}
                     suggester={suggester}
                     blocked={blocked}
+                    level={level}
                     initially={
                         initially?.journeyId === phaseOf.id && initially.phase === phaseOf.phase
                             ? { stepId: initially.stepId, adding: initially.adding, language: initially.language }
@@ -198,7 +226,7 @@ export const JourneysDialog = ({
                 />
             )}
 
-            {destinationsOf && (
+            {destinationsOf && isPlatform && (
                 <DestinationsDialog
                     journeys={draft}
                     journeyId={destinationsOf}
@@ -218,8 +246,11 @@ export const JourneysDialog = ({
                     cancelLabelKey="journeys.action.cancel"
                     zIndex={1100}
                     onConfirm={() => {
-                        const journey = find(renaming.id);
-                        if (journey) replace({ ...journey, name: renaming.name.trim() });
+                        edit({
+                            type: 'edit',
+                            journeyId: renaming.id,
+                            command: { type: 'rename', name: renaming.name },
+                        });
                         setRenaming(undefined);
                     }}
                     onClose={() => setRenaming(undefined)}
@@ -241,7 +272,7 @@ export const JourneysDialog = ({
                     cancelLabelKey="journeys.action.cancel"
                     zIndex={1100}
                     onConfirm={() => {
-                        setDraft((current) => current.filter((journey) => journey.id !== removing.id));
+                        edit({ type: 'delete', journeyId: removing.id });
                         setRemovingId(undefined);
                     }}
                     onClose={() => setRemovingId(undefined)}

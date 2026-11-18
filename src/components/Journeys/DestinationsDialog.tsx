@@ -17,7 +17,8 @@ import {
     addLinkForTopic,
     assignRegistrationTopic,
     linkPath,
-    linksOf,
+    allLinksOf,
+    setRoutes,
     registrationJourneyOf,
     registrationRoute,
     unassignRegistrationTopic,
@@ -27,6 +28,7 @@ import {
 } from './journey';
 import { nextId } from './ids';
 import { journeyLabel } from './stepText';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 interface DestinationsDialogProps {
@@ -39,6 +41,8 @@ interface DestinationsDialogProps {
 }
 
 const linkAnchor = (id: string) => `journey-link-${id}`;
+/** Focus target after the last link went: the button that makes a new one. */
+const NEW_LINK = 'new';
 
 /**
  * Where a journey leads and how people get on it. The routes sit on top as buttons: the
@@ -48,6 +52,7 @@ const linkAnchor = (id: string) => `journey-link-${id}`;
 export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClose }: DestinationsDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<Journey[]>(journeys);
+    const guard = useDiscardGuard(draft, journeys, onClose);
     const [focusLink, setFocusLink] = useState<string>();
     const journey = draft.find((candidate) => candidate.id === journeyId);
 
@@ -55,7 +60,7 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
         if (!focusLink) return;
         const node = document.getElementById(linkAnchor(focusLink));
         node?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
-        node?.querySelector('input')?.focus();
+        (node instanceof HTMLButtonElement ? node : node?.querySelector('input'))?.focus();
         setFocusLink(undefined);
     }, [focusLink]);
 
@@ -64,11 +69,14 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
     const type = journey.conversationType;
     const route = registrationRoute(type);
     const canRegister = route?.available === true;
-    const allLinks = linksOf(draft, type);
+    // One `/l/` namespace for every conversation type.
+    const allLinks = allLinksOf(draft);
+    /** A link without a name is called by its address, so no control reads "Link  löschen". */
+    const nameOf = (link: JourneyLink) => link.name || linkPath(link, allLinks);
 
     const replace = (next: Journey) =>
         setDraft((current) => current.map((candidate) => (candidate.id === journeyId ? next : candidate)));
-    const setLinks = (links: JourneyLink[]) => replace({ ...journey, routes: { ...journey.routes, links } });
+    const setLinks = (links: JourneyLink[]) => replace(setRoutes(journey, { ...journey.routes, links }));
     const setLink = (id: string, change: Partial<JourneyLink>) =>
         setLinks(journey.routes.links.map((link) => (link.id === id ? { ...link, ...change } : link)));
 
@@ -108,10 +116,12 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
                 </div>
             }
             onClose={onClose}
+            onDismiss={guard.onDismiss}
             wrapperTestId="journey-destinations"
             scrollableBody
         >
             <div className={styles.dialogBody}>
+                {guard.confirm}
                 <section className={styles.section} aria-labelledby="journey-routes">
                     <h3 className={styles.sectionTitle} id="journey-routes">
                         {t('journeys.route.title')}
@@ -142,7 +152,7 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
                                     className={styles.route}
                                     onClick={() => setFocusLink(link.id)}
                                     title={t('journeys.route.goToLink', {
-                                        name: link.name || linkPath(link, allLinks),
+                                        name: nameOf(link),
                                     })}
                                 >
                                     <LinkOutlined aria-hidden />
@@ -156,6 +166,7 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
                         <li>
                             <button
                                 type="button"
+                                id={linkAnchor(NEW_LINK)}
                                 className={classNames(styles.route, styles.routeAdd)}
                                 onClick={newLink}
                             >
@@ -209,7 +220,7 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
                                                 className={classNames(styles.routeToggle, styles.routeToggleOn)}
                                                 onClick={() => setFocusLink(link.id)}
                                                 title={t('journeys.route.goToLink', {
-                                                    name: link.name || linkPath(link, allLinks),
+                                                    name: nameOf(link),
                                                 })}
                                             >
                                                 <LinkOutlined aria-hidden />
@@ -261,19 +272,23 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
                                     />
                                     <IconButton
                                         icon={<DeleteOutline />}
-                                        ariaLabel={t('journeys.link.remove', { name: link.name })}
-                                        onClick={() =>
-                                            setLinks(journey.routes.links.filter((entry) => entry.id !== link.id))
-                                        }
+                                        ariaLabel={t('journeys.link.remove', { name: nameOf(link) })}
+                                        onClick={() => {
+                                            const index = journey.routes.links.indexOf(link);
+                                            const neighbour =
+                                                journey.routes.links[index - 1] ?? journey.routes.links[index + 1];
+                                            setLinks(journey.routes.links.filter((entry) => entry.id !== link.id));
+                                            setFocusLink(neighbour?.id ?? NEW_LINK);
+                                        }}
                                     />
                                 </div>
                                 <p className={styles.linkPath}>
                                     <LinkOutlined aria-hidden />
                                     <code>{linkPath(link, allLinks)}</code>
-                                    <span>{t('journeys.link.tokenHint')}</span>
+                                    <span>{t(link.slug ? 'journeys.link.pathFixed' : 'journeys.link.tokenHint')}</span>
                                 </p>
                                 <InputChipPicker
-                                    ariaLabel={t('journeys.link.topics', { name: link.name })}
+                                    ariaLabel={t('journeys.link.topics', { name: nameOf(link) })}
                                     options={topics.map((topic) => ({ value: topic.id, label: topic.name }))}
                                     value={link.topicIds}
                                     onChange={(topicIds) => setLink(link.id, { topicIds })}

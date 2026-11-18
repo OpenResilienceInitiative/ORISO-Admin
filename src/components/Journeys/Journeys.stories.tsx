@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import {
     addStep,
     exampleInfoPanel,
@@ -12,7 +12,7 @@ import {
     type Journey,
 } from './journey';
 import { JourneysSettings } from './index';
-import { fakeSuggester, fakeTranslator } from './journeyTranslation';
+import { fakeSuggester, fakeTranslator } from './journeyFakes';
 import { TranslationApiError } from '../../api/tenant/translation';
 
 /** Synthetic topics, as a Caritas install ships them. */
@@ -350,13 +350,142 @@ export const EditingRatings: Story = {
 
 /** Below the platform: the check-in comes from the platform; flight and arrival may be changed. */
 export const TraegerLevel: Story = {
-    args: { level: 'tenant', initiallyOpen: mail() },
+    args: { level: 'tenant', canEditAppearance: false, initiallyOpen: mail() },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const departure = await body.findByTestId('journey-standard-departure');
         await expect(departure.tagName).toBe('DIV');
         await expect(departure).toHaveTextContent('Kommt von der Plattform');
         await expect(body.getByTestId('journey-standard-flight').tagName).toBe('BUTTON');
+    },
+};
+
+/**
+ * Träger level: the change of the flight is stored as the Träger's own layer; the platform
+ * journey itself is not saved (ADR-036 decision 29). Journey actions and destinations are the
+ * platform's.
+ */
+export const TraegerChangesItsOwnLayer: Story = {
+    args: {
+        level: 'tenant',
+        ownerId: 'traeger-1',
+        canEditAppearance: false,
+        onSave: fn(),
+        onSaveLayers: fn(),
+        initiallyOpen: mail({ journeyId: 'standard', phase: 'flight' }),
+    },
+    play: async ({ canvasElement, args }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const phase = await body.findByTestId('journey-phase-flight');
+        await userEvent.click(within(phase).getByRole('button', { name: 'Schritt hinzufügen' }));
+        await userEvent.click(await body.findByTestId('journey-add-message'));
+        await userEvent.click(
+            within(await body.findByTestId('journey-step-dialog')).getByRole('button', { name: 'Übernehmen' }),
+        );
+        await userEvent.click(within(phase).getByRole('button', { name: 'Übernehmen' }));
+        const dialog = body.getByTestId('journeys-dialog');
+        await expect(within(dialog).queryByRole('button', { name: 'Neue Reise' })).not.toBeInTheDocument();
+        await expect(
+            within(dialog).queryByRole('button', { name: /Weitere Aktionen für Reise/ }),
+        ).not.toBeInTheDocument();
+        await expect(body.getByTestId('journey-standard-destinations')).toBeDisabled();
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+        await expect(args.onSave).not.toHaveBeenCalled();
+        await expect(args.onSaveLayers).toHaveBeenCalledWith([
+            expect.objectContaining({ journeyId: 'standard', level: 'tenant', ownerId: 'traeger-1' }),
+        ]);
+    },
+};
+
+/** Beratungsstelle level: the check-in opens read-only, flight and arrival stay editable. */
+export const BeratungsstelleLevel: Story = {
+    args: {
+        level: 'agency',
+        ownerId: 'centre-1',
+        canEditAppearance: false,
+        initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const phase = await body.findByTestId('journey-phase-departure');
+        await expect(within(phase).getByTestId('journey-phase-read-only')).toHaveTextContent('Kommt von der Plattform');
+        await expect(within(phase).queryByRole('button', { name: 'Schritt hinzufügen' })).not.toBeInTheDocument();
+        await expect(within(phase).queryByRole('button', { name: 'Übernehmen' })).not.toBeInTheDocument();
+        await userEvent.click(within(phase).getByRole('button', { name: /Weitere Aktionen für E-Mail-Adresse/ }));
+        await expect(await body.findByRole('menuitem', { name: /gehört der Plattform/ })).toHaveAttribute(
+            'aria-disabled',
+            'true',
+        );
+    },
+};
+
+/** A click beside a dialog with changes asks first; without changes it just closes. */
+export const DiscardAsksFirst: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'flight' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const phase = await body.findByTestId('journey-phase-flight');
+        const closeOf = (dialog: HTMLElement) =>
+            (dialog.closest('.ant-modal-wrap') ?? dialog).querySelector('.ant-modal-close') as HTMLElement;
+        await userEvent.click(closeOf(phase));
+        await waitFor(() => expect(body.queryByTestId('journey-phase-flight')).not.toBeInTheDocument());
+        await userEvent.click(body.getByTestId('journey-standard-flight'));
+        const again = await body.findByTestId('journey-phase-flight');
+        await userEvent.click(within(again).getByRole('button', { name: /Weitere Aktionen für Anfrage/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: 'Nach unten' }));
+        await userEvent.click(closeOf(again));
+        const ask = await body.findByTestId('journey-discard');
+        await expect(ask).toHaveTextContent('Änderungen verwerfen?');
+        await userEvent.click(within(ask).getByRole('button', { name: 'Weiter bearbeiten' }));
+        await expect(body.getByTestId('journey-phase-flight')).toBeInTheDocument();
+        await expect(phase).not.toBeInTheDocument();
+    },
+};
+
+/** Closing a nested dialog gives focus back to what opened it. */
+export const FocusReturns: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const phase = await body.findByTestId('journey-phase-departure');
+        const open = within(within(phase).getByTestId('journey-step-email')).getByRole('button', {
+            name: /^E-Mail-Adresse\s*Freiwillig/,
+        });
+        await userEvent.click(open);
+        const step = await body.findByTestId('journey-step-dialog');
+        await userEvent.click(within(step).getByRole('button', { name: 'Abbrechen' }));
+        await waitFor(() => expect(open).toHaveFocus());
+    },
+};
+
+/** The language tabs are one radio group: one tab stop, arrow keys switch the language. */
+export const LanguageTabsByKeyboard: Story = {
+    args: {
+        initiallyOpen: mail({
+            journeyId: 'standard',
+            phase: 'departure',
+            stepId: 'standard-AGENCY_COUNSELLING:postcode',
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const dialog = await body.findByTestId('journey-step-dialog');
+        const german = within(dialog).getByRole('radio', { name: /^DE – / });
+        await expect(german).toHaveAttribute('tabindex', '0');
+        await expect(within(dialog).getByRole('radio', { name: /^EN/ })).toHaveAttribute('tabindex', '-1');
+        german.focus();
+        await userEvent.keyboard('{ArrowRight}');
+        await expect(within(dialog).getByRole('radio', { name: /^DE du/ })).toHaveFocus();
+        await expect(within(dialog).getByRole('radio', { name: /^DE du/ })).toBeChecked();
+    },
+};
+
+/** A topic deleted since the journeys were saved drops out of their routes, and the section says so. */
+export const DeletedTopic: Story = {
+    args: { topics: topics.filter((topic) => topic.id !== 6) },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByTestId('journeys-pruned-topics')).toHaveTextContent('Ein Thema gibt es nicht mehr');
     },
 };
 

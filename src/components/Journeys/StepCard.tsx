@@ -44,7 +44,14 @@ export interface StepCardProps {
     insertActive?: boolean;
     /** "Choose a topic" only: preselect the topic (journeys reached by one-topic links only). */
     topicPreselect?: { on: boolean; allowed: boolean; onToggle: (on: boolean) => void };
+    /** The phase belongs to a higher level: the card only opens, nothing changes. */
+    readOnly?: boolean;
+    /** Whether the rules let the step go one place up or down (not only the list edges). */
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
     onTranslate?: () => void;
+    /** A translation of this step is running. */
+    translating?: boolean;
     onMarkChecked?: (language: string) => void;
     onDragStart: (event: DragEvent<HTMLLIElement>) => void;
     onDragOver: (event: DragEvent<HTMLLIElement>) => void;
@@ -78,7 +85,11 @@ export const StepCard = ({
     onInsertBelow,
     insertActive = false,
     topicPreselect,
+    readOnly = false,
+    canMoveUp = true,
+    canMoveDown = true,
     onTranslate,
+    translating = false,
     onMarkChecked,
     onDragStart,
     onDragOver,
@@ -89,8 +100,11 @@ export const StepCard = ({
     const title = stepTitle(step, language, t);
     const summary = stepSummary(step, language, t);
     const must = isMustStep(step);
-    const movable = canMoveStep(step);
-    const removable = canRemoveStep(step);
+    const movable = !readOnly && canMoveStep(step);
+    const removable = !readOnly && canRemoveStep(step);
+    let removeLabel = 'journeys.step.removeLocked';
+    if (removable) removeLabel = 'journeys.step.remove';
+    else if (readOnly) removeLabel = 'journeys.step.removeOfHigherLevel';
 
     const onHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
         if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
@@ -154,7 +168,12 @@ export const StepCard = ({
             <div className={classNames(styles.step, { [styles.stepMust]: must, [styles.stepDragging]: dragging })}>
                 <div className={styles.stepTop}>
                     <span className={styles.chips}>
-                        <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
+                        <TranslationPill
+                            step={step}
+                            onTranslate={onTranslate}
+                            busy={translating}
+                            onMarkChecked={readOnly ? undefined : onMarkChecked}
+                        />
                         <SearchPill profile={step.profile} onOpen={onOpenProfile && (() => onOpenProfile('terms'))} />
                     </span>
                     <span className={styles.chips}>
@@ -213,29 +232,33 @@ export const StepCard = ({
                                       },
                                   ]
                                 : []),
-                            {
-                                key: 'add',
-                                label: t('journeys.step.addBelow'),
-                                icon: <Add />,
-                                onSelect: onAddBelow,
-                            },
+                            ...(readOnly
+                                ? []
+                                : [
+                                      {
+                                          key: 'add',
+                                          label: t('journeys.step.addBelow'),
+                                          icon: <Add />,
+                                          onSelect: onAddBelow,
+                                      },
+                                  ]),
                             {
                                 key: 'up',
                                 label: t('journeys.step.moveUp'),
                                 icon: <ArrowUpward />,
-                                disabled: !movable || position === 1,
+                                disabled: !movable || position === 1 || !canMoveUp,
                                 onSelect: () => onMove(-1),
                             },
                             {
                                 key: 'down',
                                 label: t('journeys.step.moveDown'),
                                 icon: <ArrowDownward />,
-                                disabled: !movable || position === total,
+                                disabled: !movable || position === total || !canMoveDown,
                                 onSelect: () => onMove(1),
                             },
                             {
                                 key: 'remove',
-                                label: t(removable ? 'journeys.step.remove' : 'journeys.step.removeLocked'),
+                                label: t(removeLabel),
                                 icon: <DeleteOutline />,
                                 tone: 'error',
                                 disabled: !removable,

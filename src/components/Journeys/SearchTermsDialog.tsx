@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import Add from '@mui/icons-material/Add';
@@ -14,15 +14,15 @@ import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translati
 import { KEYWORD_TARGET, addKeywords, emptyProfile, keywordsIn, removeKeyword, type BlockProfile } from './journey';
 import { translateKeywords, type KeywordSuggester, type Translator } from './journeyTranslation';
 import { BlockDialogFrame, type BlockDialogProps } from './ProfileDialog';
+import { LanguageRadioGroup } from './LanguageTabs';
 import { TranslateIcon } from './TranslateIcon';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 interface SearchTermsDialogProps extends BlockDialogProps {
     translator?: Translator;
     suggester?: KeywordSuggester;
 }
-
-const codeOf = (language: string) => (language === 'de@informal' ? 'DE du' : language.toUpperCase());
 
 /**
  * The words under which other editors find a block in the library, kept per language: typed by
@@ -41,6 +41,8 @@ export const SearchTermsDialog = ({
 }: SearchTermsDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<BlockProfile>(profile ?? emptyProfile(defaultAuthor));
+    const [initial] = useState(draft);
+    const guard = useDiscardGuard(draft, initial, onClose);
     const [language, setLanguage] = useState<string>(MODULE_SOURCE_LANGUAGE);
     const [term, setTerm] = useState('');
     const [suggestions, setSuggestions] = useState<string[]>();
@@ -62,10 +64,7 @@ export const SearchTermsDialog = ({
         setSuggestions(undefined);
         setTerm('');
     };
-    const take = (entries: string[]) => {
-        setDraft((current) => addKeywords(current, language, entries));
-        setSuggestions((current) => current?.filter((entry) => !entries.includes(entry)));
-    };
+    const take = (entries: string[]) => setDraft((current) => addKeywords(current, language, entries));
 
     const run = async (kind: 'translate' | 'suggest', job: () => Promise<void>) => {
         setBusy(kind);
@@ -78,19 +77,31 @@ export const SearchTermsDialog = ({
             setBusy(undefined);
         }
     };
+    // Answers arrive later: they are added to the terms as they are then, and suggestions for a
+    // language the editor has meanwhile left are dropped instead of landing in the wrong one.
+    const shownLanguage = useRef(language);
+    shownLanguage.current = language;
     const translateAll = () =>
         run('translate', async () => {
             if (!translator) return;
             const others = MODULE_LANGUAGES.filter((code) => code !== MODULE_SOURCE_LANGUAGE);
-            const keywords = await translateKeywords(draft.keywords, others, translator);
-            setDraft((current) => ({ ...current, keywords }));
+            const found = await translateKeywords(germanTerms, others, translator);
+            setDraft((current) =>
+                Object.entries(found).reduce(
+                    (next, [code, entries]) => addKeywords(next, code, entries ?? []),
+                    current,
+                ),
+            );
         });
     const suggest = () =>
         run('suggest', async () => {
             if (!suggester) return;
-            const found = await suggester({ language, title, about: draft.about, existing: terms });
-            setSuggestions(found.filter((entry) => !terms.includes(entry)));
+            const asked = language;
+            const found = await suggester({ language: asked, title, about: draft.about, existing: terms });
+            if (shownLanguage.current !== asked) return;
+            setSuggestions(found);
         });
+    const open = suggestions?.filter((entry) => !terms.some((known) => known.toLowerCase() === entry.toLowerCase()));
 
     return (
         <BlockDialogFrame
@@ -100,37 +111,27 @@ export const SearchTermsDialog = ({
             testId="journey-search-terms-dialog"
             onApply={() => onApply(draft)}
             onClose={onClose}
+            onDismiss={guard.onDismiss}
         >
+            {guard.confirm}
             <p className={styles.help}>{t('journeys.keywords.help', { name: title, count: KEYWORD_TARGET })}</p>
 
             <div className={styles.termLanguages}>
-                <div className={styles.languageTabs} role="radiogroup" aria-label={t('journeys.keywords.language')}>
-                    {MODULE_LANGUAGES.map((code) => {
+                <LanguageRadioGroup
+                    label={t('journeys.keywords.language')}
+                    value={language}
+                    onChange={switchLanguage}
+                    options={MODULE_LANGUAGES.map((code) => {
                         const count = keywordsIn(draft, code).length;
                         const covered = count >= KEYWORD_TARGET;
-                        return (
-                            <button
-                                key={code}
-                                type="button"
-                                role="radio"
-                                aria-checked={language === code}
-                                aria-label={`${codeOf(code)} – ${t(`language.${code}`, code)}, ${t(
-                                    'journeys.keywords.count',
-                                    { count },
-                                )}`}
-                                className={classNames(
-                                    styles.languageTab,
-                                    covered ? styles.languageTab_checked : styles.languageTab_missing,
-                                    { [styles.languageTabOn]: language === code },
-                                )}
-                                onClick={() => switchLanguage(code)}
-                            >
-                                {codeOf(code)}
-                                <span aria-hidden>{covered ? <Check /> : count}</span>
-                            </button>
-                        );
+                        return {
+                            language: code,
+                            state: t('journeys.keywords.count', { count }),
+                            mark: covered ? <Check /> : count,
+                            className: covered ? styles.languageTab_checked : styles.languageTab_missing,
+                        };
                     })}
-                </div>
+                />
                 {translator && (
                     <M3Tooltip text={translateLabel} nameOnly portal>
                         <IconButton
@@ -202,8 +203,8 @@ export const SearchTermsDialog = ({
                             <AutoAwesomeOutlined aria-hidden />
                             {t('journeys.keywords.suggestions', { language: languageName })}
                         </h3>
-                        {suggestions && suggestions.length > 0 && (
-                            <M3Button variant="text" onClick={() => take(suggestions)}>
+                        {open && open.length > 0 && (
+                            <M3Button variant="text" onClick={() => take(open)}>
                                 {t('journeys.keywords.takeAll')}
                             </M3Button>
                         )}
@@ -214,10 +215,10 @@ export const SearchTermsDialog = ({
                     {!suggestions && (
                         <p className={styles.help}>{t('journeys.keywords.suggestHelp', { language: languageName })}</p>
                     )}
-                    {suggestions?.length === 0 && <p className={styles.help}>{t('journeys.keywords.noSuggestions')}</p>}
-                    {suggestions && suggestions.length > 0 && (
+                    {open?.length === 0 && <p className={styles.help}>{t('journeys.keywords.noSuggestions')}</p>}
+                    {open && open.length > 0 && (
                         <ul className={styles.keywordCloud}>
-                            {suggestions.map((entry) => (
+                            {open.map((entry) => (
                                 <li key={entry}>
                                     <button
                                         type="button"

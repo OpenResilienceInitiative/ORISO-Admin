@@ -1,7 +1,8 @@
 import type { TFunction } from 'i18next';
 import { isMustStep, stepContentCount, type Journey, type JourneyPhase, type JourneyStep } from './journey';
 
-const plain = (html: string | undefined) =>
+/** The words of a text without markup, for one-line previews and placeholders. */
+export const plain = (html: string | undefined) =>
     (html ?? '')
         .replace(/<[^>]*>/g, ' ')
         .replace(/\s+/g, ' ')

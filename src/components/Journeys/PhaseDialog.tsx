@@ -7,21 +7,19 @@ import { M3Button } from '../M3Button';
 import { ToggleRow } from '../ToggleRow';
 import { MODULE_SOURCE_LANGUAGE } from '../ConversationModules/conversationModule';
 import {
-    addStep,
+    canMoveBy,
     canMoveStep,
+    editablePhases,
     isSkipped,
     markChecked,
     missingSafetyAspects,
-    moveStep,
-    removeStep,
-    splitQuestionStep,
     START_OF_PHASE,
     canPreselectTopic,
     firstFreeIndex,
     isTopicPreselected,
-    setTopicPreselected,
     updateStep,
     type Journey,
+    type JourneyLevel,
     type JourneyPhase,
     type JourneyStep,
     type NewStep,
@@ -31,11 +29,18 @@ import { nextId } from './ids';
 import { PhaseIcon } from './PhaseIcon';
 import { StepCard } from './StepCard';
 import { StepDialog } from './StepDialog';
-import { translateStepMissing, type KeywordSuggester, type Translator } from './journeyTranslation';
+import {
+    applyTranslationFill,
+    requestStepTranslation,
+    type KeywordSuggester,
+    type Translator,
+} from './journeyTranslation';
+import { editJourney, mayEditJourney, type EditingContext, type JourneyCommand } from './journeyEditing';
 import { BlockDialog } from './BlockDialog';
 import type { ProfileView } from './ProfileDialog';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import { blockContext, journeyLabel, stepTitle } from './stepText';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 export interface PhaseDialogProps {
@@ -47,6 +52,8 @@ export interface PhaseDialogProps {
     suggester?: KeywordSuggester;
     /** Building blocks Funktionszugriff switched off. */
     blocked?: readonly string[];
+    /** Who edits. A phase of a higher level opens read-only. */
+    level?: JourneyLevel;
     /** Opens one step, or the "add step" list, right away (stories). */
     initially?: { stepId?: string; adding?: boolean; language?: string };
     onApply: (journey: Journey) => void;
@@ -68,12 +75,14 @@ export const PhaseDialog = ({
     translator,
     suggester,
     blocked = [],
+    level = 'platform',
     initially,
     onApply,
     onClose,
 }: PhaseDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<Journey>(journey);
+    const guard = useDiscardGuard(draft, journey, onClose);
     const [editingId, setEditingId] = useState<string | undefined>(initially?.stepId);
     /** `null` adds at the end, a step id adds right below that step. */
     const [addingAfter, setAddingAfter] = useState<string | null | undefined>(initially?.adding ? null : undefined);
@@ -83,6 +92,18 @@ export const PhaseDialog = ({
     const [draggedId, setDraggedId] = useState<string>();
     const [drop, setDrop] = useState<DropTarget>();
     const [announcement, setAnnouncement] = useState('');
+    const [translatingId, setTranslatingId] = useState<string>();
+
+    const context: EditingContext = { level, blocked };
+    const readOnly = !editablePhases(level).includes(phase);
+    /** Every change goes through the rules of `journeyEditing`; a refused one changes nothing. */
+    const edit = (...commands: JourneyCommand[]) =>
+        setDraft((current) =>
+            commands.reduce((before, command) => {
+                const result = editJourney(before, command, context);
+                return result.ok ? result.value : before;
+            }, current),
+        );
 
     const language = MODULE_SOURCE_LANGUAGE;
     const steps = draft.phases[phase];
@@ -93,8 +114,12 @@ export const PhaseDialog = ({
     const missingSafety = phase === 'flight' ? missingSafetyAspects(draft) : [];
 
     const moveTo = (step: JourneyStep, toIndex: number) => {
-        const next = moveStep(draft, phase, step.id, toIndex);
-        if (next === draft) return;
+        const result = editJourney(draft, { type: 'moveStep', phase, stepId: step.id, toIndex }, context);
+        if (result.ok === false) {
+            setAnnouncement(t('journeys.step.cannotMove', { name: stepTitle(step, language, t) }));
+            return;
+        }
+        const next = result.value;
         setDraft(next);
         setAnnouncement(
             t('journeys.step.moved', {
@@ -107,7 +132,7 @@ export const PhaseDialog = ({
 
     const add = (newStep: NewStep) => {
         const id = nextId('step');
-        setDraft((current) => addStep(current, phase, newStep, id, addingAfter ?? undefined, blocked));
+        edit({ type: 'addStep', phase, step: newStep, id, after: addingAfter ?? undefined });
         setAddingAfter(undefined);
         // What the platform ships is ready to use; everything else is written first.
         if (newStep.kind !== 'core' && newStep.kind !== 'addon') setEditingId(id);
@@ -151,21 +176,35 @@ export const PhaseDialog = ({
                         <M3Button variant="text" onClick={onClose}>
                             {t('journeys.action.cancel')}
                         </M3Button>
-                        <M3Button variant="filled" onClick={() => onApply(draft)}>
-                            {t('journeys.action.apply')}
-                        </M3Button>
+                        {!readOnly && (
+                            <M3Button
+                                variant="filled"
+                                disabled={translatingId !== undefined}
+                                onClick={() => onApply(draft)}
+                            >
+                                {t('journeys.action.apply')}
+                            </M3Button>
+                        )}
                     </div>
                 }
                 onClose={onClose}
+                onDismiss={guard.onDismiss}
                 wrapperTestId={`journey-phase-${phase}`}
                 scrollableBody
             >
                 <div className={styles.dialogBody}>
+                    {guard.confirm}
                     <p className={styles.srOnly} role="status" aria-live="polite">
                         {announcement}
                     </p>
 
                     <p className={styles.help}>{t(`journeys.phaseUnit.${phase}`)}</p>
+
+                    {readOnly && (
+                        <div className={styles.notice} data-testid="journey-phase-read-only">
+                            <p>{t('journeys.level.departureLocked')}</p>
+                        </div>
+                    )}
 
                     {translationError && (
                         <div className={styles.warning} role="alert" data-testid="journey-translation-error">
@@ -186,14 +225,12 @@ export const PhaseDialog = ({
                         </div>
                     )}
 
-                    {phase === 'arrival' && (
+                    {phase === 'arrival' && mayEditJourney(draft, { type: 'setSurvey', anonymous: true }, context) && (
                         <ToggleRow
                             label={t('conversationModules.survey.anonymous')}
                             description={t('conversationModules.survey.anonymousHelp')}
                             checked={draft.survey.anonymous}
-                            onCheckedChange={(anonymous) =>
-                                setDraft((current) => ({ ...current, survey: { anonymous } }))
-                            }
+                            onCheckedChange={(anonymous) => edit({ type: 'setSurvey', anonymous })}
                         />
                     )}
 
@@ -201,7 +238,7 @@ export const PhaseDialog = ({
                         <p className={styles.intro}>{t('journeys.phase.empty')}</p>
                     ) : (
                         <>
-                            {firstFreeIndex(steps) === 0 && (
+                            {!readOnly && firstFreeIndex(steps) === 0 && (
                                 <button
                                     type="button"
                                     className={classNames(styles.insertLine, styles.insertLineStart, {
@@ -235,43 +272,62 @@ export const PhaseDialog = ({
                                         onRemove={() =>
                                             step.core === 'postcode'
                                                 ? setConfirmRemove(step)
-                                                : setDraft((current) => removeStep(current, phase, step.id))
+                                                : edit({ type: 'removeStep', phase, stepId: step.id })
                                         }
                                         onOpenProfile={(view) => setProfileOf({ id: step.id, view })}
-                                        onInsertBelow={() => setAddingAfter(step.id)}
+                                        onInsertBelow={readOnly ? undefined : () => setAddingAfter(step.id)}
                                         insertActive={addingAfter === step.id}
+                                        readOnly={readOnly}
+                                        canMoveUp={canMoveBy(draft, phase, step.id, -1)}
+                                        canMoveDown={canMoveBy(draft, phase, step.id, 1)}
                                         topicPreselect={
-                                            step.core === 'topic' && draft.conversationType === 'AGENCY_COUNSELLING'
+                                            step.core === 'topic' && !readOnly
                                                 ? {
                                                       on: isTopicPreselected(draft),
                                                       allowed: canPreselectTopic(draft),
-                                                      onToggle: (on: boolean) =>
-                                                          setDraft((current) => setTopicPreselected(current, on)),
+                                                      onToggle: (on: boolean) => edit({ type: 'preselectTopic', on }),
                                                   }
                                                 : undefined
                                         }
+                                        translating={translatingId === step.id}
                                         onTranslate={
-                                            translator
+                                            translator && !readOnly
                                                 ? async () => {
+                                                      setTranslatingId(step.id);
                                                       setTranslationError(undefined);
                                                       try {
-                                                          const translated = await translateStepMissing(
-                                                              step,
-                                                              translator,
-                                                          );
-                                                          setDraft((current) =>
-                                                              updateStep(current, phase, step.id, translated),
-                                                          );
+                                                          const fill = await requestStepTranslation(step, translator);
+                                                          // Into the step as it is now; a step removed meanwhile stays removed.
+                                                          setDraft((current) => {
+                                                              const now = current.phases[phase].find(
+                                                                  (candidate) => candidate.id === step.id,
+                                                              );
+                                                              return now
+                                                                  ? updateStep(
+                                                                        current,
+                                                                        phase,
+                                                                        step.id,
+                                                                        applyTranslationFill(now, fill),
+                                                                    )
+                                                                  : current;
+                                                          });
                                                       } catch (error) {
                                                           setTranslationError(getTranslationErrorKey(error));
+                                                      } finally {
+                                                          setTranslatingId(undefined);
                                                       }
                                                   }
                                                 : undefined
                                         }
                                         onMarkChecked={(code) =>
-                                            setDraft((current) =>
-                                                updateStep(current, phase, step.id, markChecked(step, code)),
-                                            )
+                                            setDraft((current) => {
+                                                const now = current.phases[phase].find(
+                                                    (candidate) => candidate.id === step.id,
+                                                );
+                                                return now
+                                                    ? updateStep(current, phase, step.id, markChecked(now, code))
+                                                    : current;
+                                            })
                                         }
                                         onDragStart={(event) => {
                                             if (!canMoveStep(step)) return;
@@ -290,11 +346,13 @@ export const PhaseDialog = ({
                         </>
                     )}
 
-                    <div className={styles.addStep}>
-                        <M3Button variant="tonal" icon={<Add />} onClick={() => setAddingAfter(null)}>
-                            {t('journeys.add.title')}
-                        </M3Button>
-                    </div>
+                    {!readOnly && (
+                        <div className={styles.addStep}>
+                            <M3Button variant="tonal" icon={<Add />} onClick={() => setAddingAfter(null)}>
+                                {t('journeys.add.title')}
+                            </M3Button>
+                        </div>
+                    )}
                 </div>
             </Modal>
             {profileOf && profileStep && (
@@ -311,7 +369,7 @@ export const PhaseDialog = ({
                     translator={translator}
                     suggester={suggester}
                     onApply={(profile) => {
-                        setDraft((current) => updateStep(current, phase, profileOf.id, { profile }));
+                        edit({ type: 'updateStep', phase, stepId: profileOf.id, patch: { profile } });
                         setProfileOf(undefined);
                     }}
                     onClose={() => setProfileOf(undefined)}
@@ -325,7 +383,7 @@ export const PhaseDialog = ({
                     cancelLabelKey="journeys.action.cancel"
                     zIndex={1300}
                     onConfirm={() => {
-                        setDraft((current) => removeStep(current, phase, confirmRemove.id));
+                        edit({ type: 'removeStep', phase, stepId: confirmRemove.id });
                         setConfirmRemove(undefined);
                     }}
                     onClose={() => setConfirmRemove(undefined)}
@@ -350,14 +408,18 @@ export const PhaseDialog = ({
                     translator={translator}
                     suggester={suggester}
                     onApply={(step) => {
-                        setDraft((current) => updateStep(current, phase, step.id, step));
+                        edit({ type: 'replaceStep', phase, step });
                         setEditingId(undefined);
                     }}
                     onSplit={(step) => {
-                        setDraft((current) =>
-                            splitQuestionStep(updateStep(current, phase, step.id, step), phase, step.id, () =>
-                                nextId('step'),
-                            ),
+                        edit(
+                            { type: 'replaceStep', phase, step },
+                            {
+                                type: 'splitStep',
+                                phase,
+                                stepId: step.id,
+                                ids: (step.questions ?? []).slice(1).map(() => nextId('step')),
+                            },
                         );
                         setAnnouncement(t('journeys.stepDialog.splitDone', { count: step.questions?.length ?? 0 }));
                         setEditingId(undefined);

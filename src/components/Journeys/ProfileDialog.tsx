@@ -6,6 +6,7 @@ import { M3Button } from '../M3Button';
 import { FilterChip } from '../FilterChip';
 import { FloatingLabelInput } from '../FloatingLabelInput';
 import { AUDIENCES, emptyProfile, type Audience, type BlockProfile } from './journey';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 /** Which of the two block dialogs: the profile card, or the search terms. */
@@ -29,6 +30,8 @@ interface BlockDialogFrameProps {
     testId: string;
     onApply: () => void;
     onClose: () => void;
+    /** Escape, X and a click beside: asks first while there are changes (`useDiscardGuard`). */
+    onDismiss?: () => void;
     children: ReactNode;
 }
 
@@ -40,6 +43,7 @@ export const BlockDialogFrame = ({
     testId,
     onApply,
     onClose,
+    onDismiss,
     children,
 }: BlockDialogFrameProps) => {
     const { t } = useTranslation();
@@ -62,6 +66,7 @@ export const BlockDialogFrame = ({
                 </div>
             }
             onClose={onClose}
+            onDismiss={onDismiss}
             wrapperTestId={testId}
             scrollableBody
         >
@@ -77,6 +82,8 @@ export const BlockDialogFrame = ({
 export const ProfileDialog = ({ title, context, profile, defaultAuthor, onApply, onClose }: BlockDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<BlockProfile>(profile ?? emptyProfile(defaultAuthor));
+    const [initial] = useState(draft);
+    const guard = useDiscardGuard(draft, initial, onClose);
     const set = (patch: Partial<BlockProfile>) => setDraft((current) => ({ ...current, ...patch }));
 
     return (
@@ -87,7 +94,9 @@ export const ProfileDialog = ({ title, context, profile, defaultAuthor, onApply,
             testId="journey-profile-dialog"
             onApply={() => onApply(draft)}
             onClose={onClose}
+            onDismiss={guard.onDismiss}
         >
+            {guard.confirm}
             <p className={styles.help}>{t('journeys.profileDialog.cardHelp')}</p>
             <FloatingLabelInput
                 label={t('journeys.profile.about')}

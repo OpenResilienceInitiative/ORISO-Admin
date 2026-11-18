@@ -4,25 +4,23 @@ import Undo from '@mui/icons-material/Undo';
 import { FloatingLabelInput } from '../FloatingLabelInput';
 import { IconButton } from '../IconButton';
 import { MODULE_SOURCE_LANGUAGE, type LangMap } from '../ConversationModules/conversationModule';
+import { plain } from './stepText';
 import { TranslateIcon } from './TranslateIcon';
 import styles from './styles.module.scss';
 
 /** How a text of one language came about. */
 export type TextChange = 'typed' | 'machine' | 'reset';
 
-const plain = (html: string | undefined) =>
-    (html ?? '')
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
 interface OriginalLineProps {
     value: LangMap | undefined;
     language: string;
     /** This language of the step was written by a machine and nobody has checked it yet. */
     machine: boolean;
-    /** Machine-translates the original into this field's language; undefined when it failed. */
-    onTranslate?: (source: string) => Promise<string | undefined>;
+    /**
+     * Machine-translates the original into this field's language. The parent writes the answer
+     * into the field as it is then (by the field's path), so nothing typed meanwhile is lost.
+     */
+    onTranslate?: () => Promise<void>;
     onChange: (next: LangMap, how: TextChange) => void;
 }
 
@@ -66,9 +64,11 @@ export const OriginalLine = ({ value, language, machine, onTranslate, onChange }
                     title={t('journeys.field.translate', { language: languageName })}
                     onClick={async () => {
                         setBusy(true);
-                        const translated = await onTranslate(source as string);
-                        setBusy(false);
-                        if (translated) onChange({ ...value, [language]: translated }, 'machine');
+                        try {
+                            await onTranslate();
+                        } finally {
+                            setBusy(false);
+                        }
                     }}
                 />
             )}

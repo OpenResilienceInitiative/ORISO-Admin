@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { standardJourney, translationStatus, type JourneyStep } from './journey';
+import { fakeSuggester, fakeTranslator } from './journeyFakes';
 import {
-    fakeSuggester,
-    fakeTranslator,
+    applyTranslationFill,
+    requestStepTranslation,
     translateKeywords,
     translateStepMissing,
     translateText,
@@ -48,21 +49,53 @@ describe('machine translation through the Admin endpoint', () => {
     });
 });
 
+describe('answers that arrive late never overwrite newer edits', () => {
+    const question = (): JourneyStep => ({
+        id: 's',
+        kind: 'question',
+        title: { de: 'Ihre Lage' },
+        description: {},
+        questions: [
+            { id: 'q1', type: 'text', required: false, label: { de: 'Erste' }, options: [], version: 1 },
+            { id: 'q2', type: 'text', required: false, label: { de: 'Zweite' }, options: [], version: 1 },
+        ],
+    });
+
+    it('keeps a text typed while the translation was running', async () => {
+        const fill = await requestStepTranslation(question(), fakeTranslator);
+        const typed = { ...question(), title: { de: 'Ihre Lage', fr: 'Votre situation' } };
+        expect(applyTranslationFill(typed, fill).title.fr).toBe('Votre situation');
+    });
+
+    it('does not bring back a question deleted while the translation was running', async () => {
+        const fill = await requestStepTranslation(question(), fakeTranslator);
+        const deleted = { ...question(), questions: question().questions?.slice(0, 1) };
+        const after = applyTranslationFill(deleted, fill);
+        expect(after.questions?.map((q) => q.id)).toEqual(['q1']);
+        expect(after.questions?.[0].label.fr).toBe('Erste (fr)');
+    });
+
+    it('writes one field only while it still holds what it held when asked', () => {
+        const step = question();
+        const ask = { texts: [{ path: 'title', language: 'fr', text: 'Situation', expected: '' }] };
+        expect(applyTranslationFill(step, ask).title.fr).toBe('Situation');
+        const typedMeanwhile = { ...step, title: { de: 'Ihre Lage', fr: 'Ma situation' } };
+        expect(applyTranslationFill(typedMeanwhile, ask)).toBe(typedMeanwhile);
+    });
+});
+
 describe('search terms in other languages', () => {
-    it('translates the German terms into the chosen languages in one call, adding, never replacing', async () => {
+    it('translates the German terms into the chosen languages in one call', async () => {
         const translator = vi.fn(fakeTranslator);
-        const next = await translateKeywords({ de: ['Schulden', 'Miete'], en: ['debt'] }, ['en', 'fr'], translator);
+        const found = await translateKeywords(['Schulden', 'Miete'], ['en', 'fr'], translator);
         expect(translator).toHaveBeenCalledTimes(1);
-        // "Schulden" comes back as "debt", which English already has: kept once.
-        expect(next.en).toEqual(['debt', 'rent']);
-        expect(next.fr).toEqual(['dettes', 'loyer']);
-        expect(next.de).toEqual(['Schulden', 'Miete']);
+        expect(found.en).toEqual(['debt', 'rent']);
+        expect(found.fr).toEqual(['dettes', 'loyer']);
     });
 
     it('makes no call without German terms', async () => {
         const translator = vi.fn(fakeTranslator);
-        const keywords = { en: ['debt'] };
-        expect(await translateKeywords(keywords, ['fr'], translator)).toBe(keywords);
+        expect(await translateKeywords([], ['fr'], translator)).toEqual({});
         expect(translator).not.toHaveBeenCalled();
     });
 

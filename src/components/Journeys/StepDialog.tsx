@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Add from '@mui/icons-material/Add';
 import CallSplit from '@mui/icons-material/CallSplit';
@@ -16,9 +16,12 @@ import {
     SCALES,
     isMustStep,
     markChecked,
+    NORMAL_LABEL,
+    textEntries,
     scaleOf,
     triggersFor,
     withScale,
+    withRatingType,
     type JourneyPhase,
     type JourneyStep,
     type PanelAspect,
@@ -35,11 +38,19 @@ import { LanguageTabs } from './LanguageTabs';
 import { blockContext, stepTitle } from './stepText';
 import { OriginalLine, TranslatableField, type TextChange } from './TranslatableField';
 import { TranslationPill } from './TranslationPill';
-import { translateStepMissing, translateText, type KeywordSuggester, type Translator } from './journeyTranslation';
+import {
+    applyTranslationFill,
+    requestStepTranslation,
+    translateText,
+    type KeywordSuggester,
+    type TranslationFill,
+    type Translator,
+} from './journeyTranslation';
 import { BlockDialog } from './BlockDialog';
 import type { ProfileView } from './ProfileDialog';
 import { SearchPill } from './SearchPill';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
+import { useDiscardGuard } from './useDiscardGuard';
 import styles from './styles.module.scss';
 
 export interface StepContext {
@@ -93,34 +104,49 @@ export const StepDialog = ({
 }: StepDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<JourneyStep>(step);
+    const guard = useDiscardGuard(draft, step, onClose);
     const [language, setLanguage] = useState<string>(initialLanguage);
     const [translationError, setTranslationError] = useState<string>();
     const [translating, setTranslating] = useState(false);
     const [profileOpen, setProfileOpen] = useState<ProfileView>();
 
-    /** One field into the language being edited; a failure is named once above the fields. */
-    const translateField = translator
-        ? async (source: string) => {
-              try {
-                  setTranslationError(undefined);
-                  return await translateText(translator, source, language);
-              } catch (error) {
-                  setTranslationError(getTranslationErrorKey(error));
-                  return undefined;
-              }
-          }
-        : undefined;
+    /** The step as it is now, for answers that arrive later. */
+    const latest = useRef(draft);
+    latest.current = draft;
+
+    const runTranslation = async (job: () => Promise<TranslationFill>) => {
+        setTranslationError(undefined);
+        try {
+            const fill = await job();
+            setDraft((current) => applyTranslationFill(current, fill));
+        } catch (error) {
+            setTranslationError(getTranslationErrorKey(error));
+        }
+    };
+
+    /**
+     * One field into the language being edited. The answer is written only while the field still
+     * holds what it held when asked, and only if the field still exists; a failure is named once
+     * above the fields.
+     */
+    const translateAt = (path: string) => {
+        if (!translator) return undefined;
+        return async () => {
+            const field = textEntries(latest.current).find((entry) => entry.path === path)?.text;
+            const source = field?.[MODULE_SOURCE_LANGUAGE];
+            if (!source) return;
+            const target = language;
+            const expected = field?.[target] ?? '';
+            await runTranslation(async () => ({
+                texts: [{ path, language: target, text: await translateText(translator, source, target), expected }],
+            }));
+        };
+    };
     const translateAllMissing = translator
         ? async () => {
               setTranslating(true);
-              setTranslationError(undefined);
-              try {
-                  setDraft(await translateStepMissing(draft, translator));
-              } catch (error) {
-                  setTranslationError(getTranslationErrorKey(error));
-              } finally {
-                  setTranslating(false);
-              }
+              await runTranslation(() => requestStepTranslation(latest.current, translator));
+              setTranslating(false);
           }
         : undefined;
 
@@ -144,7 +170,7 @@ export const StepDialog = ({
             value={draft[key]}
             language={language}
             machine={isMachine}
-            onTranslate={translateField}
+            onTranslate={translateAt(key)}
             onChange={(next, how) => change({ [key]: next }, how)}
             testId={`step-field-${key}`}
         />
@@ -153,13 +179,7 @@ export const StepDialog = ({
 
     const setRating = (id: string, patch: Partial<RatingItem>, how: TextChange = 'typed') =>
         change({ ratings: draft.ratings?.map((rating) => (rating.id === id ? { ...rating, ...patch } : rating)) }, how);
-    const setRatingType = (rating: RatingItem, type: RatingType) =>
-        setRating(
-            rating.id,
-            type === 'stars'
-                ? { type, min: 1, max: 5, midLabel: undefined }
-                : { ...withScale(rating, 'minusFiveToFive'), type },
-        );
+    const setRatingType = (rating: RatingItem, type: RatingType) => setRating(rating.id, withRatingType(rating, type));
     const setAspect = (id: string, patch: Partial<PanelAspect>, how: TextChange = 'typed') =>
         change({ aspects: draft.aspects?.map((aspect) => (aspect.id === id ? { ...aspect, ...patch } : aspect)) }, how);
 
@@ -169,7 +189,7 @@ export const StepDialog = ({
             value={rating[key]}
             language={language}
             machine={isMachine}
-            onTranslate={translateField}
+            onTranslate={translateAt(`rating:${rating.id}:${key}`)}
             onChange={(next, how) => setRating(rating.id, { [key]: next }, how)}
         />
     );
@@ -197,16 +217,18 @@ export const StepDialog = ({
                         <M3Button variant="text" onClick={onClose}>
                             {t('journeys.action.cancel')}
                         </M3Button>
-                        <M3Button variant="filled" onClick={() => onApply(draft)}>
+                        <M3Button variant="filled" disabled={translating} onClick={() => onApply(draft)}>
                             {t('journeys.action.apply')}
                         </M3Button>
                     </div>
                 }
                 onClose={onClose}
+                onDismiss={guard.onDismiss}
                 wrapperTestId="journey-step-dialog"
                 scrollableBody
             >
                 <div className={styles.dialogBody}>
+                    {guard.confirm}
                     <BlockProfileCard
                         kind={t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`)}
                         help={t(aboutKey(draft))}
@@ -279,7 +301,7 @@ export const StepDialog = ({
                             questions={draft.questions ?? []}
                             language={language}
                             machine={draft.machine ?? []}
-                            onTranslate={translateField}
+                            translateAt={translateAt}
                             onChange={(questions, how) => change({ questions }, how)}
                         />
                     )}
@@ -312,7 +334,7 @@ export const StepDialog = ({
                                         value={rating.label}
                                         language={language}
                                         machine={isMachine}
-                                        onTranslate={translateField}
+                                        onTranslate={translateAt(`rating:${rating.id}:label`)}
                                         onChange={(next, how) => setRating(rating.id, { label: next }, how)}
                                     />
                                     <div className={styles.fieldRow}>
@@ -381,7 +403,7 @@ export const StepDialog = ({
                                                     type: 'range',
                                                     label: {},
                                                     ...SCALES.minusFiveToFive,
-                                                    midLabel: { de: 'normal', en: 'normal' },
+                                                    midLabel: { ...NORMAL_LABEL },
                                                     required: false,
                                                     version: 1,
                                                 },
@@ -436,7 +458,7 @@ export const StepDialog = ({
                                         value={aspect.title}
                                         language={language}
                                         machine={isMachine}
-                                        onTranslate={translateField}
+                                        onTranslate={translateAt(`aspect:${aspect.id}:title`)}
                                         onChange={(next, how) => setAspect(aspect.id, { title: next }, how)}
                                     />
                                     <M3RichTextEditor
@@ -458,7 +480,7 @@ export const StepDialog = ({
                                         value={aspect.body}
                                         language={language}
                                         machine={isMachine}
-                                        onTranslate={translateField}
+                                        onTranslate={translateAt(`aspect:${aspect.id}:body`)}
                                         onChange={(next, how) => setAspect(aspect.id, { body: next }, how)}
                                     />
                                 </section>
@@ -501,7 +523,7 @@ export const StepDialog = ({
                                 value={draft.body}
                                 language={language}
                                 machine={isMachine}
-                                onTranslate={translateField}
+                                onTranslate={translateAt('body')}
                                 onChange={(next, how) => change({ body: next }, how)}
                             />
                         </>

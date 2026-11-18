@@ -4616,5 +4616,15 @@
     "journeys.profileDialog.context": "{{kind}} · {{journey}} · {{phase}} · step {{position}}",
     "journeys.keywordsDialog.title": "Search terms: {{name}}",
     "journeys.keywordsDialog.open": "Search terms",
-    "journeys.keywords.remove": "Remove search term {{term}}"
+    "journeys.keywords.remove": "Remove search term {{term}}",
+    "journeys.step.cannotMove": "“{{name}}” cannot go there: the topic stays first, and the postcode comes before the counselling centre.",
+    "journeys.journey.copyOf": "Copy of {{name}}",
+    "journeys.link.pathFixed": "This address is saved and no longer changes, not even when the link is renamed.",
+    "journeys.prunedTopics_one": "One topic no longer exists. It was removed from the destinations of the journeys.",
+    "journeys.prunedTopics_other": "{{count}} topics no longer exist. They were removed from the destinations of the journeys.",
+    "journeys.discard.title": "Discard changes?",
+    "journeys.discard.text": "You changed something in this dialog. Closing it loses that.",
+    "journeys.discard.discard": "Discard",
+    "journeys.discard.keep": "Keep editing",
+    "journeys.step.removeOfHigherLevel": "Delete (not possible: belongs to the platform)"
 }

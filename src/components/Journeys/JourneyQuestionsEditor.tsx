@@ -76,7 +76,8 @@ interface JourneyQuestionsEditorProps {
     language: string;
     /** Languages of this step a machine wrote and nobody has checked yet. */
     machine: string[];
-    onTranslate?: (source: string) => Promise<string | undefined>;
+    /** The translate button of the field at `path` (see `textEntries`); none without a translator. */
+    translateAt?: (path: string) => (() => Promise<void>) | undefined;
     onChange: (questions: Question[], how: TextChange) => void;
 }
 
@@ -88,7 +89,7 @@ export const JourneyQuestionsEditor = ({
     questions,
     language,
     machine,
-    onTranslate,
+    translateAt = () => undefined,
     onChange,
 }: JourneyQuestionsEditorProps) => {
     const { t } = useTranslation();
@@ -174,7 +175,7 @@ export const JourneyQuestionsEditor = ({
                             value={question.label}
                             language={language}
                             machine={isMachine}
-                            onTranslate={onTranslate}
+                            onTranslate={translateAt(`question:${question.id}:label`)}
                             onChange={(next, how) => setText('label', next, how)}
                         />
 
@@ -199,7 +200,7 @@ export const JourneyQuestionsEditor = ({
                                             value={option.label}
                                             language={language}
                                             machine={isMachine}
-                                            onTranslate={onTranslate}
+                                            onTranslate={translateAt(`question:${question.id}:option:${option.id}`)}
                                             onChange={(next, how) =>
                                                 replace(
                                                     index,

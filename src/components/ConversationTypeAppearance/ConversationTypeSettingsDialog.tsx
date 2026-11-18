@@ -25,6 +25,7 @@ import {
 import { TypeIcon } from './TypeIcon';
 import type { Translator } from '../Journeys/journeyTranslation';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
+import { useDiscardGuard } from '../Journeys/useDiscardGuard';
 import styles from './styles.module.scss';
 
 export interface ConversationTypeSettingsDialogProps {
@@ -50,6 +51,7 @@ export const ConversationTypeSettingsDialog = ({
 }: ConversationTypeSettingsDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<AppearanceSettings>(settings);
+    const guard = useDiscardGuard(draft, settings, onClose);
     const [errors, setErrors] = useState<Partial<Record<IconVariant, string>>>({});
     const inputs = useRef<Partial<Record<IconVariant, HTMLInputElement | null>>>({});
 
@@ -70,12 +72,17 @@ export const ConversationTypeSettingsDialog = ({
                 targetLangs: missing,
                 texts: { name: german },
             });
-            setDraft((current) =>
-                missing.reduce((next, code) => {
+            // Only names still empty when the answer arrives: a name typed meanwhile stays, and a
+            // German name changed meanwhile is not answered with the old one's translation.
+            setDraft((current) => {
+                if (current[type]?.name?.de?.trim() !== german) return current;
+                return missing.reduce((next, code) => {
                     const translated = response.translations[code]?.name;
-                    return translated ? setName(next, type, code, translated) : next;
-                }, current),
-            );
+                    return translated && !next[type]?.name?.[code]?.trim()
+                        ? setName(next, type, code, translated)
+                        : next;
+                }, current);
+            });
         } catch (error) {
             setTranslationError(getTranslationErrorKey(error));
         } finally {
@@ -120,9 +127,11 @@ export const ConversationTypeSettingsDialog = ({
                 </div>
             }
             onClose={onClose}
+            onDismiss={guard.onDismiss}
             wrapperTestId="type-appearance-dialog"
             scrollableBody
         >
+            {guard.confirm}
             <div className={styles.body}>
                 <section className={styles.section} aria-labelledby="type-appearance-name">
                     <div className={styles.row}>

@@ -151,6 +151,15 @@ export const withScale = (rating: RatingItem, scale: ScaleId): RatingItem => ({
     midLabel: scale === 'minusFiveToFive' ? rating.midLabel ?? { ...NORMAL_LABEL } : undefined,
 });
 
+/**
+ * Switches a rating between stars and a range. Stars show no labels, so they keep none: a label
+ * that is not shown is neither translated nor part of the rating's meaning.
+ */
+export const withRatingType = (rating: RatingItem, type: RatingType): RatingItem =>
+    type === 'stars'
+        ? { ...rating, type, min: 1, max: 5, minLabel: undefined, midLabel: undefined, maxLabel: undefined }
+        : { ...withScale(rating, 'minusFiveToFive'), type };
+
 export interface RatingItem {
     id: string;
     type: RatingType;
@@ -261,6 +270,8 @@ export interface JourneyStep {
 export interface JourneyLink {
     id: string;
     name: string;
+    /** The path after `/l/`, fixed when the link is first saved. */
+    slug?: string;
     topicIds: number[];
     /** Preselected Beratungsstelle; without one the person is matched as in the registration. */
     agencyName?: string;
@@ -571,6 +582,18 @@ const withPhase = (journey: Journey, phase: JourneyPhase, steps: JourneyStep[]):
 /** Nothing goes before "choose a topic": in the registration the topic picks the journey. */
 export const firstFreeIndex = (steps: JourneyStep[]) => (steps[0]?.core === 'topic' ? 1 : 0);
 
+/**
+ * The order the registration depends on: the topic first, and the postcode before the
+ * Beratungsstelle, because the postcode finds the centres to choose from.
+ */
+export const hasValidOrder = (steps: JourneyStep[]) => {
+    const topic = steps.findIndex((step) => step.core === 'topic');
+    const postcode = steps.findIndex((step) => step.core === 'postcode');
+    const agency = steps.findIndex((step) => step.core === 'agency');
+    if (topic > 0) return false;
+    return postcode < 0 || agency < 0 || postcode < agency;
+};
+
 export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, toIndex: number): Journey => {
     const steps = journey.phases[phase];
     const from = steps.findIndex((step) => step.id === stepId);
@@ -580,7 +603,13 @@ export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, 
     const next = [...steps];
     const [moved] = next.splice(from, 1);
     next.splice(target, 0, moved);
-    return withPhase(journey, phase, next);
+    return hasValidOrder(next) ? withPhase(journey, phase, next) : journey;
+};
+
+/** Whether a step can go one place up or down; the order rules decide, not the list edges alone. */
+export const canMoveBy = (journey: Journey, phase: JourneyPhase, stepId: string, direction: -1 | 1) => {
+    const index = journey.phases[phase].findIndex((step) => step.id === stepId);
+    return index >= 0 && moveStep(journey, phase, stepId, index + direction) !== journey;
 };
 
 export const removeStep = (journey: Journey, phase: JourneyPhase, stepId: string): Journey => {
@@ -731,6 +760,7 @@ export const addStep = (
     afterStepId?: string,
     blocked: readonly string[] = [],
 ): Journey => {
+    if (!stepKindsFor(phase).includes(draft.kind)) return journey;
     if (draft.kind === 'core') {
         const choice = coreChoices(journey, phase, blocked as CoreElementId[]).find((entry) => entry.id === draft.core);
         if (!choice || choice.used || !choice.allowed) return journey;
@@ -746,6 +776,9 @@ export const addStep = (
         const after = steps.findIndex((step) => step.id === afterStepId);
         if (after >= 0) at = after + 1;
     }
+    // A postcode added back goes before the Beratungsstelle it finds, wherever it was asked for.
+    const agency = steps.findIndex((step) => step.core === 'agency');
+    if (draft.kind === 'core' && draft.core === 'postcode' && agency >= 0 && at > agency) at = agency;
     steps.splice(at, 0, blankStep(draft, phase, id));
     return withPhase(journey, phase, steps);
 };
@@ -789,26 +822,42 @@ export const stepContentCount = (step: JourneyStep) => ({
 
 // ---- translation ------------------------------------------------------------------------------
 
-/** Every text of a step that the person reads, as references into the step. */
-export const textsOf = (step: JourneyStep): LangMap[] => [
-    step.title,
-    step.description,
-    ...(step.body ? [step.body] : []),
-    ...(step.questions ?? []).flatMap((question) => [
-        question.label,
-        ...(question.help ? [question.help] : []),
-        ...question.options.map((option) => option.label),
-    ]),
-    ...(step.ratings ?? []).flatMap((rating) => [
-        rating.label,
-        ...(rating.minLabel ? [rating.minLabel] : []),
-        ...(rating.midLabel ? [rating.midLabel] : []),
-        ...(rating.maxLabel ? [rating.maxLabel] : []),
-    ]),
-    ...(step.aspects ?? []).flatMap((aspect) => [aspect.title, aspect.body]),
-];
+/** One text of a step with a stable address, so a late result finds its field again (or none). */
+export interface TextEntry {
+    path: string;
+    text: LangMap;
+}
 
-const hasText = (value: string | undefined) => !!value && value.replace(/<[^>]*>/g, '').trim() !== '';
+/** Every text of a step that the person reads, with its address, as references into the step. */
+export const textEntries = (step: JourneyStep): TextEntry[] => {
+    const entry = (path: string, text: LangMap | undefined): TextEntry[] => (text ? [{ path, text }] : []);
+    return [
+        ...entry('title', step.title),
+        ...entry('description', step.description),
+        ...entry('body', step.body),
+        ...(step.questions ?? []).flatMap((question) => [
+            ...entry(`question:${question.id}:label`, question.label),
+            ...entry(`question:${question.id}:help`, question.help),
+            ...question.options.flatMap((option) => entry(`question:${question.id}:option:${option.id}`, option.label)),
+        ]),
+        ...(step.ratings ?? []).flatMap((rating) => [
+            ...entry(`rating:${rating.id}:label`, rating.label),
+            ...entry(`rating:${rating.id}:minLabel`, rating.minLabel),
+            ...entry(`rating:${rating.id}:midLabel`, rating.midLabel),
+            ...entry(`rating:${rating.id}:maxLabel`, rating.maxLabel),
+        ]),
+        ...(step.aspects ?? []).flatMap((aspect) => [
+            ...entry(`aspect:${aspect.id}:title`, aspect.title),
+            ...entry(`aspect:${aspect.id}:body`, aspect.body),
+        ]),
+    ];
+};
+
+/** Every text of a step that the person reads, as references into the step. */
+export const textsOf = (step: JourneyStep): LangMap[] => textEntries(step).map((entry) => entry.text);
+
+/** Whether a text holds more than markup and blanks. */
+export const hasText = (value: string | undefined) => !!value && value.replace(/<[^>]*>/g, '').trim() !== '';
 
 export interface TranslationStatus {
     /** Languages in which every text of the step exists. */
@@ -832,28 +881,6 @@ export const translationStatus = (step: JourneyStep): TranslationStatus => {
         machine: translated.filter((language) => step.machine?.includes(language)),
         missing: MODULE_LANGUAGES.filter((language) => !translated.includes(language)),
     };
-};
-
-/**
- * Fills every missing text from the source language and marks those languages as machine-made.
- * Texts a person already wrote stay untouched.
- */
-export const translateMissing = (
-    step: JourneyStep,
-    translate: (text: string, language: string) => string,
-): JourneyStep => {
-    const next = structuredClone(step);
-    const { missing } = translationStatus(next);
-    textsOf(next).forEach((text) => {
-        const source = text[MODULE_SOURCE_LANGUAGE];
-        if (!hasText(source)) return;
-        missing.forEach((language) => {
-            // eslint-disable-next-line no-param-reassign -- `next` is our own deep copy
-            if (!hasText(text[language])) text[language] = translate(source as string, language);
-        });
-    });
-    next.machine = [...new Set([...(next.machine ?? []), ...missing])];
-    return next;
 };
 
 export type LanguageState = 'source' | 'checked' | 'machine' | 'missing';
@@ -912,7 +939,9 @@ export const matchesSearch = (step: JourneyStep, query: string, audienceNames: R
  * journey reached by links alone, each with exactly one topic. The registration always asks.
  */
 export const canPreselectTopic = (journey: Journey) =>
-    journey.routes.registration.length === 0 && journey.routes.links.every((link) => link.topicIds.length <= 1);
+    journey.routes.registration.length === 0 &&
+    journey.routes.links.length > 0 &&
+    journey.routes.links.every((link) => link.topicIds.length === 1);
 
 /** The preselection counts only while it is allowed; a route added later makes the screen ask again. */
 export const isTopicPreselected = (journey: Journey) =>
@@ -927,7 +956,17 @@ export const setTopicPreselected = (journey: Journey, preselected: boolean): Jou
     );
 };
 
+/** A preselection that is no longer allowed is dropped, so it does not come back by itself later. */
+const withValidPreselection = (journey: Journey): Journey =>
+    canPreselectTopic(journey) || !journey.phases.departure.some((step) => step.core === 'topic' && step.preselected)
+        ? journey
+        : setTopicPreselected(journey, false);
+
 // ---- routes and destinations ------------------------------------------------------------------
+
+/** New routes for a journey; the topic preselection follows them. */
+export const setRoutes = (journey: Journey, routes: JourneyRoutes): Journey =>
+    withValidPreselection({ ...journey, routes });
 
 export const routeSummary = (journey: Journey) => ({
     registrationTopics: journey.routes.registration.length,
@@ -974,10 +1013,8 @@ export const topicsWithoutRoute = <T extends JourneyTopic>(
 export const registrationJourneyOf = (journeys: Journey[], type: ConversationType, topicId: number) =>
     journeysOf(journeys, type).find((journey) => journey.routes.registration.includes(topicId));
 
-const withRegistration = (journey: Journey, registration: number[]): Journey => ({
-    ...journey,
-    routes: { ...journey.routes, registration },
-});
+const withRegistration = (journey: Journey, registration: number[]): Journey =>
+    setRoutes(journey, { ...journey.routes, registration });
 
 /**
  * Routes a topic's registration to one journey. The registration of a topic runs exactly one
@@ -985,7 +1022,7 @@ const withRegistration = (journey: Journey, registration: number[]): Journey => 
  */
 export const assignRegistrationTopic = (journeys: Journey[], journeyId: string, topicId: number): Journey[] => {
     const target = journeys.find((journey) => journey.id === journeyId);
-    if (!target) return journeys;
+    if (!target || !hasRegistrationRoute(target.conversationType)) return journeys;
     return journeys.map((journey) => {
         if (journey.conversationType !== target.conversationType) return journey;
         const others = journey.routes.registration.filter((id) => id !== topicId);
@@ -1022,22 +1059,60 @@ const slugOf = (name: string) =>
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
+const proposedSlug = (link: JourneyLink, taken: ReadonlySet<string>) => {
+    const own = slugOf(link.name) || 'link';
+    if (!taken.has(own)) return own;
+    let number = 2;
+    while (taken.has(`${own}-${number}`)) number += 1;
+    return `${own}-${number}`;
+};
+
 /**
- * The readable path of a link, from its name. Two links with the same name get a number. The
- * secret part of the address is a token the server adds; this path only tells people apart.
+ * The readable path of a link. Once saved, a link keeps its slug for good, whatever it is renamed
+ * to: the address may already be printed on a flyer. Before that the path is proposed from the
+ * name, unique among the given links of every conversation type (two links share one `/l/`
+ * namespace). The secret part of the address is a token the server adds.
  */
 export const linkPath = (link: JourneyLink, allLinks: JourneyLink[]): string => {
-    const base = (candidate: JourneyLink) => slugOf(candidate.name) || `link-${allLinks.indexOf(candidate) + 1}`;
-    const own = base(link);
-    const before = allLinks.slice(0, allLinks.indexOf(link)).filter((candidate) => base(candidate) === own).length;
-    return `/l/${before === 0 ? own : `${own}-${before + 1}`}`;
+    if (link.slug) return `/l/${link.slug}`;
+    const taken = new Set(allLinks.filter((other) => other.slug).map((other) => other.slug as string));
+    // Links before this one that have no slug yet claim theirs first, in list order.
+    const position = allLinks.findIndex((other) => other.id === link.id);
+    allLinks
+        .slice(0, position < 0 ? allLinks.length : position)
+        .filter((other) => !other.slug)
+        .forEach((other) => taken.add(proposedSlug(other, taken)));
+    return `/l/${proposedSlug(link, taken)}`;
+};
+
+/** All links of all journeys, the namespace of `/l/`. */
+export const allLinksOf = (journeys: Journey[]): JourneyLink[] => journeys.flatMap((journey) => journey.routes.links);
+
+/** Gives every link without a slug its proposed one; called when saving, never changes a slug. */
+export const fixLinkSlugs = (journeys: Journey[]): Journey[] => {
+    const all = allLinksOf(journeys);
+    const slugs = new Map(all.map((link) => [link.id, linkPath(link, all).slice('/l/'.length)]));
+    return journeys.map((journey) =>
+        journey.routes.links.every((link) => link.slug)
+            ? journey
+            : {
+                  ...journey,
+                  routes: {
+                      ...journey.routes,
+                      links: journey.routes.links.map((link) =>
+                          link.slug ? link : { ...link, slug: slugs.get(link.id) },
+                      ),
+                  },
+              },
+    );
 };
 
 /** A new link that leads to one topic, named after it. */
-export const addLinkForTopic = (journey: Journey, topic: JourneyTopic, id: string): Journey => ({
-    ...journey,
-    routes: { ...journey.routes, links: [...journey.routes.links, { id, name: topic.name, topicIds: [topic.id] }] },
-});
+export const addLinkForTopic = (journey: Journey, topic: JourneyTopic, id: string): Journey =>
+    setRoutes(journey, {
+        ...journey.routes,
+        links: [...journey.routes.links, { id, name: topic.name, topicIds: [topic.id] }],
+    });
 
 /** The topics a journey leads to, each once: those of the registration first, then those behind links. */
 export const coveredTopics = (journey: Journey): { topicId: number; via: 'registration' | 'link' }[] => {
@@ -1056,6 +1131,56 @@ export const coveredTopics = (journey: Journey): { topicId: number; via: 'regist
     return covered;
 };
 
+/**
+ * Drops topics that no longer exist from every route, and says which ones went. A link that led
+ * only to deleted topics stays, without topics, so its address keeps answering.
+ */
+export const pruneUnknownTopics = (
+    journeys: Journey[],
+    topics: JourneyTopic[],
+): { journeys: Journey[]; removed: number[] } => {
+    const known = new Set(topics.map((topic) => topic.id));
+    const removed = new Set<number>();
+    const keep = (ids: number[]) =>
+        ids.filter((id) => {
+            if (known.has(id)) return true;
+            removed.add(id);
+            return false;
+        });
+    const next = journeys.map((journey) => {
+        const registration = keep(journey.routes.registration);
+        const links = journey.routes.links.map((link) => ({ ...link, topicIds: keep(link.topicIds) }));
+        const changed =
+            registration.length !== journey.routes.registration.length ||
+            links.some((link, index) => link.topicIds.length !== journey.routes.links[index].topicIds.length);
+        return changed ? setRoutes(journey, { registration, links }) : journey;
+    });
+    return { journeys: removed.size > 0 ? next : journeys, removed: [...removed].sort((a, b) => a - b) };
+};
+
+/**
+ * Whether anything leads to a journey. Groups need no route (people join them), and the first
+ * journey of a conversation type without a registration route is the one its existing entries
+ * (for example the live chat of a centre) open.
+ */
+export const isReachable = (journeys: Journey[], journey: Journey) => {
+    if (journey.routes.registration.length > 0 || journey.routes.links.length > 0) return true;
+    if (!phasesOf(journey.conversationType).includes('departure')) return true;
+    if (hasRegistrationRoute(journey.conversationType)) return false;
+    const first = Math.min(...journeysOf(journeys, journey.conversationType).map((other) => other.number));
+    return journey.number === first;
+};
+
+/** The topics several journeys lead to, each once, in the order the journeys are given. */
+export const coveredTopicsOf = (journeys: Journey[]): { topicId: number; via: 'registration' | 'link' }[] => {
+    const seen = new Set<number>();
+    return journeys.flatMap(coveredTopics).filter(({ topicId }) => {
+        if (seen.has(topicId)) return false;
+        seen.add(topicId);
+        return true;
+    });
+};
+
 /** All links of one conversation type, for paths that must not repeat. */
 export const linksOf = (journeys: Journey[], type: ConversationType): JourneyLink[] =>
     journeysOf(journeys, type).flatMap((journey) => journey.routes.links);
@@ -1070,13 +1195,32 @@ export const newJourney = (journeys: Journey[], type: ConversationType, id: stri
     standardJourney(type, id, nextNumber(journeys, type));
 
 /** Copies the steps of a journey. Routes are not copied: a topic or link leads to one journey. */
-export const duplicateJourney = (journeys: Journey[], sourceId: string, id: string): Journey | undefined => {
+export const duplicateJourney = (journeys: Journey[], sourceId: string, id: string, name = ''): Journey | undefined => {
     const source = journeys.find((journey) => journey.id === sourceId);
     if (!source) return undefined;
+    // Every step and question of the copy gets its own id: answers and chat events refer to them.
+    const reId = (old: string) => `${id}:${old}`;
+    const copyStep = (step: JourneyStep): JourneyStep => ({
+        ...structuredClone(step),
+        id: reId(step.id),
+        questions: step.questions?.map((question) => ({
+            ...structuredClone(question),
+            id: reId(question.id),
+            version: 1,
+        })),
+        ratings: step.ratings?.map((rating) => ({ ...structuredClone(rating), id: reId(rating.id), version: 1 })),
+        aspects: step.aspects?.map((aspect) => ({ ...structuredClone(aspect), id: reId(aspect.id) })),
+    });
     return {
         ...structuredClone(source),
         id,
+        name,
         number: nextNumber(journeys, source.conversationType),
+        phases: {
+            departure: source.phases.departure.map(copyStep),
+            flight: source.phases.flight.map(copyStep),
+            arrival: source.phases.arrival.map(copyStep),
+        },
         routes: { registration: [], links: [] },
     };
 };
@@ -1098,41 +1242,57 @@ export const missingSafetyAspects = (journey: Journey): PanelAspect[] => {
     return [emergencyAspect(journey.id)];
 };
 
+/** The German source decides what a text means; translations never change it. */
+const source = (text: LangMap | undefined) => text?.[MODULE_SOURCE_LANGUAGE] ?? '';
+
 const questionMeaning = (question: Question) =>
-    JSON.stringify([question.type, question.label, question.options, question.required, question.other ?? false]);
+    JSON.stringify([
+        question.type,
+        source(question.label),
+        question.options.map((option) => [option.id, source(option.label)]),
+        question.required,
+        question.other ?? false,
+    ]);
+
+/** Stars show no labels, so only a range's labels belong to its meaning. */
 const ratingMeaning = (rating: RatingItem) =>
     JSON.stringify([
         rating.type,
-        rating.label,
+        source(rating.label),
         rating.min,
         rating.max,
-        rating.minLabel,
-        rating.midLabel,
-        rating.maxLabel,
+        rating.type === 'range' ? [source(rating.minLabel), source(rating.midLabel), source(rating.maxLabel)] : [],
+        rating.required,
     ]);
 
-/** Raises the version of every question and rating whose meaning differs from the stored journey. */
+/**
+ * Raises the version of every question and rating whose meaning differs from the stored journey,
+ * so stored answers keep the meaning they were given under (ADR-018 amendment). Items are found by
+ * their own id anywhere in the stored journey, so a question moved into another step by splitting
+ * keeps its history. A new translation never raises a version.
+ */
 export const prepareJourneyForPublish = (edited: Journey, stored: Journey): Journey => {
-    const before = new Map<string, JourneyStep>();
-    JOURNEY_PHASES.forEach((phase) => stored.phases[phase].forEach((step) => before.set(step.id, step)));
+    const storedSteps = JOURNEY_PHASES.flatMap((phase) => stored.phases[phase]);
+    const storedQuestions = new Map(
+        storedSteps.flatMap((step) => step.questions ?? []).map((question) => [question.id, question]),
+    );
+    const storedRatings = new Map(
+        storedSteps.flatMap((step) => step.ratings ?? []).map((rating) => [rating.id, rating]),
+    );
 
-    const publishStep = (step: JourneyStep): JourneyStep => {
-        const old = before.get(step.id);
-        if (!old) return step;
-        return {
-            ...step,
-            questions: step.questions?.map((question) => {
-                const was = old.questions?.find((candidate) => candidate.id === question.id);
-                if (!was || questionMeaning(was) === questionMeaning(question)) return question;
-                return { ...question, version: was.version + 1 };
-            }),
-            ratings: step.ratings?.map((rating) => {
-                const was = old.ratings?.find((candidate) => candidate.id === rating.id);
-                if (!was || ratingMeaning(was) === ratingMeaning(rating)) return rating;
-                return { ...rating, version: was.version + 1 };
-            }),
-        };
-    };
+    const publishStep = (step: JourneyStep): JourneyStep => ({
+        ...step,
+        questions: step.questions?.map((question) => {
+            const was = storedQuestions.get(question.id);
+            if (!was || questionMeaning(was) === questionMeaning(question)) return question;
+            return { ...question, version: Math.max(question.version, was.version + 1) };
+        }),
+        ratings: step.ratings?.map((rating) => {
+            const was = storedRatings.get(rating.id);
+            if (!was || ratingMeaning(was) === ratingMeaning(rating)) return rating;
+            return { ...rating, version: Math.max(rating.version, was.version + 1) };
+        }),
+    });
 
     return {
         ...edited,

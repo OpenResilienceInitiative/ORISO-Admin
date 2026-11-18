@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { translateStepMissing } from './journeyTranslation';
+import { fakeTranslator } from './journeyFakes';
 import {
     addLinkForTopic,
     addStep,
@@ -43,7 +45,6 @@ import {
     triggersFor,
     topicReach,
     topicsWithoutRoute,
-    translateMissing,
     translationStatus,
     typeSummary,
     unassignRegistrationTopic,
@@ -280,16 +281,6 @@ describe('translation per step', () => {
         };
         expect(translationStatus(noEnglishOption).translated).toEqual(['de']);
     });
-
-    it('fills the missing languages by machine and marks them until someone checks', () => {
-        const step = stepOf(mail(), 'postcode');
-        const translated = translateMissing(step, (text, language) => `${text} [${language}]`);
-        const status = translationStatus(translated);
-        expect(status.missing).toEqual([]);
-        expect(status.machine).toEqual(['de@informal', 'fr', 'ru', 'ti', 'tr']);
-        expect(translated.title.fr).toBe(`${step.title.de} [fr]`);
-        expect(translated.title.en).toBe(step.title.en);
-    });
 });
 
 describe('routes and destinations', () => {
@@ -457,7 +448,7 @@ describe('routes as paths', () => {
         expect(linkPath(links[0], links)).toBe('/l/schulden-lang');
         expect(linkPath(links[1], links)).toBe('/l/schulden-lang-2');
         expect(linkPath(links[2], links)).toBe('/l/ueber-25-sucht');
-        expect(linkPath(links[3], links)).toBe('/l/link-4');
+        expect(linkPath(links[3], links)).toBe('/l/link');
     });
 
     it('creates a link for one topic, named after it', () => {
@@ -519,8 +510,8 @@ describe('levels, permissions and triggers (Frank, 2026-11-18)', () => {
 });
 
 describe('the language menu of a step', () => {
-    it('names each language: original, checked by hand, machine-made, or missing', () => {
-        const step = translateMissing(stepOf(mail(), 'postcode'), (text) => `${text}*`);
+    it('names each language: original, checked by hand, machine-made, or missing', async () => {
+        const step = await translateStepMissing(stepOf(mail(), 'postcode'), fakeTranslator);
         const states = Object.fromEntries(languageStates(step).map(({ language, state }) => [language, state]));
         expect(states).toEqual({
             de: 'source',
@@ -536,8 +527,8 @@ describe('the language menu of a step', () => {
         );
     });
 
-    it('turns a machine translation into a checked one when a person confirms it', () => {
-        const step = translateMissing(stepOf(mail(), 'postcode'), (text) => `${text}*`);
+    it('turns a machine translation into a checked one when a person confirms it', async () => {
+        const step = await translateStepMissing(stepOf(mail(), 'postcode'), fakeTranslator);
         const checked = markChecked(step, 'fr');
         expect(languageStates(checked).find((entry) => entry.language === 'fr')?.state).toBe('checked');
         expect(translationStatus(checked).machine).not.toContain('fr');
