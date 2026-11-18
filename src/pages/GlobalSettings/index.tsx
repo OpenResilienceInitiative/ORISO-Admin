@@ -35,6 +35,7 @@ import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettin
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
 import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
+import { LiveChatFreeChoiceSettingsCardContainer } from '../../components/GlobalSettings/LiveChatFreeChoiceSettingsCard';
 import { ChatMessageSettingsCardContainer } from '../../components/GlobalSettings/ChatMessageSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
@@ -65,6 +66,11 @@ export const GlobalLoginSettingsPage = () => {
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <TopicDuplicateSettingsCardContainer />
+                </CardGrid.Item>
+                {/* ORISO-Admin#1497: live-chat queue rule. Platform admin only (visible, disabled
+                    for everyone else); the UserService reads it on every accept. */}
+                <CardGrid.Item>
+                    <LiveChatFreeChoiceSettingsCardContainer />
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <ChatMessageSettingsCardContainer />

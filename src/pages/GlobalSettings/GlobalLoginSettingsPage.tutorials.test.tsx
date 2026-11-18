@@ -25,6 +25,9 @@ vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => (
 vi.mock('../../components/GlobalSettings/OneTopicPerAgencySettingsCard', () => ({
     OneTopicPerAgencySettingsCardContainer: () => <div data-testid="topics-card" />,
 }));
+vi.mock('../../components/GlobalSettings/LiveChatFreeChoiceSettingsCard', () => ({
+    LiveChatFreeChoiceSettingsCardContainer: () => <div data-testid="live-chat-free-choice-card" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatMessageSettingsCard', () => ({
     ChatMessageSettingsCardContainer: () => <div data-testid="chat-message-settings-card" />,
 }));
