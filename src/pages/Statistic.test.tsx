@@ -17,12 +17,18 @@ vi.mock('../api/fetchData', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../api/fetchData')>();
     return { ...actual, fetchData: vi.fn() };
 });
-const roleState = vi.hoisted(() => ({ isSuperAdmin: false }));
+const roleState = vi.hoisted(() => ({
+    isSuperAdmin: false,
+    isStatisticsReader: false,
+    roles: ['tenant-admin'] as string[],
+}));
 vi.mock('../hooks/useUserRoles.hook', () => ({
     useUserRoles: () => ({
-        roles: [UserRole.TenantAdmin],
-        hasRole: (role: UserRole | UserRole[]) => (Array.isArray(role) ? role : [role]).includes(UserRole.TenantAdmin),
+        roles: roleState.roles,
+        hasRole: (role: UserRole | UserRole[]) =>
+            (Array.isArray(role) ? role : [role]).some((candidate) => roleState.roles.includes(candidate)),
         isSuperAdmin: roleState.isSuperAdmin,
+        isStatisticsReader: roleState.isStatisticsReader,
         isTechnicalAccount: false,
         isTenantScopedAdmin: !roleState.isSuperAdmin,
         tenantId: 5,
@@ -87,6 +93,8 @@ const renderStatistic = (client = new QueryClient({ defaultOptions: { queries: {
 
 beforeEach(() => {
     roleState.isSuperAdmin = false;
+    roleState.isStatisticsReader = false;
+    roleState.roles = [UserRole.TenantAdmin];
     dashboardMock.mockReset();
     fetchDataMock.mockReset();
     // default: all name lookups succeed with empty result sets
@@ -714,6 +722,101 @@ describe('Statistic page', () => {
             openScopePicker();
             fireEvent.click(screen.getByRole('button', { name: /^(Beratungsstellen|Counselling centres)$/ }));
             await waitFor(() => expect(dashboardMock).toHaveBeenCalledWith(5));
+        });
+
+        // ORISO-UserService#1666: the reader gets the platform view through an explicit check,
+        // never by being treated as a super admin.
+        describe('Statistik-Leser·in', () => {
+            const becomeReader = () => {
+                roleState.isSuperAdmin = false;
+                roleState.isStatisticsReader = true;
+                roleState.roles = [UserRole.StatisticsReader];
+            };
+
+            it('drills from the platform into a Träger and shows its Beratungsstellen by name', async () => {
+                becomeReader();
+                const platformTarget = {
+                    ...agencyRow(0),
+                    targetType: 'PLATFORM' as const,
+                    tenantId: null,
+                    agencyId: null,
+                };
+                const tenantTarget = { ...agencyRow(0), targetType: 'TENANT' as const, tenantId: 5, agencyId: null };
+                // The drilled Träger answers with one Beratungsstelle whose figure differs from the platform's 12.
+                const drilledAgency = agencyRow(11, {
+                    tenantId: 5,
+                    metrics: { ...response.targets[0].metrics!, enquiriesCurrentMonth: 37 },
+                });
+                dashboardMock.mockImplementation((tenantId?: number) =>
+                    tenantId == null
+                        ? Promise.resolve({ ...response, scope: 'PLATFORM', targets: [platformTarget, tenantTarget] })
+                        : Promise.resolve({ ...response, scope: 'TENANT', targets: [tenantTarget, drilledAgency] }),
+                );
+                // Names come from the names-only endpoints opened for the reader, never the admin lists.
+                fetchDataMock.mockImplementation(({ url }: { url: string }) => {
+                    if (url.includes('/service/agencies/statistics/names'))
+                        return Promise.resolve([{ id: 11, name: 'Beratungsstelle Nord', tenantId: 5 }]);
+                    if (url.includes('/service/tenantadmin/statistics/names'))
+                        return Promise.resolve([{ id: 5, name: 'Träger Süd' }]);
+                    return Promise.resolve({ total: 0, _embedded: [] });
+                });
+                renderStatistic();
+                await waitFor(() => expect(screen.getAllByText('12').length).toBeGreaterThan(0));
+
+                openScopePicker();
+                fireEvent.click(await screen.findByRole('option', { name: /^Träger Süd/ }));
+                openScopePicker();
+                fireEvent.click(screen.getByRole('button', { name: /^(Beratungsstellen|Counselling centres)$/ }));
+                await waitFor(() => expect(dashboardMock).toHaveBeenCalledWith(5));
+
+                // The drilled Träger's figures replace the loading state …
+                expect((await screen.findAllByText('37')).length).toBeGreaterThan(0);
+                // … and its Beratungsstelle is offered by name, not by id.
+                openScopePicker();
+                expect(screen.getByRole('option', { name: /^Beratungsstelle Nord/ })).toBeInTheDocument();
+                expect(screen.queryByText('#11')).toBeNull();
+                const calledUrls = fetchDataMock.mock.calls.map(([props]) => props.url);
+                expect(calledUrls.some((url) => url.includes('agencyadmin'))).toBe(false);
+                expect(calledUrls.some((url) => url.includes('/service/tenantadmin/search'))).toBe(false);
+            });
+
+            it('shows the tutorial statistics like a platform admin', async () => {
+                becomeReader();
+                dashboardMock.mockResolvedValue({ ...response, scope: 'PLATFORM' });
+                renderStatistic();
+
+                expect(await screen.findByRole('heading', { name: 'Tutorial-Abschlüsse' })).toBeInTheDocument();
+            });
+
+            it('offers no way into counsellor management from the empty dashboard', async () => {
+                becomeReader();
+                const zeroCounts = { today: 0, yesterday: 0, thisWeek: 0, total: 0, thisYear: 0, lastYear: 0 };
+                dashboardMock.mockResolvedValue({
+                    ...response,
+                    scope: 'PLATFORM',
+                    targets: [
+                        {
+                            ...response.targets[0],
+                            targetType: 'PLATFORM',
+                            tenantId: null,
+                            counselorCount: 3,
+                            metrics: {
+                                enquiriesCurrentMonth: 0,
+                                enquiriesPreviousMonth: 0,
+                                activeCases: 0,
+                                activeConversationsToday: 0,
+                                groupChatsTotal: 0,
+                            },
+                            sessionCountsByPeriod: zeroCounts,
+                            groupChatCountsByPeriod: zeroCounts,
+                        },
+                    ],
+                });
+                renderStatistic();
+
+                await screen.findByText('Ihr Dashboard füllt sich mit der ersten Beratung');
+                expect(screen.queryByRole('button', { name: 'Beratende verwalten' })).toBeNull();
+            });
         });
 
         it('does not render the tutorial section while the dashboard is unavailable', async () => {

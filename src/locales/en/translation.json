@@ -4030,5 +4030,19 @@
     "home.contactPersonTip.centres.one": "1 centre",
     "home.contactPersonTip.unknownTenant": "No organisation",
     "home.contactPersonTip.openAgencies": "Open the centres",
-    "home.contactPersonTip.note": "Until then counsellors see the admins of the centre or of the organisation."
+    "home.contactPersonTip.note": "Until then counsellors see the admins of the centre or of the organisation.",
+    "users.sectionPills.statisticsReaders": "Statistics readers",
+    "home.link.admins.statistics-readers": "Statistics",
+    "statisticsReaders.title.text": "{{userCount}} statistics readers",
+    "statisticsReaders.card.personalDataTitle": "Statistics reader personal data",
+    "statisticsReaders.form.username": "Username",
+    "statisticsReaders.hint.onboarding": "The person receives an e-mail to set their password. Before they see any statistics, they set up two-factor authentication. Statistics readers only see statistics and cannot change anything.",
+    "statisticsReaders.edit.back": "Create statistics reader",
+    "statisticsReaders.message.add": "Statistics reader created successfully.",
+    "statisticsReaders.message.update": "Statistics reader updated successfully.",
+    "statisticsReaders.delete.description": "Delete statistics reader {{name}}?",
+    "statisticsReaders.delete.success": "Statistics reader deleted successfully.",
+    "statisticsReaders.loadError.title": "Statistics reader could not be loaded",
+    "statisticsReaders.loadError.text": "The data could not be loaded right now. Please try again.",
+    "statisticsReaders.loadError.retry": "Try again"
 }
