@@ -125,11 +125,11 @@ describe('folding conversation-type tiles', () => {
         await renderView({ caseSharing: { policy: { value: 'none', mode: 'SUGGESTED' } } });
         const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
 
-        const sections = mail.getAllByRole('region').map((section) => section.getAttribute('aria-labelledby'));
+        const sections = mail.getAllByRole('group').map((section) => section.getAttribute('aria-labelledby'));
         expect(sections.length).toBeGreaterThanOrEqual(4);
-        expect(mail.getByRole('region', { name: 'tenants.permissions.card.configurableFeatures' })).toBeInTheDocument();
-        expect(mail.getByRole('region', { name: 'tenants.permissions.caseSharing.title' })).toBeInTheDocument();
-        expect(mail.getByRole('region', { name: 'tenants.permissions.directInvite.title' })).toBeInTheDocument();
+        expect(mail.getByRole('group', { name: 'tenants.permissions.card.configurableFeatures' })).toBeInTheDocument();
+        expect(mail.getByRole('group', { name: 'tenants.permissions.caseSharing.title' })).toBeInTheDocument();
+        expect(mail.getByRole('group', { name: 'tenants.permissions.directInvite.title' })).toBeInTheDocument();
     });
 });
 
@@ -152,7 +152,7 @@ describe('page intro, account settings and conversation type names', () => {
         await renderView();
 
         const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
-        expect(mail.getByRole('region', { name: 'tenants.permissions.asker.title' })).toBeInTheDocument();
+        expect(mail.getByRole('group', { name: 'tenants.permissions.asker.title' })).toBeInTheDocument();
         expect(screen.getAllByTestId('asker-card')).toHaveLength(1);
     });
 
@@ -160,7 +160,7 @@ describe('page intro, account settings and conversation type names', () => {
         await renderView({ excludeCardKeys: ['oneOnOne'] });
 
         expect(screen.getByTestId('asker-card')).toBeInTheDocument();
-        expect(screen.queryByRole('region', { name: 'tenants.permissions.asker.title' })).toBeNull();
+        expect(screen.queryByRole('group', { name: 'tenants.permissions.asker.title' })).toBeNull();
     });
 
     it('shows a renamed conversation type and opens its name and icon from the tile icon', async () => {

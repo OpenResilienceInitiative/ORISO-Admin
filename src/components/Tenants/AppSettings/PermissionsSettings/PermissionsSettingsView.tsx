@@ -9,7 +9,8 @@ import { APP_ONLY_HINT_KEY, CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { CaseSharingSection } from './CaseSharingSection';
-import { TileSection } from './TileSection';
+import { TileSections } from '../../../TileSections';
+import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
 import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
@@ -463,19 +464,27 @@ export const PermissionsSettingsView = ({
                                     />
                                 )}
                                 {showLinks && (
-                                    <TileSection title={t('liveChatLinks.title')}>{liveChatLinks}</TileSection>
+                                    <TileSections.Section
+                                        wide
+                                        id={`${card.key}-liveChatLinks`}
+                                        title={t('liveChatLinks.title')}
+                                    >
+                                        {liveChatLinks}
+                                    </TileSections.Section>
                                 )}
                             </div>
                         )}
                         <div className={styles.tileSections}>
                             {card.toggles.length > 0 && (
-                                <TileSection
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-features`}
                                     title={t('tenants.permissions.card.configurableFeatures')}
-                                    help={CHAT_TYPE_HELP[card.key]}
+                                    titleAction={<SectionHelp topic={CHAT_TYPE_HELP[card.key]} />}
                                     collapsible
                                 >
                                     {featureToggles(form, card, getFieldValue, masterEnabled)}
-                                </TileSection>
+                                </TileSections.Section>
                             )}
 
                             {card.key === 'oneOnOne' && caseSharing && (
@@ -500,10 +509,12 @@ export const PermissionsSettingsView = ({
 
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                             {card.key === 'oneOnOne' && (
-                                <TileSection
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-directInvite`}
                                     title={t('tenants.permissions.directInvite.title')}
-                                    description={t('tenants.permissions.directInvite.description')}
-                                    help={directInviteHelp}
+                                    note={t('tenants.permissions.directInvite.description')}
+                                    titleAction={<SectionHelp topic={directInviteHelp} />}
                                     collapsible
                                 >
                                     <DirectInviteSection
@@ -516,16 +527,18 @@ export const PermissionsSettingsView = ({
                                         pendingPolicyFields={pendingPolicyFields}
                                         onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                                     />
-                                </TileSection>
+                                </TileSections.Section>
                             )}
 
                             {/* ORISO-UserService#1662: no Beratungsstelle value exists. */}
                             {card.key === 'oneOnOne' && policyLevel !== 'agency' && (
-                                <TileSection
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-guestAccounts`}
                                     title={t('tenants.permissions.guestAccountModes.title')}
-                                    help={GUEST_ACCOUNT_HELP}
+                                    titleAction={<SectionHelp topic={GUEST_ACCOUNT_HELP} />}
                                     collapsible
-                                    description={t('tenants.permissions.guestAccountModes.description')}
+                                    note={t('tenants.permissions.guestAccountModes.description')}
                                 >
                                     <GuestAccountModeSection
                                         restrictedFields={restrictedFields}
@@ -536,15 +549,17 @@ export const PermissionsSettingsView = ({
                                         pendingPolicyFields={pendingPolicyFields}
                                         onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                                     />
-                                </TileSection>
+                                </TileSections.Section>
                             )}
 
                             {card.key === 'oneOnOne' && (
-                                <TileSection
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-askerAccount`}
                                     title={t('tenants.permissions.asker.title')}
-                                    help={ASKER_HELP}
+                                    titleAction={<SectionHelp topic={ASKER_HELP} />}
                                     collapsible
-                                    description={t('tenants.permissions.asker.sectionDescription')}
+                                    note={t('tenants.permissions.asker.sectionDescription')}
                                 >
                                     <AskerPermissionsCard
                                         embedded
@@ -556,24 +571,30 @@ export const PermissionsSettingsView = ({
                                         onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
                                         channelToggles={hiddenTileChannelToggles}
                                     />
-                                </TileSection>
+                                </TileSections.Section>
                             )}
 
                             {card.notifications && (
-                                <TileSection
-                                    help={card.notifications.audience === 'asker' ? askerAccountHelp : undefined}
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-participants`}
+                                    titleAction={
+                                        card.notifications.audience === 'asker' && (
+                                            <SectionHelp topic={askerAccountHelp} />
+                                        )
+                                    }
                                     collapsible
                                     title={t(
                                         `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
                                     )}
-                                    description={
+                                    note={
                                         channelsSetOnTraeger
                                             ? t('tenants.permissions.card.notifications.setOnTraeger')
                                             : undefined
                                     }
                                 >
                                     {participantSwitches(form, card, getFieldValue)}
-                                </TileSection>
+                                </TileSections.Section>
                             )}
                         </div>
                     </div>

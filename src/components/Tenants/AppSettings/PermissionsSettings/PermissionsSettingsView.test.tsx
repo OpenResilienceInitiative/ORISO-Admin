@@ -302,7 +302,7 @@ describe('PermissionsSettingsView tiles', () => {
         // #1558: the asker account is a section of the Mailberatung tile, not a tile of its own.
         expect(cardTiles.map((heading) => heading.textContent)).not.toContain('tenants.permissions.asker.title');
         expect(
-            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('region', {
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', {
                 name: 'tenants.permissions.asker.title',
             }),
         ).toBeInTheDocument();

@@ -276,7 +276,7 @@ export const LevelPlatform: Story = {
     play: async ({ canvasElement }) => {
         const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
         await expect(mail.getByRole('group', { name: CHOICE })).toBeVisible();
-        await expect(mail.getByRole('region', { name: /Gastkonten|guest accounts/i })).toBeVisible();
+        await expect(mail.getByRole('group', { name: /Gastkonten|guest accounts/i })).toBeVisible();
     },
 };
 
@@ -292,7 +292,7 @@ export const LevelTraeger: Story = {
         await expect(
             choice.getByRole('button', { name: /^(Fälle von Ratsuchenden teilen|Sharing cases of advice seekers): / }),
         ).toBeEnabled();
-        await expect(mail.getByRole('region', { name: /Gastkonten|guest accounts/i })).toBeVisible();
+        await expect(mail.getByRole('group', { name: /Gastkonten|guest accounts/i })).toBeVisible();
     },
 };
 
@@ -308,6 +308,6 @@ export const LevelCentre: Story = {
     play: async ({ canvasElement }) => {
         const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
         await expect(mail.getByRole('button', { name: /^(Teamberatung|Team counselling): / })).toBeEnabled();
-        await expect(mail.getByRole('region', { name: /Direkteinladung|direct invitations/i })).toBeVisible();
+        await expect(mail.getByRole('group', { name: /Direkteinladung|direct invitations/i })).toBeVisible();
     },
 };

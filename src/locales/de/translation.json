@@ -4094,8 +4094,6 @@
     "tenants.permissions.featureDescription.mediaUpload": "Bilder und Dateien im Gespräch senden.",
     "tenants.permissions.featureDescription.mediaInlineDisplay": "Gesendete Bilder direkt im Verlauf zeigen statt als Download.",
     "tenants.permissions.featureDescription.mediaAiScan": "Hochgeladene Bilder automatisch auf verbotene Inhalte prüfen.",
-    "tenants.permissions.section.learnMore": "Mehr erfahren",
-    "tenants.permissions.section.newTab": "(öffnet in neuem Tab)",
     "tileHelp.guestAccounts.temporary.title": "Nach der Sitzung löschen",
     "tileHelp.guestAccounts.temporary.body": "Der Gast spricht einmal mit der Berater:in. Danach wird sein Konto gelöscht; es bleibt nichts zurück.",
     "tileHelp.guestAccounts.guestChooses.title": "Gast wählt",
@@ -4113,5 +4111,8 @@
     "tenants.permissions.directInvite.videoDescription": "Der Link öffnet direkt einen Videoanruf mit Bild und Ton; die Kamera lässt sich im Anruf ausschalten.",
     "tenants.permissions.caseSharing.chosen": "ausgewählt",
     "tenants.permissions.caseSharing.notChosen": "nicht ausgewählt – auswählen",
-    "tenants.permissions.caseSharing.lockedFromAbove": "Nicht verfügbar: von oben ist eine andere Variante vorgegeben."
+    "tenants.permissions.caseSharing.lockedFromAbove": "Nicht verfügbar: von oben ist eine andere Variante vorgegeben.",
+    "tileSections.learnMore": "Mehr erfahren",
+    "tileSections.newTab": "(öffnet in neuem Tab)",
+    "tenants.permissions.caseSharing.optionsLabel": "Varianten"
 }

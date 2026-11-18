@@ -1,0 +1,12 @@
+/* The info button of a tile is absolutely placed for a tile corner; here it sits in the heading row. */
+.help {
+    position: relative;
+    width: 48px;
+    height: 40px;
+    flex: 0 0 48px;
+
+    :global(.MuiIconButton-root) {
+        top: -4px;
+        right: 0;
+    }
+}

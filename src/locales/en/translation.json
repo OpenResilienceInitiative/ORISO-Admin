@@ -4094,8 +4094,6 @@
     "tenants.permissions.featureDescription.mediaUpload": "Send pictures and files in the conversation.",
     "tenants.permissions.featureDescription.mediaInlineDisplay": "Show sent pictures right in the conversation instead of as a download.",
     "tenants.permissions.featureDescription.mediaAiScan": "Check uploaded pictures for prohibited content automatically.",
-    "tenants.permissions.section.learnMore": "Learn more",
-    "tenants.permissions.section.newTab": "(opens in a new tab)",
     "tileHelp.guestAccounts.temporary.title": "Delete after the session",
     "tileHelp.guestAccounts.temporary.body": "The guest talks to the counsellor once. Then the account is deleted; nothing stays behind.",
     "tileHelp.guestAccounts.guestChooses.title": "Guest chooses",
@@ -4113,5 +4111,8 @@
     "tenants.permissions.directInvite.videoDescription": "The link opens a video call directly, with picture and sound; the camera can be switched off during the call.",
     "tenants.permissions.caseSharing.chosen": "chosen",
     "tenants.permissions.caseSharing.notChosen": "not chosen – choose",
-    "tenants.permissions.caseSharing.lockedFromAbove": "Not available: another option is required from above."
+    "tenants.permissions.caseSharing.lockedFromAbove": "Not available: another option is required from above.",
+    "tileSections.learnMore": "Learn more",
+    "tileSections.newTab": "(opens in a new tab)",
+    "tenants.permissions.caseSharing.optionsLabel": "Options"
 }

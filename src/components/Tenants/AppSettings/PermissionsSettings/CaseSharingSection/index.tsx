@@ -11,7 +11,8 @@ import { ReactComponent as LockOpenRightFilledIcon } from '../../../../../resour
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import controlStyles from '../../../../PermissionPolicyControl/styles.module.scss';
 import cardStyles from '../PolicyOptionCard/styles.module.scss';
-import { TileSection } from '../TileSection';
+import { TileSections } from '../../../../TileSections';
+import { SectionHelp } from '../SectionHelp';
 import { CASE_HANDOVER_HELP, featurePage } from '../tileHelpTopics';
 import type { CaseSharingMode } from './caseSharingMode';
 import styles from './styles.module.scss';
@@ -74,7 +75,8 @@ export const CaseSharingSection = ({
     handoverSettings,
 }: CaseSharingSectionProps) => {
     const { t } = useTranslation();
-    const titleId = useId();
+    // useId gives colons, which an id selector cannot hold; the section only needs uniqueness.
+    const sectionId = useId().replace(/:/g, '');
     const enforced = policy?.mode === 'ENFORCED';
     // A requirement from above: nothing to choose here.
     const lockedFromAbove = level !== 'platform' && enforced && policy?.inherited === true;
@@ -93,12 +95,12 @@ export const CaseSharingSection = ({
     );
 
     return (
-        <TileSection
+        <TileSections.Section
+            wide
+            id={`case-sharing-${sectionId}`}
             title={t(`${K}.title`)}
-            description={t(`${K}.description`)}
-            titleId={titleId}
-            dataTestId="case-sharing-section"
-            help={CASE_HANDOVER_HELP}
+            note={t(`${K}.description`)}
+            titleAction={<SectionHelp topic={CASE_HANDOVER_HELP} />}
             learnMoreHref={featurePage('caseHandover')}
             collapsible
         >
@@ -107,7 +109,7 @@ export const CaseSharingSection = ({
                     {t(`${K}.bothActive`)}
                 </p>
             )}
-            <div role="group" aria-labelledby={titleId} className={styles.options}>
+            <div role="group" aria-label={t(`${K}.optionsLabel`)} className={styles.options}>
                 {OPTIONS.map(({ mode, labelKey, descriptionKey, Icon }) => {
                     const chosen = policy?.value === mode;
                     const label = t(labelKey);
@@ -182,6 +184,6 @@ export const CaseSharingSection = ({
                     {handoverSettings}
                 </div>
             )}
-        </TileSection>
+        </TileSections.Section>
     );
 };

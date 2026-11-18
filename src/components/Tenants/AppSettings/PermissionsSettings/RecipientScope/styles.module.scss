@@ -1,14 +1,13 @@
 @use '../../../../../styles/muiSpacing' as mui;
 
-/* ORISO-Admin#1558: a section of the internal group chats tile, same surface as its other sections. */
+/* ORISO-Admin#1558: a section of the internal group chats tile, the same white panel as TileSections.Section. */
 .control {
     display: flex;
     min-width: 0;
     flex-direction: column;
     padding: calc(mui.$mui-unit * 2);
-    border: 1px solid var(--m3-outline-variant, #c4c7c5);
     border-radius: 16px;
-    background: var(--m3-surface-container-low, #f7f2f3);
+    background: var(--m3-surface-container-lowest, #ffffff);
     gap: calc(mui.$mui-unit * 1.5);
 }
 
