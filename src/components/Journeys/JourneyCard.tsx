@@ -11,11 +11,13 @@ import { RowMenu } from '../UserTable/RowMenu';
 import { MODULE_SOURCE_LANGUAGE } from '../ConversationModules/conversationModule';
 import {
     JOURNEY_PHASES,
+    editablePhases,
     isMustStep,
     missingSafetyAspects,
     phasesOf,
     registrationRoute,
     type Journey,
+    type JourneyLevel,
     type JourneyPhase,
     type JourneyTopic,
 } from './journey';
@@ -29,6 +31,8 @@ const SHOWN = 5;
 interface JourneyCardProps {
     journey: Journey;
     topics: JourneyTopic[];
+    /** Träger and Beratungsstelle see the platform's check-in but cannot change it (decision 29). */
+    level?: JourneyLevel;
     onOpenPhase: (phase: JourneyPhase) => void;
     onOpenDestinations: () => void;
     onRename: () => void;
@@ -43,13 +47,14 @@ interface JourneyCardProps {
 export const JourneyCard = ({
     journey,
     topics,
+    level = 'platform',
     onOpenPhase,
     onOpenDestinations,
     onRename,
     onDuplicate,
     onRemove,
 }: JourneyCardProps) => {
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
     const label = journeyLabel(journey, t);
     const available = phasesOf(journey.conversationType);
     const noSafety = missingSafetyAspects(journey).length > 0;
@@ -115,6 +120,30 @@ export const JourneyCard = ({
                         );
                     }
                     const steps = journey.phases[phase];
+                    if (!editablePhases(level).includes(phase)) {
+                        return (
+                            <div
+                                key={phase}
+                                className={classNames(styles.phase, styles.phaseLocked)}
+                                data-testid={`journey-${journey.id}-${phase}`}
+                            >
+                                <span className={styles.phaseHead}>
+                                    <span className={styles.phaseIcon} aria-hidden>
+                                        <PhaseIcon phase={phase} />
+                                    </span>
+                                    <span className={styles.phaseName}>{t(`journeys.phase.${phase}`)}</span>
+                                    <LockOutlined className={styles.tileLock} aria-hidden />
+                                </span>
+                                <span className={styles.tileEmpty}>{t('journeys.level.departureLocked')}</span>
+                                <ol className={styles.tileList} lang={i18n.language}>
+                                    {steps.slice(0, SHOWN).map((step) => (
+                                        <li key={step.id}>{stepTitle(step, MODULE_SOURCE_LANGUAGE, t)}</li>
+                                    ))}
+                                    {more(steps.length)}
+                                </ol>
+                            </div>
+                        );
+                    }
                     return (
                         <button
                             key={phase}
@@ -135,7 +164,7 @@ export const JourneyCard = ({
                             {steps.length === 0 ? (
                                 <span className={styles.tileEmpty}>{t('journeys.phase.noSteps')}</span>
                             ) : (
-                                <ol className={styles.tileList}>
+                                <ol className={styles.tileList} lang={i18n.language}>
                                     {steps.slice(0, SHOWN).map((step) => (
                                         <li key={step.id}>
                                             {isMustStep(step) && (
@@ -177,7 +206,7 @@ export const JourneyCard = ({
                                 <code>{route.path}</code>
                                 {t('journeys.destinations.topics', { count: registration.length })}
                             </span>
-                            <ul className={styles.tileList}>
+                            <ul className={styles.tileList} lang={i18n.language}>
                                 {registration.slice(0, SHOWN).map((name) => (
                                     <li key={name}>{name}</li>
                                 ))}
@@ -191,7 +220,7 @@ export const JourneyCard = ({
                                 <LinkOutlined aria-hidden />
                                 {t('journeys.destinations.links', { count: links.length })}
                             </span>
-                            <ul className={styles.tileList}>
+                            <ul className={styles.tileList} lang={i18n.language}>
                                 {links.map((link) => (
                                     <li key={link.id}>
                                         {link.name || t('journeys.link.unnamed')}

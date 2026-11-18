@@ -8,6 +8,7 @@ import { MODULE_SOURCE_LANGUAGE } from '../ConversationModules/conversationModul
 import {
     addStep,
     canMoveStep,
+    isSkipped,
     missingSafetyAspects,
     moveStep,
     picksAgencyFromList,
@@ -31,6 +32,8 @@ export interface PhaseDialogProps {
     journey: Journey;
     phase: JourneyPhase;
     translate?: (text: string, language: string) => string;
+    /** Building blocks Funktionszugriff switched off. */
+    blocked?: readonly string[];
     /** Opens one step, or the "add step" list, right away (stories). */
     initially?: { stepId?: string; adding?: boolean };
     onApply: (journey: Journey) => void;
@@ -46,7 +49,15 @@ interface DropTarget {
  * The steps of one phase, in the order the person meets them. Steps are dragged by their handle
  * or moved with the arrow keys; a must step stays where it is.
  */
-export const PhaseDialog = ({ journey, phase, translate, initially, onApply, onClose }: PhaseDialogProps) => {
+export const PhaseDialog = ({
+    journey,
+    phase,
+    translate,
+    blocked = [],
+    initially,
+    onApply,
+    onClose,
+}: PhaseDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<Journey>(journey);
     const [editingId, setEditingId] = useState<string | undefined>(initially?.stepId);
@@ -78,7 +89,7 @@ export const PhaseDialog = ({ journey, phase, translate, initially, onApply, onC
 
     const add = (newStep: NewStep) => {
         const id = nextId('step');
-        setDraft((current) => addStep(current, phase, newStep, id, addingAfter ?? undefined));
+        setDraft((current) => addStep(current, phase, newStep, id, addingAfter ?? undefined, blocked));
         setAddingAfter(undefined);
         // What the platform ships is ready to use; everything else is written first.
         if (newStep.kind !== 'core' && newStep.kind !== 'addon') setEditingId(id);
@@ -135,10 +146,27 @@ export const PhaseDialog = ({ journey, phase, translate, initially, onApply, onC
                         {announcement}
                     </p>
 
-                    {phase === 'departure' && picksAgencyFromList(draft) && (
-                        <div className={styles.notice} data-testid="journey-no-postcode">
-                            <p className={styles.noticeTitle}>{t('journeys.noPostcode.title')}</p>
-                            <p>{t('journeys.noPostcode.text')}</p>
+                    <p className={styles.help}>{t(`journeys.phaseUnit.${phase}`)}</p>
+
+                    {phase === 'departure' && draft.conversationType === 'AGENCY_COUNSELLING' && (
+                        <div
+                            className={styles.notice}
+                            data-testid={picksAgencyFromList(draft) ? 'journey-no-postcode' : 'journey-agency-fixed'}
+                        >
+                            <p className={styles.noticeTitle}>
+                                {t(
+                                    picksAgencyFromList(draft)
+                                        ? 'journeys.noPostcode.title'
+                                        : 'journeys.agencyFixed.title',
+                                )}
+                            </p>
+                            <p>
+                                {t(
+                                    picksAgencyFromList(draft)
+                                        ? 'journeys.noPostcode.text'
+                                        : 'journeys.agencyFixed.text',
+                                )}
+                            </p>
                         </div>
                     )}
 
@@ -174,6 +202,8 @@ export const PhaseDialog = ({ journey, phase, translate, initially, onApply, onC
                                 <StepCard
                                     key={step.id}
                                     step={step}
+                                    phase={phase}
+                                    skipped={isSkipped(step, blocked)}
                                     position={index + 1}
                                     total={steps.length}
                                     language={language}
@@ -220,7 +250,13 @@ export const PhaseDialog = ({ journey, phase, translate, initially, onApply, onC
                 </div>
             </Modal>
             {addingAfter !== undefined && (
-                <AddStepDialog journey={draft} phase={phase} onAdd={add} onClose={() => setAddingAfter(undefined)} />
+                <AddStepDialog
+                    journey={draft}
+                    phase={phase}
+                    blocked={blocked}
+                    onAdd={add}
+                    onClose={() => setAddingAfter(undefined)}
+                />
             )}
             {editing && (
                 <StepDialog

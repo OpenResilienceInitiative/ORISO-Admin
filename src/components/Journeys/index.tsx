@@ -20,6 +20,7 @@ import {
     topicsWithoutRoute,
     typeSummary,
     type Journey,
+    type JourneyLevel,
     type JourneyTopic,
 } from './journey';
 import { FlightPath } from './FlightPath';
@@ -114,6 +115,10 @@ export interface JourneysSettingsProps {
     canEditAppearance?: boolean;
     /** Machine translation of one text. Without it no "translate with AI" is offered. */
     translate?: (text: string, language: string) => string;
+    /** Which level edits. Below the platform the check-in is the platform's (decision 29). */
+    level?: JourneyLevel;
+    /** Building blocks Funktionszugriff switched off, e.g. the e-mail step (decision 31). */
+    blocked?: readonly string[];
     /** Opens one dialog right away (stories). */
     initiallyOpen?: { type: ConversationType; appearance?: boolean } & Partial<JourneysDialogOpen>;
     onSave?: (journeys: Journey[]) => void;
@@ -130,6 +135,8 @@ export const JourneysSettings = ({
     appearance: initialAppearance = {},
     canEditAppearance = false,
     translate,
+    level = 'platform',
+    blocked = [],
     initiallyOpen,
     onSave,
     onSaveAppearance,
@@ -177,6 +184,8 @@ export const JourneysSettings = ({
                     journeys={journeys}
                     topics={topics}
                     translate={translate}
+                    level={level}
+                    blocked={blocked}
                     initially={
                         initiallyOpen?.type === open && initiallyOpen.journeyId
                             ? (initiallyOpen as JourneysDialogOpen)

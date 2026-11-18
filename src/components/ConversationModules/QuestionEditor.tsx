@@ -170,6 +170,14 @@ export const QuestionEditor = ({ section, language, onChange }: QuestionEditorPr
                                 {t('conversationModules.question.addOption')}
                             </M3Button>
                         )}
+                        {isChoice && (
+                            <ToggleRow
+                                label={t('conversationModules.question.other')}
+                                description={t('conversationModules.question.otherHelp')}
+                                checked={question.other ?? false}
+                                onCheckedChange={(other) => replace(index, { ...question, other })}
+                            />
+                        )}
                     </div>
                 );
             })}

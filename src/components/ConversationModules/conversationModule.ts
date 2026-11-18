@@ -48,6 +48,11 @@ export interface Question {
     label: LangMap;
     help?: LangMap;
     options: QuestionOption[];
+    /**
+     * Single and multiple choice: also offer "Etwas anderes …" with a free-text field
+     * (Frank, 2026-11-18).
+     */
+    other?: boolean;
     /** Raised on publish when the meaning changed, so stored answers keep theirs. */
     version: number;
 }
@@ -366,11 +371,12 @@ export const changeQuestionType = (question: Question, type: QuestionType): Ques
         display: type === 'single' ? question.display ?? 'radio' : undefined,
         required: type === 'hint' ? false : question.required,
         options,
+        other: isChoice ? question.other : undefined,
     };
 };
 
 const meaningOf = (question: Question) =>
-    JSON.stringify([question.type, question.label, question.options, question.required]);
+    JSON.stringify([question.type, question.label, question.options, question.required, question.other ?? false]);
 
 /** Raises the version of every question whose meaning differs from the stored module. */
 export const prepareForPublish = (edited: ConversationModule, stored: ConversationModule): ConversationModule => {

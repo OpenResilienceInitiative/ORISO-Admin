@@ -5,7 +5,6 @@ import {
     type ConversationType,
     type LangMap,
     type Question,
-    type QuestionTrigger,
 } from '../ConversationModules/conversationModule';
 
 /**
@@ -47,7 +46,18 @@ export const stepKindsFor = (phase: JourneyPhase): StepKind[] =>
     STEP_KINDS.filter((kind) => phase !== 'departure' || kind !== 'message');
 
 /** Core elements live in the platform code. The editor places and words them, nothing more. */
-export const CORE_ELEMENTS = ['topic', 'postcode', 'username', 'consent', 'email', 'enquiry'] as const;
+export const CORE_ELEMENTS = [
+    'topic',
+    'postcode',
+    'agency',
+    'username',
+    'consent',
+    'email',
+    'enquiry',
+    'agencyGreeting',
+    'suggestAlternative',
+    'agencySurvey',
+] as const;
 export type CoreElementId = (typeof CORE_ELEMENTS)[number];
 
 /** Add-ons are programmed building blocks with their own fixed logic, added per installation. */
@@ -65,15 +75,49 @@ interface ElementRule {
 
 const COUNSELLING: readonly ConversationType[] = ['AGENCY_COUNSELLING', 'LIVE_CHAT'];
 const MAIL: readonly ConversationType[] = ['AGENCY_COUNSELLING'];
+const ALL: readonly ConversationType[] = CONVERSATION_TYPES;
 
 const CORE_RULES: Record<CoreElementId, ElementRule> = {
     topic: { phases: ['departure'], types: COUNSELLING },
     postcode: { phases: ['departure'], types: MAIL },
+    // The postcode often finds several centres: the centre is fixed only by this step, or before it
+    // by a link or subdomain of its own (Frank, 2026-11-18).
+    agency: { phases: ['departure'], types: MAIL, keep: true },
     username: { phases: ['departure'], types: MAIL, must: true },
     consent: { phases: ['departure'], types: COUNSELLING, must: true },
     email: { phases: ['departure', 'flight'], types: MAIL },
     enquiry: { phases: ['flight'], types: MAIL, keep: true },
+    // The conversation module of part A, resolved group ?? centre ?? Träger ?? platform.
+    agencyGreeting: { phases: ['flight'], types: ALL },
+    suggestAlternative: { phases: ['flight'], types: COUNSELLING },
+    agencySurvey: { phases: ['arrival'], types: ALL },
 };
+
+/**
+ * When a question, a rating or a message of the flight or arrival is sent. "manual" is the
+ * counsellor's choice in the conversation's menu ("send the survey now", "suggest another service").
+ */
+export const JOURNEY_TRIGGERS = ['withGreeting', 'afterFirstReply', 'onClose', 'manual'] as const;
+export type JourneyTrigger = (typeof JOURNEY_TRIGGERS)[number];
+
+export const triggersFor = (phase: JourneyPhase): JourneyTrigger[] => {
+    if (phase === 'flight') return ['withGreeting', 'afterFirstReply', 'manual'];
+    if (phase === 'arrival') return ['onClose', 'manual'];
+    return [];
+};
+
+/** Core elements whose moment is not the editor's to pick. */
+export const FIXED_TRIGGERS: Partial<Record<CoreElementId, JourneyTrigger>> = { suggestAlternative: 'manual' };
+
+/**
+ * Who edits a journey. Through the normal registration Träger and Beratungsstelle get the
+ * platform's journey (chosen by topic) and may change flight and arrival only; a check-in of their
+ * own needs a link or subdomain of their own (Frank, 2026-11-18).
+ */
+export type JourneyLevel = 'platform' | 'tenant' | 'agency';
+
+export const editablePhases = (level: JourneyLevel): readonly JourneyPhase[] =>
+    level === 'platform' ? JOURNEY_PHASES : ['flight', 'arrival'];
 
 const ADDON_RULES: Record<AddonId, ElementRule> = {
     age: { phases: ['departure'], types: MAIL },
@@ -84,6 +128,28 @@ const ADDON_RULES: Record<AddonId, ElementRule> = {
 export const RATING_TYPES = ['stars', 'range'] as const;
 export type RatingType = (typeof RATING_TYPES)[number];
 
+/**
+ * Scales an editor picks from instead of typing numbers (Frank, 2026-11-18: number fields only for
+ * real numbers such as the age). The default runs from −5 to +5, with 0 labelled "normal".
+ */
+export const SCALES = {
+    minusFiveToFive: { min: -5, max: 5 },
+    zeroToTen: { min: 0, max: 10 },
+    oneToFive: { min: 1, max: 5 },
+} as const;
+export type ScaleId = keyof typeof SCALES;
+
+export const scaleOf = (rating: RatingItem): ScaleId | undefined =>
+    (Object.keys(SCALES) as ScaleId[]).find((id) => SCALES[id].min === rating.min && SCALES[id].max === rating.max);
+
+export const NORMAL_LABEL: LangMap = { de: 'normal', en: 'normal' };
+
+export const withScale = (rating: RatingItem, scale: ScaleId): RatingItem => ({
+    ...rating,
+    ...SCALES[scale],
+    midLabel: scale === 'minusFiveToFive' ? rating.midLabel ?? { ...NORMAL_LABEL } : undefined,
+});
+
 export interface RatingItem {
     id: string;
     type: RatingType;
@@ -91,6 +157,8 @@ export interface RatingItem {
     min: number;
     max: number;
     minLabel?: LangMap;
+    /** The label of the middle of a scale: "normal" at 0 on −5 … +5. */
+    midLabel?: LangMap;
     maxLabel?: LangMap;
     required: boolean;
     /** Raised on publish when the meaning changed, so stored answers keep theirs. */
@@ -124,8 +192,8 @@ export interface JourneyStep {
     /** kind `panel`: a container of aspects. */
     aspects?: PanelAspect[];
     display?: 'open' | 'collapsed';
-    /** Flight only: questions and ratings come with the greeting or after the first reply. */
-    trigger?: QuestionTrigger;
+    /** Flight and arrival: when the step is sent (see `triggersFor`). */
+    trigger?: JourneyTrigger;
     /** Languages a machine wrote and nobody has checked yet. */
     machine?: string[];
 }
@@ -179,6 +247,10 @@ const CORE_TEXTS: Record<CoreElementId, { title: LangMap; description: LangMap }
             'With it we find a counselling centre near you.',
         ),
     },
+    agency: {
+        title: l('Beratungsstelle wählen', 'Choose a counselling centre'),
+        description: l('Wählen Sie eine Beratungsstelle aus der Liste.', 'Choose a counselling centre from the list.'),
+    },
     username: {
         title: l('Benutzername und Passwort', 'User name and password'),
         description: l(
@@ -203,6 +275,27 @@ const CORE_TEXTS: Record<CoreElementId, { title: LangMap; description: LangMap }
     enquiry: {
         title: l('Anfrage', 'Enquiry'),
         description: l('Schreiben Sie uns, was Sie beschäftigt.', 'Write to us what is on your mind.'),
+    },
+    agencyGreeting: {
+        title: l('Begrüßung der Beratungsstelle', 'Greeting of the counselling centre'),
+        description: l(
+            'Die Begrüßung, die die Beratungsstelle eingestellt hat – sonst die des Trägers oder der Plattform.',
+            'The greeting the counselling centre set up – otherwise the one of the Träger or the platform.',
+        ),
+    },
+    suggestAlternative: {
+        title: l('Alternative Beratung vorschlagen', 'Suggest another service'),
+        description: l(
+            'Die Beratung schlägt ein anderes Angebot vor, wenn es besser passt.',
+            'The counsellor suggests another service when it fits better.',
+        ),
+    },
+    agencySurvey: {
+        title: l('Umfrage der Beratungsstelle', 'Survey of the counselling centre'),
+        description: l(
+            'Die Umfrage, die die Beratungsstelle eingestellt hat – sonst die des Trägers oder der Plattform.',
+            'The survey the counselling centre set up – otherwise the one of the Träger or the platform.',
+        ),
     },
 };
 
@@ -229,6 +322,7 @@ const coreStep = (prefix: string, core: CoreElementId): JourneyStep => ({
     kind: 'core',
     core,
     ...structuredClone(CORE_TEXTS[core]),
+    ...(FIXED_TRIGGERS[core] ? { trigger: FIXED_TRIGGERS[core] } : {}),
 });
 
 const emergencyAspect = (prefix: string): PanelAspect => ({
@@ -242,10 +336,12 @@ const emergencyAspect = (prefix: string): PanelAspect => ({
     ),
 });
 
-const surveySteps = (prefix: string): JourneyStep[] => [
+/** A survey written into the journey itself, instead of the centre's one (stories, tests). */
+export const exampleSurveySteps = (prefix: string): JourneyStep[] => [
     {
         id: `${prefix}:satisfaction`,
         kind: 'rating',
+        trigger: 'onClose',
         title: l('Wie war die Beratung für Sie?', 'How was the counselling for you?'),
         description: l(
             'Ihre Antworten helfen uns, besser zu werden. Alles ist freiwillig.',
@@ -262,13 +358,14 @@ const surveySteps = (prefix: string): JourneyStep[] => [
                 version: 1,
             },
             {
-                id: 'recommend',
+                id: 'mood',
                 type: 'range',
-                label: l('Wie wahrscheinlich empfehlen Sie uns weiter?', 'How likely are you to recommend us?'),
-                min: 0,
-                max: 10,
-                minLabel: l('gar nicht', 'not at all'),
-                maxLabel: l('sehr wahrscheinlich', 'very likely'),
+                label: l('Wie geht es Ihnen jetzt?', 'How do you feel now?'),
+                min: -5,
+                max: 5,
+                minLabel: l('viel schlechter', 'much worse'),
+                midLabel: { ...NORMAL_LABEL },
+                maxLabel: l('viel besser', 'much better'),
                 required: false,
                 version: 1,
             },
@@ -277,6 +374,7 @@ const surveySteps = (prefix: string): JourneyStep[] => [
     {
         id: `${prefix}:feedback`,
         kind: 'question',
+        trigger: 'onClose',
         title: l('Was hat Ihnen geholfen?', 'What helped you?'),
         description: {},
         questions: [
@@ -290,6 +388,7 @@ const surveySteps = (prefix: string): JourneyStep[] => [
                     { id: 'information', label: l('Informationen', 'Information') },
                     { id: 'nextSteps', label: l('Nächste Schritte', 'Next steps') },
                 ],
+                other: true,
                 version: 1,
             },
             {
@@ -304,112 +403,61 @@ const surveySteps = (prefix: string): JourneyStep[] => [
     },
 ];
 
+/** An info panel written into the journey itself (stories, tests). */
+export const exampleInfoPanel = (prefix: string): JourneyStep => ({
+    id: `${prefix}:generalInfo`,
+    kind: 'panel',
+    title: l('Allgemeine Infos', 'General information'),
+    description: {},
+    display: 'collapsed',
+    aspects: [
+        {
+            id: `${prefix}:whoReadsAlong`,
+            prototypeId: 'whoReadsAlong',
+            title: l('Wer liest Ihre Nachricht?', 'Who reads your message?'),
+            body: p(
+                'Ihre Nachricht lesen nur die Beraterinnen und Berater dieser Beratungsstelle.',
+                'Only the counsellors of this counselling centre read your message.',
+            ),
+        },
+        {
+            id: `${prefix}:responseTime`,
+            prototypeId: 'responseTime',
+            title: l('Wann wir antworten', 'When we reply'),
+            body: p(
+                'Sie bekommen innerhalb von zwei Werktagen eine Antwort.',
+                'You will get a reply within two working days.',
+            ),
+        },
+        emergencyAspect(prefix),
+    ],
+});
+
+/**
+ * What the platform ships. Greeting and survey are the centre's (part A modules, decision 30), so
+ * the shipped flight and arrival only place them; a journey may add steps of its own around them.
+ */
 const STANDARD: Record<ConversationType, (prefix: string) => Record<JourneyPhase, JourneyStep[]>> = {
     AGENCY_COUNSELLING: (prefix) => ({
-        departure: (['topic', 'postcode', 'username', 'consent', 'email'] as const).map((core) =>
+        departure: (['topic', 'postcode', 'agency', 'username', 'consent', 'email'] as const).map((core) =>
             coreStep(prefix, core),
         ),
         flight: [
             coreStep(prefix, 'enquiry'),
-            {
-                id: `${prefix}:greeting`,
-                kind: 'message',
-                title: l('Begrüßung', 'Greeting'),
-                description: {},
-                body: p(
-                    'Schön, dass Sie sich gemeldet haben. Ihre Nachricht ist bei uns angekommen.',
-                    'Thank you for getting in touch. Your message has reached us.',
-                ),
-            },
-            {
-                id: `${prefix}:generalInfo`,
-                kind: 'panel',
-                title: l('Allgemeine Infos', 'General information'),
-                description: {},
-                display: 'collapsed',
-                aspects: [
-                    {
-                        id: `${prefix}:whoReadsAlong`,
-                        prototypeId: 'whoReadsAlong',
-                        title: l('Wer liest Ihre Nachricht?', 'Who reads your message?'),
-                        body: p(
-                            'Ihre Nachricht lesen nur die Beraterinnen und Berater dieser Beratungsstelle.',
-                            'Only the counsellors of this counselling centre read your message.',
-                        ),
-                    },
-                    {
-                        id: `${prefix}:responseTime`,
-                        prototypeId: 'responseTime',
-                        title: l('Wann wir antworten', 'When we reply'),
-                        body: p(
-                            'Sie bekommen innerhalb von zwei Werktagen eine Antwort.',
-                            'You will get a reply within two working days.',
-                        ),
-                    },
-                    emergencyAspect(prefix),
-                ],
-            },
+            coreStep(prefix, 'agencyGreeting'),
+            coreStep(prefix, 'suggestAlternative'),
         ],
-        arrival: surveySteps(prefix),
+        arrival: [coreStep(prefix, 'agencySurvey')],
     }),
     LIVE_CHAT: (prefix) => ({
         departure: [coreStep(prefix, 'topic'), coreStep(prefix, 'consent')],
-        flight: [
-            {
-                id: `${prefix}:greeting`,
-                kind: 'message',
-                title: l('Begrüßung', 'Greeting'),
-                description: {},
-                body: p(
-                    'Willkommen im Live-Chat. Gleich ist eine Beraterin oder ein Berater für Sie da.',
-                    'Welcome to the live chat. A counsellor will be with you shortly.',
-                ),
-            },
-            {
-                id: `${prefix}:generalInfo`,
-                kind: 'panel',
-                title: l('Allgemeine Infos', 'General information'),
-                description: {},
-                display: 'collapsed',
-                aspects: [emergencyAspect(prefix)],
-            },
-        ],
-        arrival: surveySteps(prefix),
+        flight: [coreStep(prefix, 'agencyGreeting'), coreStep(prefix, 'suggestAlternative')],
+        arrival: [coreStep(prefix, 'agencySurvey')],
     }),
     SELF_HELP: (prefix) => ({
         departure: [],
-        flight: [
-            {
-                id: `${prefix}:welcome`,
-                kind: 'message',
-                title: l('Willkommen in der Gruppe', 'Welcome to the group'),
-                description: {},
-                body: p(
-                    'Schön, dass Sie dabei sind. Stellen Sie sich gern kurz vor.',
-                    'Glad you are here. Feel free to introduce yourself.',
-                ),
-            },
-            {
-                id: `${prefix}:generalInfo`,
-                kind: 'panel',
-                title: l('Regeln der Gruppe', 'Group rules'),
-                description: {},
-                display: 'collapsed',
-                aspects: [
-                    {
-                        id: `${prefix}:rules`,
-                        prototypeId: 'rules',
-                        title: l('So gehen wir miteinander um', 'How we treat each other'),
-                        body: p(
-                            'Was hier gesagt wird, bleibt in der Gruppe. Wir gehen respektvoll miteinander um.',
-                            'What is said here stays in the group. We treat each other with respect.',
-                        ),
-                    },
-                    emergencyAspect(prefix),
-                ],
-            },
-        ],
-        arrival: surveySteps(prefix),
+        flight: [coreStep(prefix, 'agencyGreeting')],
+        arrival: [coreStep(prefix, 'agencySurvey')],
     }),
     INTERNAL_GROUP: () => ({ departure: [], flight: [], arrival: [] }),
 };
@@ -499,6 +547,8 @@ export interface ElementChoice<Id extends string> {
     id: Id;
     used: boolean;
     usedIn?: JourneyPhase;
+    /** Funktionszugriff decides whether a building block may be used at all (decision 31). */
+    allowed: boolean;
 }
 
 const choices = <Id extends string>(
@@ -506,6 +556,7 @@ const choices = <Id extends string>(
     phase: JourneyPhase,
     rules: Record<Id, ElementRule>,
     field: 'core' | 'addon',
+    blocked: readonly string[],
 ): ElementChoice<Id>[] =>
     (Object.keys(rules) as Id[])
         .filter((id) => rules[id].phases.includes(phase) && rules[id].types.includes(journey.conversationType))
@@ -513,15 +564,29 @@ const choices = <Id extends string>(
             const usedIn = JOURNEY_PHASES.find((candidate) =>
                 journey.phases[candidate].some((step) => step[field] === id),
             );
-            return { id, used: usedIn !== undefined, usedIn };
+            return { id, used: usedIn !== undefined, usedIn, allowed: !blocked.includes(id) };
         });
 
-/** The core elements this phase may hold, and whether the journey already uses each of them. */
-export const coreChoices = (journey: Journey, phase: JourneyPhase): ElementChoice<CoreElementId>[] =>
-    choices(journey, phase, CORE_RULES, 'core');
+/**
+ * The core elements this phase may hold, whether the journey already uses each of them, and whether
+ * Funktionszugriff allows them (`blocked` lists the ones it switched off).
+ */
+export const coreChoices = (
+    journey: Journey,
+    phase: JourneyPhase,
+    blocked: readonly CoreElementId[] = [],
+): ElementChoice<CoreElementId>[] => choices(journey, phase, CORE_RULES, 'core', blocked);
 
-export const addonChoices = (journey: Journey, phase: JourneyPhase): ElementChoice<AddonId>[] =>
-    choices(journey, phase, ADDON_RULES, 'addon');
+export const addonChoices = (
+    journey: Journey,
+    phase: JourneyPhase,
+    blocked: readonly AddonId[] = [],
+): ElementChoice<AddonId>[] => choices(journey, phase, ADDON_RULES, 'addon', blocked);
+
+/** A step whose building block Funktionszugriff switched off: it stays in the journey and is skipped. */
+export const isSkipped = (step: JourneyStep, blocked: readonly string[]) =>
+    (step.core !== undefined && blocked.includes(step.core)) ||
+    (step.addon !== undefined && blocked.includes(step.addon));
 
 export type NewStep =
     | { kind: 'core'; core: CoreElementId }
@@ -531,7 +596,7 @@ export type NewStep =
 const blankStep = (draft: NewStep, phase: JourneyPhase, id: string): JourneyStep => {
     switch (draft.kind) {
         case 'core':
-            return { id, kind: 'core', core: draft.core, ...structuredClone(CORE_TEXTS[draft.core]) };
+            return { ...coreStep(id, draft.core), id };
         case 'addon':
             return { id, kind: 'addon', addon: draft.addon, ...structuredClone(ADDON_TEXTS[draft.addon]) };
         case 'question':
@@ -540,7 +605,7 @@ const blankStep = (draft: NewStep, phase: JourneyPhase, id: string): JourneyStep
                 kind: 'question',
                 title: {},
                 description: {},
-                trigger: phase === 'flight' ? 'withGreeting' : undefined,
+                trigger: triggersFor(phase)[0],
                 questions: [
                     {
                         id: `${id}-1`,
@@ -562,14 +627,14 @@ const blankStep = (draft: NewStep, phase: JourneyPhase, id: string): JourneyStep
                 kind: 'rating',
                 title: {},
                 description: {},
-                trigger: phase === 'flight' ? 'withGreeting' : undefined,
+                trigger: triggersFor(phase)[0],
                 ratings: [
                     {
                         id: `${id}-1`,
-                        type: 'stars',
+                        type: 'range',
                         label: l('Neue Bewertung', 'New rating'),
-                        min: 1,
-                        max: 5,
+                        ...SCALES.minusFiveToFive,
+                        midLabel: { ...NORMAL_LABEL },
                         required: false,
                         version: 1,
                     },
@@ -599,14 +664,15 @@ export const addStep = (
     draft: NewStep,
     id: string,
     afterStepId?: string,
+    blocked: readonly string[] = [],
 ): Journey => {
     if (draft.kind === 'core') {
-        const choice = coreChoices(journey, phase).find((entry) => entry.id === draft.core);
-        if (!choice || choice.used) return journey;
+        const choice = coreChoices(journey, phase, blocked as CoreElementId[]).find((entry) => entry.id === draft.core);
+        if (!choice || choice.used || !choice.allowed) return journey;
     }
     if (draft.kind === 'addon') {
-        const choice = addonChoices(journey, phase).find((entry) => entry.id === draft.addon);
-        if (!choice || choice.used) return journey;
+        const choice = addonChoices(journey, phase, blocked as AddonId[]).find((entry) => entry.id === draft.addon);
+        if (!choice || choice.used || !choice.allowed) return journey;
     }
     const steps = [...journey.phases[phase]];
     const after = afterStepId ? steps.findIndex((step) => step.id === afterStepId) : -1;
@@ -641,6 +707,7 @@ const textsOf = (step: JourneyStep): LangMap[] => [
     ...(step.ratings ?? []).flatMap((rating) => [
         rating.label,
         ...(rating.minLabel ? [rating.minLabel] : []),
+        ...(rating.midLabel ? [rating.midLabel] : []),
         ...(rating.maxLabel ? [rating.maxLabel] : []),
     ]),
     ...(step.aspects ?? []).flatMap((aspect) => [aspect.title, aspect.body]),
@@ -853,24 +920,30 @@ export const duplicateJourney = (journeys: Journey[], sourceId: string, id: stri
 const NEEDS_SAFETY: readonly ConversationType[] = ['AGENCY_COUNSELLING', 'LIVE_CHAT', 'SELF_HELP'];
 
 /**
- * Shipped safety aspects (emergency numbers) the flight no longer shows. The editor may remove
- * them (ADR-036 decision 6) and is warned, not blocked.
+ * The emergency numbers, when the flight no longer shows them. They come with the centre's greeting
+ * (whose module warns on its own, ADR-036 decision 6) or with an info panel of the journey. The
+ * editor may drop both and is warned, not blocked.
  */
 export const missingSafetyAspects = (journey: Journey): PanelAspect[] => {
     if (!NEEDS_SAFETY.includes(journey.conversationType)) return [];
-    const shipped = standardJourney(journey.conversationType, journey.id, journey.number)
-        .phases.flight.flatMap((step) => step.aspects ?? [])
-        .filter((aspect) => aspect.safety);
-    const present = new Set(
-        journey.phases.flight.flatMap((step) => step.aspects ?? []).map((aspect) => aspect.prototypeId),
-    );
-    return shipped.filter((aspect) => !present.has(aspect.prototypeId));
+    const { flight } = journey.phases;
+    if (flight.some((step) => step.core === 'agencyGreeting')) return [];
+    if (flight.some((step) => step.aspects?.some((aspect) => aspect.safety))) return [];
+    return [emergencyAspect(journey.id)];
 };
 
 const questionMeaning = (question: Question) =>
-    JSON.stringify([question.type, question.label, question.options, question.required]);
+    JSON.stringify([question.type, question.label, question.options, question.required, question.other ?? false]);
 const ratingMeaning = (rating: RatingItem) =>
-    JSON.stringify([rating.type, rating.label, rating.min, rating.max, rating.minLabel, rating.maxLabel]);
+    JSON.stringify([
+        rating.type,
+        rating.label,
+        rating.min,
+        rating.max,
+        rating.minLabel,
+        rating.midLabel,
+        rating.maxLabel,
+    ]);
 
 /** Raises the version of every question and rating whose meaning differs from the stored journey. */
 export const prepareJourneyForPublish = (edited: Journey, stored: Journey): Journey => {

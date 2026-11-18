@@ -14,6 +14,8 @@ import {
     addonChoices,
     coreChoices,
     stepKindsFor,
+    type AddonId,
+    type CoreElementId,
     type ElementChoice,
     type Journey,
     type JourneyPhase,
@@ -34,6 +36,8 @@ export const KIND_ICONS: Record<StepKind, ReactElement> = {
 interface AddStepDialogProps {
     journey: Journey;
     phase: JourneyPhase;
+    /** Building blocks Funktionszugriff switched off. */
+    blocked?: readonly string[];
     onAdd: (step: NewStep) => void;
     onClose: () => void;
 }
@@ -42,7 +46,7 @@ interface AddStepDialogProps {
  * "Add step": the kinds on the left. Core elements and add-ons open their list on the right,
  * where the ones this journey already uses are marked and cannot be added a second time.
  */
-export const AddStepDialog = ({ journey, phase, onAdd, onClose }: AddStepDialogProps) => {
+export const AddStepDialog = ({ journey, phase, blocked = [], onAdd, onClose }: AddStepDialogProps) => {
     const { t } = useTranslation();
     const [library, setLibrary] = useState<'core' | 'addon' | null>(null);
 
@@ -55,7 +59,9 @@ export const AddStepDialog = ({ journey, phase, onAdd, onClose }: AddStepDialogP
     };
 
     const elements: ElementChoice<string>[] =
-        library === 'addon' ? addonChoices(journey, phase) : coreChoices(journey, phase);
+        library === 'addon'
+            ? addonChoices(journey, phase, blocked as AddonId[])
+            : coreChoices(journey, phase, blocked as CoreElementId[]);
 
     return (
         <Modal
@@ -108,7 +114,7 @@ export const AddStepDialog = ({ journey, phase, onAdd, onClose }: AddStepDialogP
                                         <button
                                             type="button"
                                             className={styles.pick}
-                                            disabled={choice.used}
+                                            disabled={choice.used || !choice.allowed}
                                             onClick={() =>
                                                 onAdd(
                                                     library === 'core'
@@ -122,7 +128,12 @@ export const AddStepDialog = ({ journey, phase, onAdd, onClose }: AddStepDialogP
                                                 <strong>{t(`journeys.${library}.${choice.id}`)}</strong>
                                                 <span>{t(`journeys.${library}Help.${choice.id}`)}</span>
                                             </span>
-                                            {choice.used && choice.usedIn && (
+                                            {!choice.allowed && (
+                                                <span className={classNames(styles.chip, styles.chipUsed)}>
+                                                    {t('journeys.permission.off')}
+                                                </span>
+                                            )}
+                                            {choice.allowed && choice.used && choice.usedIn && (
                                                 <span className={classNames(styles.chip, styles.chipUsed)}>
                                                     {t('journeys.add.used', {
                                                         phase: t(`journeys.phase.${choice.usedIn}`),

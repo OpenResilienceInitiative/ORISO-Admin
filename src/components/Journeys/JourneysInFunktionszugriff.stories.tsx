@@ -83,7 +83,7 @@ const FunktionszugriffWithJourneys = () => {
 };
 
 const meta = {
-    title: 'Settings/Einstellungen/Funktionszugriff/Journeys',
+    title: 'Settings/Einstellungen/Funktionszugriff/Reisen',
     id: 'settings-funktionszugriff-journeys',
     component: FunktionszugriffWithJourneys,
     parameters: {
@@ -106,7 +106,7 @@ export const OnEveryTile: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findByTestId('journeys-entry-AGENCY_COUNSELLING')).toHaveTextContent('4 Ziele');
-        await expect(canvas.getByTestId('journeys-entry-INTERNAL_GROUP')).toHaveTextContent('1 Journey');
+        await expect(canvas.getByTestId('journeys-entry-INTERNAL_GROUP')).toHaveTextContent('1 Reise');
     },
 };
 
@@ -114,9 +114,9 @@ export const OnEveryTile: Story = {
 export const OpenedFromTheTile: Story = {
     play: async ({ canvasElement }) => {
         const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
-        await userEvent.click(within(entry).getByRole('button', { name: 'Journeys bearbeiten' }));
+        await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByTestId('journeys-dialog')).toBeInTheDocument();
-        await expect(body.getByTestId('journey-standard-AGENCY_COUNSELLING-departure')).toHaveTextContent('5 Schritte');
+        await expect(body.getByTestId('journey-standard-AGENCY_COUNSELLING-departure')).toHaveTextContent('6 Schritte');
     },
 };

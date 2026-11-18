@@ -9,6 +9,10 @@ import {
     coveredTopics,
     coreChoices,
     duplicateJourney,
+    editablePhases,
+    exampleInfoPanel,
+    exampleSurveySteps,
+    isSkipped,
     linkPath,
     missingSafetyAspects,
     moveStep,
@@ -18,10 +22,12 @@ import {
     prepareJourneyForPublish,
     registrationRoute,
     removeStep,
+    scaleOf,
     routeSummary,
     shippedJourneys,
     standardJourney,
     stepKindsFor,
+    triggersFor,
     topicReach,
     topicsWithoutRoute,
     translateMissing,
@@ -29,14 +35,21 @@ import {
     typeSummary,
     unassignRegistrationTopic,
     updateStep,
+    withScale,
     type Journey,
     type JourneyStep,
+    type RatingItem,
 } from './journey';
 
 const mail = (patch: Partial<Journey> = {}): Journey => ({
     ...standardJourney('AGENCY_COUNSELLING', 'j1', 1),
     ...patch,
 });
+/** The standard journey with a survey written into it, instead of the centre's one. */
+const withSurvey = (): Journey => {
+    const journey = mail();
+    return { ...journey, phases: { ...journey.phases, arrival: exampleSurveySteps('j1') } };
+};
 const coresOf = (journey: Journey, phase: 'departure' | 'flight' | 'arrival') =>
     journey.phases[phase].map((step) => step.core ?? step.kind);
 const stepOf = (journey: Journey, core: string): JourneyStep => {
@@ -61,8 +74,14 @@ describe('phases per conversation type', () => {
 });
 
 describe('the shipped standard journey', () => {
-    it('asks topic, postcode, user name, consent and e-mail before the flight, as registration does today', () => {
-        expect(coresOf(mail(), 'departure')).toEqual(['topic', 'postcode', 'username', 'consent', 'email']);
+    it('checks in with topic, postcode, centre, user name, consent and e-mail, as registration does today', () => {
+        expect(coresOf(mail(), 'departure')).toEqual(['topic', 'postcode', 'agency', 'username', 'consent', 'email']);
+    });
+
+    it("places the centre's greeting and the suggestion of another service on board, and its survey at arrival", () => {
+        expect(coresOf(mail(), 'flight')).toEqual(['enquiry', 'agencyGreeting', 'suggestAlternative']);
+        expect(coresOf(mail(), 'arrival')).toEqual(['agencySurvey']);
+        expect(coresOf(standardJourney('SELF_HELP', 'g', 1), 'flight')).toEqual(['agencyGreeting']);
     });
 
     it('starts the flight with the enquiry', () => {
@@ -120,7 +139,14 @@ describe('must steps', () => {
         const journey = mail();
         const email = stepOf(journey, 'email');
         const moved = moveStep(journey, 'departure', email.id, 0);
-        expect(coresOf(moved, 'departure')).toEqual(['email', 'topic', 'postcode', 'username', 'consent']);
+        expect(coresOf(moved, 'departure')).toEqual(['email', 'topic', 'postcode', 'agency', 'username', 'consent']);
+    });
+
+    it('keeps "choose a centre": the postcode often finds several, so it is not removable', () => {
+        const journey = mail();
+        const agency = stepOf(journey, 'agency');
+        expect(canRemoveStep(agency)).toBe(false);
+        expect(canMoveStep(agency)).toBe(true);
     });
 });
 
@@ -129,7 +155,7 @@ describe('editing steps', () => {
         const journey = mail();
         expect(picksAgencyFromList(journey)).toBe(false);
         const without = removeStep(journey, 'departure', stepOf(journey, 'postcode').id);
-        expect(coresOf(without, 'departure')).toEqual(['topic', 'username', 'consent', 'email']);
+        expect(coresOf(without, 'departure')).toEqual(['topic', 'agency', 'username', 'consent', 'email']);
         expect(picksAgencyFromList(without)).toBe(true);
     });
 
@@ -147,9 +173,18 @@ describe('editing steps', () => {
         expect(next.phases.departure[1].id).toBe('q1');
     });
 
-    it('adds a rating step with one star rating', () => {
-        const journey = addStep(mail(), 'arrival', { kind: 'rating' }, 'r1');
-        expect(journey.phases.arrival.at(-1)?.ratings?.[0].type).toBe('stars');
+    it('adds a rating step with a scale from −5 to +5, 0 labelled "normal"', () => {
+        const rating = addStep(mail(), 'arrival', { kind: 'rating' }, 'r1').phases.arrival.at(-1)?.ratings?.[0];
+        expect(rating).toMatchObject({ type: 'range', min: -5, max: 5, midLabel: { de: 'normal' } });
+        expect(scaleOf(rating as RatingItem)).toBe('minusFiveToFive');
+    });
+
+    it('switches a scale by preset, and only −5 … +5 keeps a middle label', () => {
+        const rating = addStep(mail(), 'arrival', { kind: 'rating' }, 'r1').phases.arrival.at(-1)
+            ?.ratings?.[0] as RatingItem;
+        const ten = withScale(rating, 'zeroToTen');
+        expect(ten).toMatchObject({ min: 0, max: 10, midLabel: undefined });
+        expect(withScale(ten, 'minusFiveToFive').midLabel).toEqual({ de: 'normal', en: 'normal' });
     });
 
     it('adds an info panel with one aspect, collapsed', () => {
@@ -170,7 +205,14 @@ describe('editing steps', () => {
 describe('core elements are used once per journey', () => {
     it('marks every core of the standard departure as used', () => {
         const choices = coreChoices(mail(), 'departure');
-        expect(choices.map((choice) => choice.id)).toEqual(['topic', 'postcode', 'username', 'consent', 'email']);
+        expect(choices.map((choice) => choice.id)).toEqual([
+            'topic',
+            'postcode',
+            'agency',
+            'username',
+            'consent',
+            'email',
+        ]);
         expect(choices.every((choice) => choice.used)).toBe(true);
     });
 
@@ -188,7 +230,10 @@ describe('core elements are used once per journey', () => {
     });
 
     it('offers only what the phase and the conversation type know', () => {
-        expect(coreChoices(mail(), 'arrival')).toEqual([]);
+        expect(coreChoices(mail(), 'arrival').map((choice) => choice.id)).toEqual(['agencySurvey']);
+        expect(coreChoices(standardJourney('SELF_HELP', 'g', 1), 'flight').map((choice) => choice.id)).toEqual([
+            'agencyGreeting',
+        ]);
         const liveChat = standardJourney('LIVE_CHAT', 'l', 1);
         expect(coreChoices(liveChat, 'departure').map((choice) => choice.id)).not.toContain('postcode');
     });
@@ -329,14 +374,14 @@ describe('what an installation starts with', () => {
 });
 
 describe('safety and publishing', () => {
-    it('reports the emergency numbers once the editor removed them from the flight', () => {
+    it("finds the emergency numbers in the centre's greeting or in an info panel of the journey", () => {
         const journey = mail();
         expect(missingSafetyAspects(journey)).toEqual([]);
-        const panel = journey.phases.flight.find((step) => step.aspects?.some((aspect) => aspect.safety));
-        const without = updateStep(journey, 'flight', (panel as JourneyStep).id, {
-            aspects: panel?.aspects?.filter((aspect) => !aspect.safety),
-        });
-        expect(missingSafetyAspects(without).map((aspect) => aspect.prototypeId)).toEqual(['emergencyNumbers']);
+        const noGreeting = removeStep(journey, 'flight', stepOf(journey, 'agencyGreeting').id);
+        expect(missingSafetyAspects(noGreeting).map((aspect) => aspect.prototypeId)).toEqual(['emergencyNumbers']);
+        const withPanel = addStep(noGreeting, 'flight', { kind: 'panel' }, 'p');
+        const panelWithSafety = updateStep(withPanel, 'flight', 'p', { aspects: exampleInfoPanel('x').aspects });
+        expect(missingSafetyAspects(panelWithSafety)).toEqual([]);
     });
 
     it('never asks an internal group for emergency numbers', () => {
@@ -344,7 +389,7 @@ describe('safety and publishing', () => {
     });
 
     it('raises the version of a question whose meaning changed, and only of that one', () => {
-        const stored = mail();
+        const stored = withSurvey();
         const survey = stored.phases.arrival.find((step) => step.kind === 'question') as JourneyStep;
         const [first, second] = survey.questions ?? [];
         const edited = updateStep(stored, 'arrival', survey.id, {
@@ -356,8 +401,21 @@ describe('safety and publishing', () => {
         expect(questions.find((q) => q.id === second.id)?.version).toBe(second.version);
     });
 
+    it('raises the version of a question that now offers "something else"', () => {
+        const stored = withSurvey();
+        const survey = stored.phases.arrival.find((step) => step.kind === 'question') as JourneyStep;
+        const [, comment] = survey.questions ?? [];
+        const edited = updateStep(stored, 'arrival', survey.id, {
+            questions: survey.questions?.map((q) => (q.id === comment.id ? { ...q, other: true } : q)),
+        });
+        const questions =
+            prepareJourneyForPublish(edited, stored).phases.arrival.find((step) => step.id === survey.id)?.questions ??
+            [];
+        expect(questions.find((q) => q.id === comment.id)?.version).toBe(comment.version + 1);
+    });
+
     it('raises the version of a rating whose scale changed', () => {
-        const stored = mail();
+        const stored = withSurvey();
         const rating = stored.phases.arrival.find((step) => step.kind === 'rating') as JourneyStep;
         const [first] = rating.ratings ?? [];
         const edited = updateStep(stored, 'arrival', rating.id, {
@@ -412,5 +470,37 @@ describe('routes as paths', () => {
             { topicId: 3, via: 'link' },
             { topicId: 4, via: 'link' },
         ]);
+    });
+});
+
+describe('levels, permissions and triggers (Frank, 2026-11-18)', () => {
+    it('lets Träger and Beratungsstelle change flight and arrival, never the check-in', () => {
+        expect(editablePhases('platform')).toEqual(['departure', 'flight', 'arrival']);
+        expect(editablePhases('tenant')).toEqual(['flight', 'arrival']);
+        expect(editablePhases('agency')).toEqual(['flight', 'arrival']);
+    });
+
+    it('offers a building block Funktionszugriff switched off as not allowed, and does not add it', () => {
+        const journey = removeStep(mail(), 'departure', 'j1:email');
+        const email = coreChoices(journey, 'departure', ['email']).find((choice) => choice.id === 'email');
+        expect(email).toMatchObject({ used: false, allowed: false });
+        expect(addStep(journey, 'departure', { kind: 'core', core: 'email' }, 'e', undefined, ['email'])).toBe(journey);
+    });
+
+    it('keeps a step whose building block was switched off, and marks it as skipped', () => {
+        const email = stepOf(mail(), 'email');
+        expect(isSkipped(email, ['email'])).toBe(true);
+        expect(isSkipped(email, [])).toBe(false);
+    });
+
+    it('sends on board with the greeting, after the first reply or by hand, and at arrival on close or by hand', () => {
+        expect(triggersFor('departure')).toEqual([]);
+        expect(triggersFor('flight')).toEqual(['withGreeting', 'afterFirstReply', 'manual']);
+        expect(triggersFor('arrival')).toEqual(['onClose', 'manual']);
+        expect(addStep(mail(), 'arrival', { kind: 'question' }, 'q').phases.arrival.at(-1)?.trigger).toBe('onClose');
+    });
+
+    it('sends "suggest another service" only when the counsellor chooses it in the conversation menu', () => {
+        expect(stepOf(mail(), 'suggestAlternative').trigger).toBe('manual');
     });
 });

@@ -16,6 +16,7 @@ import {
     prepareJourneyForPublish,
     topicsWithoutRoute,
     type Journey,
+    type JourneyLevel,
     type JourneyPhase,
     type JourneyTopic,
 } from './journey';
@@ -42,6 +43,10 @@ export interface JourneysDialogProps {
     journeys: Journey[];
     topics: JourneyTopic[];
     translate?: (text: string, language: string) => string;
+    /** Which level edits: below the platform the check-in is the platform's (decision 29). */
+    level?: JourneyLevel;
+    /** Building blocks Funktionszugriff switched off. */
+    blocked?: readonly string[];
     /** Opens a phase, a step or the destinations of one journey right away (stories). */
     initially?: JourneysDialogOpen;
     onSave: (journeys: Journey[]) => void;
@@ -58,6 +63,8 @@ export const JourneysDialog = ({
     journeys: stored,
     topics,
     translate,
+    level = 'platform',
+    blocked = [],
     initially,
     onSave,
     onClose,
@@ -133,6 +140,7 @@ export const JourneysDialog = ({
                                     key={journey.id}
                                     journey={journey}
                                     topics={topics}
+                                    level={level}
                                     onOpenPhase={(phase) => setPhaseOf({ id: journey.id, phase })}
                                     onOpenDestinations={() => setDestinationsOf(journey.id)}
                                     onRename={() => setRenaming({ id: journey.id, name: journey.name })}
@@ -167,6 +175,7 @@ export const JourneysDialog = ({
                     journey={phaseJourney}
                     phase={phaseOf.phase}
                     translate={translate}
+                    blocked={blocked}
                     initially={
                         initially?.journeyId === phaseOf.id && initially.phase === phaseOf.phase
                             ? { stepId: initially.stepId, adding: initially.adding }

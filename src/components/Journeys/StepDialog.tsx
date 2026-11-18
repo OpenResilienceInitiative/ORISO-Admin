@@ -5,7 +5,6 @@ import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { M3Select } from '../M3Select';
-import { M3NumberField } from '../M3NumberField';
 import { IconButton } from '../IconButton';
 import { ToggleRow } from '../ToggleRow';
 import { FloatingLabelInput } from '../FloatingLabelInput';
@@ -14,21 +13,26 @@ import { LegalContentLanguageSelect } from '../Tenants/LegalSettings/components/
 import {
     MODULE_LANGUAGES,
     MODULE_SOURCE_LANGUAGE,
-    QUESTION_TRIGGERS,
     type LangMap,
     type ModuleSection,
-    type QuestionTrigger,
 } from '../ConversationModules/conversationModule';
 import { QuestionEditor } from '../ConversationModules/QuestionEditor';
 import {
+    FIXED_TRIGGERS,
     RATING_TYPES,
+    SCALES,
     isMustStep,
+    scaleOf,
+    triggersFor,
+    withScale,
     translateMissing,
     type JourneyPhase,
     type JourneyStep,
     type PanelAspect,
     type RatingItem,
+    type JourneyTrigger,
     type RatingType,
+    type ScaleId,
 } from './journey';
 import { KIND_ICONS } from './AddStepDialog';
 import { nextId } from './ids';
@@ -76,7 +80,12 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
         patch({ ratings: draft.ratings?.map((rating) => (rating.id === id ? { ...rating, ...change } : rating)) });
 
     const setRatingType = (rating: RatingItem, type: RatingType) =>
-        setRating(rating.id, type === 'stars' ? { type, min: 1, max: 5 } : { type, min: 0, max: 10 });
+        setRating(
+            rating.id,
+            type === 'stars'
+                ? { type, min: 1, max: 5, midLabel: undefined }
+                : { ...withScale(rating, 'minusFiveToFive'), type },
+        );
 
     const setAspect = (id: string, change: Partial<PanelAspect>) =>
         patch({ aspects: draft.aspects?.map((aspect) => (aspect.id === id ? { ...aspect, ...change } : aspect)) });
@@ -138,15 +147,23 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
 
                 {fromPlatform && <p className={styles.help}>{t('journeys.stepDialog.fromPlatform')}</p>}
 
-                {asksSomething && phase === 'flight' && (
-                    <M3Select<QuestionTrigger>
-                        aria-label={t('conversationModules.section.trigger')}
-                        value={draft.trigger ?? 'withGreeting'}
-                        options={QUESTION_TRIGGERS.map((trigger) => ({
+                {draft.core && FIXED_TRIGGERS[draft.core] && (
+                    <p className={styles.help}>
+                        {t('journeys.trigger.fixed', {
+                            trigger: t(`journeys.trigger.${FIXED_TRIGGERS[draft.core]}`),
+                        })}
+                    </p>
+                )}
+
+                {(asksSomething || draft.kind === 'message') && triggersFor(phase).length > 0 && (
+                    <M3Select<JourneyTrigger>
+                        aria-label={t('journeys.trigger.label')}
+                        value={draft.trigger ?? triggersFor(phase)[0]}
+                        options={triggersFor(phase).map((trigger) => ({
                             value: trigger,
-                            label: t(`conversationModules.trigger.${trigger}`),
+                            label: t(`journeys.trigger.${trigger}`),
                         }))}
-                        onChange={(trigger: QuestionTrigger) => patch({ trigger })}
+                        onChange={(trigger: JourneyTrigger) => patch({ trigger })}
                         getPopupContainer={popupContainer}
                     />
                 )}
@@ -199,38 +216,55 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                                     getPopupContainer={popupContainer}
                                 />
                                 {rating.type === 'range' && (
-                                    <div className={styles.fieldRow}>
-                                        <M3NumberField
-                                            label={t('journeys.rating.min')}
-                                            value={rating.min}
-                                            max={rating.max - 1}
-                                            onChange={(min) => setRating(rating.id, { min: min ?? 0 })}
-                                        />
-                                        <M3NumberField
-                                            label={t('journeys.rating.max')}
-                                            value={rating.max}
-                                            min={rating.min + 1}
-                                            onChange={(max) => setRating(rating.id, { max: max ?? rating.min + 1 })}
-                                        />
-                                        <FloatingLabelInput
-                                            label={t('journeys.rating.minLabel')}
-                                            value={rating.minLabel?.[language] ?? ''}
-                                            onChange={(event) =>
-                                                setRating(rating.id, {
-                                                    minLabel: inLanguage(rating.minLabel, event.target.value),
-                                                })
+                                    <>
+                                        <M3Select<ScaleId>
+                                            aria-label={t('journeys.rating.scale')}
+                                            value={scaleOf(rating) ?? 'minusFiveToFive'}
+                                            options={(Object.keys(SCALES) as ScaleId[]).map((scale) => ({
+                                                value: scale,
+                                                label: t(`journeys.rating.scaleName.${scale}`),
+                                            }))}
+                                            onChange={(scale: ScaleId) =>
+                                                setRating(rating.id, withScale(rating, scale))
                                             }
+                                            getPopupContainer={popupContainer}
                                         />
-                                        <FloatingLabelInput
-                                            label={t('journeys.rating.maxLabel')}
-                                            value={rating.maxLabel?.[language] ?? ''}
-                                            onChange={(event) =>
-                                                setRating(rating.id, {
-                                                    maxLabel: inLanguage(rating.maxLabel, event.target.value),
-                                                })
-                                            }
-                                        />
-                                    </div>
+                                        <div className={styles.fieldRow}>
+                                            <FloatingLabelInput
+                                                label={t('journeys.rating.minLabel', {
+                                                    value: rating.min < 0 ? `−${-rating.min}` : rating.min,
+                                                })}
+                                                value={rating.minLabel?.[language] ?? ''}
+                                                onChange={(event) =>
+                                                    setRating(rating.id, {
+                                                        minLabel: inLanguage(rating.minLabel, event.target.value),
+                                                    })
+                                                }
+                                            />
+                                            {rating.midLabel && (
+                                                <FloatingLabelInput
+                                                    label={t('journeys.rating.midLabel')}
+                                                    value={rating.midLabel[language] ?? ''}
+                                                    onChange={(event) =>
+                                                        setRating(rating.id, {
+                                                            midLabel: inLanguage(rating.midLabel, event.target.value),
+                                                        })
+                                                    }
+                                                />
+                                            )}
+                                            <FloatingLabelInput
+                                                label={t('journeys.rating.maxLabel', {
+                                                    value: rating.min < 0 ? `+${rating.max}` : rating.max,
+                                                })}
+                                                value={rating.maxLabel?.[language] ?? ''}
+                                                onChange={(event) =>
+                                                    setRating(rating.id, {
+                                                        maxLabel: inLanguage(rating.maxLabel, event.target.value),
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </>
                                 )}
                                 <ToggleRow
                                     label={t('journeys.rating.required')}
@@ -249,10 +283,10 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                                             ...(draft.ratings ?? []),
                                             {
                                                 id: nextId('rating'),
-                                                type: 'stars',
+                                                type: 'range',
                                                 label: {},
-                                                min: 1,
-                                                max: 5,
+                                                ...SCALES.minusFiveToFive,
+                                                midLabel: { de: 'normal', en: 'normal' },
                                                 required: false,
                                                 version: 1,
                                             },

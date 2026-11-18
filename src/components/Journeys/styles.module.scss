@@ -325,6 +325,10 @@ button.phase {
     }
 }
 
+.phaseLocked {
+    border-style: dashed;
+}
+
 .phaseOff {
     border-style: dashed;
     color: $muted;
@@ -381,7 +385,8 @@ button.phase {
     line-height: 18px;
 
     li {
-        overflow-wrap: anywhere;
+        hyphens: auto;
+        overflow-wrap: break-word;
     }
 }
 

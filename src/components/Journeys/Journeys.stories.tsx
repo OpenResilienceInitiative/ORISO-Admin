@@ -1,7 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
 import { expect, userEvent, within } from 'storybook/test';
-import { addStep, removeStep, shippedJourneys, standardJourney, updateStep, type Journey } from './journey';
+import {
+    addStep,
+    exampleInfoPanel,
+    exampleSurveySteps,
+    removeStep,
+    shippedJourneys,
+    standardJourney,
+    updateStep,
+    type Journey,
+} from './journey';
 import { JourneysSettings } from './index';
 
 /** Synthetic topics, as a Caritas install ships them. */
@@ -52,11 +61,21 @@ debt = updateStep(debt, 'departure', 'debt-situation', {
                 { id: 'energy', label: { de: 'Strom oder Gas', en: 'Electricity or gas' } },
                 { id: 'seizure', label: { de: 'Pfändung', en: 'Seizure' } },
             ],
+            other: true,
             version: 1,
         },
     ],
 });
-debt = { ...debt, routes: { registration: [], links: [{ id: 'debt-link', name: 'Schulden lang', topicIds: [4] }] } };
+// On board: its own info panel after the centre's greeting. Arrival: its own survey.
+debt = {
+    ...debt,
+    phases: {
+        ...debt.phases,
+        flight: [...debt.phases.flight.slice(0, 2), exampleInfoPanel('debt'), ...debt.phases.flight.slice(2)],
+        arrival: exampleSurveySteps('debt'),
+    },
+    routes: { registration: [], links: [{ id: 'debt-link', name: 'Schulden lang', topicIds: [4] }] },
+};
 
 /** Journey #3: U25 is not in the registration, asks the age and no postcode. */
 let u25: Journey = { ...standardJourney('AGENCY_COUNSELLING', 'u25', 3), name: 'U25' };
@@ -75,7 +94,7 @@ const journeys: Journey[] = [standard, debt, u25, liveChat, otherTypes[1], other
 const translate = (text: string, language: string) => `${text} (${language})`;
 
 const meta = {
-    title: 'Settings/Einstellungen/Journeys',
+    title: 'Settings/Einstellungen/Reisen',
     id: 'settings-journeys',
     component: JourneysSettings,
     parameters: { layout: 'padded' },
@@ -91,7 +110,7 @@ export const Tiles: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const entry = canvas.getByTestId('journeys-entry-AGENCY_COUNSELLING');
-        await expect(entry).toHaveTextContent('3 Journeys');
+        await expect(entry).toHaveTextContent('3 Reisen');
         await expect(entry).toHaveTextContent('6 Ziele');
     },
 };
@@ -112,7 +131,7 @@ export const JourneysOfMailberatung: Story = {
     args: { initiallyOpen: mail() },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByTestId('journey-standard-departure')).toHaveTextContent('5 Schritte');
+        await expect(await body.findByTestId('journey-standard-departure')).toHaveTextContent('6 Schritte');
         await expect(body.getByTestId('journey-u25-destinations')).toHaveTextContent('1 Link');
     },
 };
@@ -146,8 +165,9 @@ export const StepMovedWithKeyboard: Story = {
             .map((item) => item.getAttribute('data-testid'));
         await expect(order).toEqual([
             'journey-step-topic',
-            'journey-step-email',
             'journey-step-postcode',
+            'journey-step-email',
+            'journey-step-agency',
             'journey-step-username',
             'journey-step-consent',
         ]);
@@ -206,6 +226,9 @@ export const EditingQuestions: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByTestId('question-creditors')).toBeInTheDocument();
+        // "Etwas anderes …" with free text, switched on for the second question.
+        const urgent = body.getByTestId('question-urgent');
+        await expect(within(urgent).getByRole('switch', { name: /Etwas anderes/ })).toBeChecked();
     },
 };
 
@@ -219,53 +242,103 @@ export const DepartureWithoutPostcode: Story = {
     },
 };
 
-/** Flight: the enquiry, the greeting and the info panel with its aspects. */
-export const Flight: Story = {
+/** On board in the standard journey: the enquiry, the centre's greeting, "suggest another service". */
+export const OnBoard: Story = {
     args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'flight' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByTestId('journey-step-enquiry')).toBeInTheDocument();
-        await expect(body.getByText(/3 Aspekte/)).toBeInTheDocument();
+        await expect(await body.findByTestId('journey-step-enquiry')).toHaveTextContent('Schritt 1 · Nachricht');
+        await expect(body.getByTestId('journey-step-agencyGreeting')).toBeInTheDocument();
+        await expect(body.getByTestId('journey-step-suggestAlternative')).toHaveTextContent(
+            'Von der Beratung ausgelöst',
+        );
     },
 };
 
-/** The info panel opened: three aspects, the emergency numbers marked as safety content. */
-export const EditingAnInfoPanel: Story = {
+/** "Suggest another service": sent only when the counsellor picks it in the conversation menu. */
+export const SuggestAlternative: Story = {
     args: {
         initiallyOpen: mail({
             journeyId: 'standard',
             phase: 'flight',
-            stepId: 'standard-AGENCY_COUNSELLING:generalInfo',
+            stepId: 'standard-AGENCY_COUNSELLING:suggestAlternative',
         }),
     },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const dialog = await body.findByTestId('journey-step-dialog');
+        await expect(dialog).toHaveTextContent('Drei-Punkte-Menü');
+    },
+};
+
+/** On board with an info panel of the journey's own after the centre's greeting (debt flow). */
+export const OnBoardWithInfoPanel: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'flight' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await body.findByText(/3 Aspekte/)).toBeInTheDocument();
+    },
+};
+
+/** The info panel opened: one message with three aspects, the emergency numbers marked as safety content. */
+export const EditingAnInfoPanel: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'flight', stepId: 'debt:generalInfo' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByTestId('journey-aspect-emergencyNumbers')).toHaveTextContent('Sicherheit');
     },
 };
 
-/** Arrival: the follow-up survey with a rating step and a question step. */
+/** Arrival in the standard journey: the centre's survey, sent on close or by the counsellor. */
 export const Arrival: Story = {
     args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'arrival' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByText(/2 Bewertungen/)).toBeInTheDocument();
+        await expect(await body.findByTestId('journey-step-agencySurvey')).toBeInTheDocument();
         await expect(body.getByRole('switch', { name: 'Anonym auswerten' })).toBeChecked();
     },
 };
 
-/** A rating step opened: stars and a scale from 0 to 10. */
-export const EditingRatings: Story = {
-    args: {
-        initiallyOpen: mail({
-            journeyId: 'standard',
-            phase: 'arrival',
-            stepId: 'standard-AGENCY_COUNSELLING:satisfaction',
-        }),
-    },
+/** Arrival with a survey of the journey's own: a rating step and a question step (debt flow). */
+export const ArrivalWithOwnSurvey: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'arrival' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByTestId('journey-rating-recommend')).toBeInTheDocument();
+        await expect(await body.findByText(/2 Bewertungen/)).toBeInTheDocument();
+    },
+};
+
+/** A rating step opened: stars, and a scale from −5 to +5 with 0 labelled "normal". No number fields. */
+export const EditingRatings: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'arrival', stepId: 'debt:satisfaction' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const mood = await body.findByTestId('journey-rating-mood');
+        await expect(within(mood).getByDisplayValue('normal')).toBeInTheDocument();
+        await expect(within(mood).queryByRole('spinbutton')).not.toBeInTheDocument();
+    },
+};
+
+/** Below the platform: the check-in comes from the platform; flight and arrival may be changed. */
+export const TraegerLevel: Story = {
+    args: { level: 'tenant', initiallyOpen: mail() },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const departure = await body.findByTestId('journey-standard-departure');
+        await expect(departure.tagName).toBe('DIV');
+        await expect(departure).toHaveTextContent('Kommt von der Plattform');
+        await expect(body.getByTestId('journey-standard-flight').tagName).toBe('BUTTON');
+    },
+};
+
+/** Funktionszugriff switched the e-mail building block off: the step stays and is skipped. */
+export const EmailSwitchedOff: Story = {
+    args: { blocked: ['email'], initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await body.findByTestId('journey-step-email')).toHaveTextContent(
+            'Im Funktionszugriff aus – wird übersprungen',
+        );
     },
 };
 
@@ -299,10 +372,10 @@ export const DestinationsTopicMovesHere: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const row = await body.findByTestId('journey-topic-4');
-        await expect(row).toHaveTextContent('bei Journey #1');
+        await expect(row).toHaveTextContent('bei Reise #1');
         await userEvent.click(within(row).getByTestId('journey-topic-4-registration'));
         await expect(within(row).getByTestId('journey-topic-4-registration')).toHaveAttribute('aria-pressed', 'true');
-        await expect(row).not.toHaveTextContent('Journey #1');
+        await expect(row).not.toHaveTextContent('Reise #1');
     },
 };
 

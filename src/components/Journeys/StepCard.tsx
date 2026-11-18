@@ -9,13 +9,17 @@ import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
 import { RowMenu } from '../UserTable/RowMenu';
-import { canMoveStep, canRemoveStep, isMustStep, type JourneyStep } from './journey';
+import { canMoveStep, canRemoveStep, isMustStep, type JourneyPhase, type JourneyStep } from './journey';
 import { stepSummary, stepTitle } from './stepText';
 import { TranslationPill } from './TranslationPill';
 import styles from './styles.module.scss';
 
 export interface StepCardProps {
     step: JourneyStep;
+    /** Check-in steps are screens; on board and at arrival each step is one chat message. */
+    phase: JourneyPhase;
+    /** Funktionszugriff switched this building block off: it stays here and is skipped. */
+    skipped?: boolean;
     /** 1-based position in the phase. */
     position: number;
     total: number;
@@ -40,6 +44,8 @@ export interface StepCardProps {
  */
 export const StepCard = ({
     step,
+    phase,
+    skipped = false,
     position,
     total,
     language,
@@ -95,7 +101,11 @@ export const StepCard = ({
                     aria-hidden
                 />
             )}
-            <span className={styles.stepLabel}>{t('journeys.step.number', { number: position })}</span>
+            <span className={styles.stepLabel}>
+                {t('journeys.step.number', { number: position })}
+                {' · '}
+                {t(phase === 'departure' ? 'journeys.step.screen' : 'journeys.step.message')}
+            </span>
             {movable ? (
                 <button
                     type="button"
@@ -120,7 +130,14 @@ export const StepCard = ({
             <div className={classNames(styles.step, { [styles.stepMust]: must, [styles.stepDragging]: dragging })}>
                 <div className={styles.stepTop}>
                     <TranslationPill step={step} onTranslate={onTranslate} />
-                    {badge}
+                    <span className={styles.chips}>
+                        {skipped && (
+                            <span className={classNames(styles.chip, styles.chipUsed)}>
+                                {t('journeys.permission.skipped')}
+                            </span>
+                        )}
+                        {badge}
+                    </span>
                 </div>
                 <div className={styles.stepMain}>
                     <button type="button" className={styles.stepOpen} onClick={onOpen}>

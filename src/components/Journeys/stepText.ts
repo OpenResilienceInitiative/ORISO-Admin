@@ -21,7 +21,8 @@ export const stepSummary = (step: JourneyStep, language: string, t: TFunction): 
         parts.push(t('journeys.step.aspects', { count: aspects }));
         if (step.display === 'collapsed') parts.push(t('journeys.step.collapsed'));
     }
-    if (step.trigger === 'afterFirstReply') parts.push(t('conversationModules.trigger.afterFirstReply'));
+    if (step.trigger === 'afterFirstReply' || step.trigger === 'manual')
+        parts.push(t(`journeys.trigger.${step.trigger}`));
     const text = step.description[language] || step.description.de || plain(step.body?.[language] || step.body?.de);
     return [parts.join(' · '), text].filter(Boolean).join(' — ');
 };
