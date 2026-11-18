@@ -86,7 +86,23 @@ export const M3FabMenu = ({
     const stackRef = useRef<HTMLUListElement>(null);
     const [opensDownward, setOpensDownward] = useState(false);
     const [stackMaxHeight, setStackMaxHeight] = useState<number>();
+    const [stackMaxWidth, setStackMaxWidth] = useState<number>();
     const [stackInlineOffset, setStackInlineOffset] = useState(0);
+    const [showScrollHint, setShowScrollHint] = useState(false);
+    const updateScrollHint = useCallback(() => {
+        const stack = stackRef.current;
+        if (!stack) {
+            setShowScrollHint(false);
+            return;
+        }
+        // Ignore the hint itself: its flex gap must not keep the hint alive
+        // after the last real option has scrolled fully into view.
+        const lastOption = Array.from(stack.children)
+            .reverse()
+            .find((child) => !child.hasAttribute('data-admin-fab-scroll-hint'));
+        const visibleBottom = stack.getBoundingClientRect().top + stack.clientTop + stack.clientHeight;
+        setShowScrollHint(Boolean(lastOption && lastOption.getBoundingClientRect().bottom > visibleBottom + 1));
+    }, []);
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -106,7 +122,9 @@ export const M3FabMenu = ({
         if (!open || variant !== 'action') {
             setOpensDownward(false);
             setStackMaxHeight(undefined);
+            setStackMaxWidth(undefined);
             setStackInlineOffset(0);
+            setShowScrollHint(false);
             return undefined;
         }
 
@@ -115,8 +133,33 @@ export const M3FabMenu = ({
             const fabRect = fabRef.current?.getBoundingClientRect();
             if (!stack || !fabRect) return;
 
-            const spaceAbove = Math.max(0, fabRect.top - 8);
-            const spaceBelow = Math.max(0, window.innerHeight - fabRect.bottom - 8);
+            // An action menu is absolutely positioned inside the settings deck.
+            // Every scroll/clip ancestor limits it just as the viewport does.
+            let visibleTop = 0;
+            let visibleBottom = window.innerHeight;
+            let visibleLeft = 0;
+            let visibleRight = window.innerWidth;
+            let ancestor = rootRef.current?.parentElement;
+            while (ancestor) {
+                const { overflowX, overflowY } = window.getComputedStyle(ancestor);
+                const clipped = ['auto', 'scroll', 'hidden', 'clip'];
+                const rect = ancestor.getBoundingClientRect();
+                if (clipped.includes(overflowY) && ancestor.clientHeight > 0) {
+                    const top = rect.top + ancestor.clientTop;
+                    visibleTop = Math.max(visibleTop, top);
+                    visibleBottom = Math.min(visibleBottom, top + ancestor.clientHeight);
+                }
+                if (clipped.includes(overflowX) && ancestor.clientWidth > 0) {
+                    const left = rect.left + ancestor.clientLeft;
+                    visibleLeft = Math.max(visibleLeft, left);
+                    visibleRight = Math.min(visibleRight, left + ancestor.clientWidth);
+                }
+                ancestor = ancestor.parentElement;
+            }
+            // CSS adds an 8px gap at the FAB; keep another 8px at the visible edge.
+            const edgeAndTriggerGap = 16;
+            const spaceAbove = Math.max(0, fabRect.top - visibleTop - edgeAndTriggerGap);
+            const spaceBelow = Math.max(0, visibleBottom - fabRect.bottom - edgeAndTriggerGap);
             // `scrollHeight` stays at the natural five-action height even when
             // the stack is already capped by a previous placement. Comparing
             // the rendered rectangle would otherwise make a clipped menu look
@@ -131,15 +174,17 @@ export const M3FabMenu = ({
             // viewport edge even though the card itself has the correct inset.
             // Keep the whole stack between the same six-pixel mobile gutters.
             const viewportInset = 6;
-            const availableWidth = Math.max(0, window.innerWidth - viewportInset * 2);
+            const availableWidth = Math.max(0, visibleRight - visibleLeft - viewportInset * 2);
+            setStackMaxWidth(availableWidth);
             const naturalStackWidth = Math.min(
                 stack.scrollWidth || stack.getBoundingClientRect().width,
                 availableWidth,
             );
-            const minimumRightEdge = viewportInset + naturalStackWidth;
-            const maximumRightEdge = window.innerWidth - viewportInset;
+            const minimumRightEdge = visibleLeft + viewportInset + naturalStackWidth;
+            const maximumRightEdge = visibleRight - viewportInset;
             const targetRightEdge = Math.min(Math.max(fabRect.right, minimumRightEdge), maximumRightEdge);
             setStackInlineOffset(targetRightEdge - fabRect.right);
+            updateScrollHint();
         };
 
         // A scrollable settings deck can move the FAB from the top to the
@@ -161,6 +206,13 @@ export const M3FabMenu = ({
         const stackResizeObserver =
             typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedulePlacement);
         if (stackRef.current) stackResizeObserver?.observe(stackRef.current);
+        // A settings pane can be resized without a window resize; its clip
+        // bounds must be recalculated even if the menu itself has not changed.
+        let observedAncestor = rootRef.current?.parentElement;
+        while (observedAncestor) {
+            stackResizeObserver?.observe(observedAncestor);
+            observedAncestor = observedAncestor.parentElement;
+        }
         let active = true;
         document.fonts?.ready
             .then(() => {
@@ -174,7 +226,7 @@ export const M3FabMenu = ({
             window.removeEventListener('resize', schedulePlacement);
             window.removeEventListener('scroll', schedulePlacement, true);
         };
-    }, [items.length, footerItems.length, open, variant]);
+    }, [items.length, footerItems.length, open, updateScrollHint, variant]);
 
     useEffect(() => {
         if (!open || disabled) return;
@@ -310,13 +362,20 @@ export const M3FabMenu = ({
                     data-admin-fab-menu-stack
                     data-placement={variant === 'action' && opensDownward ? 'bottom' : 'top'}
                     ref={stackRef}
+                    onScroll={updateScrollHint}
                     style={{
                         maxHeight: stackMaxHeight,
+                        maxWidth: stackMaxWidth,
                         transform: stackInlineOffset === 0 ? undefined : `translateX(${stackInlineOffset}px)`,
                     }}
                 >
                     {items.map((item, index) => renderItem(item, false, index))}
                     {footerItems.map((item, index) => renderItem(item, true, index))}
+                    {variant === 'action' && showScrollHint && (
+                        <li className={styles.scrollHintAnchor} aria-hidden="true" data-admin-fab-scroll-hint>
+                            <span className={styles.scrollHint}>↓</span>
+                        </li>
+                    )}
                 </ul>
             )}
             <button

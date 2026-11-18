@@ -49,6 +49,34 @@
     list-style: none;
 }
 
+// Persistent cue for overlay-scrollbar platforms: more choices are below.
+.scrollHintAnchor {
+    position: sticky;
+    z-index: 1;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    align-self: flex-end;
+    pointer-events: none;
+}
+
+.scrollHint {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--m3-primary-container, #ffe2de);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+    color: var(--admin-accent-on-container, #a5000a);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .item {
     display: flex;
     height: 56px;
@@ -204,12 +232,42 @@
         right: 0;
         left: auto;
         z-index: 20;
+        // Keep the available width for wrapped labels instead of shrinking
+        // to their smallest possible character column.
+        width: max-content;
         align-items: flex-end;
+        // A long action list remains recognisably scrollable when capped.
+        scrollbar-width: auto;
+
+        &::-webkit-scrollbar {
+            display: block;
+            width: 8px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            border-radius: 8px;
+            background: var(--m3-outline, #747778);
+        }
+    }
+
+    .stack > li:not(.scrollHintAnchor),
+    .item {
+        max-width: 100%;
     }
 
     .item {
+        height: auto;
+        min-height: 56px;
+        padding-right: 16px;
+        padding-left: 16px;
         background: var(--m3-fab-menu-primary-container);
         color: var(--m3-fab-menu-on-primary-container);
+        white-space: normal;
+    }
+
+    .itemLabel {
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 
     .item:focus-visible {

@@ -3,7 +3,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { ReactComponent as LockOpenRightFilledIcon } from '../../resources/img/svg/oriso/lock_open_right_filled_20px.svg';
 import { NavGlyph } from '../NavGlyph';
 import { M3FabMenu, type M3FabMenuItem, type M3FabMenuProps } from './M3FabMenu';
@@ -253,5 +253,113 @@ export const ActionWithDescriptions: Story = {
         await expect(canvas.getByRole('button', { name: 'Weitere Informationen' })).not.toHaveAttribute(
             'aria-describedby',
         );
+    },
+};
+
+/** Long policy descriptions stay inside the scrolling settings deck and remain keyboard reachable. */
+export const ActionInScrollContainer: Story = {
+    args: { open: true },
+    render: () => (
+        <div
+            data-testid="scroll-deck"
+            style={{
+                position: 'fixed',
+                top: 48,
+                bottom: 48,
+                left: 'min(200px, 4vw)',
+                width: 'min(260px, calc(100vw - 32px))',
+                overflowX: 'hidden',
+                overflowY: 'auto',
+                background: 'var(--schemes-background, #f3eeee)',
+            }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '80px 20px 24px' }}>
+                <M3FabMenu
+                    variant="action"
+                    items={Array.from({ length: 10 }, (_, index) => ({
+                        key: `${index}`,
+                        label: `Option ${index + 1}`,
+                        description: 'Eine längere Erklärung bleibt lesbar und über die Tastatur erreichbar.',
+                    }))}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={() => undefined}
+                />
+            </div>
+            <div style={{ height: 1200 }} aria-hidden="true" />
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const deck = within(canvasElement).getByTestId('scroll-deck');
+        const stack = canvasElement.querySelector<HTMLElement>('[data-admin-fab-menu-stack]')!;
+        const first = within(canvasElement).getByRole('button', { name: 'Option 1' });
+        await waitFor(() => {
+            expect(stack.getBoundingClientRect().bottom).toBeLessThanOrEqual(deck.getBoundingClientRect().bottom - 7);
+            expect(stack.getBoundingClientRect().left).toBeGreaterThanOrEqual(deck.getBoundingClientRect().left + 5);
+            expect(stack.getBoundingClientRect().right).toBeLessThanOrEqual(deck.getBoundingClientRect().right - 5);
+            expect(stack.scrollHeight).toBeGreaterThan(stack.clientHeight);
+            expect(getComputedStyle(stack).scrollbarWidth).not.toBe('none');
+            expect(stack.querySelector('[data-admin-fab-scroll-hint]')).not.toBeNull();
+        });
+        // Scroll the actual ancestor: placement must follow the trigger without
+        // letting the stack escape the independently scrolling settings deck.
+        deck.scrollTop = 40;
+        deck.dispatchEvent(new Event('scroll'));
+        await waitFor(() => {
+            expect(stack.getBoundingClientRect().bottom).toBeLessThanOrEqual(deck.getBoundingClientRect().bottom - 7);
+            expect(deck.scrollTop).toBe(40);
+        });
+        first.focus();
+        for (let index = 0; index < 9; index += 1) {
+            // Each Tab must complete before the next one moves focus.
+            // eslint-disable-next-line no-await-in-loop
+            await userEvent.tab();
+        }
+        const last = within(canvasElement).getByRole('button', { name: 'Option 10' });
+        await expect(last).toHaveFocus();
+        await waitFor(() => {
+            expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(stack.getBoundingClientRect().bottom + 1);
+            expect(stack.querySelector('[data-admin-fab-scroll-hint]')).toBeNull();
+        });
+    },
+};
+
+/** A long translated label without a description still fits a narrow clipping deck. */
+export const LabelOnlyInNarrowScrollContainer: Story = {
+    args: { open: true },
+    render: () => (
+        <div
+            data-testid="narrow-deck"
+            style={{ position: 'fixed', top: 80, bottom: 80, left: 'min(200px, 4vw)', width: 180, overflow: 'auto' }}
+        >
+            <div style={{ minHeight: 350, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                <M3FabMenu
+                    variant="action"
+                    items={[{ key: 'long', label: 'Uzun çevirilerde erişim ve izin seçenekleri', icon: <LockIcon /> }]}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={() => undefined}
+                />
+            </div>
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const deck = within(canvasElement).getByTestId('narrow-deck');
+        const item = within(canvasElement).getByRole('button', { name: 'Uzun çevirilerde erişim ve izin seçenekleri' });
+        await waitFor(() => {
+            const deckRect = deck.getBoundingClientRect();
+            const itemRect = item.getBoundingClientRect();
+            const iconRect = item.querySelector('svg')!.getBoundingClientRect();
+            expect(itemRect.left).toBeGreaterThanOrEqual(deckRect.left + 5);
+            expect(itemRect.right).toBeLessThanOrEqual(deckRect.right - 5);
+            expect(iconRect.left).toBeGreaterThanOrEqual(itemRect.left);
+            expect(iconRect.right).toBeLessThanOrEqual(itemRect.right);
+            expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth);
+            expect(item.scrollHeight).toBeLessThanOrEqual(item.clientHeight);
+            // Width should be used for readable words, not a one-character column.
+            expect(itemRect.height).toBeLessThanOrEqual(160);
+        });
     },
 };

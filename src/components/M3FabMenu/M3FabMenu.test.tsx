@@ -98,11 +98,100 @@ describe('M3FabMenu', () => {
         const stack = screen.getByRole('list');
         expect(stack.parentElement?.className).toContain('openDownward');
         expect(stack).toHaveAttribute('data-placement', 'bottom');
-        expect(stack).toHaveStyle({ maxHeight: '604px' });
+        expect(stack).toHaveStyle({ maxHeight: '596px' });
 
         Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
         act(() => window.dispatchEvent(new Event('resize')));
-        await waitFor(() => expect(stack).toHaveStyle({ maxHeight: '236px' }));
+        await waitFor(() => expect(stack).toHaveStyle({ maxHeight: '228px' }));
+    });
+
+    it('keeps the action stack inset from a scroll container and the toggle', () => {
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+        const rect = (top: number, bottom: number) =>
+            ({
+                top,
+                bottom,
+                height: bottom - top,
+                left: 0,
+                right: 320,
+                width: 320,
+                x: 0,
+                y: top,
+                toJSON: () => ({}),
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRectForClip() {
+            if (this.dataset.testid === 'clip') return rect(100, 700);
+            if (this instanceof HTMLUListElement) return rect(0, 800);
+            if (this instanceof HTMLButtonElement) return rect(130, 186);
+            return rect(0, 0);
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function getClipHeight() {
+            return this.dataset.testid === 'clip' ? 600 : 0;
+        });
+        vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function getStackHeight() {
+            return this instanceof HTMLUListElement ? 800 : 0;
+        });
+        render(
+            <MemoryRouter>
+                <div data-testid="clip" style={{ overflowY: 'auto' }}>
+                    <M3FabMenu
+                        items={items}
+                        open
+                        openLabel="Open"
+                        closeLabel="Close"
+                        variant="action"
+                        onOpenChange={vi.fn()}
+                    />
+                </div>
+            </MemoryRouter>,
+        );
+        // FAB bottom 186 + gap 8, container bottom 700 - 8px inset = 498px.
+        expect(screen.getByRole('list')).toHaveAttribute('data-placement', 'bottom');
+        expect(screen.getByRole('list')).toHaveStyle({ maxHeight: '498px' });
+    });
+
+    it('keeps a wide action stack inside a narrower clipping ancestor', () => {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 });
+        const rect = (left: number, right: number, top: number, bottom: number) =>
+            ({
+                left,
+                right,
+                top,
+                bottom,
+                width: right - left,
+                height: bottom - top,
+                x: left,
+                y: top,
+                toJSON: () => ({}),
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getClipRect() {
+            if (this.dataset.testid === 'clip') return rect(200, 460, 100, 700);
+            if (this instanceof HTMLUListElement) return rect(120, 440, 200, 600);
+            if (this instanceof HTMLButtonElement) return rect(384, 440, 130, 186);
+            return rect(0, 0, 0, 0);
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function getClipWidth() {
+            return this.dataset.testid === 'clip' ? 260 : 0;
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function getClipHeight() {
+            return this.dataset.testid === 'clip' ? 600 : 0;
+        });
+        render(
+            <MemoryRouter>
+                <div data-testid="clip" style={{ overflowX: 'auto', overflowY: 'auto' }}>
+                    <M3FabMenu
+                        items={items}
+                        open
+                        openLabel="Open"
+                        closeLabel="Close"
+                        variant="action"
+                        onOpenChange={vi.fn()}
+                    />
+                </div>
+            </MemoryRouter>,
+        );
+        // 260px container - two 6px gutters; move its right edge from 440 to 454.
+        expect(screen.getByRole('list')).toHaveStyle({ maxWidth: '248px', transform: 'translateX(14px)' });
     });
 
     it('flips an open action stack upward before it collides with the bottom viewport edge', async () => {
@@ -150,7 +239,7 @@ describe('M3FabMenu', () => {
         await waitFor(() => {
             expect(stack.parentElement?.className).not.toContain('openDownward');
             expect(stack).toHaveAttribute('data-placement', 'top');
-            expect(stack).toHaveStyle({ maxHeight: '632px' });
+            expect(stack).toHaveStyle({ maxHeight: '624px' });
         });
     });
 
@@ -198,14 +287,14 @@ describe('M3FabMenu', () => {
         expect(stack.parentElement?.className).toContain('openDownward');
 
         // The rendered stack is already capped to 80 px. Its natural 500 px
-        // height still does not fit on either side, so the larger 136 px gap
-        // below the FAB must win over the 92 px gap above it.
+        // height still does not fit on either side, so the larger 128 px space
+        // below the FAB must win over the 84 px space above it.
         fabTop = 100;
         act(() => stack.parentElement?.dispatchEvent(new Event('scroll', { bubbles: false })));
 
         await waitFor(() => {
             expect(stack.parentElement?.className).toContain('openDownward');
-            expect(stack).toHaveStyle({ maxHeight: '136px' });
+            expect(stack).toHaveStyle({ maxHeight: '128px' });
         });
     });
 
