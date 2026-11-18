@@ -53,34 +53,34 @@ describe('case sharing on the Mailberatung tile', () => {
         await renderView();
 
         expect(screen.getByTestId('case-handover-card')).toBeInTheDocument();
-        expect(screen.queryByRole('radiogroup', { name: 'tenants.permissions.caseSharing.title' })).toBeNull();
+        expect(screen.queryByRole('group', { name: 'tenants.permissions.caseSharing.title' })).toBeNull();
     });
 
     it('replaces the separate handover tile with a choice on the Mailberatung tile', async () => {
-        await renderView({ caseSharing: { mode: 'caseHandover' } });
+        await renderView({ caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } } });
 
         expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
         const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
-        expect(mail.getByRole('radiogroup', { name: 'tenants.permissions.caseSharing.title' })).toBeInTheDocument();
+        expect(mail.getByRole('group', { name: 'tenants.permissions.caseSharing.title' })).toBeInTheDocument();
         expect(mail.getByTestId('case-handover-settings')).toBeInTheDocument();
     });
 
     it('hides the handover settings when another option is chosen', async () => {
-        await renderView({ caseSharing: { mode: 'teamCounselling' } });
+        await renderView({ caseSharing: { policy: { value: 'teamCounselling', mode: 'SUGGESTED' } } });
 
         expect(screen.queryByTestId('case-handover-settings')).not.toBeInTheDocument();
     });
 
     it.each(['liveChat', 'group', 'groupInternal'])('offers no case sharing on the %s tile', async (key) => {
-        await renderView({ caseSharing: { mode: 'caseHandover' } });
+        await renderView({ caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } } });
 
         const tile = within(screen.getByTestId(`chat-type-card-${key}`));
-        expect(tile.queryByRole('radiogroup', { name: 'tenants.permissions.caseSharing.title' })).toBeNull();
+        expect(tile.queryByRole('group', { name: 'tenants.permissions.caseSharing.title' })).toBeNull();
     });
 
     // Nothing may become unreachable: the account-wide asker switches have no other home yet.
     it('keeps the asker account tile', async () => {
-        await renderView({ caseSharing: { mode: 'none' } });
+        await renderView({ caseSharing: { policy: { value: 'none', mode: 'SUGGESTED' } } });
 
         expect(screen.getByTestId('asker-card')).toBeInTheDocument();
     });
@@ -93,7 +93,7 @@ describe('folding conversation-type tiles', () => {
     });
 
     it('folds the Mailberatung tile to a header that still says what is set', async () => {
-        await renderView({ caseSharing: { mode: 'caseHandover' } });
+        await renderView({ caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } } });
         const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
         const header = mail.getByRole('button', { name: /tenants\.permissions\.card\.oneOnOne\.title/ });
 
@@ -105,7 +105,7 @@ describe('folding conversation-type tiles', () => {
 
         expect(header).toHaveAttribute('aria-expanded', 'false');
         expect(
-            mail.getByRole('radiogroup', { hidden: true, name: 'tenants.permissions.caseSharing.title' }),
+            mail.getByRole('group', { hidden: true, name: 'tenants.permissions.caseSharing.title' }),
         ).not.toBeVisible();
     });
 
@@ -122,7 +122,7 @@ describe('folding conversation-type tiles', () => {
     });
 
     it('puts every topic of the tile in a section of its own', async () => {
-        await renderView({ caseSharing: { mode: 'none' } });
+        await renderView({ caseSharing: { policy: { value: 'none', mode: 'SUGGESTED' } } });
         const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
 
         const sections = mail.getAllByRole('region').map((section) => section.getAttribute('aria-labelledby'));

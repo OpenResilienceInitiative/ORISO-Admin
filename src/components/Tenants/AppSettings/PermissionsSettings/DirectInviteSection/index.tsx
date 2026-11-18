@@ -109,7 +109,7 @@ export const DirectInviteSection = ({
                         policy={policyFor(field)}
                         pending={pendingPolicyFields?.has(field)}
                         onChange={(next) => onPolicyChange?.(field, next)}
-                        supportingText={lockedNote(field) ?? undefined}
+                        supportingText={lockedNote(field) ?? t(`${labelKey}Description`)}
                     />
                 ))}
             </div>

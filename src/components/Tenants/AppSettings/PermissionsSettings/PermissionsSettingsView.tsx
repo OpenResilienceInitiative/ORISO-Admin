@@ -43,14 +43,18 @@ import styles from './styles.module.scss';
 
 /**
  * Own value that differs from a suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus"
- * (TenantService#363). Every other source stays unsaid: the page intro explains "Anpassbar" and
- * "Vorgabe" once, so the card can say what the feature does (#1558, Frank 2026-11-18).
+ * (TenantService#363). Every other source ("Vorschlag von oben") stays unsaid; the lock still reads
+ * "Anpassbar" or "Vorgabe", and the card says what the feature does (#1558, Frank 2026-11-18).
  */
 const conflictHintKey = (policy: EffectivePolicy) => {
     if (permissionPolicySource(policy) !== 'own' || policy.suggestedValue === undefined) return null;
     if (policy.suggestedValue === policy.value) return null;
     return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
 };
+
+/** What a participant setting means for the person it concerns; channels differ by audience. */
+const participantDescriptionKey = (audience: 'asker' | 'consultant', labelKey: string) =>
+    `tenants.permissions.participantDescription.${audience}.${labelKey.split('.').at(-1)}`;
 
 /** "tenants.permissions.feature.audioCalls" → its one-sentence description, if the feature has one. */
 const featureDescriptionKey = (labelKey: string) =>
@@ -89,8 +93,9 @@ export type PermissionsSettingsViewProps = {
      * tile; the separate handover tile goes. Without it the page keeps the separate tile.
      */
     caseSharing?: {
-        mode: CaseSharingMode | undefined;
-        onChange?: (mode: CaseSharingMode) => void;
+        /** The choice and whether it is a requirement below; undefined while loading. */
+        policy: PolicyValue<CaseSharingMode> | undefined;
+        onChange?: (policy: PolicyValue<CaseSharingMode>) => void;
         /** The choice is held by another level; says which. */
         disabledReason?: string;
         bothActive?: boolean;
@@ -213,17 +218,29 @@ export const PermissionsSettingsView = ({
     );
 
     // One row for every switch on a tile: feature toggles and notification channels alike.
-    const supportingTextFor = (row: { labelKey: string; policy: EffectivePolicy; note?: string }) => {
+    const supportingTextFor = (row: {
+        labelKey: string;
+        policy: EffectivePolicy;
+        note?: string;
+        descriptionKey?: string;
+    }) => {
         if (row.note) return row.note;
         const conflict = policyLevel === 'platform' ? null : conflictHintKey(row.policy);
         if (conflict) return t(`tenants.permissions.policy.source.${conflict}`);
-        const descriptionKey = featureDescriptionKey(row.labelKey);
+        const descriptionKey = row.descriptionKey ?? featureDescriptionKey(row.labelKey);
         return descriptionKey ? t(descriptionKey) : undefined;
     };
 
     const toggleRow = (
         form: FormInstance,
-        row: { setting: string; labelKey: string; policy: EffectivePolicy; disabled?: boolean; note?: string },
+        row: {
+            setting: string;
+            labelKey: string;
+            policy: EffectivePolicy;
+            disabled?: boolean;
+            note?: string;
+            descriptionKey?: string;
+        },
     ) => (
         <PolicyOptionCard
             key={row.setting}
@@ -243,6 +260,7 @@ export const PermissionsSettingsView = ({
         form: FormInstance,
         toggle: ChatTypeParticipantToggle,
         getFieldValue: FormInstance['getFieldValue'],
+        audience: 'asker' | 'consultant' = 'asker',
     ) => {
         const isOn = (setting: string) => policyFor(setting, getFieldValue(['settings', setting])).value !== false;
         const accountEmailOff = Boolean(toggle.requiresAskerEmail) && !isOn('featureAskerEmailEnabled');
@@ -259,6 +277,7 @@ export const PermissionsSettingsView = ({
         return toggleRow(form, {
             setting: toggle.setting,
             labelKey: toggle.labelKey,
+            descriptionKey: participantDescriptionKey(audience, toggle.labelKey),
             policy: channelsSetOnTraeger
                 ? traegerChannelPolicies?.[toggle.setting] ?? {
                       value: toggle.defaultValue ?? true,
@@ -299,7 +318,9 @@ export const PermissionsSettingsView = ({
         return (
             <div className={styles.togglesList}>
                 {namePolicy && participantRow(form, namePolicy, getFieldValue)}
-                {card.notifications?.toggles.map((toggle) => participantRow(form, toggle, getFieldValue))}
+                {card.notifications?.toggles.map((toggle) =>
+                    participantRow(form, toggle, getFieldValue, card.notifications?.audience),
+                )}
             </div>
         );
     };
@@ -322,8 +343,8 @@ export const PermissionsSettingsView = ({
                 ? t('tenants.permissions.card.summary.on', { count: on, total: available.length })
                 : t('tenants.permissions.card.summary.onPlain'),
         ];
-        if (card.key === 'oneOnOne' && caseSharing?.mode) {
-            parts.push(t(`tenants.permissions.caseSharing.summary.${caseSharing.mode}`));
+        if (card.key === 'oneOnOne' && caseSharing?.policy) {
+            parts.push(t(`tenants.permissions.caseSharing.summary.${caseSharing.policy.value}`));
         }
         return parts.join(' · ');
     };
@@ -459,7 +480,8 @@ export const PermissionsSettingsView = ({
 
                             {card.key === 'oneOnOne' && caseSharing && (
                                 <CaseSharingSection
-                                    value={caseSharing.mode}
+                                    policy={caseSharing.policy}
+                                    level={policyLevel}
                                     onChange={caseSharing.onChange}
                                     disabledReason={caseSharing.disabledReason}
                                     bothActive={caseSharing.bothActive}
