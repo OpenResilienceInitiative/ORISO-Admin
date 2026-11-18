@@ -22,13 +22,22 @@ describe('permission feature registry (drift guard, ORISO-TenantService#363)', (
             .forEach((field) => expect(DEFAULT_KEYS).toContain(field));
     });
 
-    it('every feature with a default belongs to a toggle family, except direct invite', () => {
+    it('every feature with a default belongs to a toggle family, except direct invite and guest account modes', () => {
         const familyFields = new Set(Object.values(PLATFORM_TOGGLE_FIELDS).flat());
         const outside = DEFAULT_KEYS.filter((field) => !familyFields.has(field));
         expect(outside.sort()).toEqual([
             'featureDirectInviteAudioEnabled',
             'featureDirectInviteChatEnabled',
             'featureDirectInviteVideoEnabled',
+            'featureGuestAccountGuestChoosesAudioEnabled',
+            'featureGuestAccountGuestChoosesChatEnabled',
+            'featureGuestAccountGuestChoosesVideoEnabled',
+            'featureGuestAccountPermanentAudioEnabled',
+            'featureGuestAccountPermanentChatEnabled',
+            'featureGuestAccountPermanentVideoEnabled',
+            'featureGuestAccountTemporaryAudioEnabled',
+            'featureGuestAccountTemporaryChatEnabled',
+            'featureGuestAccountTemporaryVideoEnabled',
         ]);
     });
 
