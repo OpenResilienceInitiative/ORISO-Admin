@@ -13,6 +13,8 @@ import {
     exampleInfoPanel,
     exampleSurveySteps,
     isSkipped,
+    languageStates,
+    markChecked,
     linkPath,
     missingSafetyAspects,
     moveStep,
@@ -25,7 +27,9 @@ import {
     scaleOf,
     routeSummary,
     shippedJourneys,
+    splitQuestionStep,
     standardJourney,
+    stepsBeforeTopic,
     stepKindsFor,
     triggersFor,
     topicReach,
@@ -502,5 +506,78 @@ describe('levels, permissions and triggers (Frank, 2026-11-18)', () => {
 
     it('sends "suggest another service" only when the counsellor chooses it in the conversation menu', () => {
         expect(stepOf(mail(), 'suggestAlternative').trigger).toBe('manual');
+    });
+});
+
+describe('the language menu of a step', () => {
+    it('names each language: original, checked by hand, machine-made, or missing', () => {
+        const step = translateMissing(stepOf(mail(), 'postcode'), (text) => `${text}*`);
+        const states = Object.fromEntries(languageStates(step).map(({ language, state }) => [language, state]));
+        expect(states).toEqual({
+            de: 'source',
+            'de@informal': 'machine',
+            en: 'checked',
+            fr: 'machine',
+            ru: 'machine',
+            ti: 'machine',
+            tr: 'machine',
+        });
+        expect(languageStates(stepOf(mail(), 'postcode')).find((entry) => entry.language === 'fr')?.state).toBe(
+            'missing',
+        );
+    });
+
+    it('turns a machine translation into a checked one when a person confirms it', () => {
+        const step = translateMissing(stepOf(mail(), 'postcode'), (text) => `${text}*`);
+        const checked = markChecked(step, 'fr');
+        expect(languageStates(checked).find((entry) => entry.language === 'fr')?.state).toBe('checked');
+        expect(translationStatus(checked).machine).not.toContain('fr');
+    });
+});
+
+describe('the registration picks the journey by topic', () => {
+    it('cannot show steps before "choose a topic" in a journey the registration routes to', () => {
+        const routed = mail({ routes: { registration: [3], links: [] } });
+        expect(stepsBeforeTopic(routed)).toEqual([]);
+        const emailFirst = moveStep(routed, 'departure', 'j1:email', 0);
+        expect(stepsBeforeTopic(emailFirst).map((step) => step.core)).toEqual(['email']);
+    });
+
+    it('lets a link-only journey put steps before the topic', () => {
+        const linkOnly = mail({ routes: { registration: [], links: [{ id: 'l', name: 'U25', topicIds: [3] }] } });
+        expect(stepsBeforeTopic(moveStep(linkOnly, 'departure', 'j1:email', 0))).toEqual([]);
+    });
+
+    it('serves one journey from the registration and from a link at the same time (U25)', () => {
+        const u25 = mail({
+            routes: { registration: [3], links: [{ id: 'l', name: 'U25', topicIds: [3] }] },
+        });
+        expect(topicReach([u25], 'AGENCY_COUNSELLING', 3)).toBe('registration');
+        expect(routeSummary(u25)).toEqual({ registrationTopics: 1, links: 1, linkTopics: 1 });
+    });
+});
+
+describe('a question step asks all its questions at once', () => {
+    const twoQuestions = (): Journey => {
+        const journey = addStep(mail(), 'departure', { kind: 'question' }, 'q', 'j1:topic');
+        const [first] = journey.phases.departure[1].questions ?? [];
+        return updateStep(journey, 'departure', 'q', {
+            title: { de: 'Ihre Situation' },
+            questions: [first, { ...first, id: 'second', label: { de: 'Was drängt gerade?' } }],
+        });
+    };
+
+    it('splits into one step per question, in place and in order, to ask question by question', () => {
+        const split = splitQuestionStep(twoQuestions(), 'departure', 'q', (index) => `q-${index}`);
+        const ids = split.phases.departure.map((step) => step.id);
+        expect(ids.slice(0, 4)).toEqual(['j1:topic', 'q', 'q-1', 'j1:postcode']);
+        expect(split.phases.departure[1].title.de).toBe('Ihre Situation');
+        expect(split.phases.departure[2].title.de).toBe('Was drängt gerade?');
+        expect(split.phases.departure[2].questions).toHaveLength(1);
+    });
+
+    it('leaves a step with one question alone', () => {
+        const journey = addStep(mail(), 'departure', { kind: 'question' }, 'q');
+        expect(splitQuestionStep(journey, 'departure', 'q', (index) => `q-${index}`)).toBe(journey);
     });
 });

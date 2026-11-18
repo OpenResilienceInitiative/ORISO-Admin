@@ -32,6 +32,8 @@ export interface JourneysDialogOpen {
     phase?: JourneyPhase;
     stepId?: string;
     adding?: boolean;
+    /** The language a step dialog opens in. */
+    language?: string;
     destinations?: boolean;
 }
 
@@ -178,7 +180,7 @@ export const JourneysDialog = ({
                     blocked={blocked}
                     initially={
                         initially?.journeyId === phaseOf.id && initially.phase === phaseOf.phase
-                            ? { stepId: initially.stepId, adding: initially.adding }
+                            ? { stepId: initially.stepId, adding: initially.adding, language: initially.language }
                             : undefined
                     }
                     onApply={(journey) => {

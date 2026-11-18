@@ -77,11 +77,12 @@ debt = {
     routes: { registration: [], links: [{ id: 'debt-link', name: 'Schulden lang', topicIds: [4] }] },
 };
 
-/** Journey #3: U25 is not in the registration, asks the age and no postcode. */
+/** Journey #3: U25 asks the age and no postcode; reached by the registration and by its own link. */
 let u25: Journey = { ...standardJourney('AGENCY_COUNSELLING', 'u25', 3), name: 'U25' };
 u25 = removeStep(u25, 'departure', 'u25:postcode');
 u25 = addStep(u25, 'departure', { kind: 'addon', addon: 'age' }, 'u25-age', 'u25:topic');
-u25 = { ...u25, routes: { registration: [], links: [{ id: 'u25-link', name: 'U25', topicIds: [3] }] } };
+// U25 in the registration AND behind its own link: one journey, two routes (Frank, 2026-11-18).
+u25 = { ...u25, routes: { registration: [3], links: [{ id: 'u25-link', name: 'U25', topicIds: [3] }] } };
 
 const liveChat: Journey = {
     ...otherTypes[0],
@@ -208,7 +209,9 @@ export const TranslatedWithAi: Story = {
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const postcode = await body.findByTestId('journey-step-postcode');
-        await userEvent.click(within(postcode).getByRole('button', { name: 'Mit KI übersetzen' }));
+        await userEvent.click(
+            within(postcode).getByRole('button', { name: 'Fehlende Sprachen maschinell übersetzen' }),
+        );
         await expect(within(postcode).getByTestId('step-translation')).toHaveTextContent(
             '2 Sprachen geprüft, 5 maschinell übersetzt, 0 fehlen',
         );
@@ -434,5 +437,111 @@ export const UnsafeIconRefused: Story = {
         const file = new File(['<svg onload="alert(1)"><path d="M0 0"/></svg>'], 'bad.svg', { type: 'image/svg+xml' });
         await userEvent.upload(body.getByTestId('type-icon-input-filled'), file);
         await expect(await body.findByText(/enthält Skripte/)).toBeInTheDocument();
+    },
+};
+
+/** The language menu of one step: original, checked by hand, machine-translated, missing. */
+export const LanguageMenu: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const postcode = await body.findByTestId('journey-step-postcode');
+        await userEvent.click(
+            within(postcode).getByRole('button', { name: 'Fehlende Sprachen maschinell übersetzen' }),
+        );
+        await userEvent.click(within(postcode).getByRole('button', { name: /Sprachen geprüft/ }));
+        const menu = await body.findByTestId('step-language-menu');
+        await userEvent.click(within(menu).getByRole('button', { name: 'Französisch als von Hand geprüft markieren' }));
+        await expect(within(menu).getAllByText('Von Hand geprüft')).toHaveLength(2);
+        await expect(within(menu).getAllByText('Maschinell übersetzt')).toHaveLength(4);
+    },
+};
+
+/** U25: one journey reached by the registration and by its own link. */
+export const U25RegistrationAndLink: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'u25', destinations: true }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await body.findByTestId('journey-topic-3-registration')).toHaveAttribute('aria-pressed', 'true');
+        await expect(
+            within(body.getByTestId('journey-topic-3')).getByRole('button', { name: '/l/u25' }),
+        ).toBeInTheDocument();
+    },
+};
+
+/** A step before "choose a topic" in a journey of the registration: the registration cannot show it. */
+export const StepBeforeTopic: Story = {
+    args: {
+        journeys: journeys.map((journey) =>
+            journey.id === 'u25'
+                ? {
+                      ...journey,
+                      phases: {
+                          ...journey.phases,
+                          departure: [
+                              ...journey.phases.departure.filter((step) => step.addon === 'age'),
+                              ...journey.phases.departure.filter((step) => step.addon !== 'age'),
+                          ],
+                      },
+                  }
+                : journey,
+        ),
+        initiallyOpen: mail({ journeyId: 'u25', phase: 'departure' }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await expect(await body.findByTestId('journey-before-topic')).toHaveTextContent('Alter');
+    },
+};
+
+/** A step in French: the original stands under each field; one field translated by machine, then reset. */
+export const EditingInAnotherLanguage: Story = {
+    args: {
+        initiallyOpen: mail({
+            journeyId: 'standard',
+            phase: 'departure',
+            stepId: 'standard-AGENCY_COUNSELLING:postcode',
+            language: 'fr',
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const title = await body.findByTestId('step-field-title');
+        await expect(title).toHaveTextContent('Postleitzahl');
+        await userEvent.click(within(title).getByRole('button', { name: /maschinell übersetzen: Französisch/ }));
+        await expect(within(title).getByDisplayValue('Postleitzahl (fr)')).toBeInTheDocument();
+        await expect(within(title).getByRole('img', { name: 'Maschinell übersetzt' })).toBeInTheDocument();
+        const description = body.getByTestId('step-field-description');
+        await userEvent.click(within(description).getByRole('button', { name: /maschinell übersetzen: Französisch/ }));
+    },
+};
+
+/** A step in English: the English texts show, the German original stands under them. */
+export const EditingInEnglish: Story = {
+    args: {
+        initiallyOpen: mail({
+            journeyId: 'standard',
+            phase: 'departure',
+            stepId: 'standard-AGENCY_COUNSELLING:postcode',
+            language: 'en',
+        }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const title = await body.findByTestId('step-field-title');
+        await expect(within(title).getByDisplayValue('Postcode')).toBeInTheDocument();
+        await userEvent.click(within(title).getByRole('button', { name: /Zurück zum Original/ }));
+        await expect(within(title).queryByDisplayValue('Postcode')).not.toBeInTheDocument();
+    },
+};
+
+/** Two questions on one screen, split so the person answers question by question. */
+export const SplitIntoSteps: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await body.findByRole('button', { name: 'In 2 einzelne Schritte aufteilen' }));
+        const phase = await body.findByTestId('journey-phase-departure');
+        await expect(within(phase).getByText('Was drängt gerade?')).toBeInTheDocument();
     },
 };

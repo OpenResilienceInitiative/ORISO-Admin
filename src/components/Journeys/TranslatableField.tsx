@@ -1,0 +1,102 @@
+import { useTranslation } from 'react-i18next';
+import Undo from '@mui/icons-material/Undo';
+import { FloatingLabelInput } from '../FloatingLabelInput';
+import { IconButton } from '../IconButton';
+import { MODULE_SOURCE_LANGUAGE, type LangMap } from '../ConversationModules/conversationModule';
+import { TranslateIcon } from './TranslateIcon';
+import styles from './styles.module.scss';
+
+/** How a text of one language came about. */
+export type TextChange = 'typed' | 'machine' | 'reset';
+
+const plain = (html: string | undefined) =>
+    (html ?? '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+interface OriginalLineProps {
+    value: LangMap | undefined;
+    language: string;
+    /** This language of the step was written by a machine and nobody has checked it yet. */
+    machine: boolean;
+    translate?: (text: string, language: string) => string;
+    onChange: (next: LangMap, how: TextChange) => void;
+}
+
+/**
+ * Under a field in another language than the original: the original text, so the editor always
+ * sees what is being translated; a translate button for this one field; and "back to the original",
+ * which removes the translation — the person then reads the original (ADR-018 decision 8).
+ */
+export const OriginalLine = ({ value, language, machine, translate, onChange }: OriginalLineProps) => {
+    const { t } = useTranslation();
+    if (language === MODULE_SOURCE_LANGUAGE) return null;
+    const source = value?.[MODULE_SOURCE_LANGUAGE];
+    const own = value?.[language];
+    const languageName = t(`language.${language}`, language);
+    const sourceText = plain(source);
+
+    return (
+        <div className={styles.originalLine}>
+            <span className={styles.originalText}>
+                <span className={styles.originalLabel}>{t('journeys.field.original')}</span>
+                {sourceText || t('journeys.field.noOriginal')}
+            </span>
+            {machine && plain(own) && (
+                // The original is visible next to it; the hover repeats it beside the mark.
+                <span
+                    className={styles.machineMark}
+                    role="img"
+                    aria-label={t('journeys.translation.state.machine')}
+                    title={t('journeys.field.machineFrom', { original: sourceText })}
+                >
+                    <TranslateIcon />
+                </span>
+            )}
+            {translate && sourceText && (
+                <IconButton
+                    icon={<TranslateIcon />}
+                    size={32}
+                    ariaLabel={t('journeys.field.translate', { language: languageName })}
+                    title={t('journeys.field.translate', { language: languageName })}
+                    onClick={() => onChange({ ...value, [language]: translate(source as string, language) }, 'machine')}
+                />
+            )}
+            {plain(own) && (
+                <IconButton
+                    icon={<Undo />}
+                    size={32}
+                    ariaLabel={t('journeys.field.reset', { language: languageName })}
+                    title={t('journeys.field.reset', { language: languageName })}
+                    onClick={() => {
+                        const next = { ...value };
+                        delete next[language];
+                        onChange(next, 'reset');
+                    }}
+                />
+            )}
+        </div>
+    );
+};
+
+interface TranslatableFieldProps extends OriginalLineProps {
+    label: string;
+    testId?: string;
+}
+
+/** A one-line text in the language being edited, with the original under it. */
+export const TranslatableField = ({ label, testId, ...line }: TranslatableFieldProps) => {
+    const { value, language, onChange } = line;
+    return (
+        <div className={styles.translatable} data-testid={testId}>
+            <FloatingLabelInput
+                label={label}
+                value={value?.[language] ?? ''}
+                placeholder={language === MODULE_SOURCE_LANGUAGE ? undefined : plain(value?.[MODULE_SOURCE_LANGUAGE])}
+                onChange={(event) => onChange({ ...value, [language]: event.target.value }, 'typed')}
+            />
+            <OriginalLine {...line} />
+        </div>
+    );
+};

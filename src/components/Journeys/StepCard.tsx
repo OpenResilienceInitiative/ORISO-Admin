@@ -32,6 +32,7 @@ export interface StepCardProps {
     onMove: (direction: -1 | 1) => void;
     onRemove: () => void;
     onTranslate?: () => void;
+    onMarkChecked?: (language: string) => void;
     onDragStart: (event: DragEvent<HTMLLIElement>) => void;
     onDragOver: (event: DragEvent<HTMLLIElement>) => void;
     onDragEnd: () => void;
@@ -56,6 +57,7 @@ export const StepCard = ({
     onMove,
     onRemove,
     onTranslate,
+    onMarkChecked,
     onDragStart,
     onDragOver,
     onDragEnd,
@@ -129,7 +131,7 @@ export const StepCard = ({
             )}
             <div className={classNames(styles.step, { [styles.stepMust]: must, [styles.stepDragging]: dragging })}>
                 <div className={styles.stepTop}>
-                    <TranslationPill step={step} onTranslate={onTranslate} />
+                    <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
                     <span className={styles.chips}>
                         {skipped && (
                             <span className={classNames(styles.chip, styles.chipUsed)}>

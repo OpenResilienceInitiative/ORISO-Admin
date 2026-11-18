@@ -9,10 +9,13 @@ import {
     addStep,
     canMoveStep,
     isSkipped,
+    markChecked,
     missingSafetyAspects,
     moveStep,
     picksAgencyFromList,
     removeStep,
+    splitQuestionStep,
+    stepsBeforeTopic,
     translateMissing,
     updateStep,
     type Journey,
@@ -35,7 +38,7 @@ export interface PhaseDialogProps {
     /** Building blocks Funktionszugriff switched off. */
     blocked?: readonly string[];
     /** Opens one step, or the "add step" list, right away (stories). */
-    initially?: { stepId?: string; adding?: boolean };
+    initially?: { stepId?: string; adding?: boolean; language?: string };
     onApply: (journey: Journey) => void;
     onClose: () => void;
 }
@@ -170,6 +173,19 @@ export const PhaseDialog = ({
                         </div>
                     )}
 
+                    {phase === 'departure' && stepsBeforeTopic(draft).length > 0 && (
+                        <div className={styles.warning} role="alert" data-testid="journey-before-topic">
+                            <p className={styles.noticeTitle}>{t('journeys.beforeTopic.title')}</p>
+                            <p>
+                                {t('journeys.beforeTopic.text', {
+                                    steps: stepsBeforeTopic(draft)
+                                        .map((step) => stepTitle(step, language, t))
+                                        .join(', '),
+                                })}
+                            </p>
+                        </div>
+                    )}
+
                     {missingSafety.length > 0 && (
                         <div className={styles.warning} role="alert" data-testid="journey-safety-warning">
                             <p className={styles.noticeTitle}>{t('conversationModules.safety.title')}</p>
@@ -226,6 +242,11 @@ export const PhaseDialog = ({
                                                   )
                                             : undefined
                                     }
+                                    onMarkChecked={(code) =>
+                                        setDraft((current) =>
+                                            updateStep(current, phase, step.id, markChecked(step, code)),
+                                        )
+                                    }
                                     onDragStart={(event) => {
                                         if (!canMoveStep(step)) return;
                                         // Firefox starts a drag only once data is set.
@@ -263,9 +284,20 @@ export const PhaseDialog = ({
                     key={editing.id}
                     step={editing}
                     phase={phase}
+                    context={{ journey: journeyName, position: steps.indexOf(editing) + 1 }}
+                    initialLanguage={initially?.stepId === editing.id ? initially.language : undefined}
                     translate={translate}
                     onApply={(step) => {
                         setDraft((current) => updateStep(current, phase, step.id, step));
+                        setEditingId(undefined);
+                    }}
+                    onSplit={(step) => {
+                        setDraft((current) =>
+                            splitQuestionStep(updateStep(current, phase, step.id, step), phase, step.id, () =>
+                                nextId('step'),
+                            ),
+                        );
+                        setAnnouncement(t('journeys.stepDialog.splitDone', { count: step.questions?.length ?? 0 }));
                         setEditingId(undefined);
                     }}
                     onClose={() => setEditingId(undefined)}

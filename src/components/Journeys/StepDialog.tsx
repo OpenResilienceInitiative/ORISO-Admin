@@ -1,27 +1,22 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Add from '@mui/icons-material/Add';
+import CallSplit from '@mui/icons-material/CallSplit';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { M3Select } from '../M3Select';
 import { IconButton } from '../IconButton';
 import { ToggleRow } from '../ToggleRow';
-import { FloatingLabelInput } from '../FloatingLabelInput';
 import { M3RichTextEditor } from '../FormPluginEditor/M3RichTextEditor';
-import { LegalContentLanguageSelect } from '../Tenants/LegalSettings/components/LegalContentLanguageSelect';
-import {
-    MODULE_LANGUAGES,
-    MODULE_SOURCE_LANGUAGE,
-    type LangMap,
-    type ModuleSection,
-} from '../ConversationModules/conversationModule';
-import { QuestionEditor } from '../ConversationModules/QuestionEditor';
+import { MODULE_SOURCE_LANGUAGE, type LangMap } from '../ConversationModules/conversationModule';
 import {
     FIXED_TRIGGERS,
     RATING_TYPES,
     SCALES,
     isMustStep,
+    markChecked,
     scaleOf,
     triggersFor,
     withScale,
@@ -36,49 +31,91 @@ import {
 } from './journey';
 import { KIND_ICONS } from './AddStepDialog';
 import { nextId } from './ids';
+import { JourneyQuestionsEditor } from './JourneyQuestionsEditor';
+import { LanguageTabs } from './LanguageTabs';
 import { stepTitle } from './stepText';
+import { OriginalLine, TranslatableField, type TextChange } from './TranslatableField';
 import { TranslationPill } from './TranslationPill';
 import styles from './styles.module.scss';
+
+export interface StepContext {
+    /** "Reise #2 · Schulden ausführlich" */
+    journey: string;
+    /** 1-based position in the phase. */
+    position: number;
+}
 
 interface StepDialogProps {
     step: JourneyStep;
     phase: JourneyPhase;
+    /** Where the step sits, for the line under the title. */
+    context?: StepContext;
     translate?: (text: string, language: string) => string;
+    /** The language the dialog opens in (stories); the original otherwise. */
+    initialLanguage?: string;
     onApply: (step: JourneyStep) => void;
+    /** Applies the step and splits it into one step per question. */
+    onSplit?: (step: JourneyStep) => void;
     onClose: () => void;
 }
 
 const popupContainer = (node: HTMLElement) => node.parentElement ?? document.body;
 
+/** What a block is for, in the words of the add-step list. */
+const aboutKey = (step: JourneyStep) => {
+    if (step.kind === 'core' && step.core) return `journeys.coreHelp.${step.core}`;
+    if (step.kind === 'addon' && step.addon) return `journeys.addonHelp.${step.addon}`;
+    return `journeys.kindHelp.${step.kind}`;
+};
+
 /**
- * One step in its own dialog: title and description for every kind, then what the kind holds.
- * A core element or add-on brings its behaviour from the platform; only its wording is edited.
+ * One step in its own dialog: where it sits, what the block is for, its texts in every language
+ * (always with the original beside them), then what the kind holds. A core element or add-on
+ * brings its behaviour from the platform; only its wording is edited.
  */
-export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDialogProps) => {
+export const StepDialog = ({
+    step,
+    phase,
+    context,
+    translate,
+    initialLanguage = MODULE_SOURCE_LANGUAGE,
+    onApply,
+    onSplit,
+    onClose,
+}: StepDialogProps) => {
     const { t } = useTranslation();
     const [draft, setDraft] = useState<JourneyStep>(step);
-    const [language, setLanguage] = useState<string>(MODULE_SOURCE_LANGUAGE);
+    const [language, setLanguage] = useState<string>(initialLanguage);
 
-    const patch = (change: Partial<JourneyStep>) => setDraft((current) => ({ ...current, ...change }));
-    const inLanguage = (text: LangMap | undefined, value: string): LangMap => ({ ...text, [language]: value });
-
+    const isMachine = (draft.machine ?? []).includes(language);
     const fromPlatform = draft.kind === 'core' || draft.kind === 'addon';
     const asksSomething = draft.kind === 'question' || draft.kind === 'rating';
+    const unit = t(phase === 'departure' ? 'journeys.step.screen' : 'journeys.step.message');
 
-    // The question editor of the conversation modules works on a section; a question step lends it one.
-    const questionSection: ModuleSection = {
-        id: draft.id,
-        kind: 'questions',
-        field: 'greeting',
-        title: {},
-        display: 'open',
-        body: {},
-        questions: draft.questions ?? [],
-    };
+    /** Applies a change and keeps track of which languages a machine wrote. */
+    const change = (patch: Partial<JourneyStep>, how: TextChange = 'typed') =>
+        setDraft((current) => {
+            const next = { ...current, ...patch };
+            if (how === 'machine' && !(next.machine ?? []).includes(language)) {
+                next.machine = [...(next.machine ?? []), language];
+            }
+            return next;
+        });
+    const field = (key: 'title' | 'description', label: string) => (
+        <TranslatableField
+            label={label}
+            value={draft[key]}
+            language={language}
+            machine={isMachine}
+            translate={translate}
+            onChange={(next, how) => change({ [key]: next }, how)}
+            testId={`step-field-${key}`}
+        />
+    );
+    const inLanguage = (text: LangMap | undefined, value: string): LangMap => ({ ...text, [language]: value });
 
-    const setRating = (id: string, change: Partial<RatingItem>) =>
-        patch({ ratings: draft.ratings?.map((rating) => (rating.id === id ? { ...rating, ...change } : rating)) });
-
+    const setRating = (id: string, patch: Partial<RatingItem>, how: TextChange = 'typed') =>
+        change({ ratings: draft.ratings?.map((rating) => (rating.id === id ? { ...rating, ...patch } : rating)) }, how);
     const setRatingType = (rating: RatingItem, type: RatingType) =>
         setRating(
             rating.id,
@@ -86,15 +123,34 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                 ? { type, min: 1, max: 5, midLabel: undefined }
                 : { ...withScale(rating, 'minusFiveToFive'), type },
         );
+    const setAspect = (id: string, patch: Partial<PanelAspect>, how: TextChange = 'typed') =>
+        change({ aspects: draft.aspects?.map((aspect) => (aspect.id === id ? { ...aspect, ...patch } : aspect)) }, how);
 
-    const setAspect = (id: string, change: Partial<PanelAspect>) =>
-        patch({ aspects: draft.aspects?.map((aspect) => (aspect.id === id ? { ...aspect, ...change } : aspect)) });
+    const ratingLabel = (rating: RatingItem, key: 'minLabel' | 'midLabel' | 'maxLabel', label: string) => (
+        <TranslatableField
+            label={label}
+            value={rating[key]}
+            language={language}
+            machine={isMachine}
+            translate={translate}
+            onChange={(next, how) => setRating(rating.id, { [key]: next }, how)}
+        />
+    );
 
     return (
         <Modal
             icon={KIND_ICONS[draft.kind]}
-            title={stepTitle(draft, language, t)}
-            description={t(isMustStep(draft) ? 'journeys.stepDialog.must' : `journeys.kindHelp.${draft.kind}`)}
+            title={stepTitle(draft, MODULE_SOURCE_LANGUAGE, t)}
+            description={
+                context
+                    ? t('journeys.stepDialog.context', {
+                          journey: context.journey,
+                          phase: t(`journeys.phase.${phase}`),
+                          position: context.position,
+                          unit,
+                      })
+                    : undefined
+            }
             descriptionFullWidth
             width={720}
             zIndex={1200}
@@ -112,40 +168,51 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
             wrapperTestId="journey-step-dialog"
         >
             <div className={styles.dialogBody}>
+                <aside className={styles.about} aria-labelledby="journey-step-about" data-testid="journey-step-about">
+                    <span className={styles.aboutIcon} aria-hidden>
+                        <InfoOutlined />
+                    </span>
+                    <div className={styles.aboutText}>
+                        <p className={styles.aboutTitle} id="journey-step-about">
+                            {t('journeys.stepDialog.about', {
+                                kind: t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`),
+                            })}
+                        </p>
+                        <p>{t(aboutKey(draft))}</p>
+                        {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
+                        {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
+                        {draft.kind === 'question' && (
+                            <p>
+                                {t(
+                                    `journeys.stepDialog.questionsTogether.${
+                                        phase === 'departure' ? 'screen' : 'message'
+                                    }`,
+                                )}
+                            </p>
+                        )}
+                        {draft.kind === 'question' && (draft.questions?.length ?? 0) > 1 && onSplit && (
+                            <div>
+                                <M3Button variant="outlined" icon={<CallSplit />} onClick={() => onSplit(draft)}>
+                                    {t('journeys.stepDialog.split', { count: draft.questions?.length ?? 0 })}
+                                </M3Button>
+                            </div>
+                        )}
+                    </div>
+                </aside>
+
                 <div className={styles.toolbar}>
-                    <LegalContentLanguageSelect
-                        languages={[...MODULE_LANGUAGES]}
-                        value={language}
-                        onChange={setLanguage}
-                        sourceLanguage={MODULE_SOURCE_LANGUAGE}
-                    />
+                    <LanguageTabs step={draft} value={language} onChange={setLanguage} />
                     <TranslationPill
                         step={draft}
                         onTranslate={
                             translate ? () => setDraft((current) => translateMissing(current, translate)) : undefined
                         }
+                        onMarkChecked={(code) => setDraft((current) => markChecked(current, code))}
                     />
                 </div>
-                {draft.machine && draft.machine.length > 0 && (
-                    <p className={styles.help}>
-                        {t('journeys.translation.machineHint', {
-                            languages: draft.machine.map((code) => t(`language.${code}`, code)).join(', '),
-                        })}
-                    </p>
-                )}
 
-                <FloatingLabelInput
-                    label={t('journeys.stepDialog.title')}
-                    value={draft.title[language] ?? ''}
-                    onChange={(event) => patch({ title: inLanguage(draft.title, event.target.value) })}
-                />
-                <FloatingLabelInput
-                    label={t('journeys.stepDialog.description')}
-                    value={draft.description[language] ?? ''}
-                    onChange={(event) => patch({ description: inLanguage(draft.description, event.target.value) })}
-                />
-
-                {fromPlatform && <p className={styles.help}>{t('journeys.stepDialog.fromPlatform')}</p>}
+                {field('title', t('journeys.stepDialog.title'))}
+                {field('description', t('journeys.stepDialog.description'))}
 
                 {draft.core && FIXED_TRIGGERS[draft.core] && (
                     <p className={styles.help}>
@@ -163,60 +230,64 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                             value: trigger,
                             label: t(`journeys.trigger.${trigger}`),
                         }))}
-                        onChange={(trigger: JourneyTrigger) => patch({ trigger })}
+                        onChange={(trigger: JourneyTrigger) => change({ trigger })}
                         getPopupContainer={popupContainer}
                     />
                 )}
 
                 {draft.kind === 'question' && (
-                    <QuestionEditor
-                        section={questionSection}
+                    <JourneyQuestionsEditor
+                        questions={draft.questions ?? []}
                         language={language}
-                        onChange={(section) => patch({ questions: section.questions })}
+                        machine={draft.machine ?? []}
+                        translate={translate}
+                        onChange={(questions, how) => change({ questions }, how)}
                     />
                 )}
 
                 {draft.kind === 'rating' && (
                     <>
                         {draft.ratings?.map((rating, index) => (
-                            <div
+                            <section
                                 key={rating.id}
                                 className={styles.block}
-                                role="group"
-                                aria-label={t('journeys.rating.number', { number: index + 1 })}
+                                aria-labelledby={`${rating.id}-heading`}
                                 data-testid={`journey-rating-${rating.id}`}
                             >
                                 <div className={styles.blockHeader}>
-                                    <h3 className={styles.blockTitle}>
+                                    <h3 className={styles.blockTitle} id={`${rating.id}-heading`}>
                                         {t('journeys.rating.number', { number: index + 1 })}
                                     </h3>
                                     <IconButton
                                         icon={<DeleteOutline />}
                                         ariaLabel={t('journeys.rating.remove')}
                                         onClick={() =>
-                                            patch({ ratings: draft.ratings?.filter((entry) => entry.id !== rating.id) })
+                                            change({
+                                                ratings: draft.ratings?.filter((entry) => entry.id !== rating.id),
+                                            })
                                         }
                                     />
                                 </div>
-                                <FloatingLabelInput
+                                <TranslatableField
                                     label={t('journeys.rating.label')}
-                                    value={rating.label[language] ?? ''}
-                                    onChange={(event) =>
-                                        setRating(rating.id, { label: inLanguage(rating.label, event.target.value) })
-                                    }
+                                    value={rating.label}
+                                    language={language}
+                                    machine={isMachine}
+                                    translate={translate}
+                                    onChange={(next, how) => setRating(rating.id, { label: next }, how)}
                                 />
-                                <M3Select<RatingType>
-                                    aria-label={t('journeys.rating.type')}
-                                    value={rating.type}
-                                    options={RATING_TYPES.map((type) => ({
-                                        value: type,
-                                        label: t(`journeys.rating.type.${type}`),
-                                    }))}
-                                    onChange={(type: RatingType) => setRatingType(rating, type)}
-                                    getPopupContainer={popupContainer}
-                                />
-                                {rating.type === 'range' && (
-                                    <>
+                                <div className={styles.fieldRow}>
+                                    <M3Select<RatingType>
+                                        aria-label={t('journeys.rating.type')}
+                                        value={rating.type}
+                                        options={RATING_TYPES.map((type) => ({
+                                            value: type,
+                                            label: t(`journeys.rating.type.${type}`),
+                                        }))}
+                                        onChange={(type: RatingType) => setRatingType(rating, type)}
+                                        getPopupContainer={popupContainer}
+                                    />
+                                    {rating.type === 'range' && (
                                         <M3Select<ScaleId>
                                             aria-label={t('journeys.rating.scale')}
                                             value={scaleOf(rating) ?? 'minusFiveToFive'}
@@ -229,56 +300,41 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                                             }
                                             getPopupContainer={popupContainer}
                                         />
-                                        <div className={styles.fieldRow}>
-                                            <FloatingLabelInput
-                                                label={t('journeys.rating.minLabel', {
-                                                    value: rating.min < 0 ? `−${-rating.min}` : rating.min,
-                                                })}
-                                                value={rating.minLabel?.[language] ?? ''}
-                                                onChange={(event) =>
-                                                    setRating(rating.id, {
-                                                        minLabel: inLanguage(rating.minLabel, event.target.value),
-                                                    })
-                                                }
-                                            />
-                                            {rating.midLabel && (
-                                                <FloatingLabelInput
-                                                    label={t('journeys.rating.midLabel')}
-                                                    value={rating.midLabel[language] ?? ''}
-                                                    onChange={(event) =>
-                                                        setRating(rating.id, {
-                                                            midLabel: inLanguage(rating.midLabel, event.target.value),
-                                                        })
-                                                    }
-                                                />
-                                            )}
-                                            <FloatingLabelInput
-                                                label={t('journeys.rating.maxLabel', {
-                                                    value: rating.min < 0 ? `+${rating.max}` : rating.max,
-                                                })}
-                                                value={rating.maxLabel?.[language] ?? ''}
-                                                onChange={(event) =>
-                                                    setRating(rating.id, {
-                                                        maxLabel: inLanguage(rating.maxLabel, event.target.value),
-                                                    })
-                                                }
-                                            />
-                                        </div>
-                                    </>
+                                    )}
+                                </div>
+                                {rating.type === 'range' && (
+                                    <div className={styles.fieldRow}>
+                                        {ratingLabel(
+                                            rating,
+                                            'minLabel',
+                                            t('journeys.rating.minLabel', {
+                                                value: rating.min < 0 ? `−${-rating.min}` : rating.min,
+                                            }),
+                                        )}
+                                        {rating.midLabel &&
+                                            ratingLabel(rating, 'midLabel', t('journeys.rating.midLabel'))}
+                                        {ratingLabel(
+                                            rating,
+                                            'maxLabel',
+                                            t('journeys.rating.maxLabel', {
+                                                value: rating.min < 0 ? `+${rating.max}` : rating.max,
+                                            }),
+                                        )}
+                                    </div>
                                 )}
                                 <ToggleRow
                                     label={t('journeys.rating.required')}
                                     checked={rating.required}
                                     onCheckedChange={(required) => setRating(rating.id, { required })}
                                 />
-                            </div>
+                            </section>
                         ))}
                         <div>
                             <M3Button
                                 variant="outlined"
                                 icon={<Add />}
                                 onClick={() =>
-                                    patch({
+                                    change({
                                         ratings: [
                                             ...(draft.ratings ?? []),
                                             {
@@ -305,18 +361,17 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                         <ToggleRow
                             label={t('conversationModules.section.startsCollapsed')}
                             checked={draft.display === 'collapsed'}
-                            onCheckedChange={(collapsed) => patch({ display: collapsed ? 'collapsed' : 'open' })}
+                            onCheckedChange={(collapsed) => change({ display: collapsed ? 'collapsed' : 'open' })}
                         />
                         {draft.aspects?.map((aspect, index) => (
-                            <div
+                            <section
                                 key={aspect.id}
                                 className={styles.block}
-                                role="group"
-                                aria-label={t('journeys.aspect.number', { number: index + 1 })}
+                                aria-labelledby={`${aspect.id}-heading`}
                                 data-testid={`journey-aspect-${aspect.prototypeId ?? aspect.id}`}
                             >
                                 <div className={styles.blockHeader}>
-                                    <h3 className={styles.blockTitle}>
+                                    <h3 className={styles.blockTitle} id={`${aspect.id}-heading`}>
                                         {t('journeys.aspect.number', { number: index + 1 })}
                                         {aspect.safety && (
                                             <>
@@ -331,18 +386,22 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                                         icon={<DeleteOutline />}
                                         ariaLabel={t('journeys.aspect.remove')}
                                         onClick={() =>
-                                            patch({ aspects: draft.aspects?.filter((entry) => entry.id !== aspect.id) })
+                                            change({
+                                                aspects: draft.aspects?.filter((entry) => entry.id !== aspect.id),
+                                            })
                                         }
                                     />
                                 </div>
-                                <FloatingLabelInput
+                                <TranslatableField
                                     label={t('journeys.stepDialog.title')}
-                                    value={aspect.title[language] ?? ''}
-                                    onChange={(event) =>
-                                        setAspect(aspect.id, { title: inLanguage(aspect.title, event.target.value) })
-                                    }
+                                    value={aspect.title}
+                                    language={language}
+                                    machine={isMachine}
+                                    translate={translate}
+                                    onChange={(next, how) => setAspect(aspect.id, { title: next }, how)}
                                 />
                                 <M3RichTextEditor
+                                    key={`${aspect.id}-${language}`}
                                     title={t('conversationModules.section.body')}
                                     value={aspect.body[language] ?? ''}
                                     contentLanguage={language}
@@ -356,14 +415,21 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                                         setAspect(aspect.id, { body: inLanguage(aspect.body, html) })
                                     }
                                 />
-                            </div>
+                                <OriginalLine
+                                    value={aspect.body}
+                                    language={language}
+                                    machine={isMachine}
+                                    translate={translate}
+                                    onChange={(next, how) => setAspect(aspect.id, { body: next }, how)}
+                                />
+                            </section>
                         ))}
                         <div>
                             <M3Button
                                 variant="outlined"
                                 icon={<Add />}
                                 onClick={() =>
-                                    patch({
+                                    change({
                                         aspects: [
                                             ...(draft.aspects ?? []),
                                             { id: nextId('aspect'), title: {}, body: {} },
@@ -378,18 +444,28 @@ export const StepDialog = ({ step, phase, translate, onApply, onClose }: StepDia
                 )}
 
                 {draft.kind === 'message' && (
-                    <M3RichTextEditor
-                        title={t('conversationModules.section.body')}
-                        value={draft.body?.[language] ?? ''}
-                        contentLanguage={language}
-                        languageSlot={<span />}
-                        fluid
-                        hideHeader
-                        plainText
-                        enableAnchors={false}
-                        versionLabel={t('legal.m3Editor.versionLatest')}
-                        onChange={(html: string) => patch({ body: inLanguage(draft.body, html) })}
-                    />
+                    <>
+                        <M3RichTextEditor
+                            key={`body-${language}`}
+                            title={t('conversationModules.section.body')}
+                            value={draft.body?.[language] ?? ''}
+                            contentLanguage={language}
+                            languageSlot={<span />}
+                            fluid
+                            hideHeader
+                            plainText
+                            enableAnchors={false}
+                            versionLabel={t('legal.m3Editor.versionLatest')}
+                            onChange={(html: string) => change({ body: inLanguage(draft.body, html) })}
+                        />
+                        <OriginalLine
+                            value={draft.body}
+                            language={language}
+                            machine={isMachine}
+                            translate={translate}
+                            onChange={(next, how) => change({ body: next }, how)}
+                        />
+                    </>
                 )}
             </div>
         </Modal>

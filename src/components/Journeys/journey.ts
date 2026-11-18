@@ -680,6 +680,43 @@ export const addStep = (
     return withPhase(journey, phase, steps);
 };
 
+/**
+ * Steps a registration can never show. The registration starts before any journey is known: the
+ * topic picks the journey. So in a journey that the registration routes to, steps placed before
+ * "choose a topic" only run for its links (where the topic may already be set).
+ */
+export const stepsBeforeTopic = (journey: Journey): JourneyStep[] => {
+    if (journey.routes.registration.length === 0) return [];
+    const steps = journey.phases.departure;
+    const topic = steps.findIndex((step) => step.core === 'topic');
+    return topic < 0 ? [] : steps.slice(0, topic);
+};
+
+/**
+ * All questions of a step come together: on one screen in the check-in, as one message on board
+ * and at arrival. To ask question by question, the step is split: one step per question, in
+ * order, each named after its question, with the same trigger.
+ */
+export const splitQuestionStep = (
+    journey: Journey,
+    phase: JourneyPhase,
+    stepId: string,
+    idFor: (index: number) => string,
+): Journey => {
+    const steps = journey.phases[phase];
+    const index = steps.findIndex((step) => step.id === stepId);
+    const step = steps[index];
+    if (!step || step.kind !== 'question' || (step.questions?.length ?? 0) < 2) return journey;
+    const parts: JourneyStep[] = (step.questions ?? []).map((question, position) => ({
+        ...structuredClone(step),
+        id: position === 0 ? step.id : idFor(position),
+        title: position === 0 ? structuredClone(step.title) : structuredClone(question.label),
+        description: position === 0 ? structuredClone(step.description) : {},
+        questions: [structuredClone(question)],
+    }));
+    return withPhase(journey, phase, [...steps.slice(0, index), ...parts, ...steps.slice(index + 1)]);
+};
+
 /** Without a postcode step the person picks the Beratungsstelle from the topic's list. */
 export const picksAgencyFromList = (journey: Journey) =>
     journey.conversationType === 'AGENCY_COUNSELLING' &&
@@ -760,6 +797,26 @@ export const translateMissing = (
     next.machine = [...new Set([...(next.machine ?? []), ...missing])];
     return next;
 };
+
+export type LanguageState = 'source' | 'checked' | 'machine' | 'missing';
+
+/** Every language of a step with its state, in the order of the language menu. */
+export const languageStates = (step: JourneyStep): { language: string; state: LanguageState }[] => {
+    const { translated, machine } = translationStatus(step);
+    return MODULE_LANGUAGES.map((language) => {
+        let state: LanguageState = 'missing';
+        if (language === MODULE_SOURCE_LANGUAGE && translated.includes(language)) state = 'source';
+        else if (machine.includes(language)) state = 'machine';
+        else if (translated.includes(language)) state = 'checked';
+        return { language, state };
+    });
+};
+
+/** A person read the machine translation of one language and confirms it. */
+export const markChecked = (step: JourneyStep, language: string): JourneyStep => ({
+    ...step,
+    machine: (step.machine ?? []).filter((code) => code !== language),
+});
 
 // ---- routes and destinations ------------------------------------------------------------------
 

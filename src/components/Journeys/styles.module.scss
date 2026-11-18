@@ -634,13 +634,28 @@ ul.tileList {
 
 .translationCounts {
     display: inline-flex;
+    height: 28px;
     align-items: center;
-    padding: 4px mui.$mui-unit;
+    padding: 0 mui.$mui-unit;
+    border: 0;
+    border-radius: 16px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
     gap: 6px;
 
     svg {
         width: 16px;
         height: 16px;
+    }
+
+    &:hover {
+        background: color-mix(in srgb, $text 6%, transparent);
+    }
+
+    &:focus-visible {
+        @include focus-ring;
     }
 }
 
@@ -1049,4 +1064,369 @@ button.route {
 
 .phaseDestinations {
     border-color: $route;
+}
+
+/* ---- the language menu of a step ---- */
+.languageMenu {
+    min-width: 300px;
+    max-width: calc(100vw - 32px);
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border-radius: 12px !important;
+}
+
+.languageMenuTitle {
+    margin: 0 0 mui.$mui-unit;
+    color: $text;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.languageList {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.languageRow {
+    display: flex;
+    min-height: 40px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-top: 1px solid $outline;
+    gap: 4px mui.$mui-unit;
+
+    &:first-child {
+        border-top: 0;
+    }
+}
+
+.languageName {
+    min-width: 0;
+    flex: 1;
+    color: $text;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.languageState {
+    display: inline-flex;
+    align-items: center;
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    line-height: 16px;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.languageState_checked,
+.languageState_source {
+    color: $text;
+}
+
+.languageState_machine {
+    color: var(--warning-text, #8a5100);
+}
+
+.languageState_missing {
+    color: $error;
+}
+
+.languageMenuFooter {
+    display: flex;
+    padding-top: mui.$mui-unit * 1.5;
+    margin-top: mui.$mui-unit;
+    border-top: 1px solid $outline;
+}
+
+/* ---- the step dialog: what the block is for ---- */
+.about {
+    display: flex;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.aboutIcon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: $primary;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.aboutText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+
+    p {
+        margin: 0;
+        color: $muted;
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+p.aboutTitle {
+    color: $text;
+    font-weight: 500;
+}
+
+/* ---- a text in several languages ---- */
+.translatable {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.originalLine {
+    display: flex;
+    min-height: 32px;
+    align-items: center;
+    padding-left: mui.$mui-unit * 2;
+    gap: 4px;
+}
+
+.originalText {
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
+    color: $text;
+    font-size: 12px;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.originalLabel {
+    margin-right: 6px;
+    color: $muted;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.machineMark {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    color: var(--warning-text, #8a5100);
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+/* ---- questions: the look as a choice with icons, answers with the person's marks ---- */
+.questions {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.looks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.look {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 mui.$mui-unit * 1.5 0 mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    gap: 6px;
+    line-height: 18px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: $muted;
+    }
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.lookOn {
+    border-color: transparent;
+    background: $selected;
+
+    svg {
+        color: $primary;
+    }
+}
+
+.lookPlus {
+    margin-right: -4px;
+}
+
+.answers {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 4px;
+    list-style: none;
+}
+
+.answer {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+
+    > .translatable {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.answerMark {
+    display: inline-flex;
+    width: 24px;
+    height: 56px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: $muted;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+.answerNumber {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.answerOther {
+    align-items: center;
+}
+
+.answerOtherText {
+    flex: 1;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px dashed $outline;
+    border-radius: 4px;
+    color: $muted;
+    font-size: 14px;
+    font-style: italic;
+}
+
+.answerPreview {
+    display: flex;
+    align-items: center;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px dashed $outline;
+    border-radius: 4px;
+    color: $muted;
+    font-size: 14px;
+    gap: mui.$mui-unit;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.questionActions {
+    display: flex;
+    padding-left: 32px;
+}
+
+.addQuestion {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+/* ---- the languages of a step, side by side ---- */
+.languageTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.languageTab {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 4px;
+
+    span {
+        display: inline-flex;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.languageTab_machine svg {
+    color: var(--warning-text, #8a5100);
+}
+
+.languageTab_missing svg {
+    color: $error;
+}
+
+.languageTabOn {
+    border-color: $primary;
+    background: $selected;
 }
