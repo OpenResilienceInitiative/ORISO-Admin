@@ -10,6 +10,7 @@ import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { CaseSharingSection } from './CaseSharingSection';
 import { TileSection } from './TileSection';
+import { PermissionsIntro } from './PermissionsIntro';
 import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
@@ -63,7 +64,8 @@ const unavailableCapabilityHintKey = (capability: PermissionToggleCapability | u
 };
 
 // Long tiles get width instead of height, so a short neighbour is not stretched into an empty field.
-const TILE_SPAN: Partial<Record<ChatTypeCardKey, 2 | 3>> = { oneOnOne: 3, liveChat: 3, group: 3, groupInternal: 2 };
+// #1558: the internal group chats tile holds important settings too, so it no longer sits in a narrow column.
+const TILE_SPAN: Partial<Record<ChatTypeCardKey, 2 | 3>> = { oneOnOne: 3, liveChat: 3, group: 3, groupInternal: 3 };
 
 export type PermissionsSettingsViewProps = {
     tenantId: string;
@@ -82,6 +84,13 @@ export type PermissionsSettingsViewProps = {
         disabledReason?: string;
         bothActive?: boolean;
     };
+    /**
+     * Name of a conversation type when the platform renamed it (ADR-036 decision 21, #1551);
+     * without one the shipped name is shown.
+     */
+    typeNames?: Partial<Record<ChatTypeCardKey, string>>;
+    /** Set: clicking a tile's icon opens the dialog for its name and icon (platform admin only). */
+    onEditTypeAppearance?: (cardKey: ChatTypeCardKey) => void;
     /** Centre page: AgencyService does not store channel switches, so they are the Träger's, read-only. */
     channelsSetOnTraeger?: boolean;
     /** The Träger's channel policies shown when `channelsSetOnTraeger`. */
@@ -115,6 +124,8 @@ export const PermissionsSettingsView = ({
     caseHandoverTenantId,
     caseHandoverTenantPending = false,
     caseSharing,
+    typeNames,
+    onEditTypeAppearance,
     channelsSetOnTraeger = false,
     traegerChannelPolicies,
     traegerChannelPoliciesStatus = 'success',
@@ -154,6 +165,9 @@ export const PermissionsSettingsView = ({
           );
 
     // Without a Träger the handover tile holds one switch and a sentence; its rules need the room.
+    // #1558: the account settings are a section of the Mailberatung tile; only without that tile do
+    // they keep a tile of their own.
+    const askerInMailTile = cardsToRender.some((card) => card.key === 'oneOnOne');
     const showsHandoverRules = caseHandoverTenantPending || Boolean(caseHandoverTenantId);
 
     const policyFor = useCallback(
@@ -381,7 +395,7 @@ export const PermissionsSettingsView = ({
         masterEnabled: boolean,
     ) => {
         const CardIcon = card.Icon;
-        const title = t(card.titleKey);
+        const title = typeNames?.[card.key] ?? t(card.titleKey);
         const showLinks = card.key === 'liveChat' && Boolean(liveChatLinks);
         const help = CONVERSATION_HELP[card.key];
         return (
@@ -393,6 +407,8 @@ export const PermissionsSettingsView = ({
                 <CollapsibleTile
                     icon={<CardIcon width={32} height={32} />}
                     title={title}
+                    onIconClick={onEditTypeAppearance ? () => onEditTypeAppearance(card.key) : undefined}
+                    iconLabel={t('tenants.permissions.card.editAppearance', { name: title })}
                     status={tileSummary(card, getFieldValue, masterEnabled)}
                     defaultOpen
                 >
@@ -476,6 +492,24 @@ export const PermissionsSettingsView = ({
                                 </TileSection>
                             )}
 
+                            {card.key === 'oneOnOne' && (
+                                <TileSection
+                                    title={t('tenants.permissions.asker.title')}
+                                    description={t('tenants.permissions.asker.sectionDescription')}
+                                >
+                                    <AskerPermissionsCard
+                                        embedded
+                                        restrictedFields={restrictedFields}
+                                        policyLevel={policyLevel}
+                                        permissionPolicies={permissionPolicies}
+                                        fallbackValues={settingsFallback}
+                                        pendingPolicyFields={pendingPolicyFields}
+                                        onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                        channelToggles={hiddenTileChannelToggles}
+                                    />
+                                </TileSection>
+                            )}
+
                             {card.notifications && (
                                 <TileSection
                                     title={t(
@@ -510,12 +544,18 @@ export const PermissionsSettingsView = ({
         >
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
+                    <PermissionsIntro
+                        cards={cardsToRender.map((card) => ({
+                            key: card.key,
+                            name: typeNames?.[card.key] ?? t(card.titleKey),
+                        }))}
+                    />
                     <CardGrid raster>
                         {/* ORISO-Admin#602: these two settings govern the account and the handover, so they
                             come before the per-chat-type feature cards. #1558: with the case-sharing
                             choice the handover lives on the Mailberatung tile instead. */}
                         {!caseSharing && (
-                            <CardGrid.Item span={showsHandoverRules ? 3 : 1}>
+                            <CardGrid.Item span={showsHandoverRules || askerInMailTile ? 3 : 1}>
                                 <CaseHandoverCard
                                     tenantId={caseHandoverTenantId}
                                     tenantPending={caseHandoverTenantPending}
@@ -526,17 +566,19 @@ export const PermissionsSettingsView = ({
                                 />
                             </CardGrid.Item>
                         )}
-                        <CardGrid.Item span={caseSharing || showsHandoverRules ? 3 : 2}>
-                            <AskerPermissionsCard
-                                restrictedFields={restrictedFields}
-                                policyLevel={policyLevel}
-                                permissionPolicies={permissionPolicies}
-                                fallbackValues={initialValues.settings as Record<string, unknown> | undefined}
-                                pendingPolicyFields={pendingPolicyFields}
-                                onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
-                                channelToggles={hiddenTileChannelToggles}
-                            />
-                        </CardGrid.Item>
+                        {!askerInMailTile && (
+                            <CardGrid.Item span={caseSharing || showsHandoverRules ? 3 : 2}>
+                                <AskerPermissionsCard
+                                    restrictedFields={restrictedFields}
+                                    policyLevel={policyLevel}
+                                    permissionPolicies={permissionPolicies}
+                                    fallbackValues={settingsFallback}
+                                    pendingPolicyFields={pendingPolicyFields}
+                                    onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                    channelToggles={hiddenTileChannelToggles}
+                                />
+                            </CardGrid.Item>
+                        )}
                         {cardsToRender.map((card) => (
                             <CardGrid.Item key={card.key} span={TILE_SPAN[card.key]}>
                                 <Form.Item

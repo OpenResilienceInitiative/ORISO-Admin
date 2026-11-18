@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
+import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import styles from './styles.module.scss';
 
@@ -17,6 +18,13 @@ export interface CollapsibleTileProps {
     onOpenChange?: (open: boolean) => void;
     children: ReactNode;
     className?: string;
+    /**
+     * Set: the icon is a button of its own (e.g. to rename the tile's subject, ORISO-Admin#1558);
+     * the rest of the header still folds the tile.
+     */
+    onIconClick?: () => void;
+    /** Accessible name of the icon button; required with `onIconClick`. */
+    iconLabel?: string;
 }
 
 /**
@@ -33,6 +41,8 @@ export const CollapsibleTile = ({
     onOpenChange,
     children,
     className,
+    onIconClick,
+    iconLabel,
 }: CollapsibleTileProps) => {
     const [open, setOpen] = useState(defaultOpen);
     const [mounted, setMounted] = useState(defaultOpen);
@@ -47,7 +57,15 @@ export const CollapsibleTile = ({
 
     return (
         <section className={classNames(styles.tile, { [styles.open]: open }, className)} data-collapsible-tile>
-            <h3 className={styles.heading}>
+            <h3 className={classNames(styles.heading, { [styles.withIconButton]: onIconClick })}>
+                {onIconClick && (
+                    <button type="button" className={styles.iconButton} aria-label={iconLabel} onClick={onIconClick}>
+                        <span className={styles.icon} aria-hidden>
+                            {icon}
+                        </span>
+                        <EditIcon className={styles.iconButtonBadge} aria-hidden />
+                    </button>
+                )}
                 <button
                     type="button"
                     className={styles.header}
@@ -55,9 +73,11 @@ export const CollapsibleTile = ({
                     aria-controls={bodyId}
                     onClick={toggle}
                 >
-                    <span className={styles.icon} aria-hidden>
-                        {icon}
-                    </span>
+                    {!onIconClick && (
+                        <span className={styles.icon} aria-hidden>
+                            {icon}
+                        </span>
+                    )}
                     <span className={styles.title}>{title}</span>
                     {status && (
                         <span

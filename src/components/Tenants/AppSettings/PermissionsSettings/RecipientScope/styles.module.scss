@@ -1,11 +1,14 @@
 @use '../../../../../styles/muiSpacing' as mui;
 
+/* ORISO-Admin#1558: a section of the internal group chats tile, same surface as its other sections. */
 .control {
     display: flex;
     min-width: 0;
     flex-direction: column;
-    padding-top: calc(mui.$mui-unit * 2);
-    border-top: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 30%, transparent);
+    padding: calc(mui.$mui-unit * 2);
+    border: 1px solid var(--m3-outline-variant, #c4c7c5);
+    border-radius: 16px;
+    background: var(--m3-surface-container-low, #f7f2f3);
     gap: calc(mui.$mui-unit * 1.5);
 }
 
@@ -20,7 +23,7 @@
     margin: 0;
     color: var(--m3-on-surface, #1b1b1c);
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 600;
     letter-spacing: 0.15px;
     line-height: 24px;
 }

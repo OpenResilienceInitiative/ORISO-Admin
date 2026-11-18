@@ -132,3 +132,53 @@ describe('folding conversation-type tiles', () => {
         expect(mail.getByRole('region', { name: 'tenants.permissions.directInvite.title' })).toBeInTheDocument();
     });
 });
+
+// Frank 2026-11-18, review round 2.
+describe('page intro, account settings and conversation type names', () => {
+    beforeEach(() => {
+        vi.resetModules();
+    });
+
+    it('explains the page and the purpose of every shown conversation type above the tiles', async () => {
+        await renderView({ excludeCardKeys: ['liveChat'] });
+        const intro = within(screen.getByTestId('permissions-intro'));
+
+        expect(intro.getByText('tenants.permissions.intro.lead')).toBeInTheDocument();
+        expect(intro.getByText('tenants.permissions.intro.purpose.oneOnOne')).toBeInTheDocument();
+        expect(intro.queryByText('tenants.permissions.intro.purpose.liveChat')).toBeNull();
+    });
+
+    it('shows the account settings as a section of the Mailberatung tile, not as a tile', async () => {
+        await renderView();
+
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+        expect(mail.getByRole('region', { name: 'tenants.permissions.asker.title' })).toBeInTheDocument();
+        expect(screen.getAllByTestId('asker-card')).toHaveLength(1);
+    });
+
+    it('keeps the account settings reachable when the Mailberatung tile is not shown', async () => {
+        await renderView({ excludeCardKeys: ['oneOnOne'] });
+
+        expect(screen.getByTestId('asker-card')).toBeInTheDocument();
+        expect(screen.queryByRole('region', { name: 'tenants.permissions.asker.title' })).toBeNull();
+    });
+
+    it('shows a renamed conversation type and opens its name and icon from the tile icon', async () => {
+        const onEdit = vi.fn();
+        await renderView({ typeNames: { oneOnOne: 'Fragebogenberatung' }, onEditTypeAppearance: onEdit });
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+
+        expect(mail.getByRole('button', { name: /^Fragebogenberatung/ })).toBeInTheDocument();
+        await userEvent.click(mail.getByRole('button', { name: 'tenants.permissions.card.editAppearance' }));
+
+        expect(onEdit).toHaveBeenCalledWith('oneOnOne');
+        // Renaming does not fold the tile.
+        expect(mail.getByRole('button', { name: /^Fragebogenberatung/ })).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('offers no rename where the level may not rename', async () => {
+        await renderView();
+
+        expect(screen.queryByRole('button', { name: 'tenants.permissions.card.editAppearance' })).toBeNull();
+    });
+});

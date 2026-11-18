@@ -4067,5 +4067,13 @@
     "tenants.permissions.card.summary.on": "An · {{count}} von {{total}} Zusatzfunktionen",
     "tenants.permissions.caseSharing.summary.caseHandover": "Fallübergabe",
     "tenants.permissions.caseSharing.summary.teamCounselling": "Teamberatung",
-    "tenants.permissions.caseSharing.summary.none": "Keine Fallteilung"
+    "tenants.permissions.caseSharing.summary.none": "Keine Fallteilung",
+    "tenants.permissions.intro.lead": "Hier legen Sie fest, welche Gesprächsarten angeboten werden und was in jeder möglich ist. Jede Gesprächsart hat eine eigene Kachel; eingeklappt zeigt sie, was eingestellt ist.",
+    "tenants.permissions.intro.purpose.oneOnOne": "Beratung mit Konto: Ratsuchende schreiben, eine Berater:in antwortet, der Fall bleibt bestehen.",
+    "tenants.permissions.intro.purpose.liveChat": "Temporärer Chat ohne Konto: anonym, das Gespräch endet mit der Sitzung.",
+    "tenants.permissions.intro.purpose.group": "Chat zu einem Termin oder Event mit mehreren Ratsuchenden.",
+    "tenants.permissions.intro.purpose.groupInternal": "Austausch innerhalb der Organisation, ohne Ratsuchende.",
+    "tenants.permissions.intro.hint": "„Anpassbar“ heißt: die Ebene darunter darf ändern. „Vorgabe“ heißt: festgelegt von oben.",
+    "tenants.permissions.card.editAppearance": "Name und Symbol von „{{name}}“ ändern",
+    "tenants.permissions.asker.sectionDescription": "Gilt für das ganze Konto, das Ratsuchende in der Mailberatung anlegen; die Gesprächsarten können es weiter einschränken."
 }

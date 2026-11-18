@@ -114,6 +114,8 @@ const meta = {
         onToggleUpdate: fn(),
         initialValues: { settings: { ...DEFAULT_PERMISSION_SETTINGS } },
         permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED' } },
+        // The internal group chats tile with its "who can be picked" section, as on the Träger page.
+        recipientScope: { policy: { value: 'TENANT', mode: 'SUGGESTED' }, onSave: fn(async () => undefined) },
     },
     beforeEach: async () => {
         const previousLanguage = i18n.language;
@@ -212,5 +214,27 @@ export const AfterFolded: Story = {
         await headers.reduce((previous, header) => previous.then(() => userEvent.click(header)), Promise.resolve());
         headers.forEach((header) => expect(header).toHaveAttribute('aria-expanded', 'false'));
         await expect(headers[0]).toHaveTextContent(/Fallübergabe|Case handover/);
+    },
+};
+
+/**
+ * Platform admin: the tile icon (with a small pencil) opens name and icon of the conversation type
+ * (the dialog comes with #1551). The renamed name shows on the tile and in the intro.
+ */
+export const AfterRenameFromIcon: Story = {
+    args: {
+        policyLevel: 'platform',
+        caseSharing: { mode: 'caseHandover' },
+        typeNames: { oneOnOne: 'Fragebogenberatung' },
+        onEditTypeAppearance: fn(),
+    },
+    play: async ({ args, canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(within(canvas.getByTestId('permissions-intro')).getByText('Fragebogenberatung')).toBeVisible();
+        const mail = within(canvas.getByTestId('chat-type-card-oneOnOne'));
+        await userEvent.click(
+            mail.getByRole('button', { name: /Fragebogenberatung.*ändern|Fragebogenberatung.*Change/ }),
+        );
+        await expect(args.onEditTypeAppearance).toHaveBeenCalledWith('oneOnOne');
     },
 };

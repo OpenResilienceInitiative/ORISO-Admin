@@ -4067,5 +4067,13 @@
     "tenants.permissions.card.summary.on": "On · {{count}} of {{total}} extra features",
     "tenants.permissions.caseSharing.summary.caseHandover": "Case handover",
     "tenants.permissions.caseSharing.summary.teamCounselling": "Team counselling",
-    "tenants.permissions.caseSharing.summary.none": "No case sharing"
+    "tenants.permissions.caseSharing.summary.none": "No case sharing",
+    "tenants.permissions.intro.lead": "Here you decide which conversation types are offered and what each of them allows. Every conversation type has its own tile; folded, it shows what is set.",
+    "tenants.permissions.intro.purpose.oneOnOne": "Counselling with an account: advice seekers write, a counsellor answers, the case stays.",
+    "tenants.permissions.intro.purpose.liveChat": "Temporary chat without an account: anonymous, the conversation ends with the session.",
+    "tenants.permissions.intro.purpose.group": "Chat for an appointment or event with several advice seekers.",
+    "tenants.permissions.intro.purpose.groupInternal": "Exchange within the organisation, without advice seekers.",
+    "tenants.permissions.intro.hint": "\"Adjustable\" means the level below may change it. \"Requirement\" means it is set from above.",
+    "tenants.permissions.card.editAppearance": "Change name and icon of \"{{name}}\"",
+    "tenants.permissions.asker.sectionDescription": "Applies to the whole account advice seekers create in mail counselling; conversation types can restrict it further."
 }

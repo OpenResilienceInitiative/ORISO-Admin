@@ -292,14 +292,20 @@ describe('PermissionsSettingsView tiles', () => {
         const cardTiles = screen
             .getAllByRole('heading', { level: 5 })
             .filter((heading) => heading.textContent !== 'tenants.permissions.title');
-        expect(cardTiles.map((heading) => heading.textContent)).toContain('tenants.permissions.asker.title');
+        // #1558: the asker account is a section of the Mailberatung tile, not a tile of its own.
+        expect(cardTiles.map((heading) => heading.textContent)).not.toContain('tenants.permissions.asker.title');
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('region', {
+                name: 'tenants.permissions.asker.title',
+            }),
+        ).toBeInTheDocument();
         cardTiles.forEach((heading) => {
             expect(heading.parentElement?.querySelector('[class*="headerIcon"]')).toBeTruthy();
         });
         // #1558: conversation-type tiles fold up; their header button carries the icon.
         const foldingTiles = screen
             .getAllByRole('heading', { level: 3 })
-            .filter((heading) => heading.closest('[data-testid^="chat-type-card-"]'));
+            .filter((heading) => heading.querySelector('button[aria-expanded]'));
         expect(foldingTiles.length).toBeGreaterThan(0);
         foldingTiles.forEach((heading) => {
             expect(heading.querySelector('[class*="icon"][aria-hidden]')).toBeTruthy();
