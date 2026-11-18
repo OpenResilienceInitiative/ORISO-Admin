@@ -26,6 +26,7 @@ import {
     PERMISSION_FEATURE_KEYS,
     splitPermissionFeatureWrites,
 } from '../PermissionsSettings/permissionFeatureRegistry';
+import { APP_ONLY_HINT_KEY } from '../PermissionsSettings/chatTypeCards';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
 import { Notify } from '../../../Notify';
 import { useSupervisionPrivacyConfirm } from '../../../SupervisionPrivacyConfirm';
@@ -256,6 +257,8 @@ export const OtherFunctionsSettings = ({
                                 </div>
                             );
                         })}
+                        {/* ORISO-Helm#466: voice messages and media upload only hide the button. */}
+                        <p className={styles.checkInfo}>{t(APP_ONLY_HINT_KEY)}</p>
                     </>
                 </TileSections.Section>
             </TileSections>

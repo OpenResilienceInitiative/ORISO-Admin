@@ -5,5 +5,6 @@ export enum TypeOfUser {
     AgencyAdmins = 'agency-admins',
     TenantAdmins = 'tenant-admins',
     PlatformAdmins = 'platform-admins',
+    StatisticsReaders = 'statistics-readers',
     Tenants = 'tenants',
 }

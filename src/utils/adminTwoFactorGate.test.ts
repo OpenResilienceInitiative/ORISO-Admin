@@ -148,6 +148,10 @@ describe('hasMandatoryTwoFactorRole', () => {
         expect(hasMandatoryTwoFactorRole([UserRole.RestrictedAgencyAdmin])).toBe(true);
     });
 
+    it('makes the second factor mandatory for a Statistik-Leser·in (ORISO-UserService#1666)', () => {
+        expect(hasMandatoryTwoFactorRole([UserRole.StatisticsReader])).toBe(true);
+    });
+
     it('is false for roles outside the administrator set', () => {
         expect(hasMandatoryTwoFactorRole([UserRole.Technical, UserRole.TopicAdmin])).toBe(false);
     });

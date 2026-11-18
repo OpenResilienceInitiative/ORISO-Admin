@@ -104,6 +104,17 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureDirectInviteChatEnabled: true,
     featureDirectInviteAudioEnabled: true,
     featureDirectInviteVideoEnabled: true,
+    // ORISO-UserService#1662: guest account modes per chat type; TenantService keeps a stored value
+    // when a save omits it, so every save sends them explicitly. Default: every mode allowed.
+    featureGuestAccountTemporaryChatEnabled: true,
+    featureGuestAccountGuestChoosesChatEnabled: true,
+    featureGuestAccountPermanentChatEnabled: true,
+    featureGuestAccountTemporaryAudioEnabled: true,
+    featureGuestAccountGuestChoosesAudioEnabled: true,
+    featureGuestAccountPermanentAudioEnabled: true,
+    featureGuestAccountTemporaryVideoEnabled: true,
+    featureGuestAccountGuestChoosesVideoEnabled: true,
+    featureGuestAccountPermanentVideoEnabled: true,
 } as const;
 
 export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {

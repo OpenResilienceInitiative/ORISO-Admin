@@ -3,12 +3,14 @@ import {
     DEFAULT_LANGUAGE,
     LANGUAGE_COOKIE_KEY,
     LANGUAGE_STORAGE_KEY,
+    SUPPORTED_LANGUAGES,
     detectBrowserLanguage,
     getInitialLanguage,
     getStoredLanguage,
     isSupportedLanguage,
     normalizeLanguage,
     storeLanguage,
+    toIntlLocale,
     updateDocumentLanguage,
 } from './language';
 
@@ -52,6 +54,16 @@ describe('language utilities', () => {
         updateDocumentLanguage('en');
 
         expect(document.documentElement.lang).toBe('en');
+    });
+
+    it('gives Intl a valid locale for every supported language (Admin#1503)', () => {
+        expect(toIntlLocale('de@informal')).toBe('de');
+        expect(toIntlLocale('de')).toBe('de');
+        expect(toIntlLocale('tr')).toBe('tr');
+        expect(toIntlLocale(undefined)).toBeUndefined();
+        SUPPORTED_LANGUAGES.forEach((language) => {
+            expect(() => new Intl.DateTimeFormat(toIntlLocale(language))).not.toThrow();
+        });
     });
 
     it('falls back to the default language for non-German browsers', () => {

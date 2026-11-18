@@ -170,6 +170,7 @@ export const TenantAdminWithUserAdmin: Story = {
             ),
             labels: {
                 account: 'Mein Konto',
+                addons: 'Add-ons',
                 agency: 'Beratungsstellen',
                 home: 'Home',
                 links: 'Einladen',
@@ -198,6 +199,7 @@ export const RestrictedAgencyAdmin: Story = {
             can: canFor(Resource.Agency, Resource.Consultant),
             labels: {
                 account: 'Mein Konto',
+                addons: 'Add-ons',
                 agency: 'Beratungsstellen',
                 home: 'Home',
                 links: 'Einladen',
@@ -210,6 +212,35 @@ export const RestrictedAgencyAdmin: Story = {
             settingsPath: `${routePathNames.themeSettings}/legal`,
         }),
         currentPath: routePathNames.logs,
+    },
+};
+
+/**
+ * Statistik-Leser·in (ORISO-UserService#1666): a read-only statistics account. Real builder
+ * output — exactly one entry, "Statistik", and no Home.
+ */
+export const StatisticsReader: Story = {
+    args: {
+        items: buildAdminNavItems({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(Resource.Statistic),
+            labels: {
+                account: 'Mein Konto',
+                addons: 'Add-ons',
+                agency: 'Beratungsstellen',
+                home: 'Home',
+                links: 'Einladen',
+                logs: 'Logs',
+                settings: 'Einstellungen',
+                statistics: 'Statistik',
+                tenants: 'Träger',
+                users: 'Benutzer',
+            },
+            settingsPath: `${routePathNames.themeSettings}/legal`,
+        }),
+        currentPath: routePathNames.statistic,
     },
 };
 

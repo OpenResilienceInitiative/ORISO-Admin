@@ -4,6 +4,7 @@ import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AdminNotFound } from './pages/ErrorPages/AdminNotFound';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
@@ -21,6 +22,7 @@ import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { resolveVisibleLinksTabs } from './constants/linksAccess';
+import { canSeeAddonsSection } from './constants/addonsAccess';
 import { UserRole } from './enums/UserRole';
 import {
     canReadCaseHandoverAdmin,
@@ -33,6 +35,10 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
+    LazyAddonAdminPage,
+    LazyAddonAuditLogsPage,
+    LazyAddonsLayout,
+    LazyAddonsOverview,
     LazyAgencyList,
     LazyAgencySetupPage,
     LazyAgencyPageEdit,
@@ -52,6 +58,7 @@ import {
     LazyPermissionsSettingsPage,
     LazySingleLegalSettings,
     LazyStatistic,
+    LazyStatisticsReaderEditOrAdd,
     LazyHomePage,
     LazySupervisorLogsPage,
     LazyServiceNoticesPage,
@@ -79,6 +86,7 @@ import { useAccountInactivityActivity } from './hooks/useAccountInactivityActivi
 import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
 import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
+import { StatisticsReaderRoutes } from './router/StatisticsReaderRoutes';
 
 const tenantLegalSettingsPath = `${routePathNames.themeSettings}/legal`;
 
@@ -101,7 +109,7 @@ export const App = () => {
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
-    const { hasRole, isSuperAdmin, roles, isTechnicalAccount, tokenUnreadable } = useUserRoles();
+    const { hasRole, isSuperAdmin, isStatisticsReader, roles, isTechnicalAccount, tokenUnreadable } = useUserRoles();
 
     /**
      * Accounts that have to prove a second factor before any admin screen
@@ -131,8 +139,9 @@ export const App = () => {
     useEffect(() => {
         // Every role starts at Home (ORISO-Admin#1323). It only links to areas the
         // admin may open, so the per-role landing chain that lived here is gone.
+        // A Statistik-Leser·in has no Home and starts at statistics (ORISO-UserService#1666).
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
-            navigate(routePathNames.home);
+            navigate(isStatisticsReader ? routePathNames.statistic : routePathNames.home);
         }
     }, []);
 
@@ -144,6 +153,7 @@ export const App = () => {
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     // Platform admins only — the backend answers 403 to every other role.
     const canSeeDeletionAuditLogs = canSeeDeletionAuditLogsFor(isSuperAdmin, can);
+    const showAddons = canSeeAddonsSection({ isSuperAdmin, can });
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
         isTechnicalAccount,
@@ -180,6 +190,33 @@ export const App = () => {
                 <DpaBlockerGate>
                     <ProtectedPageLayoutWrapper restricted>
                         <MandatoryTwoFactorSetup />
+                    </ProtectedPageLayoutWrapper>
+                </DpaBlockerGate>
+            </FeatureProvider>
+        );
+    }
+
+    if (isStatisticsReader) {
+        // ORISO-UserService#1666: a Statistik-Leser·in gets statistics and the own profile only;
+        // every other admin address redirects to statistics.
+        return (
+            <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
+                <DpaBlockerGate>
+                    <ProtectedPageLayoutWrapper>
+                        <ErrorBoundary scope="page" resetKeys={[location.pathname]}>
+                            <Suspense fallback={<PageLoader />}>
+                                <StatisticsReaderRoutes
+                                    statistic={
+                                        canReadStatistic ? (
+                                            <LazyStatistic />
+                                        ) : (
+                                            <Navigate to="/admin/access-denied" replace />
+                                        )
+                                    }
+                                    profile={<LazyUserProfile />}
+                                />
+                            </Suspense>
+                        </ErrorBoundary>
                     </ProtectedPageLayoutWrapper>
                 </DpaBlockerGate>
             </FeatureProvider>
@@ -320,6 +357,11 @@ export const App = () => {
                                 )}
                                 {/* Start page for every role (ORISO-Admin#1323). */}
                                 <Route path={routePathNames.home} element={<LazyHomePage />} />
+                                {/* Bare /admin goes to Home; without this the catch-all below would flash "not found". */}
+                                <Route
+                                    path={routePathNames.root}
+                                    element={<Navigate to={routePathNames.home} replace />}
+                                />
                                 <Route
                                     path={routePathNames.statisticPreview}
                                     element={<Navigate to={routePathNames.statistic} replace />}
@@ -344,6 +386,7 @@ export const App = () => {
                                             showCaseHandover={showCaseHandoverLogs}
                                             showInactive={isSuperAdmin}
                                             showDeletion={canSeeDeletionAuditLogs}
+                                            showAddons={showAddons}
                                         />
                                     }
                                 >
@@ -373,6 +416,12 @@ export const App = () => {
                                         <Route
                                             path={routePathNames.caseHandoverLogs}
                                             element={<LazyCaseHandoverLogsPage />}
+                                        />
+                                    )}
+                                    {showAddons && (
+                                        <Route
+                                            path={routePathNames.addonAuditLogs}
+                                            element={<LazyAddonAuditLogsPage />}
                                         />
                                     )}
                                 </Route>
@@ -451,7 +500,18 @@ export const App = () => {
                                 <Route path="/admin/users/:typeOfUsers" element={<LazyUsersList />} />
                                 <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                                 <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
+                                <Route
+                                    path={`${routePathNames.statisticsReaders}/:id`}
+                                    element={<LazyStatisticsReaderEditOrAdd />}
+                                />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
+                                {showAddons && (
+                                    <Route path={routePathNames.addons} element={<LazyAddonsLayout />}>
+                                        <Route index element={<LazyAddonsOverview />} />
+                                        <Route path="apps/:addonName/:appId" element={<LazyAddonAdminPage />} />
+                                        <Route path="*" element={<Navigate to={routePathNames.addons} replace />} />
+                                    </Route>
+                                )}
                                 {visibleLinksTabs.length > 0 && (
                                     <Route path="/admin/links" element={<LazyLinksPage />}>
                                         <Route index element={<LazyLinksIndexRedirect />} />
@@ -472,6 +532,9 @@ export const App = () => {
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}
+                                {/* Last on purpose: an address no route above answers gets a clear
+                                    "page not found" inside the shell, not a blank content area (#1513). */}
+                                <Route path="*" element={<AdminNotFound />} />
                             </Routes>
                         </Suspense>
                     </ErrorBoundary>

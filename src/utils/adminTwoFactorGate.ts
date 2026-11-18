@@ -30,6 +30,9 @@ export const MANDATORY_TWO_FACTOR_ROLES: readonly UserRole[] = [
     UserRole.SingleTenantAdmin,
     UserRole.AgencyAdmin,
     UserRole.RestrictedAgencyAdmin,
+    // ORISO-UserService#1666: platform-wide statistics are sensitive, so the read-only
+    // Statistik-Leser·in proves a second factor too (the backend also refuses without one).
+    UserRole.StatisticsReader,
 ];
 
 export interface MandatoryTwoFactorInput {

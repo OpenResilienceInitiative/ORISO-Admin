@@ -2,7 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import getDashboardStatistics from '../../api/statistic/getDashboardStatistics';
-import { agencyEndpointBase, tenantAdminEndpoint, topicAdminEndpoint, topicEndpoint } from '../../appConfig';
+import {
+    agencyEndpointBase,
+    statisticsAgencyNamesEndpoint,
+    statisticsTenantNamesEndpoint,
+    tenantAdminEndpoint,
+    topicAdminEndpoint,
+    topicEndpoint,
+} from '../../appConfig';
 import removeEmbedded from '../../utils/removeEmbedded';
 import {
     buildStatisticData,
@@ -104,11 +111,35 @@ const fetchAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
     }
 };
 
-/** The Beratungsstellen a platform admin can look into. Off for every other role (their dashboard has them). */
-export const useStatisticAgencyDirectory = (enabled: boolean) =>
+/**
+ * A Statistik-Leser·in may not read the admin lists (ORISO-UserService#1666); it gets every
+ * Beratungsstelle with its Träger from the names-only endpoint, in one unpaged answer. Like the
+ * admin directory, a failure is thrown so the page can say that the list did not load.
+ */
+const fetchReaderAgencyDirectory = async (): Promise<StatisticAgencyEntry[]> => {
+    const result = await fetchData({
+        url: statisticsAgencyNamesEndpoint,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+    });
+    const rows: Array<{ id?: number | null; name?: string; tenantId?: number | null }> = Array.isArray(result)
+        ? result
+        : [];
+    return rows
+        .filter((row) => row && row.id != null && row.tenantId != null && row.name)
+        .map((row) => ({ id: Number(row.id), name: String(row.name), tenantId: Number(row.tenantId) }));
+};
+
+/**
+ * The Beratungsstellen a platform admin (or a Statistik-Leser·in) can look into. Off for every
+ * other role (their dashboard has them).
+ */
+export const useStatisticAgencyDirectory = (enabled: boolean, isStatisticsReader = false) =>
     useQuery({
-        queryKey: ['ADMIN_STATISTICS_AGENCY_DIRECTORY'],
-        queryFn: fetchAgencyDirectory,
+        queryKey: isStatisticsReader
+            ? ['ADMIN_STATISTICS_AGENCY_DIRECTORY', 'statistics-reader']
+            : ['ADMIN_STATISTICS_AGENCY_DIRECTORY'],
+        queryFn: isStatisticsReader ? fetchReaderAgencyDirectory : fetchAgencyDirectory,
         enabled,
         staleTime: 5 * 60 * 1000,
         retry: false,
@@ -128,6 +159,12 @@ const fetchTopicNames = async () => {
     return { ...publicNames, ...adminNames };
 };
 
+// A Statistik-Leser·in reads names only from endpoints opened for it (ORISO-UserService#1666);
+// the topic admin list would answer 403, so it is not asked at all.
+const fetchReaderTenantNames = () => fetchNameLookup(statisticsTenantNamesEndpoint);
+const fetchReaderAgencyNames = () => fetchNameLookup(statisticsAgencyNamesEndpoint);
+const fetchReaderTopicNames = () => fetchNameLookup(`${topicEndpoint}public`);
+
 /**
  * Loads the real statistics for the admin dashboard and resolves display names for
  * tenants, agencies and topics. Name lookups are non-fatal — when a lookup fails,
@@ -136,7 +173,13 @@ const fetchTopicNames = async () => {
  */
 export const useStatisticDashboardData = ({
     drillTenantId,
-}: { drillTenantId?: number } = {}): StatisticDashboardDataResult => {
+    isStatisticsReader = false,
+}: {
+    drillTenantId?: number;
+    /** A Statistik-Leser·in: names come from the names-only endpoints (ORISO-UserService#1666). */
+    isStatisticsReader?: boolean;
+} = {}): StatisticDashboardDataResult => {
+    const lookupKey = isStatisticsReader ? 'statistics-reader' : 'admin';
     const dashboardQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_DASHBOARD'],
         queryFn: () => getDashboardStatistics(),
@@ -160,7 +203,7 @@ export const useStatisticDashboardData = ({
 
     // A platform admin's page already reads every Beratungsstelle with its name (the directory, same
     // query key, so one request): its names are used instead of asking the same endpoint again.
-    const directoryQuery = useStatisticAgencyDirectory(isPlatformScope);
+    const directoryQuery = useStatisticAgencyDirectory(isPlatformScope, isStatisticsReader);
     const directoryNames = useMemo(
         () =>
             directoryQuery.data &&
@@ -168,8 +211,8 @@ export const useStatisticDashboardData = ({
         [directoryQuery.data],
     );
     const agenciesQuery = useQuery({
-        queryKey: ['ADMIN_STATISTICS_AGENCY_NAMES'],
-        queryFn: fetchAgencyNames,
+        queryKey: ['ADMIN_STATISTICS_AGENCY_NAMES', lookupKey],
+        queryFn: isStatisticsReader ? fetchReaderAgencyNames : fetchAgencyNames,
         enabled: hasAgencyTargets && !isPlatformScope,
         staleTime: 5 * 60 * 1000,
         retry: false,
@@ -177,16 +220,16 @@ export const useStatisticDashboardData = ({
     const agencyNamesById = isPlatformScope ? directoryNames : agenciesQuery.data;
 
     const tenantsQuery = useQuery({
-        queryKey: ['ADMIN_STATISTICS_TENANT_NAMES'],
-        queryFn: fetchTenantNames,
+        queryKey: ['ADMIN_STATISTICS_TENANT_NAMES', lookupKey],
+        queryFn: isStatisticsReader ? fetchReaderTenantNames : fetchTenantNames,
         enabled: isPlatformScope,
         staleTime: 5 * 60 * 1000,
         retry: false,
     });
 
     const topicsQuery = useQuery({
-        queryKey: ['ADMIN_STATISTICS_TOPIC_NAMES'],
-        queryFn: fetchTopicNames,
+        queryKey: ['ADMIN_STATISTICS_TOPIC_NAMES', lookupKey],
+        queryFn: isStatisticsReader ? fetchReaderTopicNames : fetchTopicNames,
         enabled: Boolean(dashboardQuery.data),
         staleTime: 5 * 60 * 1000,
         retry: false,

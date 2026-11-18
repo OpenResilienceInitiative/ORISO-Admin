@@ -98,6 +98,7 @@ import type {
 } from './Statistic/types';
 import { Notify } from '../components/Notify';
 import { HintText } from '../components/HintText';
+import { toIntlLocale } from '../utils/language';
 
 /** Visible anchor of the dashboard's load state: where "Ansehen" and the quiet text live. */
 const STATISTIC_STATE_ID = 'statistic-dashboard-state';
@@ -398,10 +399,10 @@ const getConversationSegmentPercentage = (segment: ConversationSegment, segments
 };
 
 const getAllowedStatisticScopes = (
-    isSuperAdmin: boolean,
+    hasPlatformView: boolean,
     hasRole: (role: UserRole | UserRole[]) => boolean,
 ): ScopeKey[] => {
-    if (isSuperAdmin) {
+    if (hasPlatformView) {
         return scopeOrder;
     }
 
@@ -1926,8 +1927,15 @@ export const Statistic = () => {
     const translate: DashboardTranslate = (key, options) =>
         translateSource?.(key, options) || String(options?.defaultValue || key);
     const locale = getDashboardLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language);
-    const { hasRole, isSuperAdmin } = useUserRoles();
-    const allowedScopeKeys = useMemo(() => getAllowedStatisticScopes(isSuperAdmin, hasRole), [hasRole, isSuperAdmin]);
+    const { hasRole, isSuperAdmin, isStatisticsReader } = useUserRoles();
+    // A Statistik-Leser·in reads the platform statistics exactly like a platform admin — scopes,
+    // Träger drill-down and tutorials — without becoming a super admin anywhere else
+    // (ORISO-UserService#1666). Editing stays out of reach: the page has no edit controls for it.
+    const hasPlatformView = isSuperAdmin || isStatisticsReader;
+    const allowedScopeKeys = useMemo(
+        () => getAllowedStatisticScopes(hasPlatformView, hasRole),
+        [hasRole, hasPlatformView],
+    );
     const allowedScopeKey = allowedScopeKeys.join('|');
     const defaultScope = allowedScopeKeys[0] || 'agency';
     const [activeScope, setActiveScope] = useState<ScopeKey>(defaultScope);
@@ -1963,10 +1971,10 @@ export const Statistic = () => {
         data: agencyDirectoryData,
         isError: hasAgencyDirectoryError,
         isLoading: isAgencyDirectoryLoading,
-    } = useStatisticAgencyDirectory(isSuperAdmin);
+    } = useStatisticAgencyDirectory(hasPlatformView, isStatisticsReader);
     const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
     const drillTenantId =
-        isSuperAdmin && activeScope === 'agency'
+        hasPlatformView && activeScope === 'agency'
             ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
             : undefined;
     const {
@@ -1975,9 +1983,9 @@ export const Statistic = () => {
         isLoading: isDashboardLoading,
         isUnavailable: isStatisticUnavailable,
         drill,
-    } = useStatisticDashboardData({ drillTenantId });
+    } = useStatisticDashboardData({ drillTenantId, isStatisticsReader });
     const { isLoading: isStatisticLoading, agencyLevelHint } = resolveStatisticView({
-        isSuperAdmin,
+        isSuperAdmin: hasPlatformView,
         activeScope,
         pickedAgencyIds: selectedFilterTargetIdsByScope.agency || [],
         isDashboardLoading,
@@ -2178,18 +2186,18 @@ export const Statistic = () => {
     }, [agencyDirectory, statisticData.targetsByScope.tenant]);
     const selectedFilterTargets = useMemo(
         () =>
-            (isSuperAdmin && activeScope === 'agency' ? selectedFilterTargetIds : visibleFilterTargetIds)
+            (hasPlatformView && activeScope === 'agency' ? selectedFilterTargetIds : visibleFilterTargetIds)
                 .map(
                     (targetId) =>
                         availableFilterTargets.find((target) => target.id === targetId) ??
-                        (isSuperAdmin ? directoryTargets.find((target) => target.id === targetId) : undefined),
+                        (hasPlatformView ? directoryTargets.find((target) => target.id === targetId) : undefined),
                 )
                 .filter((target): target is FilterTarget => Boolean(target)),
         [
             activeScope,
             availableFilterTargets,
             directoryTargets,
-            isSuperAdmin,
+            hasPlatformView,
             selectedFilterTargetIds,
             visibleFilterTargetIds,
         ],
@@ -2240,7 +2248,7 @@ export const Statistic = () => {
     const selectScopeTarget = (nextTarget: ScopePickerTarget) => {
         const levelTargets = statisticData.targetsByScope[nextTarget.scope];
         setActiveScope(nextTarget.scope);
-        if (isSuperAdmin && nextTarget.scope === 'agency') {
+        if (hasPlatformView && nextTarget.scope === 'agency') {
             // One Träger's numbers are loaded at a time: Beratungsstellen of another Träger make way.
             const tenantOf = (targetId: string) =>
                 agencyDirectory.find((agency) => agencyTargetId(agency.id) === targetId)?.tenantId;
@@ -2260,12 +2268,12 @@ export const Statistic = () => {
             );
             // The newest pick decides which Träger the Beratungsstellen level looks into.
             const agency =
-                isSuperAdmin && nextTarget.type === 'Träger'
+                hasPlatformView && nextTarget.type === 'Träger'
                     ? agenciesOfTenant(currentSelection.agency || [], nextTarget.id, agencyDirectory)
                     : currentSelection.agency;
 
             // A re-picked Träger moves to the end, so the stored order always ends with the newest pick.
-            const movesToEnd = isSuperAdmin && nextTarget.type === 'Träger';
+            const movesToEnd = hasPlatformView && nextTarget.type === 'Träger';
             const alreadyLast = sameType[sameType.length - 1] === nextTarget.id;
             const unchanged = sameType.includes(nextTarget.id) && (!movesToEnd || alreadyLast);
 
@@ -2359,7 +2367,10 @@ export const Statistic = () => {
                     />
                 </div>
             </Page.Title>
-            <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
+            <div
+                className="statisticDashboardPage"
+                lang={toIntlLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language)}
+            >
                 <div className="statisticDashboard">
                     <div key={activeScope} className="statisticDashboard__animatedContent">
                         {isStatisticUnavailable && (
@@ -2568,7 +2579,8 @@ export const Statistic = () => {
                                         }
                                         highlights={previewHighlights}
                                         action={
-                                            showEmptyHero
+                                            // A Statistik-Leser·in manages no counsellors.
+                                            showEmptyHero && !isStatisticsReader
                                                 ? {
                                                       label: translateDashboardKey(
                                                           translate,
@@ -2836,7 +2848,7 @@ export const Statistic = () => {
                         )}
                     </div>
                     {!isStatisticUnavailable &&
-                        (isSuperAdmin || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
+                        (hasPlatformView || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
                             <TutorialStatisticsSection />
                         )}
                 </div>

@@ -315,6 +315,41 @@ describe('PermissionsSettingsView tiles', () => {
     });
 });
 
+// ORISO-UserService#1662: guest account modes per chat type, next to the direct invitations.
+describe('PermissionsSettingsView guest account modes', () => {
+    const permanentVideo = () =>
+        screen
+            .getByTestId('chat-type-card-oneOnOne')
+            .querySelector('[data-feature-policy="featureGuestAccountPermanentVideoEnabled"]') as HTMLElement | null;
+
+    it('shows the guest account modes in the one-on-one tile and writes a Träger choice as a policy', async () => {
+        const onPolicyChange = vi.fn();
+        renderOneOnOne(onPolicyChange, { policyLevel: 'tenant' });
+
+        expect(screen.getByText('tenants.permissions.guestAccountModes.title')).toBeTruthy();
+        const row = permanentVideo();
+        expect(row).toBeTruthy();
+        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.deactivate$/ }));
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+    });
+
+    it('is part of the platform page too', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'platform' });
+
+        expect(permanentVideo()).toBeTruthy();
+    });
+
+    it('is not offered on a Beratungsstelle page, which has no value of its own', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'agency' });
+
+        expect(screen.queryByText('tenants.permissions.guestAccountModes.title')).toBeNull();
+        expect(permanentVideo()).toBeNull();
+    });
+});
+
 describe('PermissionsSettingsView Träger channel switches', () => {
     const renderCentre = (traegerChannelPoliciesStatus: 'pending' | 'error' | 'success') =>
         renderOneOnOne(vi.fn(), {
