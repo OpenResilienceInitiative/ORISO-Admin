@@ -259,3 +259,55 @@ export const AfterRequiredByTraeger: Story = {
         );
     },
 };
+
+/*
+ * One page, three levels (Frank, 2026-11-18): platform, Träger and Beratungsstelle see the same
+ * tiles, sections and descriptions. Only what a level cannot set is missing or read-only: a centre
+ * has no value of its own for guest accounts and "who can be picked", and its channel switches are
+ * the Träger's.
+ */
+
+/** Platform: sets defaults and requirements for every Träger. */
+export const LevelPlatform: Story = {
+    args: {
+        policyLevel: 'platform',
+        caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } },
+    },
+    play: async ({ canvasElement }) => {
+        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        await expect(mail.getByRole('group', { name: CHOICE })).toBeVisible();
+        await expect(mail.getByRole('region', { name: /Gastkonten|guest accounts/i })).toBeVisible();
+    },
+};
+
+/** Träger: the platform suggests case handover; the Träger may change it and require it for its centres. */
+export const LevelTraeger: Story = {
+    args: {
+        policyLevel: 'tenant',
+        caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED', inherited: true } },
+    },
+    play: async ({ canvasElement }) => {
+        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const choice = within(mail.getByRole('group', { name: CHOICE }));
+        await expect(
+            choice.getByRole('button', { name: /^(Fälle von Ratsuchenden teilen|Sharing cases of advice seekers): / }),
+        ).toBeEnabled();
+        await expect(mail.getByRole('region', { name: /Gastkonten|guest accounts/i })).toBeVisible();
+    },
+};
+
+/** Beratungsstelle: chooses while the Träger only suggests; channel switches are the Träger's. */
+export const LevelCentre: Story = {
+    args: {
+        policyLevel: 'agency',
+        channelsSetOnTraeger: true,
+        traegerChannelPolicies: {},
+        traegerDirectInvitePolicies: {},
+        caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED', inherited: true } },
+    },
+    play: async ({ canvasElement }) => {
+        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        await expect(mail.getByRole('button', { name: /^(Teamberatung|Team counselling): / })).toBeEnabled();
+        await expect(mail.getByRole('region', { name: /Direkteinladung|direct invitations/i })).toBeVisible();
+    },
+};
