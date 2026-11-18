@@ -473,7 +473,7 @@ ul.tileList {
     flex-direction: column;
     padding: 0;
     margin: 0;
-    gap: mui.$mui-unit * 1.5;
+    gap: 0;
     list-style: none;
 }
 
@@ -1533,35 +1533,58 @@ p.aboutTitle {
     }
 }
 
-/* ---- the plus line between steps: hover or focus shows where a step may go ---- */
+/* ---- the plus line between steps ----
+ * Collapsed it is the 12 px gap between two steps. Hover or focus opens it to 36 px, so the steps
+ * move apart, and a grey line with a plus fades in. While its add-step dialog is open it stays
+ * open. Secondary colour, not the primary red: it is an offer, not an alert. */
+
+$secondary: var(--m3-secondary, #5d5f5f);
+
 .insertLine {
     position: relative;
     display: flex;
     width: calc(100% - 44px);
-    height: 20px;
+    height: 12px;
     align-items: center;
     justify-content: center;
     padding: 0;
     border: 0;
-    margin: -4px 0 -16px 44px;
+    margin: 0 0 0 44px;
     background: none;
     cursor: pointer;
     grid-column: 1 / -1;
-    opacity: 0;
-    transition: opacity 120ms ease;
+    transition: height 180ms cubic-bezier(0.2, 0, 0, 1);
 
     &:before {
         position: absolute;
         top: 50%;
         right: 0;
         left: 0;
-        border-top: 2px solid $primary;
+        border-top: 2px solid $secondary;
         content: '';
+        opacity: 0;
+        transform: scaleX(0.6);
+        transition: opacity 140ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
     }
 
     &:hover,
-    &:focus-visible {
-        opacity: 1;
+    &:focus-visible,
+    &.insertLineActive {
+        height: 36px;
+
+        &:before {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        .insertPlus {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    &:active .insertPlus {
+        transform: scale(0.88);
     }
 
     &:focus-visible {
@@ -1569,25 +1592,38 @@ p.aboutTitle {
     }
 }
 
+.insertLineStart {
+    margin-bottom: 0;
+}
+
 .insertPlus {
     position: relative;
     display: inline-flex;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    background: $primary;
-    color: var(--m3-on-primary, #ffffff);
+    border-radius: 12px;
+    background: $secondary;
+    color: var(--m3-on-secondary, #ffffff);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 140ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
 
     svg {
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
+    }
+
+    .insertLineActive & {
+        transform: rotate(90deg) scale(1);
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .insertLine {
+    .insertLine,
+    .insertLine:before,
+    .insertPlus {
         transition: none;
     }
 }

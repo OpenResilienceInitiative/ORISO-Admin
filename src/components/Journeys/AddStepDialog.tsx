@@ -79,6 +79,7 @@ export const AddStepDialog = ({ journey, phase, blocked = [], onAdd, onClose }: 
             }
             onClose={onClose}
             wrapperTestId="journey-add-step"
+            scrollableBody
         >
             <div className={styles.picker}>
                 <ul className={styles.pickerColumn} aria-label={t('journeys.add.kinds')}>

@@ -34,6 +34,8 @@ export interface StepCardProps {
     onRemove: () => void;
     /** The plus line under the card: a new step right below this one. */
     onInsertBelow?: () => void;
+    /** Its add-step dialog is open: the plus line stays open. */
+    insertActive?: boolean;
     /** "Choose a topic" only: preselect the topic (journeys reached by one-topic links only). */
     topicPreselect?: { on: boolean; allowed: boolean; onToggle: (on: boolean) => void };
     onTranslate?: () => void;
@@ -67,6 +69,7 @@ export const StepCard = ({
     onMove,
     onRemove,
     onInsertBelow,
+    insertActive = false,
     topicPreselect,
     onTranslate,
     onMarkChecked,
@@ -219,7 +222,8 @@ export const StepCard = ({
             {onInsertBelow && (
                 <button
                     type="button"
-                    className={styles.insertLine}
+                    className={classNames(styles.insertLine, { [styles.insertLineActive]: insertActive })}
+                    aria-expanded={insertActive}
                     aria-label={t('journeys.insert.after', { name: title })}
                     title={t('journeys.insert.after', { name: title })}
                     onClick={onInsertBelow}

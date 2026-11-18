@@ -166,6 +166,7 @@ export const StepDialog = ({
             }
             onClose={onClose}
             wrapperTestId="journey-step-dialog"
+            scrollableBody
         >
             <div className={styles.dialogBody}>
                 <BlockProfileCard

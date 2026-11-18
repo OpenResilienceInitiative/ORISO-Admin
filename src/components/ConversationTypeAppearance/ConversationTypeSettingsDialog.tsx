@@ -100,6 +100,7 @@ export const ConversationTypeSettingsDialog = ({
             }
             onClose={onClose}
             wrapperTestId="type-appearance-dialog"
+            scrollableBody
         >
             <div className={styles.body}>
                 <section className={styles.section} aria-labelledby="type-appearance-name">

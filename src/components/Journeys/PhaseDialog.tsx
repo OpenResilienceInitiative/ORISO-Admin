@@ -1,5 +1,6 @@
 import { useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import classNames from 'classnames';
 import Add from '@mui/icons-material/Add';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
@@ -147,6 +148,7 @@ export const PhaseDialog = ({
                 }
                 onClose={onClose}
                 wrapperTestId={`journey-phase-${phase}`}
+                scrollableBody
             >
                 <div className={styles.dialogBody}>
                     <p className={styles.srOnly} role="status" aria-live="polite">
@@ -186,7 +188,10 @@ export const PhaseDialog = ({
                             {firstFreeIndex(steps) === 0 && (
                                 <button
                                     type="button"
-                                    className={styles.insertLine}
+                                    className={classNames(styles.insertLine, styles.insertLineStart, {
+                                        [styles.insertLineActive]: addingAfter === START_OF_PHASE,
+                                    })}
+                                    aria-expanded={addingAfter === START_OF_PHASE}
                                     aria-label={t('journeys.insert.start')}
                                     title={t('journeys.insert.start')}
                                     onClick={() => setAddingAfter(START_OF_PHASE)}
@@ -217,6 +222,7 @@ export const PhaseDialog = ({
                                                 : setDraft((current) => removeStep(current, phase, step.id))
                                         }
                                         onInsertBelow={() => setAddingAfter(step.id)}
+                                        insertActive={addingAfter === step.id}
                                         topicPreselect={
                                             step.core === 'topic' && draft.conversationType === 'AGENCY_COUNSELLING'
                                                 ? {

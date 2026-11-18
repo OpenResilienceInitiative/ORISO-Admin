@@ -118,6 +118,7 @@ export const JourneysDialog = ({
                 }
                 onClose={onClose}
                 wrapperTestId="journeys-dialog"
+                scrollableBody
             >
                 <div className={styles.dialogBody}>
                     <FlightPath available={phasesOf(type)} captions />

@@ -109,6 +109,7 @@ export const DestinationsDialog = ({ journeys, journeyId, topics, onApply, onClo
             }
             onClose={onClose}
             wrapperTestId="journey-destinations"
+            scrollableBody
         >
             <div className={styles.dialogBody}>
                 <section className={styles.section} aria-labelledby="journey-routes">
