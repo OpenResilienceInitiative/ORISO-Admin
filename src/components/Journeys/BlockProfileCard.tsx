@@ -1,9 +1,8 @@
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
-import SellOutlined from '@mui/icons-material/SellOutlined';
-import { MODULE_SOURCE_LANGUAGE } from '../ConversationModules/conversationModule';
-import { keywordsIn, type BlockProfile } from './journey';
+import BadgeOutlined from '@mui/icons-material/BadgeOutlined';
+import type { BlockProfile } from './journey';
 import styles from './styles.module.scss';
 
 interface BlockProfileCardProps {
@@ -14,18 +13,17 @@ interface BlockProfileCardProps {
     profile?: BlockProfile;
     /** Further lines under the help text (e.g. the split button). */
     children?: ReactNode;
-    /** Opens the profile card and its search terms. */
+    /** Opens the profile card. Search terms have their own entry. */
     onEdit?: () => void;
 }
 
 /**
  * What a block is for, at a glance: the platform's help, and — once written — the profile card
- * (goal, author, audiences, a few German search terms). Editing happens in its own dialog.
+ * (goal, author, audiences). Editing happens in its own dialog; search terms are separate.
  */
 export const BlockProfileCard = ({ kind, help, profile, children, onEdit }: BlockProfileCardProps) => {
     const { t } = useTranslation();
     const headingId = useId();
-    const terms = keywordsIn(profile, MODULE_SOURCE_LANGUAGE);
 
     return (
         <aside className={styles.about} aria-labelledby={headingId} data-testid="journey-step-about">
@@ -37,7 +35,7 @@ export const BlockProfileCard = ({ kind, help, profile, children, onEdit }: Bloc
                     {t('journeys.stepDialog.about', { kind })}
                 </p>
                 <p>{profile?.about || help}</p>
-                {profile && (profile.goal || profile.author || profile.audiences.length > 0 || terms.length > 0) && (
+                {profile && (profile.goal || profile.author || profile.audiences.length > 0) && (
                     <dl className={styles.profileFacts}>
                         {profile.goal && (
                             <>
@@ -59,26 +57,14 @@ export const BlockProfileCard = ({ kind, help, profile, children, onEdit }: Bloc
                                 </dd>
                             </>
                         )}
-                        {terms.length > 0 && (
-                            <>
-                                <dt>{t('journeys.profile.keywords')}</dt>
-                                <dd className={styles.profileTags}>
-                                    {terms.map((entry) => (
-                                        <span key={entry} className={styles.chip}>
-                                            {entry}
-                                        </span>
-                                    ))}
-                                </dd>
-                            </>
-                        )}
                     </dl>
                 )}
                 {children}
                 {onEdit && (
                     <div>
                         <button type="button" className={styles.profileToggle} onClick={onEdit}>
-                            <SellOutlined aria-hidden />
-                            {t('journeys.profileDialog.open')}
+                            <BadgeOutlined aria-hidden />
+                            {t('journeys.profileDialog.edit')}
                         </button>
                     </div>
                 )}

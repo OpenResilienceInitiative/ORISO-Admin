@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import { stepContentCount, type Journey, type JourneyStep } from './journey';
+import { isMustStep, stepContentCount, type Journey, type JourneyPhase, type JourneyStep } from './journey';
 
 const plain = (html: string | undefined) =>
     (html ?? '')
@@ -26,6 +26,19 @@ export const stepSummary = (step: JourneyStep, language: string, t: TFunction): 
     const text = step.description[language] || step.description.de || plain(step.body?.[language] || step.body?.de);
     return [parts.join(' · '), text].filter(Boolean).join(' — ');
 };
+
+/** "Frage · Reise #2 · Schulden ausführlich · Check-in · Schritt 2": what a block dialog is about. */
+export const blockContext = (
+    step: JourneyStep,
+    where: { journey: string; phase: JourneyPhase; position: number },
+    t: TFunction,
+): string =>
+    t('journeys.profileDialog.context', {
+        kind: t(isMustStep(step) ? 'journeys.kind.must' : `journeys.kind.${step.kind}`),
+        journey: where.journey,
+        phase: t(`journeys.phase.${where.phase}`),
+        position: where.position,
+    });
 
 /** "Journey #3 · U25", or just the number while the journey has no name. */
 export const journeyLabel = (journey: Journey, t: TFunction): string =>

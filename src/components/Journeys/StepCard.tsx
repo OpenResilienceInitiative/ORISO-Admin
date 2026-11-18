@@ -6,7 +6,8 @@ import LockOutlined from '@mui/icons-material/LockOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import Add from '@mui/icons-material/Add';
 import LinkOutlined from '@mui/icons-material/LinkOutlined';
-import SellOutlined from '@mui/icons-material/SellOutlined';
+import BadgeOutlined from '@mui/icons-material/BadgeOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
@@ -15,6 +16,7 @@ import { canMoveStep, canRemoveStep, isMustStep, type JourneyPhase, type Journey
 import { stepSummary, stepTitle } from './stepText';
 import { TranslationPill } from './TranslationPill';
 import { SearchPill } from './SearchPill';
+import type { ProfileView } from './ProfileDialog';
 import styles from './styles.module.scss';
 
 export interface StepCardProps {
@@ -34,8 +36,8 @@ export interface StepCardProps {
     onAddBelow: () => void;
     onMove: (direction: -1 | 1) => void;
     onRemove: () => void;
-    /** Opens the profile card and search terms of the block. */
-    onOpenProfile?: () => void;
+    /** Opens the block's profile card or its search terms. */
+    onOpenProfile?: (view: ProfileView) => void;
     /** The plus line under the card: a new step right below this one. */
     onInsertBelow?: () => void;
     /** Its add-step dialog is open: the plus line stays open. */
@@ -153,7 +155,7 @@ export const StepCard = ({
                 <div className={styles.stepTop}>
                     <span className={styles.chips}>
                         <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
-                        <SearchPill profile={step.profile} onOpen={onOpenProfile} />
+                        <SearchPill profile={step.profile} onOpen={onOpenProfile && (() => onOpenProfile('terms'))} />
                     </span>
                     <span className={styles.chips}>
                         {topicPreselect?.on && (
@@ -200,8 +202,14 @@ export const StepCard = ({
                                       {
                                           key: 'profile',
                                           label: t('journeys.profileDialog.open'),
-                                          icon: <SellOutlined />,
-                                          onSelect: onOpenProfile,
+                                          icon: <BadgeOutlined />,
+                                          onSelect: () => onOpenProfile('card'),
+                                      },
+                                      {
+                                          key: 'search',
+                                          label: t('journeys.keywordsDialog.open'),
+                                          icon: <SearchOutlined />,
+                                          onSelect: () => onOpenProfile('terms'),
                                       },
                                   ]
                                 : []),

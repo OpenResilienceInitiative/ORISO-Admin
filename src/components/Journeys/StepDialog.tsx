@@ -32,11 +32,12 @@ import { BlockProfileCard } from './BlockProfileCard';
 import { nextId } from './ids';
 import { JourneyQuestionsEditor } from './JourneyQuestionsEditor';
 import { LanguageTabs } from './LanguageTabs';
-import { stepTitle } from './stepText';
+import { blockContext, stepTitle } from './stepText';
 import { OriginalLine, TranslatableField, type TextChange } from './TranslatableField';
 import { TranslationPill } from './TranslationPill';
 import { translateStepMissing, translateText, type KeywordSuggester, type Translator } from './journeyTranslation';
-import { ProfileDialog } from './ProfileDialog';
+import { BlockDialog } from './BlockDialog';
+import type { ProfileView } from './ProfileDialog';
 import { SearchPill } from './SearchPill';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import styles from './styles.module.scss';
@@ -95,7 +96,7 @@ export const StepDialog = ({
     const [language, setLanguage] = useState<string>(initialLanguage);
     const [translationError, setTranslationError] = useState<string>();
     const [translating, setTranslating] = useState(false);
-    const [profileOpen, setProfileOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState<ProfileView>();
 
     /** One field into the language being edited; a failure is named once above the fields. */
     const translateField = translator
@@ -210,7 +211,7 @@ export const StepDialog = ({
                         kind={t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`)}
                         help={t(aboutKey(draft))}
                         profile={draft.profile}
-                        onEdit={() => setProfileOpen(true)}
+                        onEdit={() => setProfileOpen('card')}
                     >
                         {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
                         {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
@@ -240,7 +241,7 @@ export const StepDialog = ({
                             onTranslate={translateAllMissing}
                             onMarkChecked={(code) => setDraft((current) => markChecked(current, code))}
                         />
-                        <SearchPill profile={draft.profile} onOpen={() => setProfileOpen(true)} />
+                        <SearchPill profile={draft.profile} onOpen={() => setProfileOpen('terms')} />
                     </div>
 
                     {translationError && (
@@ -508,17 +509,19 @@ export const StepDialog = ({
                 </div>
             </Modal>
             {profileOpen && (
-                <ProfileDialog
+                <BlockDialog
+                    view={profileOpen}
                     title={stepTitle(draft, MODULE_SOURCE_LANGUAGE, t)}
+                    context={context && blockContext(draft, { ...context, phase }, t)}
                     profile={draft.profile}
                     defaultAuthor={t('journeys.profile.platform')}
                     translator={translator}
                     suggester={suggester}
                     onApply={(profile) => {
                         change({ profile });
-                        setProfileOpen(false);
+                        setProfileOpen(undefined);
                     }}
-                    onClose={() => setProfileOpen(false)}
+                    onClose={() => setProfileOpen(undefined)}
                 />
             )}
         </>

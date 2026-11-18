@@ -7,7 +7,7 @@ import styles from './styles.module.scss';
 
 interface SearchPillProps {
     profile?: BlockProfile;
-    /** Opens the profile card and its search terms. */
+    /** Opens the search terms of the block. */
     onOpen?: () => void;
 }
 

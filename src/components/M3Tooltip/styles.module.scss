@@ -32,7 +32,8 @@
     top: calc(100% + 4px);
 }
 
-/* `portal`: positioned by inline fixed coordinates; only the stacking changes. */
+/* `portal`: positioned by inline fixed coordinates; only the stacking changes. Above every dialog
+   (stacked dialogs go up to 1400), since a tooltip always belongs to what is on top. */
 .portal {
-    z-index: 1100;
+    z-index: 2000;
 }

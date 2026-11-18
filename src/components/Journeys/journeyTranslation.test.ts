@@ -53,8 +53,9 @@ describe('search terms in other languages', () => {
         const translator = vi.fn(fakeTranslator);
         const next = await translateKeywords({ de: ['Schulden', 'Miete'], en: ['debt'] }, ['en', 'fr'], translator);
         expect(translator).toHaveBeenCalledTimes(1);
-        expect(next.en).toEqual(['debt', 'Schulden (en)', 'Miete (en)']);
-        expect(next.fr).toEqual(['Schulden (fr)', 'Miete (fr)']);
+        // "Schulden" comes back as "debt", which English already has: kept once.
+        expect(next.en).toEqual(['debt', 'rent']);
+        expect(next.fr).toEqual(['dettes', 'loyer']);
         expect(next.de).toEqual(['Schulden', 'Miete']);
     });
 

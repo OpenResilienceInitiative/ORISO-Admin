@@ -32,9 +32,10 @@ import { PhaseIcon } from './PhaseIcon';
 import { StepCard } from './StepCard';
 import { StepDialog } from './StepDialog';
 import { translateStepMissing, type KeywordSuggester, type Translator } from './journeyTranslation';
-import { ProfileDialog } from './ProfileDialog';
+import { BlockDialog } from './BlockDialog';
+import type { ProfileView } from './ProfileDialog';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
-import { journeyLabel, stepTitle } from './stepText';
+import { blockContext, journeyLabel, stepTitle } from './stepText';
 import styles from './styles.module.scss';
 
 export interface PhaseDialogProps {
@@ -78,7 +79,7 @@ export const PhaseDialog = ({
     const [addingAfter, setAddingAfter] = useState<string | null | undefined>(initially?.adding ? null : undefined);
     const [confirmRemove, setConfirmRemove] = useState<JourneyStep>();
     const [translationError, setTranslationError] = useState<string>();
-    const [profileOf, setProfileOf] = useState<string>();
+    const [profileOf, setProfileOf] = useState<{ id: string; view: ProfileView }>();
     const [draggedId, setDraggedId] = useState<string>();
     const [drop, setDrop] = useState<DropTarget>();
     const [announcement, setAnnouncement] = useState('');
@@ -88,6 +89,7 @@ export const PhaseDialog = ({
     const editing = steps.find((step) => step.id === editingId);
     const phaseName = t(`journeys.phase.${phase}`);
     const journeyName = journeyLabel(draft, t);
+    const profileStep = profileOf && steps.find((step) => step.id === profileOf.id);
     const missingSafety = phase === 'flight' ? missingSafetyAspects(draft) : [];
 
     const moveTo = (step: JourneyStep, toIndex: number) => {
@@ -235,7 +237,7 @@ export const PhaseDialog = ({
                                                 ? setConfirmRemove(step)
                                                 : setDraft((current) => removeStep(current, phase, step.id))
                                         }
-                                        onOpenProfile={() => setProfileOf(step.id)}
+                                        onOpenProfile={(view) => setProfileOf({ id: step.id, view })}
                                         onInsertBelow={() => setAddingAfter(step.id)}
                                         insertActive={addingAfter === step.id}
                                         topicPreselect={
@@ -295,15 +297,21 @@ export const PhaseDialog = ({
                     </div>
                 </div>
             </Modal>
-            {profileOf && steps.find((step) => step.id === profileOf) && (
-                <ProfileDialog
-                    title={stepTitle(steps.find((step) => step.id === profileOf) as JourneyStep, language, t)}
-                    profile={steps.find((step) => step.id === profileOf)?.profile}
+            {profileOf && profileStep && (
+                <BlockDialog
+                    view={profileOf.view}
+                    title={stepTitle(profileStep, language, t)}
+                    context={blockContext(
+                        profileStep,
+                        { journey: journeyName, phase, position: steps.indexOf(profileStep) + 1 },
+                        t,
+                    )}
+                    profile={profileStep.profile}
                     defaultAuthor={t('journeys.profile.platform')}
                     translator={translator}
                     suggester={suggester}
                     onApply={(profile) => {
-                        setDraft((current) => updateStep(current, phase, profileOf, { profile }));
+                        setDraft((current) => updateStep(current, phase, profileOf.id, { profile }));
                         setProfileOf(undefined);
                     }}
                     onClose={() => setProfileOf(undefined)}

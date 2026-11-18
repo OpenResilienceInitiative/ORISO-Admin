@@ -573,42 +573,47 @@ export const SortingAnswers: Story = {
     },
 };
 
-/** The profile card in the step dialog: a summary; editing opens its own dialog. */
+/** The profile card: a summary in the step dialog, edited in its own dialog that names the block. */
 export const ProfileCard: Story = {
     args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const about = await body.findByTestId('journey-step-about');
         await expect(about).toHaveTextContent('Schuldnerberatung Köln-Mitte');
-        const dialog = body.getByTestId('journey-step-dialog');
-        await expect(within(dialog).getByTestId('step-search')).toHaveAccessibleName(
+        await expect(within(body.getByTestId('journey-step-dialog')).getByTestId('step-search')).toHaveAccessibleName(
             'Suche: 2 von 7 Sprachen abgedeckt',
         );
+        await userEvent.click(within(about).getByRole('button', { name: 'Steckbrief bearbeiten' }));
+        const dialog = await body.findByTestId('journey-profile-dialog');
+        await expect(dialog).toHaveTextContent('Steckbrief: Ihre Situation');
+        await expect(dialog).toHaveTextContent('Frage · Reise');
+        await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Eltern' }));
+        await expect(within(dialog).queryByTestId('journey-keywords')).not.toBeInTheDocument();
     },
 };
 
-/** Search terms per language: German typed, translated into all languages, Turkish suggestions taken. */
+/** Search terms from the step's ⋮ menu: German typed, translated, Turkish suggestions taken. */
 export const SearchTerms: Story = {
-    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        const about = await body.findByTestId('journey-step-about');
-        await userEvent.click(within(about).getByRole('button', { name: 'Steckbrief und Suchbegriffe' }));
-        const dialog = await body.findByTestId('journey-profile-dialog');
-        await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Eltern' }));
+        const step = await body.findByTestId('journey-step-debt-situation');
+        await userEvent.click(within(step).getByRole('button', { name: /Weitere Aktionen für Ihre Situation/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: 'Suchbegriffe' }));
+        const dialog = await body.findByTestId('journey-search-terms-dialog');
+        await expect(dialog).toHaveTextContent('Suchbegriffe: Ihre Situation');
         await userEvent.type(
-            within(dialog).getByRole('textbox', { name: 'Suchbegriff auf Deutsch' }),
+            within(dialog).getByRole('textbox', { name: 'Suchbegriff auf Deutsch hinzufügen' }),
             'Inkasso{Enter}',
         );
         await userEvent.click(
-            within(dialog).getByRole('button', { name: 'Deutsche Begriffe in alle Sprachen übersetzen' }),
+            within(dialog).getByRole('button', { name: 'Fehlende Sprachen aus den deutschen Begriffen übersetzen' }),
         );
         await userEvent.click(await within(dialog).findByRole('radio', { name: /^TR/ }));
-        await expect(within(dialog).getByTestId('journey-keywords')).toHaveTextContent('Schulden (tr)');
-        await userEvent.click(within(dialog).getByRole('button', { name: 'Ähnliche Begriffe vorschlagen' }));
+        await expect(within(dialog).getByTestId('journey-keywords')).toHaveTextContent('tahsilat');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }));
         await userEvent.click(await within(dialog).findByRole('button', { name: '„icra“ übernehmen' }));
         await expect(within(dialog).getByTestId('journey-keywords')).toHaveTextContent('icra');
-        await userEvent.tab();
     },
 };
 

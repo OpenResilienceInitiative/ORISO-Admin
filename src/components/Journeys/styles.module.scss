@@ -1715,3 +1715,101 @@ button.keyword {
         height: 16px;
     }
 }
+
+/* Profile dialog: two tabs, search terms grouped as "yours" and "suggested". */
+.termLanguages {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.termGroup {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.termGroupHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        flex: 1;
+    }
+}
+
+.termGroupTitle {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    color: $text;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 6px;
+    line-height: 20px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: $muted;
+    }
+}
+
+.keywordAdd {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit * 1.25;
+    border: 1px dashed $outline;
+    border-radius: 16px;
+    color: $muted;
+    gap: 4px;
+
+    &:focus-within {
+        border-style: solid;
+        border-color: $primary;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    input {
+        width: 16ch;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: $text;
+        font: inherit;
+        font-size: 14px;
+        line-height: 20px;
+        outline: none;
+    }
+}
+
+.busyIcon svg {
+    animation: busy-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes busy-pulse {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .busyIcon svg {
+        animation: none;
+        opacity: 0.5;
+    }
+}
