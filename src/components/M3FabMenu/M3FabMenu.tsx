@@ -231,7 +231,9 @@ export const M3FabMenu = ({
     useEffect(() => {
         if (!open || disabled) return;
 
-        stackRef.current?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')?.focus();
+        stackRef.current
+            ?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')
+            ?.focus({ preventScroll: true });
     }, [disabled, footerItems.length, items.length, open]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,

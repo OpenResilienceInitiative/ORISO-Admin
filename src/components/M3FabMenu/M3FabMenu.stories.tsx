@@ -318,8 +318,14 @@ export const ActionInScrollContainer: Story = {
         }
         const last = within(canvasElement).getByRole('button', { name: 'Option 10' });
         await expect(last).toHaveFocus();
+        // Allow floating placement and nested scroll observers to settle before measuring.
+        await new Promise<void>((resolve) => {
+            setTimeout(resolve, 300);
+        });
         await waitFor(() => {
             expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(stack.getBoundingClientRect().bottom + 1);
+            expect(last.getBoundingClientRect().right).toBeLessThanOrEqual(stack.getBoundingClientRect().right + 1);
+            expect(last.scrollWidth).toBeLessThanOrEqual(last.clientWidth + 1);
             expect(stack.querySelector('[data-admin-fab-scroll-hint]')).toBeNull();
         });
     },
@@ -361,5 +367,50 @@ export const LabelOnlyInNarrowScrollContainer: Story = {
             // Width should be used for readable words, not a one-character column.
             expect(itemRect.height).toBeLessThanOrEqual(160);
         });
+    },
+};
+
+const ScrollPositionFrame = () => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            data-testid="position-deck"
+            style={{ position: 'fixed', top: 0, left: 0, width: 360, height: 300, overflow: 'auto' }}
+        >
+            <div style={{ height: 600 }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 16 }}>
+                <M3FabMenu
+                    variant="action"
+                    items={Array.from({ length: 6 }, (_, index) => ({
+                        key: `${index}`,
+                        label: `Option ${index + 1}`,
+                        description: 'Eine längere Erklärung zur Auswahl.',
+                    }))}
+                    open={open}
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={setOpen}
+                />
+            </div>
+            <div style={{ height: 600 }} />
+        </div>
+    );
+};
+
+/** Opening and focusing the first choice must not scroll the surrounding page. */
+export const FocusDoesNotScrollDeck: Story = {
+    args: { open: false },
+    render: () => <ScrollPositionFrame />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const deck = canvas.getByTestId('position-deck');
+        deck.scrollTop = 470;
+        const before = deck.scrollTop;
+        await userEvent.click(canvas.getByRole('button', { name: 'Menü öffnen' }));
+        const first = await canvas.findByRole('button', { name: 'Option 1' });
+        await waitFor(() => expect(first).toHaveFocus());
+        await expect(deck.scrollTop).toBe(before);
+        await userEvent.keyboard('{Escape}');
+        await expect(canvas.getByRole('button', { name: 'Menü öffnen' })).toHaveFocus();
     },
 };

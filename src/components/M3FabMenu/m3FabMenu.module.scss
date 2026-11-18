@@ -323,8 +323,7 @@
 
 @media screen and (max-width: 767px) {
     .action {
-        .stack,
-        .item {
+        .stack {
             max-width: calc(100vw - 12px);
         }
 
