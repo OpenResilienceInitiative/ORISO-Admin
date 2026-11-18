@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     getEditableLanguages,
     isEditableLanguageKey,
+    isEmptyHtml,
     mergeLegalContentMap,
     parseLegalContentMap,
     pickLegalContentLanguage,
@@ -92,5 +93,25 @@ describe('mergeLegalContentMap', () => {
             de: '<p>DE</p>',
             en: '',
         });
+    });
+});
+
+describe('isEmptyHtml (Admin#1341)', () => {
+    it.each([
+        undefined,
+        '',
+        '<p></p>',
+        '<p> </p>',
+        '<p><br></p>',
+        '<p>&nbsp;</p>',
+        '<p>&#160;</p>',
+        '<p>\u200b</p>',
+        '<p></p><p></p>',
+    ])('treats %j as empty because nothing is visible', (html) => {
+        expect(isEmptyHtml(html)).toBe(true);
+    });
+
+    it.each(['<p>Our team</p>', '<p>&nbsp;Hi</p>', '<p><strong>x</strong></p>'])('treats %j as filled', (html) => {
+        expect(isEmptyHtml(html)).toBe(false);
     });
 });

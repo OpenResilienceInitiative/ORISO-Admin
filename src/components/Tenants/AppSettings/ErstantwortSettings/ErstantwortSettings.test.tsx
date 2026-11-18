@@ -301,6 +301,19 @@ describe('ErstantwortSettings', () => {
         );
         expect(publishedContent().erstantwortClosing.en).toBe('<p>Bye</p>');
     });
+    it.each([['<p> </p>'], ['<p><br></p>'], ['<p>&nbsp;</p>'], ['<p></p><p>\u00a0</p>']])(
+        'asks for the who-reads-along text when it has nothing visible (%j, Admin#1341)',
+        async (whoReadsAlong) => {
+            useSingleTenantData.mockReturnValue(
+                tenantWith(['de'], { erstantwortWhoReadsAlong: { de: whoReadsAlong } }),
+            );
+            renderSettings();
+            typeIntoGreeting('<p>Keep this edit</p>');
+            fireEvent.click(publishButton());
+            expect(await screen.findByRole('alert')).toHaveTextContent('tenants.erstantwort.whoReadsAlong');
+            expect(mutateAsync).not.toHaveBeenCalled();
+        },
+    );
     it.each([['de'], ['de', 'en']])(
         'blocks both publish paths when the required disclosure is empty (%j)',
         async (...languages) => {
