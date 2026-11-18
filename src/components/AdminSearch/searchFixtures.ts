@@ -139,6 +139,7 @@ export const buildFixtureContext = ({
         can,
         labels: {
             account: '',
+            addons: '',
             agency: '',
             home: '',
             links: '',

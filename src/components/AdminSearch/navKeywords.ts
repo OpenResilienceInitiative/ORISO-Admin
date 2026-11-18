@@ -75,6 +75,17 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'dashboard',
         'metrics',
     ],
+    addons: [
+        'erweiterung',
+        'erweiterungen',
+        'zusatzmodul',
+        'plugin',
+        'add-on',
+        'addon',
+        'extension',
+        'extensions',
+        'module',
+    ],
     links: [
         'einladen',
         'einladung',
@@ -282,6 +293,7 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
     ],
     'logs:inactive': ['inaktiv', 'inaktivität', 'stillgelegt', 'inactive', 'inactivity', 'dormant'],
     'logs:deletions': ['löschprotokoll', 'löschen', 'gelöscht', 'entfernt', 'deletion', 'delete', 'deleted', 'removed'],
+    'logs:addons': ['add-on', 'addon', 'erweiterung', 'protokoll', 'audit', 'extension'],
 
     // Links
     'links:tenants': ['träger einladung', 'träger invite', 'tenant invite', 'organisation invite'],
