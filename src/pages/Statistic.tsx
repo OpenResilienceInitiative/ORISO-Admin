@@ -98,6 +98,7 @@ import type {
 } from './Statistic/types';
 import { Notify } from '../components/Notify';
 import { HintText } from '../components/HintText';
+import { toIntlLocale } from '../utils/language';
 
 /** Visible anchor of the dashboard's load state: where "Ansehen" and the quiet text live. */
 const STATISTIC_STATE_ID = 'statistic-dashboard-state';
@@ -2366,7 +2367,10 @@ export const Statistic = () => {
                     />
                 </div>
             </Page.Title>
-            <div className="statisticDashboardPage" lang={i18nInstance?.resolvedLanguage || i18nInstance?.language}>
+            <div
+                className="statisticDashboardPage"
+                lang={toIntlLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language)}
+            >
                 <div className="statisticDashboard">
                     <div key={activeScope} className="statisticDashboard__animatedContent">
                         {isStatisticUnavailable && (
