@@ -1627,3 +1627,91 @@ $secondary: var(--m3-secondary, #5d5f5f);
         transition: none;
     }
 }
+
+/* ---- search terms: a cloud of words per language ---- */
+.searchPill {
+    height: 30px;
+    padding: 0 mui.$mui-unit;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+
+    > span {
+        display: inline-flex;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover:not(:disabled) {
+        border-color: $primary;
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.searchPillDone {
+    color: $text;
+}
+
+.languageTab_checked svg {
+    color: $text;
+}
+
+.keywordCloud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    gap: 6px mui.$mui-unit;
+    list-style: none;
+}
+
+.keyword {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit * 1.25;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    color: $text;
+    font-size: 14px;
+    gap: 4px;
+    line-height: 20px;
+}
+
+button.keyword {
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.keywordSuggestion {
+    border-style: dashed;
+    color: $muted;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}

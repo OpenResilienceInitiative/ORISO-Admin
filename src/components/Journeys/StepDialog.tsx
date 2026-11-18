@@ -19,7 +19,6 @@ import {
     scaleOf,
     triggersFor,
     withScale,
-    translateMissing,
     type JourneyPhase,
     type JourneyStep,
     type PanelAspect,
@@ -36,6 +35,10 @@ import { LanguageTabs } from './LanguageTabs';
 import { stepTitle } from './stepText';
 import { OriginalLine, TranslatableField, type TextChange } from './TranslatableField';
 import { TranslationPill } from './TranslationPill';
+import { translateStepMissing, translateText, type KeywordSuggester, type Translator } from './journeyTranslation';
+import { ProfileDialog } from './ProfileDialog';
+import { SearchPill } from './SearchPill';
+import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import styles from './styles.module.scss';
 
 export interface StepContext {
@@ -50,7 +53,10 @@ interface StepDialogProps {
     phase: JourneyPhase;
     /** Where the step sits, for the line under the title. */
     context?: StepContext;
-    translate?: (text: string, language: string) => string;
+    /** Machine translation through the Admin endpoint; without it no translation is offered. */
+    translator?: Translator;
+    /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
+    suggester?: KeywordSuggester;
     /** The language the dialog opens in (stories); the original otherwise. */
     initialLanguage?: string;
     onApply: (step: JourneyStep) => void;
@@ -77,7 +83,8 @@ export const StepDialog = ({
     step,
     phase,
     context,
-    translate,
+    translator,
+    suggester,
     initialLanguage = MODULE_SOURCE_LANGUAGE,
     onApply,
     onSplit,
@@ -86,6 +93,35 @@ export const StepDialog = ({
     const { t } = useTranslation();
     const [draft, setDraft] = useState<JourneyStep>(step);
     const [language, setLanguage] = useState<string>(initialLanguage);
+    const [translationError, setTranslationError] = useState<string>();
+    const [translating, setTranslating] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+
+    /** One field into the language being edited; a failure is named once above the fields. */
+    const translateField = translator
+        ? async (source: string) => {
+              try {
+                  setTranslationError(undefined);
+                  return await translateText(translator, source, language);
+              } catch (error) {
+                  setTranslationError(getTranslationErrorKey(error));
+                  return undefined;
+              }
+          }
+        : undefined;
+    const translateAllMissing = translator
+        ? async () => {
+              setTranslating(true);
+              setTranslationError(undefined);
+              try {
+                  setDraft(await translateStepMissing(draft, translator));
+              } catch (error) {
+                  setTranslationError(getTranslationErrorKey(error));
+              } finally {
+                  setTranslating(false);
+              }
+          }
+        : undefined;
 
     const isMachine = (draft.machine ?? []).includes(language);
     const fromPlatform = draft.kind === 'core' || draft.kind === 'addon';
@@ -107,7 +143,7 @@ export const StepDialog = ({
             value={draft[key]}
             language={language}
             machine={isMachine}
-            translate={translate}
+            onTranslate={translateField}
             onChange={(next, how) => change({ [key]: next }, how)}
             testId={`step-field-${key}`}
         />
@@ -132,334 +168,359 @@ export const StepDialog = ({
             value={rating[key]}
             language={language}
             machine={isMachine}
-            translate={translate}
+            onTranslate={translateField}
             onChange={(next, how) => setRating(rating.id, { [key]: next }, how)}
         />
     );
 
     return (
-        <Modal
-            icon={KIND_ICONS[draft.kind]}
-            title={stepTitle(draft, MODULE_SOURCE_LANGUAGE, t)}
-            description={
-                context
-                    ? t('journeys.stepDialog.context', {
-                          journey: context.journey,
-                          phase: t(`journeys.phase.${phase}`),
-                          position: context.position,
-                          unit,
-                      })
-                    : undefined
-            }
-            descriptionFullWidth
-            width={720}
-            zIndex={1200}
-            footer={
-                <div className={styles.footer}>
-                    <M3Button variant="text" onClick={onClose}>
-                        {t('journeys.action.cancel')}
-                    </M3Button>
-                    <M3Button variant="filled" onClick={() => onApply(draft)}>
-                        {t('journeys.action.apply')}
-                    </M3Button>
-                </div>
-            }
-            onClose={onClose}
-            wrapperTestId="journey-step-dialog"
-            scrollableBody
-        >
-            <div className={styles.dialogBody}>
-                <BlockProfileCard
-                    kind={t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`)}
-                    help={t(aboutKey(draft))}
-                    profile={draft.profile}
-                    defaultAuthor={t('journeys.profile.platform')}
-                    onChange={(profile) => change({ profile })}
-                >
-                    {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
-                    {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
-                    {draft.kind === 'question' && (
-                        <p>
-                            {t(`journeys.stepDialog.questionsTogether.${phase === 'departure' ? 'screen' : 'message'}`)}
+        <>
+            <Modal
+                icon={KIND_ICONS[draft.kind]}
+                title={stepTitle(draft, MODULE_SOURCE_LANGUAGE, t)}
+                description={
+                    context
+                        ? t('journeys.stepDialog.context', {
+                              journey: context.journey,
+                              phase: t(`journeys.phase.${phase}`),
+                              position: context.position,
+                              unit,
+                          })
+                        : undefined
+                }
+                descriptionFullWidth
+                width={720}
+                zIndex={1200}
+                footer={
+                    <div className={styles.footer}>
+                        <M3Button variant="text" onClick={onClose}>
+                            {t('journeys.action.cancel')}
+                        </M3Button>
+                        <M3Button variant="filled" onClick={() => onApply(draft)}>
+                            {t('journeys.action.apply')}
+                        </M3Button>
+                    </div>
+                }
+                onClose={onClose}
+                wrapperTestId="journey-step-dialog"
+                scrollableBody
+            >
+                <div className={styles.dialogBody}>
+                    <BlockProfileCard
+                        kind={t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`)}
+                        help={t(aboutKey(draft))}
+                        profile={draft.profile}
+                        onEdit={() => setProfileOpen(true)}
+                    >
+                        {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
+                        {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
+                        {draft.kind === 'question' && (
+                            <p>
+                                {t(
+                                    `journeys.stepDialog.questionsTogether.${
+                                        phase === 'departure' ? 'screen' : 'message'
+                                    }`,
+                                )}
+                            </p>
+                        )}
+                        {draft.kind === 'question' && (draft.questions?.length ?? 0) > 1 && onSplit && (
+                            <div>
+                                <M3Button variant="outlined" icon={<CallSplit />} onClick={() => onSplit(draft)}>
+                                    {t('journeys.stepDialog.split', { count: draft.questions?.length ?? 0 })}
+                                </M3Button>
+                            </div>
+                        )}
+                    </BlockProfileCard>
+
+                    <div className={styles.toolbar}>
+                        <LanguageTabs step={draft} value={language} onChange={setLanguage} />
+                        <TranslationPill
+                            step={draft}
+                            busy={translating}
+                            onTranslate={translateAllMissing}
+                            onMarkChecked={(code) => setDraft((current) => markChecked(current, code))}
+                        />
+                        <SearchPill profile={draft.profile} onOpen={() => setProfileOpen(true)} />
+                    </div>
+
+                    {translationError && (
+                        <div className={styles.warning} role="alert" data-testid="journey-translation-error">
+                            <p>{t(translationError)}</p>
+                        </div>
+                    )}
+
+                    {field('title', t('journeys.stepDialog.title'))}
+                    {field('description', t('journeys.stepDialog.descriptionForSeekers'))}
+
+                    {draft.core && FIXED_TRIGGERS[draft.core] && (
+                        <p className={styles.help}>
+                            {t('journeys.trigger.fixed', {
+                                trigger: t(`journeys.trigger.${FIXED_TRIGGERS[draft.core]}`),
+                            })}
                         </p>
                     )}
-                    {draft.kind === 'question' && (draft.questions?.length ?? 0) > 1 && onSplit && (
-                        <div>
-                            <M3Button variant="outlined" icon={<CallSplit />} onClick={() => onSplit(draft)}>
-                                {t('journeys.stepDialog.split', { count: draft.questions?.length ?? 0 })}
-                            </M3Button>
-                        </div>
+
+                    {(asksSomething || draft.kind === 'message') && triggersFor(phase).length > 0 && (
+                        <M3Select<JourneyTrigger>
+                            aria-label={t('journeys.trigger.label')}
+                            value={draft.trigger ?? triggersFor(phase)[0]}
+                            options={triggersFor(phase).map((trigger) => ({
+                                value: trigger,
+                                label: t(`journeys.trigger.${trigger}`),
+                            }))}
+                            onChange={(trigger: JourneyTrigger) => change({ trigger })}
+                            getPopupContainer={popupContainer}
+                        />
                     )}
-                </BlockProfileCard>
 
-                <div className={styles.toolbar}>
-                    <LanguageTabs step={draft} value={language} onChange={setLanguage} />
-                    <TranslationPill
-                        step={draft}
-                        onTranslate={
-                            translate ? () => setDraft((current) => translateMissing(current, translate)) : undefined
-                        }
-                        onMarkChecked={(code) => setDraft((current) => markChecked(current, code))}
-                    />
-                </div>
+                    {draft.kind === 'question' && (
+                        <JourneyQuestionsEditor
+                            questions={draft.questions ?? []}
+                            language={language}
+                            machine={draft.machine ?? []}
+                            onTranslate={translateField}
+                            onChange={(questions, how) => change({ questions }, how)}
+                        />
+                    )}
 
-                {field('title', t('journeys.stepDialog.title'))}
-                {field('description', t('journeys.stepDialog.descriptionForSeekers'))}
-
-                {draft.core && FIXED_TRIGGERS[draft.core] && (
-                    <p className={styles.help}>
-                        {t('journeys.trigger.fixed', {
-                            trigger: t(`journeys.trigger.${FIXED_TRIGGERS[draft.core]}`),
-                        })}
-                    </p>
-                )}
-
-                {(asksSomething || draft.kind === 'message') && triggersFor(phase).length > 0 && (
-                    <M3Select<JourneyTrigger>
-                        aria-label={t('journeys.trigger.label')}
-                        value={draft.trigger ?? triggersFor(phase)[0]}
-                        options={triggersFor(phase).map((trigger) => ({
-                            value: trigger,
-                            label: t(`journeys.trigger.${trigger}`),
-                        }))}
-                        onChange={(trigger: JourneyTrigger) => change({ trigger })}
-                        getPopupContainer={popupContainer}
-                    />
-                )}
-
-                {draft.kind === 'question' && (
-                    <JourneyQuestionsEditor
-                        questions={draft.questions ?? []}
-                        language={language}
-                        machine={draft.machine ?? []}
-                        translate={translate}
-                        onChange={(questions, how) => change({ questions }, how)}
-                    />
-                )}
-
-                {draft.kind === 'rating' && (
-                    <>
-                        {draft.ratings?.map((rating, index) => (
-                            <section
-                                key={rating.id}
-                                className={styles.block}
-                                aria-labelledby={`${rating.id}-heading`}
-                                data-testid={`journey-rating-${rating.id}`}
-                            >
-                                <div className={styles.blockHeader}>
-                                    <h3 className={styles.blockTitle} id={`${rating.id}-heading`}>
-                                        {t('journeys.rating.number', { number: index + 1 })}
-                                    </h3>
-                                    <IconButton
-                                        icon={<DeleteOutline />}
-                                        ariaLabel={t('journeys.rating.remove')}
-                                        onClick={() =>
-                                            change({
-                                                ratings: draft.ratings?.filter((entry) => entry.id !== rating.id),
-                                            })
-                                        }
-                                    />
-                                </div>
-                                <TranslatableField
-                                    label={t('journeys.rating.label')}
-                                    value={rating.label}
-                                    language={language}
-                                    machine={isMachine}
-                                    translate={translate}
-                                    onChange={(next, how) => setRating(rating.id, { label: next }, how)}
-                                />
-                                <div className={styles.fieldRow}>
-                                    <M3Select<RatingType>
-                                        aria-label={t('journeys.rating.type')}
-                                        value={rating.type}
-                                        options={RATING_TYPES.map((type) => ({
-                                            value: type,
-                                            label: t(`journeys.rating.type.${type}`),
-                                        }))}
-                                        onChange={(type: RatingType) => setRatingType(rating, type)}
-                                        getPopupContainer={popupContainer}
-                                    />
-                                    {rating.type === 'range' && (
-                                        <M3Select<ScaleId>
-                                            aria-label={t('journeys.rating.scale')}
-                                            value={scaleOf(rating) ?? 'minusFiveToFive'}
-                                            options={(Object.keys(SCALES) as ScaleId[]).map((scale) => ({
-                                                value: scale,
-                                                label: t(`journeys.rating.scaleName.${scale}`),
-                                            }))}
-                                            onChange={(scale: ScaleId) =>
-                                                setRating(rating.id, withScale(rating, scale))
+                    {draft.kind === 'rating' && (
+                        <>
+                            {draft.ratings?.map((rating, index) => (
+                                <section
+                                    key={rating.id}
+                                    className={styles.block}
+                                    aria-labelledby={`${rating.id}-heading`}
+                                    data-testid={`journey-rating-${rating.id}`}
+                                >
+                                    <div className={styles.blockHeader}>
+                                        <h3 className={styles.blockTitle} id={`${rating.id}-heading`}>
+                                            {t('journeys.rating.number', { number: index + 1 })}
+                                        </h3>
+                                        <IconButton
+                                            icon={<DeleteOutline />}
+                                            ariaLabel={t('journeys.rating.remove')}
+                                            onClick={() =>
+                                                change({
+                                                    ratings: draft.ratings?.filter((entry) => entry.id !== rating.id),
+                                                })
                                             }
+                                        />
+                                    </div>
+                                    <TranslatableField
+                                        label={t('journeys.rating.label')}
+                                        value={rating.label}
+                                        language={language}
+                                        machine={isMachine}
+                                        onTranslate={translateField}
+                                        onChange={(next, how) => setRating(rating.id, { label: next }, how)}
+                                    />
+                                    <div className={styles.fieldRow}>
+                                        <M3Select<RatingType>
+                                            aria-label={t('journeys.rating.type')}
+                                            value={rating.type}
+                                            options={RATING_TYPES.map((type) => ({
+                                                value: type,
+                                                label: t(`journeys.rating.type.${type}`),
+                                            }))}
+                                            onChange={(type: RatingType) => setRatingType(rating, type)}
                                             getPopupContainer={popupContainer}
                                         />
-                                    )}
-                                </div>
-                                {rating.type === 'range' && (
-                                    <div className={styles.fieldRow}>
-                                        {ratingLabel(
-                                            rating,
-                                            'minLabel',
-                                            t('journeys.rating.minLabel', {
-                                                value: rating.min < 0 ? `−${-rating.min}` : rating.min,
-                                            }),
-                                        )}
-                                        {rating.midLabel &&
-                                            ratingLabel(rating, 'midLabel', t('journeys.rating.midLabel'))}
-                                        {ratingLabel(
-                                            rating,
-                                            'maxLabel',
-                                            t('journeys.rating.maxLabel', {
-                                                value: rating.min < 0 ? `+${rating.max}` : rating.max,
-                                            }),
+                                        {rating.type === 'range' && (
+                                            <M3Select<ScaleId>
+                                                aria-label={t('journeys.rating.scale')}
+                                                value={scaleOf(rating) ?? 'minusFiveToFive'}
+                                                options={(Object.keys(SCALES) as ScaleId[]).map((scale) => ({
+                                                    value: scale,
+                                                    label: t(`journeys.rating.scaleName.${scale}`),
+                                                }))}
+                                                onChange={(scale: ScaleId) =>
+                                                    setRating(rating.id, withScale(rating, scale))
+                                                }
+                                                getPopupContainer={popupContainer}
+                                            />
                                         )}
                                     </div>
-                                )}
-                                <ToggleRow
-                                    label={t('journeys.rating.required')}
-                                    checked={rating.required}
-                                    onCheckedChange={(required) => setRating(rating.id, { required })}
-                                />
-                            </section>
-                        ))}
-                        <div>
-                            <M3Button
-                                variant="outlined"
-                                icon={<Add />}
-                                onClick={() =>
-                                    change({
-                                        ratings: [
-                                            ...(draft.ratings ?? []),
-                                            {
-                                                id: nextId('rating'),
-                                                type: 'range',
-                                                label: {},
-                                                ...SCALES.minusFiveToFive,
-                                                midLabel: { de: 'normal', en: 'normal' },
-                                                required: false,
-                                                version: 1,
-                                            },
-                                        ],
-                                    })
-                                }
-                            >
-                                {t('journeys.rating.add')}
-                            </M3Button>
-                        </div>
-                    </>
-                )}
+                                    {rating.type === 'range' && (
+                                        <div className={styles.fieldRow}>
+                                            {ratingLabel(
+                                                rating,
+                                                'minLabel',
+                                                t('journeys.rating.minLabel', {
+                                                    value: rating.min < 0 ? `−${-rating.min}` : rating.min,
+                                                }),
+                                            )}
+                                            {rating.midLabel &&
+                                                ratingLabel(rating, 'midLabel', t('journeys.rating.midLabel'))}
+                                            {ratingLabel(
+                                                rating,
+                                                'maxLabel',
+                                                t('journeys.rating.maxLabel', {
+                                                    value: rating.min < 0 ? `+${rating.max}` : rating.max,
+                                                }),
+                                            )}
+                                        </div>
+                                    )}
+                                    <ToggleRow
+                                        label={t('journeys.rating.required')}
+                                        checked={rating.required}
+                                        onCheckedChange={(required) => setRating(rating.id, { required })}
+                                    />
+                                </section>
+                            ))}
+                            <div>
+                                <M3Button
+                                    variant="outlined"
+                                    icon={<Add />}
+                                    onClick={() =>
+                                        change({
+                                            ratings: [
+                                                ...(draft.ratings ?? []),
+                                                {
+                                                    id: nextId('rating'),
+                                                    type: 'range',
+                                                    label: {},
+                                                    ...SCALES.minusFiveToFive,
+                                                    midLabel: { de: 'normal', en: 'normal' },
+                                                    required: false,
+                                                    version: 1,
+                                                },
+                                            ],
+                                        })
+                                    }
+                                >
+                                    {t('journeys.rating.add')}
+                                </M3Button>
+                            </div>
+                        </>
+                    )}
 
-                {draft.kind === 'panel' && (
-                    <>
-                        <ToggleRow
-                            label={t('conversationModules.section.startsCollapsed')}
-                            checked={draft.display === 'collapsed'}
-                            onCheckedChange={(collapsed) => change({ display: collapsed ? 'collapsed' : 'open' })}
-                        />
-                        {draft.aspects?.map((aspect, index) => (
-                            <section
-                                key={aspect.id}
-                                className={styles.block}
-                                aria-labelledby={`${aspect.id}-heading`}
-                                data-testid={`journey-aspect-${aspect.prototypeId ?? aspect.id}`}
-                            >
-                                <div className={styles.blockHeader}>
-                                    <h3 className={styles.blockTitle} id={`${aspect.id}-heading`}>
-                                        {t('journeys.aspect.number', { number: index + 1 })}
-                                        {aspect.safety && (
-                                            <>
-                                                {' '}
-                                                <span className={`${styles.chip} ${styles.chipMust}`}>
-                                                    {t('conversationModules.safety.badge')}
-                                                </span>
-                                            </>
-                                        )}
-                                    </h3>
-                                    <IconButton
-                                        icon={<DeleteOutline />}
-                                        ariaLabel={t('journeys.aspect.remove')}
-                                        onClick={() =>
-                                            change({
-                                                aspects: draft.aspects?.filter((entry) => entry.id !== aspect.id),
-                                            })
+                    {draft.kind === 'panel' && (
+                        <>
+                            <ToggleRow
+                                label={t('conversationModules.section.startsCollapsed')}
+                                checked={draft.display === 'collapsed'}
+                                onCheckedChange={(collapsed) => change({ display: collapsed ? 'collapsed' : 'open' })}
+                            />
+                            {draft.aspects?.map((aspect, index) => (
+                                <section
+                                    key={aspect.id}
+                                    className={styles.block}
+                                    aria-labelledby={`${aspect.id}-heading`}
+                                    data-testid={`journey-aspect-${aspect.prototypeId ?? aspect.id}`}
+                                >
+                                    <div className={styles.blockHeader}>
+                                        <h3 className={styles.blockTitle} id={`${aspect.id}-heading`}>
+                                            {t('journeys.aspect.number', { number: index + 1 })}
+                                            {aspect.safety && (
+                                                <>
+                                                    {' '}
+                                                    <span className={`${styles.chip} ${styles.chipMust}`}>
+                                                        {t('conversationModules.safety.badge')}
+                                                    </span>
+                                                </>
+                                            )}
+                                        </h3>
+                                        <IconButton
+                                            icon={<DeleteOutline />}
+                                            ariaLabel={t('journeys.aspect.remove')}
+                                            onClick={() =>
+                                                change({
+                                                    aspects: draft.aspects?.filter((entry) => entry.id !== aspect.id),
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                    <TranslatableField
+                                        label={t('journeys.stepDialog.title')}
+                                        value={aspect.title}
+                                        language={language}
+                                        machine={isMachine}
+                                        onTranslate={translateField}
+                                        onChange={(next, how) => setAspect(aspect.id, { title: next }, how)}
+                                    />
+                                    <M3RichTextEditor
+                                        key={`${aspect.id}-${language}`}
+                                        title={t('conversationModules.section.body')}
+                                        value={aspect.body[language] ?? ''}
+                                        contentLanguage={language}
+                                        languageSlot={<span />}
+                                        fluid
+                                        hideHeader
+                                        plainText
+                                        enableAnchors={false}
+                                        versionLabel={t('legal.m3Editor.versionLatest')}
+                                        onChange={(html: string) =>
+                                            setAspect(aspect.id, { body: inLanguage(aspect.body, html) })
                                         }
                                     />
-                                </div>
-                                <TranslatableField
-                                    label={t('journeys.stepDialog.title')}
-                                    value={aspect.title}
-                                    language={language}
-                                    machine={isMachine}
-                                    translate={translate}
-                                    onChange={(next, how) => setAspect(aspect.id, { title: next }, how)}
-                                />
-                                <M3RichTextEditor
-                                    key={`${aspect.id}-${language}`}
-                                    title={t('conversationModules.section.body')}
-                                    value={aspect.body[language] ?? ''}
-                                    contentLanguage={language}
-                                    languageSlot={<span />}
-                                    fluid
-                                    hideHeader
-                                    plainText
-                                    enableAnchors={false}
-                                    versionLabel={t('legal.m3Editor.versionLatest')}
-                                    onChange={(html: string) =>
-                                        setAspect(aspect.id, { body: inLanguage(aspect.body, html) })
+                                    <OriginalLine
+                                        value={aspect.body}
+                                        language={language}
+                                        machine={isMachine}
+                                        onTranslate={translateField}
+                                        onChange={(next, how) => setAspect(aspect.id, { body: next }, how)}
+                                    />
+                                </section>
+                            ))}
+                            <div>
+                                <M3Button
+                                    variant="outlined"
+                                    icon={<Add />}
+                                    onClick={() =>
+                                        change({
+                                            aspects: [
+                                                ...(draft.aspects ?? []),
+                                                { id: nextId('aspect'), title: {}, body: {} },
+                                            ],
+                                        })
                                     }
-                                />
-                                <OriginalLine
-                                    value={aspect.body}
-                                    language={language}
-                                    machine={isMachine}
-                                    translate={translate}
-                                    onChange={(next, how) => setAspect(aspect.id, { body: next }, how)}
-                                />
-                            </section>
-                        ))}
-                        <div>
-                            <M3Button
-                                variant="outlined"
-                                icon={<Add />}
-                                onClick={() =>
-                                    change({
-                                        aspects: [
-                                            ...(draft.aspects ?? []),
-                                            { id: nextId('aspect'), title: {}, body: {} },
-                                        ],
-                                    })
-                                }
-                            >
-                                {t('journeys.aspect.add')}
-                            </M3Button>
-                        </div>
-                    </>
-                )}
+                                >
+                                    {t('journeys.aspect.add')}
+                                </M3Button>
+                            </div>
+                        </>
+                    )}
 
-                {draft.kind === 'message' && (
-                    <>
-                        <M3RichTextEditor
-                            key={`body-${language}`}
-                            title={t('conversationModules.section.body')}
-                            value={draft.body?.[language] ?? ''}
-                            contentLanguage={language}
-                            languageSlot={<span />}
-                            fluid
-                            hideHeader
-                            plainText
-                            enableAnchors={false}
-                            versionLabel={t('legal.m3Editor.versionLatest')}
-                            onChange={(html: string) => change({ body: inLanguage(draft.body, html) })}
-                        />
-                        <OriginalLine
-                            value={draft.body}
-                            language={language}
-                            machine={isMachine}
-                            translate={translate}
-                            onChange={(next, how) => change({ body: next }, how)}
-                        />
-                    </>
-                )}
-            </div>
-        </Modal>
+                    {draft.kind === 'message' && (
+                        <>
+                            <M3RichTextEditor
+                                key={`body-${language}`}
+                                title={t('conversationModules.section.body')}
+                                value={draft.body?.[language] ?? ''}
+                                contentLanguage={language}
+                                languageSlot={<span />}
+                                fluid
+                                hideHeader
+                                plainText
+                                enableAnchors={false}
+                                versionLabel={t('legal.m3Editor.versionLatest')}
+                                onChange={(html: string) => change({ body: inLanguage(draft.body, html) })}
+                            />
+                            <OriginalLine
+                                value={draft.body}
+                                language={language}
+                                machine={isMachine}
+                                onTranslate={translateField}
+                                onChange={(next, how) => change({ body: next }, how)}
+                            />
+                        </>
+                    )}
+                </div>
+            </Modal>
+            {profileOpen && (
+                <ProfileDialog
+                    title={stepTitle(draft, MODULE_SOURCE_LANGUAGE, t)}
+                    profile={draft.profile}
+                    defaultAuthor={t('journeys.profile.platform')}
+                    translator={translator}
+                    suggester={suggester}
+                    onApply={(profile) => {
+                        change({ profile });
+                        setProfileOpen(false);
+                    }}
+                    onClose={() => setProfileOpen(false)}
+                />
+            )}
+        </>
     );
 };

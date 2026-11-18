@@ -12,6 +12,8 @@ import {
     type Journey,
 } from './journey';
 import { JourneysSettings } from './index';
+import { fakeSuggester, fakeTranslator } from './journeyTranslation';
+import { TranslationApiError } from '../../api/tenant/translation';
 
 /** Synthetic topics, as a Caritas install ships them. */
 const topics = [
@@ -42,7 +44,11 @@ debt = updateStep(debt, 'departure', 'debt-situation', {
         goal: 'Dringlichkeit klären, bevor die erste Antwort geschrieben wird',
         author: 'Schuldnerberatung Köln-Mitte',
         audiences: ['adults'],
-        tags: ['Schulden', 'Pfändung'],
+        keywords: {
+            de: ['Schulden', 'Pfändung', 'Gläubiger', 'Mahnung'],
+            en: ['debt', 'seizure', 'creditor'],
+            tr: ['borç'],
+        },
     },
     questions: [
         {
@@ -98,15 +104,12 @@ const liveChat: Journey = {
 
 const journeys: Journey[] = [standard, debt, u25, liveChat, otherTypes[1], otherTypes[2]];
 
-/** Stands in for the translation service: marks the text instead of translating it. */
-const translate = (text: string, language: string) => `${text} (${language})`;
-
 const meta = {
     title: 'Settings/Einstellungen/Reisen',
     id: 'settings-journeys',
     component: JourneysSettings,
     parameters: { layout: 'padded' },
-    args: { topics, journeys, translate, canEditAppearance: true },
+    args: { topics, journeys, translator: fakeTranslator, suggester: fakeSuggester, canEditAppearance: true },
 } satisfies Meta<typeof JourneysSettings>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -570,19 +573,41 @@ export const SortingAnswers: Story = {
     },
 };
 
-/** The profile card of a block: two descriptions, goal, author, audiences, keywords. */
+/** The profile card in the step dialog: a summary; editing opens its own dialog. */
 export const ProfileCard: Story = {
     args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         const about = await body.findByTestId('journey-step-about');
         await expect(about).toHaveTextContent('Schuldnerberatung Köln-Mitte');
-        await userEvent.click(within(about).getByRole('button', { name: 'Steckbrief für Redaktionen' }));
-        const form = body.getByTestId('journey-step-profile');
-        await userEvent.click(within(form).getByRole('checkbox', { name: 'Eltern' }));
-        await userEvent.type(within(form).getByRole('textbox', { name: 'Schlagwörter' }), 'Miete{Enter}');
-        await expect(about).toHaveTextContent('#Miete');
-        await expect(about).toHaveTextContent('Erwachsene, Eltern');
+        const dialog = body.getByTestId('journey-step-dialog');
+        await expect(within(dialog).getByTestId('step-search')).toHaveAccessibleName(
+            'Suche: 2 von 7 Sprachen abgedeckt',
+        );
+    },
+};
+
+/** Search terms per language: German typed, translated into all languages, Turkish suggestions taken. */
+export const SearchTerms: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const about = await body.findByTestId('journey-step-about');
+        await userEvent.click(within(about).getByRole('button', { name: 'Steckbrief und Suchbegriffe' }));
+        const dialog = await body.findByTestId('journey-profile-dialog');
+        await userEvent.click(within(dialog).getByRole('checkbox', { name: 'Eltern' }));
+        await userEvent.type(
+            within(dialog).getByRole('textbox', { name: 'Suchbegriff auf Deutsch' }),
+            'Inkasso{Enter}',
+        );
+        await userEvent.click(
+            within(dialog).getByRole('button', { name: 'Deutsche Begriffe in alle Sprachen übersetzen' }),
+        );
+        await userEvent.click(await within(dialog).findByRole('radio', { name: /^TR/ }));
+        await expect(within(dialog).getByTestId('journey-keywords')).toHaveTextContent('Schulden (tr)');
+        await userEvent.click(within(dialog).getByRole('button', { name: 'Ähnliche Begriffe vorschlagen' }));
+        await userEvent.click(await within(dialog).findByRole('button', { name: '„icra“ übernehmen' }));
+        await expect(within(dialog).getByTestId('journey-keywords')).toHaveTextContent('icra');
         await userEvent.tab();
     },
 };
@@ -600,5 +625,21 @@ export const InsertBetweenSteps: Story = {
             .getAllByRole('listitem')
             .map((item) => item.getAttribute('data-testid'));
         await expect(order[1]).toMatch(/^journey-step-step-/);
+    },
+};
+
+/** No API key stored: the button names the cause instead of failing silently. */
+export const TranslationNotConfigured: Story = {
+    args: {
+        translator: () => Promise.reject(new TranslationApiError('TRANSLATION_NOT_CONFIGURED', 'openrouter')),
+        initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }),
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const postcode = await body.findByTestId('journey-step-postcode');
+        await userEvent.click(
+            within(postcode).getByRole('button', { name: 'Fehlende Sprachen maschinell übersetzen' }),
+        );
+        await expect(await body.findByTestId('journey-translation-error')).toHaveTextContent('kein API-Schlüssel');
     },
 };

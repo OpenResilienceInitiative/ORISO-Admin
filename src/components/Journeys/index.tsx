@@ -25,6 +25,7 @@ import {
 } from './journey';
 import { FlightPath } from './FlightPath';
 import { JourneysDialog, type JourneysDialogOpen } from './JourneysDialog';
+import type { KeywordSuggester, Translator } from './journeyTranslation';
 import styles from './styles.module.scss';
 
 /** Topic chips on a tile before the rest is folded into "+ n". */
@@ -114,7 +115,10 @@ export interface JourneysSettingsProps {
     /** Only the platform admin renames conversation types and changes their icons. */
     canEditAppearance?: boolean;
     /** Machine translation of one text. Without it no "translate with AI" is offered. */
-    translate?: (text: string, language: string) => string;
+    /** Machine translation through the Admin endpoint (`adminTranslator`); without it none is offered. */
+    translator?: Translator;
+    /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
+    suggester?: KeywordSuggester;
     /** Which level edits. Below the platform the check-in is the platform's (decision 29). */
     level?: JourneyLevel;
     /** Building blocks Funktionszugriff switched off, e.g. the e-mail step (decision 31). */
@@ -134,7 +138,8 @@ export const JourneysSettings = ({
     journeys: initial,
     appearance: initialAppearance = {},
     canEditAppearance = false,
-    translate,
+    translator,
+    suggester,
     level = 'platform',
     blocked = [],
     initiallyOpen,
@@ -183,7 +188,8 @@ export const JourneysSettings = ({
                     typeName={typeName(open)}
                     journeys={journeys}
                     topics={topics}
-                    translate={translate}
+                    translator={translator}
+                    suggester={suggester}
                     level={level}
                     blocked={blocked}
                     initially={
@@ -203,7 +209,7 @@ export const JourneysSettings = ({
                 <ConversationTypeSettingsDialog
                     type={editingAppearance}
                     settings={appearance}
-                    translate={translate}
+                    translator={translator}
                     onSave={(next) => {
                         setAppearance(next);
                         onSaveAppearance?.(next);

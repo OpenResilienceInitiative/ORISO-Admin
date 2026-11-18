@@ -23,12 +23,15 @@ import {
     type IconVariant,
 } from './appearance';
 import { TypeIcon } from './TypeIcon';
+import type { Translator } from '../Journeys/journeyTranslation';
+import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import styles from './styles.module.scss';
 
 export interface ConversationTypeSettingsDialogProps {
     type: ConversationType;
     settings: AppearanceSettings;
-    translate?: (text: string, language: string) => string;
+    /** Machine translation through the Admin endpoint; without it none is offered. */
+    translator?: Translator;
     onSave: (settings: AppearanceSettings) => void;
     onClose: () => void;
 }
@@ -41,7 +44,7 @@ export interface ConversationTypeSettingsDialogProps {
 export const ConversationTypeSettingsDialog = ({
     type,
     settings,
-    translate,
+    translator,
     onSave,
     onClose,
 }: ConversationTypeSettingsDialogProps) => {
@@ -55,11 +58,29 @@ export const ConversationTypeSettingsDialog = ({
     const missing = MODULE_LANGUAGES.filter((code) => !name[code]?.trim());
     const german = name.de?.trim();
 
-    const translateMissing = () => {
-        if (!translate || !german) return;
-        setDraft((current) =>
-            missing.reduce((next, code) => setName(next, type, code, translate(german, code)), current),
-        );
+    const [translationError, setTranslationError] = useState<string>();
+    const [translating, setTranslating] = useState(false);
+    const translateMissing = async () => {
+        if (!translator || !german) return;
+        setTranslating(true);
+        setTranslationError(undefined);
+        try {
+            const response = await translator({
+                sourceLang: MODULE_SOURCE_LANGUAGE,
+                targetLangs: missing,
+                texts: { name: german },
+            });
+            setDraft((current) =>
+                missing.reduce((next, code) => {
+                    const translated = response.translations[code]?.name;
+                    return translated ? setName(next, type, code, translated) : next;
+                }, current),
+            );
+        } catch (error) {
+            setTranslationError(getTranslationErrorKey(error));
+        } finally {
+            setTranslating(false);
+        }
     };
 
     const upload = async (variant: IconVariant, event: ChangeEvent<HTMLInputElement>) => {
@@ -108,17 +129,23 @@ export const ConversationTypeSettingsDialog = ({
                         <h3 className={styles.sectionTitle} id="type-appearance-name">
                             {t('typeAppearance.name')}
                         </h3>
-                        {translate && missing.length > 0 && (
+                        {translator && missing.length > 0 && (
                             <M3Button
                                 variant="text"
                                 icon={<AutoAwesomeOutlined />}
                                 disabled={!german}
+                                loading={translating}
                                 onClick={translateMissing}
                             >
                                 {t('journeys.translation.ai')}
                             </M3Button>
                         )}
                     </div>
+                    {translationError && (
+                        <p className={styles.error} role="alert">
+                            {t(translationError)}
+                        </p>
+                    )}
                     <div className={styles.names}>
                         {MODULE_LANGUAGES.map((code) => (
                             <FloatingLabelInput

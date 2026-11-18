@@ -25,6 +25,7 @@ import { nextId } from './ids';
 import { JourneyCard } from './JourneyCard';
 import { PhaseDialog } from './PhaseDialog';
 import { journeyLabel } from './stepText';
+import type { KeywordSuggester, Translator } from './journeyTranslation';
 import styles from './styles.module.scss';
 
 export interface JourneysDialogOpen {
@@ -44,7 +45,10 @@ export interface JourneysDialogProps {
     /** The journeys of every conversation type; this dialog edits the ones of `type`. */
     journeys: Journey[];
     topics: JourneyTopic[];
-    translate?: (text: string, language: string) => string;
+    /** Machine translation through the Admin endpoint (`adminTranslator`); without it none is offered. */
+    translator?: Translator;
+    /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
+    suggester?: KeywordSuggester;
     /** Which level edits: below the platform the check-in is the platform's (decision 29). */
     level?: JourneyLevel;
     /** Building blocks Funktionszugriff switched off. */
@@ -64,7 +68,8 @@ export const JourneysDialog = ({
     typeName,
     journeys: stored,
     topics,
-    translate,
+    translator,
+    suggester,
     level = 'platform',
     blocked = [],
     initially,
@@ -177,7 +182,8 @@ export const JourneysDialog = ({
                     key={`${phaseOf.id}-${phaseOf.phase}`}
                     journey={phaseJourney}
                     phase={phaseOf.phase}
-                    translate={translate}
+                    translator={translator}
+                    suggester={suggester}
                     blocked={blocked}
                     initially={
                         initially?.journeyId === phaseOf.id && initially.phase === phaseOf.phase

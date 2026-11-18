@@ -20,7 +20,6 @@ import {
     firstFreeIndex,
     isTopicPreselected,
     setTopicPreselected,
-    translateMissing,
     updateStep,
     type Journey,
     type JourneyPhase,
@@ -32,13 +31,19 @@ import { nextId } from './ids';
 import { PhaseIcon } from './PhaseIcon';
 import { StepCard } from './StepCard';
 import { StepDialog } from './StepDialog';
+import { translateStepMissing, type KeywordSuggester, type Translator } from './journeyTranslation';
+import { ProfileDialog } from './ProfileDialog';
+import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import { journeyLabel, stepTitle } from './stepText';
 import styles from './styles.module.scss';
 
 export interface PhaseDialogProps {
     journey: Journey;
     phase: JourneyPhase;
-    translate?: (text: string, language: string) => string;
+    /** Machine translation through the Admin endpoint; without it no translation is offered. */
+    translator?: Translator;
+    /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
+    suggester?: KeywordSuggester;
     /** Building blocks Funktionszugriff switched off. */
     blocked?: readonly string[];
     /** Opens one step, or the "add step" list, right away (stories). */
@@ -59,7 +64,8 @@ interface DropTarget {
 export const PhaseDialog = ({
     journey,
     phase,
-    translate,
+    translator,
+    suggester,
     blocked = [],
     initially,
     onApply,
@@ -71,6 +77,8 @@ export const PhaseDialog = ({
     /** `null` adds at the end, a step id adds right below that step. */
     const [addingAfter, setAddingAfter] = useState<string | null | undefined>(initially?.adding ? null : undefined);
     const [confirmRemove, setConfirmRemove] = useState<JourneyStep>();
+    const [translationError, setTranslationError] = useState<string>();
+    const [profileOf, setProfileOf] = useState<string>();
     const [draggedId, setDraggedId] = useState<string>();
     const [drop, setDrop] = useState<DropTarget>();
     const [announcement, setAnnouncement] = useState('');
@@ -157,6 +165,12 @@ export const PhaseDialog = ({
 
                     <p className={styles.help}>{t(`journeys.phaseUnit.${phase}`)}</p>
 
+                    {translationError && (
+                        <div className={styles.warning} role="alert" data-testid="journey-translation-error">
+                            <p>{t(translationError)}</p>
+                        </div>
+                    )}
+
                     {missingSafety.length > 0 && (
                         <div className={styles.warning} role="alert" data-testid="journey-safety-warning">
                             <p className={styles.noticeTitle}>{t('conversationModules.safety.title')}</p>
@@ -221,6 +235,7 @@ export const PhaseDialog = ({
                                                 ? setConfirmRemove(step)
                                                 : setDraft((current) => removeStep(current, phase, step.id))
                                         }
+                                        onOpenProfile={() => setProfileOf(step.id)}
                                         onInsertBelow={() => setAddingAfter(step.id)}
                                         insertActive={addingAfter === step.id}
                                         topicPreselect={
@@ -234,16 +249,21 @@ export const PhaseDialog = ({
                                                 : undefined
                                         }
                                         onTranslate={
-                                            translate
-                                                ? () =>
-                                                      setDraft((current) =>
-                                                          updateStep(
-                                                              current,
-                                                              phase,
-                                                              step.id,
-                                                              translateMissing(step, translate),
-                                                          ),
-                                                      )
+                                            translator
+                                                ? async () => {
+                                                      setTranslationError(undefined);
+                                                      try {
+                                                          const translated = await translateStepMissing(
+                                                              step,
+                                                              translator,
+                                                          );
+                                                          setDraft((current) =>
+                                                              updateStep(current, phase, step.id, translated),
+                                                          );
+                                                      } catch (error) {
+                                                          setTranslationError(getTranslationErrorKey(error));
+                                                      }
+                                                  }
                                                 : undefined
                                         }
                                         onMarkChecked={(code) =>
@@ -275,6 +295,20 @@ export const PhaseDialog = ({
                     </div>
                 </div>
             </Modal>
+            {profileOf && steps.find((step) => step.id === profileOf) && (
+                <ProfileDialog
+                    title={stepTitle(steps.find((step) => step.id === profileOf) as JourneyStep, language, t)}
+                    profile={steps.find((step) => step.id === profileOf)?.profile}
+                    defaultAuthor={t('journeys.profile.platform')}
+                    translator={translator}
+                    suggester={suggester}
+                    onApply={(profile) => {
+                        setDraft((current) => updateStep(current, phase, profileOf, { profile }));
+                        setProfileOf(undefined);
+                    }}
+                    onClose={() => setProfileOf(undefined)}
+                />
+            )}
             {confirmRemove && (
                 <Modal
                     titleKey="journeys.removePostcode.title"
@@ -305,7 +339,8 @@ export const PhaseDialog = ({
                     phase={phase}
                     context={{ journey: journeyName, position: steps.indexOf(editing) + 1 }}
                     initialLanguage={initially?.stepId === editing.id ? initially.language : undefined}
-                    translate={translate}
+                    translator={translator}
+                    suggester={suggester}
                     onApply={(step) => {
                         setDraft((current) => updateStep(current, phase, step.id, step));
                         setEditingId(undefined);

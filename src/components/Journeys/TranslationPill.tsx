@@ -13,7 +13,9 @@ import styles from './styles.module.scss';
 interface TranslationPillProps {
     step: JourneyStep;
     /** Fills the missing languages by machine. Without it no translation is offered. */
-    onTranslate?: () => void;
+    onTranslate?: () => void | Promise<void>;
+    /** A translation is running. */
+    busy?: boolean;
     /** A person confirms the machine translation of one language. */
     onMarkChecked?: (language: string) => void;
 }
@@ -31,7 +33,7 @@ const STATE_ICON: Record<LanguageState, ReactElement> = {
  * translation can be confirmed and the missing ones translated. Icons and words carry the meaning,
  * colours only repeat it.
  */
-export const TranslationPill = ({ step, onTranslate, onMarkChecked }: TranslationPillProps) => {
+export const TranslationPill = ({ step, onTranslate, busy = false, onMarkChecked }: TranslationPillProps) => {
     const { t } = useTranslation();
     const menuId = useId();
     const titleId = useId();
@@ -80,6 +82,8 @@ export const TranslationPill = ({ step, onTranslate, onMarkChecked }: Translatio
                 <button
                     type="button"
                     className={styles.translationAi}
+                    disabled={busy}
+                    aria-busy={busy || undefined}
                     aria-label={t('journeys.translation.ai')}
                     title={t('journeys.translation.ai')}
                     onClick={onTranslate}
@@ -131,6 +135,7 @@ export const TranslationPill = ({ step, onTranslate, onMarkChecked }: Translatio
                         <M3Button
                             variant="tonal"
                             icon={<TranslateIcon />}
+                            loading={busy}
                             onClick={() => {
                                 onTranslate();
                                 setAnchor(null);

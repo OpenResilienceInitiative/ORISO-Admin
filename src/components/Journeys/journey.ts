@@ -189,16 +189,45 @@ export interface BlockProfile {
     goal: string;
     author: string;
     audiences: Audience[];
-    tags: string[];
+    /** Search terms per language: the words people use for what the block is about. */
+    keywords: Partial<Record<string, string[]>>;
 }
 
-export const emptyProfile = (author = ''): BlockProfile => ({ about: '', goal: '', author, audiences: [], tags: [] });
+/** A language counts as covered by search terms from this many terms on. */
+export const KEYWORD_TARGET = 3;
 
-/** Adds a keyword once, ignoring case and surrounding spaces. */
-export const addTag = (profile: BlockProfile, tag: string): BlockProfile => {
-    const clean = tag.trim();
-    if (!clean || profile.tags.some((existing) => existing.toLowerCase() === clean.toLowerCase())) return profile;
-    return { ...profile, tags: [...profile.tags, clean] };
+export const emptyProfile = (author = ''): BlockProfile => ({
+    about: '',
+    goal: '',
+    author,
+    audiences: [],
+    keywords: {},
+});
+
+export const keywordsIn = (profile: BlockProfile | undefined, language: string): string[] =>
+    profile?.keywords[language] ?? [];
+
+/** Adds search terms to one language, each once, ignoring case and surrounding spaces. */
+export const addKeywords = (profile: BlockProfile, language: string, terms: string[]): BlockProfile => {
+    const current = keywordsIn(profile, language);
+    const next = [...current];
+    terms.forEach((term) => {
+        const clean = term.trim();
+        if (clean && !next.some((existing) => existing.toLowerCase() === clean.toLowerCase())) next.push(clean);
+    });
+    if (next.length === current.length) return profile;
+    return { ...profile, keywords: { ...profile.keywords, [language]: next } };
+};
+
+export const removeKeyword = (profile: BlockProfile, language: string, term: string): BlockProfile => ({
+    ...profile,
+    keywords: { ...profile.keywords, [language]: keywordsIn(profile, language).filter((entry) => entry !== term) },
+});
+
+/** Languages with enough search terms; the step shows ✓ once all are covered. */
+export const keywordCoverage = (profile: BlockProfile | undefined) => {
+    const covered = MODULE_LANGUAGES.filter((language) => keywordsIn(profile, language).length >= KEYWORD_TARGET);
+    return { covered, total: MODULE_LANGUAGES.length, complete: covered.length === MODULE_LANGUAGES.length };
 };
 
 export interface JourneyStep {
@@ -761,7 +790,7 @@ export const stepContentCount = (step: JourneyStep) => ({
 // ---- translation ------------------------------------------------------------------------------
 
 /** Every text of a step that the person reads, as references into the step. */
-const textsOf = (step: JourneyStep): LangMap[] => [
+export const textsOf = (step: JourneyStep): LangMap[] => [
     step.title,
     step.description,
     ...(step.body ? [step.body] : []),
@@ -870,7 +899,7 @@ export const matchesSearch = (step: JourneyStep, query: string, audienceNames: R
         profile?.goal,
         profile?.author,
         ...(profile?.audiences ?? []).map((audience) => audienceNames[audience]),
-        ...(profile?.tags ?? []),
+        ...Object.values(profile?.keywords ?? {}).flat(),
     ]
         .filter(Boolean)
         .join(' ')

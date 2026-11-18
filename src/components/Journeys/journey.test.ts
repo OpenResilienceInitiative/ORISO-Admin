@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     addLinkForTopic,
     addStep,
-    addTag,
+    addKeywords,
+    keywordCoverage,
+    removeKeyword,
     addonChoices,
     assignRegistrationTopic,
     canMoveStep,
@@ -633,20 +635,28 @@ describe('the profile card of a block', () => {
             goal: 'Dringlichkeit vor der ersten Antwort klären',
             author: 'Schuldnerberatung Köln-Mitte',
             audiences: ['adults'],
-            tags: ['Schulden', 'Pfändung'],
+            keywords: { de: ['Schulden', 'Pfändung'], tr: ['borç'] },
         },
     });
 
-    it('adds a keyword once, whatever its case and spaces', () => {
-        const profile = addTag(addTag(emptyProfile(), ' Schulden '), 'schulden');
-        expect(profile.tags).toEqual(['Schulden']);
-        expect(addTag(profile, '   ')).toBe(profile);
+    it('adds search terms per language, each once, whatever their case and spaces', () => {
+        const profile = addKeywords(emptyProfile(), 'de', [' Schulden ', 'schulden', 'Miete']);
+        expect(profile.keywords).toEqual({ de: ['Schulden', 'Miete'] });
+        expect(addKeywords(profile, 'de', ['   '])).toBe(profile);
+        expect(removeKeyword(profile, 'de', 'Miete').keywords.de).toEqual(['Schulden']);
+    });
+
+    it('counts a language as covered from three search terms on', () => {
+        let profile = addKeywords(emptyProfile(), 'de', ['Schulden', 'Miete', 'Pfändung']);
+        profile = addKeywords(profile, 'en', ['debt']);
+        expect(keywordCoverage(profile)).toMatchObject({ covered: ['de'], total: 7, complete: false });
     });
 
     it('is found by title, goal, author, audience and keyword, every word counting', () => {
         const step = situation();
         expect(matchesSearch(step, '', names)).toBe(true);
         expect(matchesSearch(step, 'pfändung', names)).toBe(true);
+        expect(matchesSearch(step, 'borç', names)).toBe(true);
         expect(matchesSearch(step, 'erwachsene dringlichkeit', names)).toBe(true);
         expect(matchesSearch(step, 'köln situation', names)).toBe(true);
         expect(matchesSearch(step, 'jugendliche', names)).toBe(false);

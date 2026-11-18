@@ -76,7 +76,7 @@ interface JourneyQuestionsEditorProps {
     language: string;
     /** Languages of this step a machine wrote and nobody has checked yet. */
     machine: string[];
-    translate?: (text: string, language: string) => string;
+    onTranslate?: (source: string) => Promise<string | undefined>;
     onChange: (questions: Question[], how: TextChange) => void;
 }
 
@@ -88,7 +88,7 @@ export const JourneyQuestionsEditor = ({
     questions,
     language,
     machine,
-    translate,
+    onTranslate,
     onChange,
 }: JourneyQuestionsEditorProps) => {
     const { t } = useTranslation();
@@ -174,7 +174,7 @@ export const JourneyQuestionsEditor = ({
                             value={question.label}
                             language={language}
                             machine={isMachine}
-                            translate={translate}
+                            onTranslate={onTranslate}
                             onChange={(next, how) => setText('label', next, how)}
                         />
 
@@ -199,7 +199,7 @@ export const JourneyQuestionsEditor = ({
                                             value={option.label}
                                             language={language}
                                             machine={isMachine}
-                                            translate={translate}
+                                            onTranslate={onTranslate}
                                             onChange={(next, how) =>
                                                 replace(
                                                     index,

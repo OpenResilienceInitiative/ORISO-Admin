@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Undo from '@mui/icons-material/Undo';
 import { FloatingLabelInput } from '../FloatingLabelInput';
@@ -20,7 +21,8 @@ interface OriginalLineProps {
     language: string;
     /** This language of the step was written by a machine and nobody has checked it yet. */
     machine: boolean;
-    translate?: (text: string, language: string) => string;
+    /** Machine-translates the original into this field's language; undefined when it failed. */
+    onTranslate?: (source: string) => Promise<string | undefined>;
     onChange: (next: LangMap, how: TextChange) => void;
 }
 
@@ -29,8 +31,9 @@ interface OriginalLineProps {
  * sees what is being translated; a translate button for this one field; and "back to the original",
  * which removes the translation — the person then reads the original (ADR-018 decision 8).
  */
-export const OriginalLine = ({ value, language, machine, translate, onChange }: OriginalLineProps) => {
+export const OriginalLine = ({ value, language, machine, onTranslate, onChange }: OriginalLineProps) => {
     const { t } = useTranslation();
+    const [busy, setBusy] = useState(false);
     if (language === MODULE_SOURCE_LANGUAGE) return null;
     const source = value?.[MODULE_SOURCE_LANGUAGE];
     const own = value?.[language];
@@ -54,13 +57,19 @@ export const OriginalLine = ({ value, language, machine, translate, onChange }: 
                     <TranslateIcon />
                 </span>
             )}
-            {translate && sourceText && (
+            {onTranslate && sourceText && (
                 <IconButton
                     icon={<TranslateIcon />}
                     size={32}
+                    disabled={busy}
                     ariaLabel={t('journeys.field.translate', { language: languageName })}
                     title={t('journeys.field.translate', { language: languageName })}
-                    onClick={() => onChange({ ...value, [language]: translate(source as string, language) }, 'machine')}
+                    onClick={async () => {
+                        setBusy(true);
+                        const translated = await onTranslate(source as string);
+                        setBusy(false);
+                        if (translated) onChange({ ...value, [language]: translated }, 'machine');
+                    }}
                 />
             )}
             {plain(own) && (

@@ -6,6 +6,7 @@ import LockOutlined from '@mui/icons-material/LockOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import Add from '@mui/icons-material/Add';
 import LinkOutlined from '@mui/icons-material/LinkOutlined';
+import SellOutlined from '@mui/icons-material/SellOutlined';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
@@ -13,6 +14,7 @@ import { RowMenu } from '../UserTable/RowMenu';
 import { canMoveStep, canRemoveStep, isMustStep, type JourneyPhase, type JourneyStep } from './journey';
 import { stepSummary, stepTitle } from './stepText';
 import { TranslationPill } from './TranslationPill';
+import { SearchPill } from './SearchPill';
 import styles from './styles.module.scss';
 
 export interface StepCardProps {
@@ -32,6 +34,8 @@ export interface StepCardProps {
     onAddBelow: () => void;
     onMove: (direction: -1 | 1) => void;
     onRemove: () => void;
+    /** Opens the profile card and search terms of the block. */
+    onOpenProfile?: () => void;
     /** The plus line under the card: a new step right below this one. */
     onInsertBelow?: () => void;
     /** Its add-step dialog is open: the plus line stays open. */
@@ -68,6 +72,7 @@ export const StepCard = ({
     onAddBelow,
     onMove,
     onRemove,
+    onOpenProfile,
     onInsertBelow,
     insertActive = false,
     topicPreselect,
@@ -146,7 +151,10 @@ export const StepCard = ({
             )}
             <div className={classNames(styles.step, { [styles.stepMust]: must, [styles.stepDragging]: dragging })}>
                 <div className={styles.stepTop}>
-                    <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
+                    <span className={styles.chips}>
+                        <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
+                        <SearchPill profile={step.profile} onOpen={onOpenProfile} />
+                    </span>
                     <span className={styles.chips}>
                         {topicPreselect?.on && (
                             <span className={styles.chip}>
@@ -187,6 +195,16 @@ export const StepCard = ({
                                 icon: <SettingsOutlined />,
                                 onSelect: onOpen,
                             },
+                            ...(onOpenProfile
+                                ? [
+                                      {
+                                          key: 'profile',
+                                          label: t('journeys.profileDialog.open'),
+                                          icon: <SellOutlined />,
+                                          onSelect: onOpenProfile,
+                                      },
+                                  ]
+                                : []),
                             {
                                 key: 'add',
                                 label: t('journeys.step.addBelow'),
