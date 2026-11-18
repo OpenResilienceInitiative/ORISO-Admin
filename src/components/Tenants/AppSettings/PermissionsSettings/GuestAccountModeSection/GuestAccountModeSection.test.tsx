@@ -1,123 +1,123 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { GUEST_ACCOUNT_MODE_FIELDS, GuestAccountModeSection } from './index';
+import { GUEST_ACCOUNT_MODE_FIELDS, GuestAccountModeSection, chosenGuestAccountMode } from './index';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
 
-const P = 'tenants.permissions.policy';
-const MODE = 'tenants.permissions.guestAccountModes.mode';
+const K = 'tenants.permissions.guestAccountModes';
 const DIRECT = 'tenants.permissions.directInvite';
+const F = (mode: 'Temporary' | 'GuestChooses' | 'Permanent', medium: 'Chat' | 'Audio' | 'Video') =>
+    `featureGuestAccount${mode}${medium}Enabled`;
 
 const renderSection = (props: Partial<React.ComponentProps<typeof GuestAccountModeSection>> = {}) =>
     render(<GuestAccountModeSection restrictedFields={new Set()} {...props} />);
 
 const medium = (name: 'chat' | 'audio' | 'video') => screen.getByRole('group', { name: `${DIRECT}.${name}` });
-const roundButton = (group: HTMLElement, mode: string, state: 'activated' | 'deactivated') =>
-    within(group).getByRole('button', {
-        name: `${MODE}.${mode}: ${P}.${state} – ${P}.${state === 'activated' ? 'deactivate' : 'activate'}`,
-    });
+const openMenu = async (name: 'chat' | 'audio' | 'video') =>
+    userEvent.click(within(medium(name)).getByRole('button', { name: /tenants\.permissions\.policy\.openMenu/ }));
 
+// Frank 2026-11-18 (#1560): per medium ONE guest account type, not three switches.
 describe('GuestAccountModeSection', () => {
-    it('names the nine TenantService fields, three modes per chat type', () => {
+    it('keeps the nine TenantService fields, three types per medium', () => {
         expect(GUEST_ACCOUNT_MODE_FIELDS.flatMap((m) => m.modes.map((mode) => mode.field))).toEqual([
-            'featureGuestAccountTemporaryChatEnabled',
-            'featureGuestAccountGuestChoosesChatEnabled',
-            'featureGuestAccountPermanentChatEnabled',
-            'featureGuestAccountTemporaryAudioEnabled',
-            'featureGuestAccountGuestChoosesAudioEnabled',
-            'featureGuestAccountPermanentAudioEnabled',
-            'featureGuestAccountTemporaryVideoEnabled',
-            'featureGuestAccountGuestChoosesVideoEnabled',
-            'featureGuestAccountPermanentVideoEnabled',
+            F('Temporary', 'Chat'),
+            F('GuestChooses', 'Chat'),
+            F('Permanent', 'Chat'),
+            F('Temporary', 'Audio'),
+            F('GuestChooses', 'Audio'),
+            F('Permanent', 'Audio'),
+            F('Temporary', 'Video'),
+            F('GuestChooses', 'Video'),
+            F('Permanent', 'Video'),
         ]);
     });
 
-    it('offers every mode per chat type by default', () => {
-        renderSection();
-
-        (['chat', 'audio', 'video'] as const).forEach((name) => {
-            const group = medium(name);
-            ['temporary', 'guestChooses', 'permanent'].forEach((mode) =>
-                expect(roundButton(group, mode, 'activated')).toBeTruthy(),
-            );
-        });
-        expect(screen.queryByText('tenants.permissions.guestAccountModes.noneAllowed')).toBeNull();
-    });
-
-    it("shows the Träger's stored value over an inherited suggestion that differs", () => {
+    it('shows one choice per medium, never three switches', () => {
         renderSection({
-            policyLevel: 'tenant',
-            permissionPolicies: {
-                featureGuestAccountPermanentVideoEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+            fallbackValues: {
+                [F('Temporary', 'Chat')]: true,
+                [F('GuestChooses', 'Chat')]: false,
+                [F('Permanent', 'Chat')]: false,
             },
-            ownSettings: { featureGuestAccountPermanentVideoEnabled: false },
         });
 
-        expect(roundButton(medium('video'), 'permanent', 'deactivated')).toBeTruthy();
+        ['chat', 'audio', 'video'].forEach((name) => {
+            expect(within(medium(name as 'chat')).queryAllByRole('button', { pressed: true })).toHaveLength(0);
+        });
+        expect(within(medium('chat')).getByText(`${K}.mode.temporary`)).toBeInTheDocument();
     });
 
-    it('lets a Träger switch one mode off for one chat type only', async () => {
-        const user = userEvent.setup();
+    it('offers the three types, adjustable or required, in the menu', async () => {
+        renderSection({ policyLevel: 'platform' });
+        await openMenu('chat');
+
+        const names = within(screen.getByRole('list'))
+            .getAllByRole('button')
+            .map((button) => button.getAttribute('aria-label') ?? button.textContent);
+        expect(names).toHaveLength(6);
+    });
+
+    it('saves the chosen type on and the two others off, with one mode', async () => {
         const onPolicyChange = vi.fn();
         renderSection({ policyLevel: 'tenant', onPolicyChange });
+        await openMenu('audio');
 
-        await user.click(roundButton(medium('video'), 'permanent', 'activated'));
+        await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${K}.choice.permanent.ENFORCED`) }));
 
-        expect(onPolicyChange).toHaveBeenCalledTimes(1);
-        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
-            value: false,
-            mode: 'SUGGESTED',
-        });
+        expect(onPolicyChange).toHaveBeenCalledWith(F('Permanent', 'Audio'), { value: true, mode: 'ENFORCED' });
+        expect(onPolicyChange).toHaveBeenCalledWith(F('Temporary', 'Audio'), { value: false, mode: 'ENFORCED' });
+        expect(onPolicyChange).toHaveBeenCalledWith(F('GuestChooses', 'Audio'), { value: false, mode: 'ENFORCED' });
+        expect(onPolicyChange).toHaveBeenCalledTimes(3);
     });
 
-    it('locks a mode on the Träger page that the platform enforces', () => {
+    it('locks the choice on the Träger page when the platform requires it', () => {
         renderSection({
             policyLevel: 'tenant',
             permissionPolicies: {
-                featureGuestAccountTemporaryChatEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+                [F('Temporary', 'Video')]: { value: true, mode: 'ENFORCED', inherited: true },
+                [F('GuestChooses', 'Video')]: { value: false, mode: 'ENFORCED', inherited: true },
+                [F('Permanent', 'Video')]: { value: false, mode: 'ENFORCED', inherited: true },
             },
         });
 
-        expect(
-            within(medium('chat')).getByRole('button', { name: `${MODE}.temporary: ${P}.deactivated` }),
-        ).toHaveProperty('disabled', true);
-        expect(roundButton(medium('audio'), 'temporary', 'activated')).toBeTruthy();
+        expect(within(medium('video')).queryByRole('button', { name: /openMenu/ })).toBeNull();
+        expect(within(medium('video')).getByRole('button', { name: new RegExp(`${K}.mode.temporary`) })).toBeDisabled();
     });
 
-    it('lets the platform force a mode off for every Träger', async () => {
-        const user = userEvent.setup();
-        const onPolicyChange = vi.fn();
+    it('says so when several types were allowed before', () => {
         renderSection({
-            policyLevel: 'platform',
-            permissionPolicies: { featureGuestAccountPermanentChatEnabled: { value: false, mode: 'SUGGESTED' } },
-            onPolicyChange,
-        });
-
-        await user.click(
-            within(medium('chat')).getByRole('button', {
-                name: `${MODE}.permanent: ${P}.suggestion – ${P}.makeRequired`,
-            }),
-        );
-        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentChatEnabled', {
-            value: false,
-            mode: 'ENFORCED',
-        });
-    });
-
-    it('says guests get a permanent account when a chat type allows no mode at all', () => {
-        renderSection({
-            policyLevel: 'tenant',
             fallbackValues: {
-                featureGuestAccountTemporaryAudioEnabled: false,
-                featureGuestAccountGuestChoosesAudioEnabled: false,
-                featureGuestAccountPermanentAudioEnabled: false,
+                [F('Temporary', 'Chat')]: true,
+                [F('GuestChooses', 'Chat')]: false,
+                [F('Permanent', 'Chat')]: true,
             },
         });
 
-        expect(within(medium('audio')).getByText('tenants.permissions.guestAccountModes.noneAllowed')).toBeTruthy();
-        expect(within(medium('chat')).queryByText('tenants.permissions.guestAccountModes.noneAllowed')).toBeNull();
+        expect(within(medium('chat')).getByRole('status')).toHaveTextContent(`${K}.legacySeveral`);
+    });
+
+    it('reads the shipped default (all three allowed) as "guest chooses", without a note', () => {
+        renderSection();
+
+        expect(within(medium('chat')).getByText(`${K}.mode.guestChooses`)).toBeInTheDocument();
+        expect(within(medium('chat')).queryByRole('status')).toBeNull();
+    });
+});
+
+describe('chosenGuestAccountMode', () => {
+    it('reads the one allowed type', () => {
+        expect(chosenGuestAccountMode([false, false, true])).toBe('permanent');
+    });
+
+    it('reads "guest chooses" when several were allowed (the guest could pick before)', () => {
+        expect(chosenGuestAccountMode([true, true, true])).toBe('guestChooses');
+        expect(chosenGuestAccountMode([true, false, true])).toBe('temporary');
+    });
+
+    it('reads "permanent" when none is allowed, as the UserService falls back', () => {
+        expect(chosenGuestAccountMode([false, false, false])).toBe('permanent');
     });
 });

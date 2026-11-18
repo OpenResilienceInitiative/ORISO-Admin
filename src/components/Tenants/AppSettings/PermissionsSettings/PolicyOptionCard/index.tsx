@@ -14,6 +14,7 @@ export const PolicyOptionCard = ({ Icon, ...control }: PolicyOptionCardProps) =>
                 <Icon className={styles.glyph} />
             </span>
         )}
-        <PermissionPolicyControl {...control} compact />
+        {/* #1558: the page explains "Anpassbar" once; a card shows the open lock only. */}
+        <PermissionPolicyControl quietAdjustable {...control} compact />
     </div>
 );

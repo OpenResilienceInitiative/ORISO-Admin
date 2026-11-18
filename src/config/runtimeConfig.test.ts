@@ -112,6 +112,27 @@ describe('runtimeConfig observability', () => {
     });
 });
 
+// ORISO-Admin#1558: feature pages on ORISO Understand; the host is deployment config, never in the bundle.
+describe('understandUrl', () => {
+    it('is empty when not configured, so no link is shown', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({});
+
+        expect(runtimeConfig.understandUrl).toBe('');
+    });
+
+    it('accepts an http(s) address without a trailing slash', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ UNDERSTAND_URL: 'https://understand.example.org/' });
+
+        expect(runtimeConfig.understandUrl).toBe('https://understand.example.org');
+    });
+
+    it('rejects anything but http(s)', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ UNDERSTAND_URL: 'ftp://understand.example.org' });
+
+        expect(runtimeConfig.understandUrl).toBe('');
+    });
+});
+
 describe('bundle build identity', () => {
     it('keeps the full baked commit when runtime configuration claims another build', async () => {
         const baked = 'a6b74669b6fe20a515c277228bdb42d67eb5a9a9';

@@ -16,7 +16,8 @@ import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
-import { CONVERSATION_HELP } from './tileHelpTopics';
+import { ASKER_HELP, CONVERSATION_HELP, GUEST_ACCOUNT_HELP } from './tileHelpTopics';
+import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp } from './help';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
@@ -40,12 +41,22 @@ import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
 
-/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
-const sourceHintKey = (policy: EffectivePolicy) => {
-    const source = permissionPolicySource(policy);
-    if (source !== 'own' || policy.suggestedValue === undefined) return source;
+/**
+ * Own value that differs from a suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus"
+ * (TenantService#363). Every other source stays unsaid: the page intro explains "Anpassbar" and
+ * "Vorgabe" once, so the card can say what the feature does (#1558, Frank 2026-11-18).
+ */
+const conflictHintKey = (policy: EffectivePolicy) => {
+    if (permissionPolicySource(policy) !== 'own' || policy.suggestedValue === undefined) return null;
+    if (policy.suggestedValue === policy.value) return null;
     return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
 };
+
+/** "tenants.permissions.feature.audioCalls" → its one-sentence description, if the feature has one. */
+const featureDescriptionKey = (labelKey: string) =>
+    labelKey.startsWith('tenants.permissions.feature.')
+        ? `tenants.permissions.featureDescription.${labelKey.split('.').at(-1)}`
+        : null;
 
 /**
  * Reason a toggle cannot control anything in this environment, or `null` when
@@ -202,6 +213,14 @@ export const PermissionsSettingsView = ({
     );
 
     // One row for every switch on a tile: feature toggles and notification channels alike.
+    const supportingTextFor = (row: { labelKey: string; policy: EffectivePolicy; note?: string }) => {
+        if (row.note) return row.note;
+        const conflict = policyLevel === 'platform' ? null : conflictHintKey(row.policy);
+        if (conflict) return t(`tenants.permissions.policy.source.${conflict}`);
+        const descriptionKey = featureDescriptionKey(row.labelKey);
+        return descriptionKey ? t(descriptionKey) : undefined;
+    };
+
     const toggleRow = (
         form: FormInstance,
         row: { setting: string; labelKey: string; policy: EffectivePolicy; disabled?: boolean; note?: string },
@@ -215,12 +234,7 @@ export const PermissionsSettingsView = ({
             policy={row.policy}
             pending={policyPending(row.setting)}
             disabled={row.disabled}
-            supportingText={
-                row.note ??
-                (policyLevel === 'platform'
-                    ? undefined
-                    : t(`tenants.permissions.policy.source.${sourceHintKey(row.policy)}`))
-            }
+            supportingText={supportingTextFor(row)}
             onChange={(next) => changePolicy(row.setting, next, form)}
         />
     );
@@ -434,7 +448,11 @@ export const PermissionsSettingsView = ({
                         )}
                         <div className={styles.tileSections}>
                             {card.toggles.length > 0 && (
-                                <TileSection title={t('tenants.permissions.card.configurableFeatures')}>
+                                <TileSection
+                                    title={t('tenants.permissions.card.configurableFeatures')}
+                                    help={CHAT_TYPE_HELP[card.key]}
+                                    collapsible
+                                >
                                     {featureToggles(form, card, getFieldValue, masterEnabled)}
                                 </TileSection>
                             )}
@@ -460,7 +478,12 @@ export const PermissionsSettingsView = ({
 
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                             {card.key === 'oneOnOne' && (
-                                <TileSection title={t('tenants.permissions.directInvite.title')}>
+                                <TileSection
+                                    title={t('tenants.permissions.directInvite.title')}
+                                    description={t('tenants.permissions.directInvite.description')}
+                                    help={directInviteHelp}
+                                    collapsible
+                                >
                                     <DirectInviteSection
                                         restrictedFields={restrictedFields}
                                         policyLevel={policyLevel}
@@ -478,6 +501,8 @@ export const PermissionsSettingsView = ({
                             {card.key === 'oneOnOne' && policyLevel !== 'agency' && (
                                 <TileSection
                                     title={t('tenants.permissions.guestAccountModes.title')}
+                                    help={GUEST_ACCOUNT_HELP}
+                                    collapsible
                                     description={t('tenants.permissions.guestAccountModes.description')}
                                 >
                                     <GuestAccountModeSection
@@ -495,6 +520,8 @@ export const PermissionsSettingsView = ({
                             {card.key === 'oneOnOne' && (
                                 <TileSection
                                     title={t('tenants.permissions.asker.title')}
+                                    help={ASKER_HELP}
+                                    collapsible
                                     description={t('tenants.permissions.asker.sectionDescription')}
                                 >
                                     <AskerPermissionsCard
@@ -512,6 +539,8 @@ export const PermissionsSettingsView = ({
 
                             {card.notifications && (
                                 <TileSection
+                                    help={card.notifications.audience === 'asker' ? askerAccountHelp : undefined}
+                                    collapsible
                                     title={t(
                                         `tenants.permissions.card.notifications.${card.notifications.audience}Title`,
                                     )}

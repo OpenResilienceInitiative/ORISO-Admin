@@ -18,6 +18,11 @@ type PermissionPolicyControlProps = {
     supportingText?: string;
     /** Smaller button and label, for settings laid out as compact cards. */
     compact?: boolean;
+    /**
+     * Show "Anpassbar" as the open lock only (still a button with its full name); "Vorgabe" keeps
+     * its word. For cards whose page explains the two modes once (ORISO-Admin#1558).
+     */
+    quietAdjustable?: boolean;
 };
 
 /**
@@ -34,6 +39,7 @@ export const PermissionPolicyControl = ({
     disabled = false,
     supportingText,
     compact = false,
+    quietAdjustable = false,
 }: PermissionPolicyControlProps) => {
     const { t } = useTranslation();
     const enforced = policy.mode === 'ENFORCED';
@@ -49,7 +55,7 @@ export const PermissionPolicyControl = ({
     const lock = (
         <>
             {enforced ? <LockIcon /> : <LockOpenRightFilledIcon aria-hidden data-icon="lock-open-right-filled" />}
-            {modeText}
+            {quietAdjustable && !enforced ? <span className={styles.visuallyHidden}>{modeText}</span> : modeText}
         </>
     );
     const valueText = t(

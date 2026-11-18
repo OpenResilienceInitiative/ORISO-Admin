@@ -12,8 +12,20 @@
     gap: mui.$mui-unit * 1.5;
 }
 
-.title {
+.header {
+    display: flex;
+    min-height: 40px;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.heading {
+    min-width: 0;
+    flex: 1 1 auto;
     margin: 0;
+}
+
+.title {
     color: var(--m3-on-surface, #1b1b1c);
     font-size: 16px;
     font-weight: 600;
@@ -23,6 +35,64 @@
     /* Some labels were written for an all-caps style and start lowercase. */
     &:first-letter {
         text-transform: uppercase;
+    }
+}
+
+.title,
+.toggle .title {
+    display: inline-block;
+}
+
+.toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border: 0;
+    background: none;
+    border-radius: 12px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: mui.$mui-unit;
+    text-align: left;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.chevron {
+    margin-left: auto;
+    color: var(--m3-on-surface-variant, #444748);
+    transform: rotate(180deg);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}
+
+.folded .chevron {
+    transform: none;
+}
+
+/* The info button of a tile is positioned for a tile corner; here it sits in the heading row. */
+.help {
+    position: relative;
+    width: 48px;
+    height: 40px;
+    flex: 0 0 48px;
+
+    :global(.MuiIconButton-root) {
+        top: -4px;
+        right: 0;
     }
 }
 
@@ -36,6 +106,45 @@
     p {
         margin: 0;
     }
+}
+
+.learnMore {
+    display: inline-flex;
+    align-items: center;
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+    gap: 2px;
+    text-decoration: underline;
+}
+
+.learnMoreIcon {
+    font-size: 14px !important;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 1.5;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.folded .description {
+    display: none;
 }
 
 @media (max-width: 599px) {

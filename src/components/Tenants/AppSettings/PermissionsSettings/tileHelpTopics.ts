@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { TilePicture } from '../../../TileFill';
 import type { TileHelpTopic } from '../../../TileHelp';
 import type { ChatTypeCardKey } from './types';
+import { runtimeConfig } from '../../../../config/runtimeConfig';
 import {
     askerAccountHelp,
     caseHandoverHelp,
@@ -106,4 +107,41 @@ export const CASE_HANDOVER_HELP: TileHelpTopic = {
     id: 'caseHandover',
     titleKey: 'tenants.permissions.card.caseHandover.title',
     essenceKey: 'tenants.permissions.card.caseHandover.description',
+};
+
+/** Feature pages on ORISO Understand (`UNDERSTAND_URL`); a section links its page once one exists (#1558). */
+const FEATURE_PAGE_PATHS = {
+    caseHandover: 'features/case-handover.html',
+} as const;
+
+/** Address of a feature page, or undefined where no Understand is configured. */
+export const featurePage = (feature: keyof typeof FEATURE_PAGE_PATHS): string | undefined =>
+    runtimeConfig.understandUrl ? `${runtimeConfig.understandUrl}/${FEATURE_PAGE_PATHS[feature]}` : undefined;
+
+/**
+ * "Gastkonten erlauben" (#1558, #1560). The pictures are still to be drawn in the house style
+ * (prompts: docs/storybook/issue-1558-case-sharing/help-picture-prompts.md); until then the slides
+ * show the placeholder.
+ */
+export const GUEST_ACCOUNT_HELP: TileHelpTopic = {
+    id: 'guestAccounts',
+    titleKey: 'tenants.permissions.guestAccountModes.title',
+    essenceKey: 'tileHelp.guestAccounts.essence',
+    slides: [
+        {
+            id: 'temporary',
+            titleKey: 'tileHelp.guestAccounts.temporary.title',
+            bodyKey: 'tileHelp.guestAccounts.temporary.body',
+        },
+        {
+            id: 'guestChooses',
+            titleKey: 'tileHelp.guestAccounts.guestChooses.title',
+            bodyKey: 'tileHelp.guestAccounts.guestChooses.body',
+        },
+        {
+            id: 'permanent',
+            titleKey: 'tileHelp.guestAccounts.permanent.title',
+            bodyKey: 'tileHelp.guestAccounts.permanent.body',
+        },
+    ],
 };

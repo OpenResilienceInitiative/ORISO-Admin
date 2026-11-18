@@ -211,12 +211,13 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
 
     // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
     // Caritas Berlin case: raw false + inherited suggestion on -> stays OFF, hint "Vorschlag: an".
+    // #1558: only that conflict is said; otherwise the card says what the feature does.
     it.each([
-        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', 'own'],
+        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', null],
         [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'deactivated', 'ownSuggestedOn'],
-        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', 'suggested'],
-        [undefined, false, 'deactivated', 'own'],
-    ] as const)('policy %o with raw %s shows %s with source %s', (videoPolicy, own, state, source) => {
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', null],
+        [undefined, false, 'deactivated', null],
+    ] as const)('policy %o with raw %s shows %s with conflict hint %s', (videoPolicy, own, state, source) => {
         renderOneOnOne(vi.fn(), {
             permissionPolicies: {
                 featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
@@ -230,7 +231,13 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         expect(
             within(control).getByRole('button', { name: new RegExp(`tenants.permissions.policy.${state}`) }),
         ).toBeInTheDocument();
-        expect(within(control).getByText(`tenants.permissions.policy.source.${source}`)).toBeInTheDocument();
+        expect(
+            within(control).getByText(
+                source
+                    ? `tenants.permissions.policy.source.${source}`
+                    : 'tenants.permissions.featureDescription.videoCalls',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('uses false form values when an asker policy is absent from a partial response', () => {
@@ -310,7 +317,8 @@ describe('PermissionsSettingsView tiles', () => {
         foldingTiles.forEach((heading) => {
             expect(heading.querySelector('[class*="icon"][aria-hidden]')).toBeTruthy();
         });
-        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ })).toHaveLength(
+        // Every tile has its explanation; sections inside a tile can add their own (#1558).
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ }).length).toBeGreaterThanOrEqual(
             cardTiles.length + foldingTiles.length,
         );
     });
@@ -333,10 +341,11 @@ describe('PermissionsSettingsView tiles', () => {
 
 // ORISO-UserService#1662: guest account modes per chat type, next to the direct invitations.
 describe('PermissionsSettingsView guest account modes', () => {
+    // #1560: one choice per medium, from a menu.
     const permanentVideo = () =>
         screen
             .getByTestId('chat-type-card-oneOnOne')
-            .querySelector('[data-feature-policy="featureGuestAccountPermanentVideoEnabled"]') as HTMLElement | null;
+            .querySelector('[data-feature-policy="guestAccount-video"]') as HTMLElement | null;
 
     it('shows the guest account modes in the one-on-one tile and writes a Träger choice as a policy', async () => {
         const onPolicyChange = vi.fn();
@@ -345,8 +354,17 @@ describe('PermissionsSettingsView guest account modes', () => {
         expect(screen.getByText('tenants.permissions.guestAccountModes.title')).toBeTruthy();
         const row = permanentVideo();
         expect(row).toBeTruthy();
-        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.deactivate$/ }));
+        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.openMenu/ }));
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: /^tenants\.permissions\.guestAccountModes\.choice\.permanent\.SUGGESTED/,
+            }),
+        );
         expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
+            value: true,
+            mode: 'SUGGESTED',
+        });
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountTemporaryVideoEnabled', {
             value: false,
             mode: 'SUGGESTED',
         });

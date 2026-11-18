@@ -5,6 +5,7 @@ import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CaseSharingMode } from './caseSharingMode';
 import { TileSection } from '../TileSection';
+import { CASE_HANDOVER_HELP, featurePage } from '../tileHelpTopics';
 import styles from './styles.module.scss';
 
 const K = 'tenants.permissions.caseSharing';
@@ -58,6 +59,9 @@ export const CaseSharingSection = ({
             description={t(`${K}.description`)}
             titleId={titleId}
             dataTestId="case-sharing-section"
+            help={CASE_HANDOVER_HELP}
+            learnMoreHref={featurePage('caseHandover')}
+            collapsible
         >
             {bothActive && (
                 <p className={styles.warning} role="status">

@@ -114,7 +114,19 @@ const otelMetricsUrl = (() => {
     }
 })();
 
+// ORISO-Admin#1558: ORISO Understand, where a feature page explains a setting. Unset: no link.
+const understandUrl = (() => {
+    const configured = readConfigValue('UNDERSTAND_URL') ?? '';
+    try {
+        const url = new URL(configured);
+        return url.protocol === 'http:' || url.protocol === 'https:' ? configured.replace(/\/+$/, '') : '';
+    } catch {
+        return '';
+    }
+})();
+
 export const runtimeConfig = {
+    understandUrl,
     useHttps,
     useApiUrl,
     apiBaseUrl,
