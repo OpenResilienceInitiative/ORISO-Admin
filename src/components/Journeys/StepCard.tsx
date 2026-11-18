@@ -5,6 +5,7 @@ import DragIndicator from '@mui/icons-material/DragIndicator';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
 import Add from '@mui/icons-material/Add';
+import LinkOutlined from '@mui/icons-material/LinkOutlined';
 import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import ArrowDownward from '@mui/icons-material/ArrowDownward';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
@@ -31,6 +32,10 @@ export interface StepCardProps {
     onAddBelow: () => void;
     onMove: (direction: -1 | 1) => void;
     onRemove: () => void;
+    /** The plus line under the card: a new step right below this one. */
+    onInsertBelow?: () => void;
+    /** "Choose a topic" only: preselect the topic (journeys reached by one-topic links only). */
+    topicPreselect?: { on: boolean; allowed: boolean; onToggle: (on: boolean) => void };
     onTranslate?: () => void;
     onMarkChecked?: (language: string) => void;
     onDragStart: (event: DragEvent<HTMLLIElement>) => void;
@@ -38,6 +43,11 @@ export interface StepCardProps {
     onDragEnd: () => void;
     onDrop: (event: DragEvent<HTMLLIElement>) => void;
 }
+
+const preselectLabel = ({ on, allowed }: { on: boolean; allowed: boolean }) => {
+    if (on) return 'journeys.topic.unpreselect';
+    return allowed ? 'journeys.topic.preselect' : 'journeys.topic.preselectNotAllowed';
+};
 
 /**
  * One step of a phase. The handle on the left drags it (arrow keys move it, too); a must step
@@ -56,6 +66,8 @@ export const StepCard = ({
     onAddBelow,
     onMove,
     onRemove,
+    onInsertBelow,
+    topicPreselect,
     onTranslate,
     onMarkChecked,
     onDragStart,
@@ -133,6 +145,12 @@ export const StepCard = ({
                 <div className={styles.stepTop}>
                     <TranslationPill step={step} onTranslate={onTranslate} onMarkChecked={onMarkChecked} />
                     <span className={styles.chips}>
+                        {topicPreselect?.on && (
+                            <span className={styles.chip}>
+                                <LinkOutlined aria-hidden />
+                                {t('journeys.topic.preselected')}
+                            </span>
+                        )}
                         {skipped && (
                             <span className={classNames(styles.chip, styles.chipUsed)}>
                                 {t('journeys.permission.skipped')}
@@ -149,6 +167,17 @@ export const StepCard = ({
                     <RowMenu
                         ariaLabel={t('journeys.step.menu', { name: title })}
                         items={[
+                            ...(topicPreselect
+                                ? [
+                                      {
+                                          key: 'preselect',
+                                          label: t(preselectLabel(topicPreselect)),
+                                          icon: <LinkOutlined />,
+                                          disabled: !topicPreselect.on && !topicPreselect.allowed,
+                                          onSelect: () => topicPreselect.onToggle(!topicPreselect.on),
+                                      },
+                                  ]
+                                : []),
                             {
                                 key: 'settings',
                                 label: t('journeys.step.settings'),
@@ -187,6 +216,19 @@ export const StepCard = ({
                     />
                 </div>
             </div>
+            {onInsertBelow && (
+                <button
+                    type="button"
+                    className={styles.insertLine}
+                    aria-label={t('journeys.insert.after', { name: title })}
+                    title={t('journeys.insert.after', { name: title })}
+                    onClick={onInsertBelow}
+                >
+                    <span className={styles.insertPlus} aria-hidden>
+                        <Add />
+                    </span>
+                </button>
+            )}
         </li>
     );
 };

@@ -12,10 +12,13 @@ import {
     markChecked,
     missingSafetyAspects,
     moveStep,
-    picksAgencyFromList,
     removeStep,
     splitQuestionStep,
-    stepsBeforeTopic,
+    START_OF_PHASE,
+    canPreselectTopic,
+    firstFreeIndex,
+    isTopicPreselected,
+    setTopicPreselected,
     translateMissing,
     updateStep,
     type Journey,
@@ -66,6 +69,7 @@ export const PhaseDialog = ({
     const [editingId, setEditingId] = useState<string | undefined>(initially?.stepId);
     /** `null` adds at the end, a step id adds right below that step. */
     const [addingAfter, setAddingAfter] = useState<string | null | undefined>(initially?.adding ? null : undefined);
+    const [confirmRemove, setConfirmRemove] = useState<JourneyStep>();
     const [draggedId, setDraggedId] = useState<string>();
     const [drop, setDrop] = useState<DropTarget>();
     const [announcement, setAnnouncement] = useState('');
@@ -151,41 +155,6 @@ export const PhaseDialog = ({
 
                     <p className={styles.help}>{t(`journeys.phaseUnit.${phase}`)}</p>
 
-                    {phase === 'departure' && draft.conversationType === 'AGENCY_COUNSELLING' && (
-                        <div
-                            className={styles.notice}
-                            data-testid={picksAgencyFromList(draft) ? 'journey-no-postcode' : 'journey-agency-fixed'}
-                        >
-                            <p className={styles.noticeTitle}>
-                                {t(
-                                    picksAgencyFromList(draft)
-                                        ? 'journeys.noPostcode.title'
-                                        : 'journeys.agencyFixed.title',
-                                )}
-                            </p>
-                            <p>
-                                {t(
-                                    picksAgencyFromList(draft)
-                                        ? 'journeys.noPostcode.text'
-                                        : 'journeys.agencyFixed.text',
-                                )}
-                            </p>
-                        </div>
-                    )}
-
-                    {phase === 'departure' && stepsBeforeTopic(draft).length > 0 && (
-                        <div className={styles.warning} role="alert" data-testid="journey-before-topic">
-                            <p className={styles.noticeTitle}>{t('journeys.beforeTopic.title')}</p>
-                            <p>
-                                {t('journeys.beforeTopic.text', {
-                                    steps: stepsBeforeTopic(draft)
-                                        .map((step) => stepTitle(step, language, t))
-                                        .join(', '),
-                                })}
-                            </p>
-                        </div>
-                    )}
-
                     {missingSafety.length > 0 && (
                         <div className={styles.warning} role="alert" data-testid="journey-safety-warning">
                             <p className={styles.noticeTitle}>{t('conversationModules.safety.title')}</p>
@@ -213,54 +182,84 @@ export const PhaseDialog = ({
                     {steps.length === 0 ? (
                         <p className={styles.intro}>{t('journeys.phase.empty')}</p>
                     ) : (
-                        <ol className={styles.steps} aria-label={t('journeys.phase.steps', { phase: phaseName })}>
-                            {steps.map((step, index) => (
-                                <StepCard
-                                    key={step.id}
-                                    step={step}
-                                    phase={phase}
-                                    skipped={isSkipped(step, blocked)}
-                                    position={index + 1}
-                                    total={steps.length}
-                                    language={language}
-                                    dragging={draggedId === step.id}
-                                    dropLine={drop?.stepId === step.id ? drop.side : undefined}
-                                    onOpen={() => setEditingId(step.id)}
-                                    onAddBelow={() => setAddingAfter(step.id)}
-                                    onMove={(direction) => moveTo(step, index + direction)}
-                                    onRemove={() => setDraft((current) => removeStep(current, phase, step.id))}
-                                    onTranslate={
-                                        translate
-                                            ? () =>
-                                                  setDraft((current) =>
-                                                      updateStep(
-                                                          current,
-                                                          phase,
-                                                          step.id,
-                                                          translateMissing(step, translate),
-                                                      ),
-                                                  )
-                                            : undefined
-                                    }
-                                    onMarkChecked={(code) =>
-                                        setDraft((current) =>
-                                            updateStep(current, phase, step.id, markChecked(step, code)),
-                                        )
-                                    }
-                                    onDragStart={(event) => {
-                                        if (!canMoveStep(step)) return;
-                                        // Firefox starts a drag only once data is set.
-                                        event.dataTransfer.setData('text/plain', step.id);
-                                        // eslint-disable-next-line no-param-reassign -- the DnD API is set this way
-                                        event.dataTransfer.effectAllowed = 'move';
-                                        setDraggedId(step.id);
-                                    }}
-                                    onDragOver={(event) => onDragOver(event, step)}
-                                    onDragEnd={endDrag}
-                                    onDrop={onDrop}
-                                />
-                            ))}
-                        </ol>
+                        <>
+                            {firstFreeIndex(steps) === 0 && (
+                                <button
+                                    type="button"
+                                    className={styles.insertLine}
+                                    aria-label={t('journeys.insert.start')}
+                                    title={t('journeys.insert.start')}
+                                    onClick={() => setAddingAfter(START_OF_PHASE)}
+                                >
+                                    <span className={styles.insertPlus} aria-hidden>
+                                        <Add />
+                                    </span>
+                                </button>
+                            )}
+                            <ol className={styles.steps} aria-label={t('journeys.phase.steps', { phase: phaseName })}>
+                                {steps.map((step, index) => (
+                                    <StepCard
+                                        key={step.id}
+                                        step={step}
+                                        phase={phase}
+                                        skipped={isSkipped(step, blocked)}
+                                        position={index + 1}
+                                        total={steps.length}
+                                        language={language}
+                                        dragging={draggedId === step.id}
+                                        dropLine={drop?.stepId === step.id ? drop.side : undefined}
+                                        onOpen={() => setEditingId(step.id)}
+                                        onAddBelow={() => setAddingAfter(step.id)}
+                                        onMove={(direction) => moveTo(step, index + direction)}
+                                        onRemove={() =>
+                                            step.core === 'postcode'
+                                                ? setConfirmRemove(step)
+                                                : setDraft((current) => removeStep(current, phase, step.id))
+                                        }
+                                        onInsertBelow={() => setAddingAfter(step.id)}
+                                        topicPreselect={
+                                            step.core === 'topic' && draft.conversationType === 'AGENCY_COUNSELLING'
+                                                ? {
+                                                      on: isTopicPreselected(draft),
+                                                      allowed: canPreselectTopic(draft),
+                                                      onToggle: (on: boolean) =>
+                                                          setDraft((current) => setTopicPreselected(current, on)),
+                                                  }
+                                                : undefined
+                                        }
+                                        onTranslate={
+                                            translate
+                                                ? () =>
+                                                      setDraft((current) =>
+                                                          updateStep(
+                                                              current,
+                                                              phase,
+                                                              step.id,
+                                                              translateMissing(step, translate),
+                                                          ),
+                                                      )
+                                                : undefined
+                                        }
+                                        onMarkChecked={(code) =>
+                                            setDraft((current) =>
+                                                updateStep(current, phase, step.id, markChecked(step, code)),
+                                            )
+                                        }
+                                        onDragStart={(event) => {
+                                            if (!canMoveStep(step)) return;
+                                            // Firefox starts a drag only once data is set.
+                                            event.dataTransfer.setData('text/plain', step.id);
+                                            // eslint-disable-next-line no-param-reassign -- the DnD API is set this way
+                                            event.dataTransfer.effectAllowed = 'move';
+                                            setDraggedId(step.id);
+                                        }}
+                                        onDragOver={(event) => onDragOver(event, step)}
+                                        onDragEnd={endDrag}
+                                        onDrop={onDrop}
+                                    />
+                                ))}
+                            </ol>
+                        </>
                     )}
 
                     <div className={styles.addStep}>
@@ -270,6 +269,20 @@ export const PhaseDialog = ({
                     </div>
                 </div>
             </Modal>
+            {confirmRemove && (
+                <Modal
+                    titleKey="journeys.removePostcode.title"
+                    contentKey="journeys.removePostcode.text"
+                    okLabelKey="journeys.removePostcode.ok"
+                    cancelLabelKey="journeys.action.cancel"
+                    zIndex={1300}
+                    onConfirm={() => {
+                        setDraft((current) => removeStep(current, phase, confirmRemove.id));
+                        setConfirmRemove(undefined);
+                    }}
+                    onClose={() => setConfirmRemove(undefined)}
+                />
+            )}
             {addingAfter !== undefined && (
                 <AddStepDialog
                     journey={draft}

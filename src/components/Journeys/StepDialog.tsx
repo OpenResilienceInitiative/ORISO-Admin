@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import Add from '@mui/icons-material/Add';
 import CallSplit from '@mui/icons-material/CallSplit';
 import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
-import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import { Modal } from '../Modal';
 import { M3Button } from '../M3Button';
 import { M3Select } from '../M3Select';
@@ -30,6 +29,7 @@ import {
     type ScaleId,
 } from './journey';
 import { KIND_ICONS } from './AddStepDialog';
+import { BlockProfileCard } from './BlockProfileCard';
 import { nextId } from './ids';
 import { JourneyQuestionsEditor } from './JourneyQuestionsEditor';
 import { LanguageTabs } from './LanguageTabs';
@@ -168,37 +168,28 @@ export const StepDialog = ({
             wrapperTestId="journey-step-dialog"
         >
             <div className={styles.dialogBody}>
-                <aside className={styles.about} aria-labelledby="journey-step-about" data-testid="journey-step-about">
-                    <span className={styles.aboutIcon} aria-hidden>
-                        <InfoOutlined />
-                    </span>
-                    <div className={styles.aboutText}>
-                        <p className={styles.aboutTitle} id="journey-step-about">
-                            {t('journeys.stepDialog.about', {
-                                kind: t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`),
-                            })}
+                <BlockProfileCard
+                    kind={t(isMustStep(draft) ? 'journeys.kind.must' : `journeys.kind.${draft.kind}`)}
+                    help={t(aboutKey(draft))}
+                    profile={draft.profile}
+                    defaultAuthor={t('journeys.profile.platform')}
+                    onChange={(profile) => change({ profile })}
+                >
+                    {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
+                    {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
+                    {draft.kind === 'question' && (
+                        <p>
+                            {t(`journeys.stepDialog.questionsTogether.${phase === 'departure' ? 'screen' : 'message'}`)}
                         </p>
-                        <p>{t(aboutKey(draft))}</p>
-                        {fromPlatform && <p>{t('journeys.stepDialog.fromPlatform')}</p>}
-                        {isMustStep(draft) && <p>{t('journeys.stepDialog.must')}</p>}
-                        {draft.kind === 'question' && (
-                            <p>
-                                {t(
-                                    `journeys.stepDialog.questionsTogether.${
-                                        phase === 'departure' ? 'screen' : 'message'
-                                    }`,
-                                )}
-                            </p>
-                        )}
-                        {draft.kind === 'question' && (draft.questions?.length ?? 0) > 1 && onSplit && (
-                            <div>
-                                <M3Button variant="outlined" icon={<CallSplit />} onClick={() => onSplit(draft)}>
-                                    {t('journeys.stepDialog.split', { count: draft.questions?.length ?? 0 })}
-                                </M3Button>
-                            </div>
-                        )}
-                    </div>
-                </aside>
+                    )}
+                    {draft.kind === 'question' && (draft.questions?.length ?? 0) > 1 && onSplit && (
+                        <div>
+                            <M3Button variant="outlined" icon={<CallSplit />} onClick={() => onSplit(draft)}>
+                                {t('journeys.stepDialog.split', { count: draft.questions?.length ?? 0 })}
+                            </M3Button>
+                        </div>
+                    )}
+                </BlockProfileCard>
 
                 <div className={styles.toolbar}>
                     <LanguageTabs step={draft} value={language} onChange={setLanguage} />
@@ -212,7 +203,7 @@ export const StepDialog = ({
                 </div>
 
                 {field('title', t('journeys.stepDialog.title'))}
-                {field('description', t('journeys.stepDialog.description'))}
+                {field('description', t('journeys.stepDialog.descriptionForSeekers'))}
 
                 {draft.core && FIXED_TRIGGERS[draft.core] && (
                     <p className={styles.help}>

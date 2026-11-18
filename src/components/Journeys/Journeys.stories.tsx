@@ -37,6 +37,13 @@ let debt: Journey = { ...standardJourney('AGENCY_COUNSELLING', 'debt', 2), name:
 debt = addStep(debt, 'departure', { kind: 'question' }, 'debt-situation');
 debt = updateStep(debt, 'departure', 'debt-situation', {
     title: { de: 'Ihre Situation', en: 'Your situation' },
+    profile: {
+        about: 'Fragt, bei wie vielen Stellen Schulden bestehen und was gerade drängt.',
+        goal: 'Dringlichkeit klären, bevor die erste Antwort geschrieben wird',
+        author: 'Schuldnerberatung Köln-Mitte',
+        audiences: ['adults'],
+        tags: ['Schulden', 'Pfändung'],
+    },
     questions: [
         {
             id: 'creditors',
@@ -142,6 +149,10 @@ export const Departure: Story = {
     args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
+        // "Choose a topic" is fixed at the top; no plus line before it.
+        const topic = await body.findByTestId('journey-step-topic');
+        await expect(within(topic).getByRole('img', { name: /Pflichtschritt/ })).toBeInTheDocument();
+        await expect(body.queryByRole('button', { name: 'Schritt am Anfang einfügen' })).not.toBeInTheDocument();
         const consent = await body.findByTestId('journey-step-consent');
         // A must step has a lock instead of the drag handle.
         await expect(within(consent).getByRole('img', { name: /Pflichtschritt/ })).toBeInTheDocument();
@@ -235,13 +246,25 @@ export const EditingQuestions: Story = {
     },
 };
 
-/** Without a postcode step the person picks the Beratungsstelle from a list (U25). */
+/** U25 without a postcode: the person picks the centre from the topic's list; the age is asked. */
 export const DepartureWithoutPostcode: Story = {
     args: { initiallyOpen: mail({ journeyId: 'u25', phase: 'departure' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByTestId('journey-no-postcode')).toBeInTheDocument();
-        await expect(body.getByTestId('journey-step-age')).toBeInTheDocument();
+        await expect(await body.findByTestId('journey-step-age')).toBeInTheDocument();
+        await expect(body.queryByTestId('journey-step-postcode')).not.toBeInTheDocument();
+    },
+};
+
+/** Removing the postcode asks first, and says what changes for the person. */
+export const RemovingThePostcode: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const postcode = await body.findByTestId('journey-step-postcode');
+        await userEvent.click(within(postcode).getByRole('button', { name: /Weitere Aktionen für Postleitzahl/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: 'Löschen' }));
+        await expect(await body.findByText(/Liste aller Beratungsstellen des Themas/)).toBeInTheDocument();
     },
 };
 
@@ -469,28 +492,15 @@ export const U25RegistrationAndLink: Story = {
     },
 };
 
-/** A step before "choose a topic" in a journey of the registration: the registration cannot show it. */
-export const StepBeforeTopic: Story = {
-    args: {
-        journeys: journeys.map((journey) =>
-            journey.id === 'u25'
-                ? {
-                      ...journey,
-                      phases: {
-                          ...journey.phases,
-                          departure: [
-                              ...journey.phases.departure.filter((step) => step.addon === 'age'),
-                              ...journey.phases.departure.filter((step) => step.addon !== 'age'),
-                          ],
-                      },
-                  }
-                : journey,
-        ),
-        initiallyOpen: mail({ journeyId: 'u25', phase: 'departure' }),
-    },
+/** A journey reached by one-topic links only may preselect the topic; the screen is then skipped. */
+export const TopicPreselected: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure' }) },
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
-        await expect(await body.findByTestId('journey-before-topic')).toHaveTextContent('Alter');
+        const topic = await body.findByTestId('journey-step-topic');
+        await userEvent.click(within(topic).getByRole('button', { name: /Weitere Aktionen für Thema wählen/ }));
+        await userEvent.click(await body.findByRole('menuitem', { name: /Thema vorwählen/ }));
+        await expect(topic).toHaveTextContent('Vorgewählt über den Link');
     },
 };
 
@@ -543,5 +553,52 @@ export const SplitIntoSteps: Story = {
         await userEvent.click(await body.findByRole('button', { name: 'In 2 einzelne Schritte aufteilen' }));
         const phase = await body.findByTestId('journey-phase-departure');
         await expect(within(phase).getByText('Was drängt gerade?')).toBeInTheDocument();
+    },
+};
+
+/** Answers and questions sorted with the arrows next to them. */
+export const SortingAnswers: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const creditors = await body.findByTestId('question-creditors');
+        await userEvent.click(within(creditors).getByRole('button', { name: 'Antwort 1 nach unten' }));
+        const answers = within(creditors).getAllByRole('listitem');
+        await expect(within(answers[0]).getByDisplayValue('Bei zwei bis fünf')).toBeInTheDocument();
+        await expect(within(answers[1]).getByDisplayValue('Bei einer')).toBeInTheDocument();
+        await expect(within(creditors).getByRole('button', { name: 'Frage 1 nach oben' })).toBeDisabled();
+    },
+};
+
+/** The profile card of a block: two descriptions, goal, author, audiences, keywords. */
+export const ProfileCard: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const about = await body.findByTestId('journey-step-about');
+        await expect(about).toHaveTextContent('Schuldnerberatung Köln-Mitte');
+        await userEvent.click(within(about).getByRole('button', { name: 'Steckbrief für Redaktionen' }));
+        const form = body.getByTestId('journey-step-profile');
+        await userEvent.click(within(form).getByRole('checkbox', { name: 'Eltern' }));
+        await userEvent.type(within(form).getByRole('textbox', { name: 'Schlagwörter' }), 'Miete{Enter}');
+        await expect(about).toHaveTextContent('#Miete');
+        await expect(about).toHaveTextContent('Erwachsene, Eltern');
+        await userEvent.tab();
+    },
+};
+
+/** The plus line between two steps inserts right there. */
+export const InsertBetweenSteps: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await body.findByRole('button', { name: 'Schritt nach „Thema wählen“ einfügen' }));
+        await userEvent.click(await body.findByTestId('journey-add-question'));
+        const stepDialog = await body.findByTestId('journey-step-dialog');
+        await userEvent.click(within(stepDialog).getByRole('button', { name: 'Übernehmen' }));
+        const order = within(body.getByRole('list', { name: /Schritte der Phase/ }))
+            .getAllByRole('listitem')
+            .map((item) => item.getAttribute('data-testid'));
+        await expect(order[1]).toMatch(/^journey-step-step-/);
     },
 };

@@ -78,7 +78,8 @@ const MAIL: readonly ConversationType[] = ['AGENCY_COUNSELLING'];
 const ALL: readonly ConversationType[] = CONVERSATION_TYPES;
 
 const CORE_RULES: Record<CoreElementId, ElementRule> = {
-    topic: { phases: ['departure'], types: COUNSELLING },
+    // Always first: in the registration the topic picks the journey (Frank, 2026-11-18).
+    topic: { phases: ['departure'], types: COUNSELLING, must: true },
     postcode: { phases: ['departure'], types: MAIL },
     // The postcode often finds several centres: the centre is fixed only by this step, or before it
     // by a link or subdomain of its own (Frank, 2026-11-18).
@@ -175,6 +176,31 @@ export interface PanelAspect {
     prototypeId?: string;
 }
 
+/** Who a block is meant for; the library filters by it. */
+export const AUDIENCES = ['youth', 'adults', 'parents', 'relatives', 'professionals'] as const;
+export type Audience = (typeof AUDIENCES)[number];
+
+/**
+ * The profile card of a block, for other editors (not shown to the advice seeker): what it is
+ * for, what it should achieve, who made it, for whom, and keywords to find it (Frank, 2026-11-18).
+ */
+export interface BlockProfile {
+    about: string;
+    goal: string;
+    author: string;
+    audiences: Audience[];
+    tags: string[];
+}
+
+export const emptyProfile = (author = ''): BlockProfile => ({ about: '', goal: '', author, audiences: [], tags: [] });
+
+/** Adds a keyword once, ignoring case and surrounding spaces. */
+export const addTag = (profile: BlockProfile, tag: string): BlockProfile => {
+    const clean = tag.trim();
+    if (!clean || profile.tags.some((existing) => existing.toLowerCase() === clean.toLowerCase())) return profile;
+    return { ...profile, tags: [...profile.tags, clean] };
+};
+
 export interface JourneyStep {
     id: string;
     kind: StepKind;
@@ -196,6 +222,10 @@ export interface JourneyStep {
     trigger?: JourneyTrigger;
     /** Languages a machine wrote and nobody has checked yet. */
     machine?: string[];
+    /** For other editors: what the block is for, its goal, author, audiences, keywords. */
+    profile?: BlockProfile;
+    /** "Choose a topic" only: the topic is already set by the link, the screen is skipped. */
+    preselected?: boolean;
 }
 
 /** A link of its own. Its name is the label an enquiry carries in the inbox. */
@@ -509,11 +539,14 @@ const withPhase = (journey: Journey, phase: JourneyPhase, steps: JourneyStep[]):
  * Puts a step at `toIndex` of its phase. Must steps do not move, and because only the other steps
  * move, the must steps always keep their order among themselves.
  */
+/** Nothing goes before "choose a topic": in the registration the topic picks the journey. */
+export const firstFreeIndex = (steps: JourneyStep[]) => (steps[0]?.core === 'topic' ? 1 : 0);
+
 export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, toIndex: number): Journey => {
     const steps = journey.phases[phase];
     const from = steps.findIndex((step) => step.id === stepId);
     if (from < 0 || !canMoveStep(steps[from])) return journey;
-    const target = Math.max(0, Math.min(steps.length - 1, toIndex));
+    const target = Math.max(firstFreeIndex(steps), Math.min(steps.length - 1, toIndex));
     if (target === from) return journey;
     const next = [...steps];
     const [moved] = next.splice(from, 1);
@@ -587,6 +620,9 @@ export const addonChoices = (
 export const isSkipped = (step: JourneyStep, blocked: readonly string[]) =>
     (step.core !== undefined && blocked.includes(step.core)) ||
     (step.addon !== undefined && blocked.includes(step.addon));
+
+/** `afterStepId` for a new step at the start of a phase (after "choose a topic", if there is one). */
+export const START_OF_PHASE = '^start';
 
 export type NewStep =
     | { kind: 'core'; core: CoreElementId }
@@ -675,21 +711,14 @@ export const addStep = (
         if (!choice || choice.used || !choice.allowed) return journey;
     }
     const steps = [...journey.phases[phase]];
-    const after = afterStepId ? steps.findIndex((step) => step.id === afterStepId) : -1;
-    steps.splice(after < 0 ? steps.length : after + 1, 0, blankStep(draft, phase, id));
+    let at = steps.length;
+    if (afterStepId === START_OF_PHASE) at = firstFreeIndex(steps);
+    else if (afterStepId) {
+        const after = steps.findIndex((step) => step.id === afterStepId);
+        if (after >= 0) at = after + 1;
+    }
+    steps.splice(at, 0, blankStep(draft, phase, id));
     return withPhase(journey, phase, steps);
-};
-
-/**
- * Steps a registration can never show. The registration starts before any journey is known: the
- * topic picks the journey. So in a journey that the registration routes to, steps placed before
- * "choose a topic" only run for its links (where the topic may already be set).
- */
-export const stepsBeforeTopic = (journey: Journey): JourneyStep[] => {
-    if (journey.routes.registration.length === 0) return [];
-    const steps = journey.phases.departure;
-    const topic = steps.findIndex((step) => step.core === 'topic');
-    return topic < 0 ? [] : steps.slice(0, topic);
 };
 
 /**
@@ -817,6 +846,57 @@ export const markChecked = (step: JourneyStep, language: string): JourneyStep =>
     ...step,
     machine: (step.machine ?? []).filter((code) => code !== language),
 });
+
+/** Moves one entry of a list by one place; a no-op at the edges. */
+export const moveItem = <T>(items: T[], index: number, direction: -1 | 1): T[] => {
+    const target = index + direction;
+    if (index < 0 || index >= items.length || target < 0 || target >= items.length) return items;
+    const next = [...items];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+};
+
+/**
+ * Whether a block matches a search: every word must occur in its title, its profile (about, goal,
+ * author), its audiences or its keywords. For the block library to come.
+ */
+export const matchesSearch = (step: JourneyStep, query: string, audienceNames: Record<Audience, string>) => {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) return true;
+    const { profile } = step;
+    const haystack = [
+        ...Object.values(step.title),
+        profile?.about,
+        profile?.goal,
+        profile?.author,
+        ...(profile?.audiences ?? []).map((audience) => audienceNames[audience]),
+        ...(profile?.tags ?? []),
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    return words.every((word) => haystack.includes(word));
+};
+
+/**
+ * "Choose a topic" may be preselected only where the topic is clear before the person arrives: a
+ * journey reached by links alone, each with exactly one topic. The registration always asks.
+ */
+export const canPreselectTopic = (journey: Journey) =>
+    journey.routes.registration.length === 0 && journey.routes.links.every((link) => link.topicIds.length <= 1);
+
+/** The preselection counts only while it is allowed; a route added later makes the screen ask again. */
+export const isTopicPreselected = (journey: Journey) =>
+    canPreselectTopic(journey) && journey.phases.departure.some((step) => step.core === 'topic' && step.preselected);
+
+export const setTopicPreselected = (journey: Journey, preselected: boolean): Journey => {
+    if (preselected && !canPreselectTopic(journey)) return journey;
+    return withPhase(
+        journey,
+        'departure',
+        journey.phases.departure.map((step) => (step.core === 'topic' ? { ...step, preselected } : step)),
+    );
+};
 
 // ---- routes and destinations ------------------------------------------------------------------
 

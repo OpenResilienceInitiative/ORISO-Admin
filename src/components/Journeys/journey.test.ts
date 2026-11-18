@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     addLinkForTopic,
     addStep,
+    addTag,
     addonChoices,
     assignRegistrationTopic,
     canMoveStep,
@@ -9,6 +10,7 @@ import {
     coveredTopics,
     coreChoices,
     duplicateJourney,
+    emptyProfile,
     editablePhases,
     exampleInfoPanel,
     exampleSurveySteps,
@@ -16,7 +18,9 @@ import {
     languageStates,
     markChecked,
     linkPath,
+    matchesSearch,
     missingSafetyAspects,
+    moveItem,
     moveStep,
     newJourney,
     phasesOf,
@@ -29,7 +33,10 @@ import {
     shippedJourneys,
     splitQuestionStep,
     standardJourney,
-    stepsBeforeTopic,
+    START_OF_PHASE,
+    canPreselectTopic,
+    isTopicPreselected,
+    setTopicPreselected,
     stepKindsFor,
     triggersFor,
     topicReach,
@@ -139,11 +146,11 @@ describe('must steps', () => {
         expect(moveStep(journey, 'flight', enquiry.id, 1).phases.flight[1].core).toBe('enquiry');
     });
 
-    it('never changes the order of the must steps when another step moves around them', () => {
+    it('keeps "choose a topic" first and the must steps in their order when another step moves', () => {
         const journey = mail();
         const email = stepOf(journey, 'email');
         const moved = moveStep(journey, 'departure', email.id, 0);
-        expect(coresOf(moved, 'departure')).toEqual(['email', 'topic', 'postcode', 'agency', 'username', 'consent']);
+        expect(coresOf(moved, 'departure')).toEqual(['topic', 'email', 'postcode', 'agency', 'username', 'consent']);
     });
 
     it('keeps "choose a centre": the postcode often finds several, so it is not removable', () => {
@@ -536,16 +543,14 @@ describe('the language menu of a step', () => {
 });
 
 describe('the registration picks the journey by topic', () => {
-    it('cannot show steps before "choose a topic" in a journey the registration routes to', () => {
-        const routed = mail({ routes: { registration: [3], links: [] } });
-        expect(stepsBeforeTopic(routed)).toEqual([]);
-        const emailFirst = moveStep(routed, 'departure', 'j1:email', 0);
-        expect(stepsBeforeTopic(emailFirst).map((step) => step.core)).toEqual(['email']);
-    });
-
-    it('lets a link-only journey put steps before the topic', () => {
-        const linkOnly = mail({ routes: { registration: [], links: [{ id: 'l', name: 'U25', topicIds: [3] }] } });
-        expect(stepsBeforeTopic(moveStep(linkOnly, 'departure', 'j1:email', 0))).toEqual([]);
+    it('keeps "choose a topic" first: a must step, and nothing can be placed before it', () => {
+        const journey = mail();
+        const topic = stepOf(journey, 'topic');
+        expect(canRemoveStep(topic)).toBe(false);
+        expect(canMoveStep(topic)).toBe(false);
+        const atStart = addStep(journey, 'departure', { kind: 'question' }, 'q', START_OF_PHASE);
+        expect(atStart.phases.departure.map((step) => step.id).slice(0, 2)).toEqual(['j1:topic', 'q']);
+        expect(addStep(journey, 'flight', { kind: 'question' }, 'q', START_OF_PHASE).phases.flight[0].id).toBe('q');
     });
 
     it('serves one journey from the registration and from a link at the same time (U25)', () => {
@@ -554,6 +559,26 @@ describe('the registration picks the journey by topic', () => {
         });
         expect(topicReach([u25], 'AGENCY_COUNSELLING', 3)).toBe('registration');
         expect(routeSummary(u25)).toEqual({ registrationTopics: 1, links: 1, linkTopics: 1 });
+    });
+
+    it('lets a journey reached by one-topic links only preselect the topic', () => {
+        const linkOnly = mail({ routes: { registration: [], links: [{ id: 'l', name: 'U25', topicIds: [3] }] } });
+        expect(canPreselectTopic(linkOnly)).toBe(true);
+        const preselected = setTopicPreselected(linkOnly, true);
+        expect(isTopicPreselected(preselected)).toBe(true);
+        const registered = mail({ routes: { registration: [3], links: [] } });
+        expect(setTopicPreselected(registered, true)).toBe(registered);
+        const twoTopics = mail({ routes: { registration: [], links: [{ id: 'l', name: 'X', topicIds: [3, 4] }] } });
+        expect(canPreselectTopic(twoTopics)).toBe(false);
+    });
+
+    it('asks for the topic again once the journey gets a registration route', () => {
+        const preselected = setTopicPreselected(
+            mail({ routes: { registration: [], links: [{ id: 'l', name: 'U25', topicIds: [3] }] } }),
+            true,
+        );
+        const [withRegistration] = assignRegistrationTopic([preselected], 'j1', 3);
+        expect(isTopicPreselected(withRegistration)).toBe(false);
     });
 });
 
@@ -579,5 +604,52 @@ describe('a question step asks all its questions at once', () => {
     it('leaves a step with one question alone', () => {
         const journey = addStep(mail(), 'departure', { kind: 'question' }, 'q');
         expect(splitQuestionStep(journey, 'departure', 'q', (index) => `q-${index}`)).toBe(journey);
+    });
+});
+
+describe('sorting answers and questions', () => {
+    it('moves an entry one place up or down, and does nothing at the edges', () => {
+        expect(moveItem(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c']);
+        expect(moveItem(['a', 'b', 'c'], 2, -1)).toEqual(['a', 'c', 'b']);
+        const list = ['a', 'b'];
+        expect(moveItem(list, 0, -1)).toBe(list);
+        expect(moveItem(list, 1, 1)).toBe(list);
+    });
+});
+
+describe('the profile card of a block', () => {
+    const names = {
+        youth: 'Jugendliche',
+        adults: 'Erwachsene',
+        parents: 'Eltern',
+        relatives: 'Angehörige',
+        professionals: 'Fachkräfte',
+    };
+    const situation = (): JourneyStep => ({
+        ...stepOf(mail(), 'postcode'),
+        title: { de: 'Ihre Situation' },
+        profile: {
+            about: 'Fragt nach Gläubigern und Dringendem.',
+            goal: 'Dringlichkeit vor der ersten Antwort klären',
+            author: 'Schuldnerberatung Köln-Mitte',
+            audiences: ['adults'],
+            tags: ['Schulden', 'Pfändung'],
+        },
+    });
+
+    it('adds a keyword once, whatever its case and spaces', () => {
+        const profile = addTag(addTag(emptyProfile(), ' Schulden '), 'schulden');
+        expect(profile.tags).toEqual(['Schulden']);
+        expect(addTag(profile, '   ')).toBe(profile);
+    });
+
+    it('is found by title, goal, author, audience and keyword, every word counting', () => {
+        const step = situation();
+        expect(matchesSearch(step, '', names)).toBe(true);
+        expect(matchesSearch(step, 'pfändung', names)).toBe(true);
+        expect(matchesSearch(step, 'erwachsene dringlichkeit', names)).toBe(true);
+        expect(matchesSearch(step, 'köln situation', names)).toBe(true);
+        expect(matchesSearch(step, 'jugendliche', names)).toBe(false);
+        expect(matchesSearch(step, 'schulden sucht', names)).toBe(false);
     });
 });

@@ -1302,7 +1302,7 @@ p.aboutTitle {
     flex-direction: column;
     padding: 0;
     margin: 0;
-    gap: 4px;
+    gap: mui.$mui-unit * 2;
     list-style: none;
 }
 
@@ -1429,4 +1429,165 @@ p.aboutTitle {
 .languageTabOn {
     border-color: $primary;
     background: $selected;
+}
+
+/* The controls of an answer stand beside the field, centred on its height (56 px), not on the
+ * original line below it. */
+
+.answerActions,
+.rowActions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
+
+.answerActions {
+    height: 56px;
+}
+
+/* ---- the profile card of a block ---- */
+.profileFacts {
+    display: grid;
+    margin: 4px 0 0;
+    color: $text;
+    font-size: 14px;
+    gap: 2px mui.$mui-unit * 1.5;
+    grid-template-columns: max-content minmax(0, 1fr);
+    line-height: 20px;
+
+    dt {
+        color: $muted;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+
+    dd {
+        margin: 0;
+    }
+}
+
+.profileTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.profileToggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit 4px 0;
+    border: 0;
+    background: none;
+    color: $primary;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 4px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.profileForm {
+    display: flex;
+    flex-direction: column;
+    padding-top: mui.$mui-unit;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.tagInput {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.chipRemove {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    margin-left: 2px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+/* ---- the plus line between steps: hover or focus shows where a step may go ---- */
+.insertLine {
+    position: relative;
+    display: flex;
+    width: calc(100% - 44px);
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    margin: -4px 0 -16px 44px;
+    background: none;
+    cursor: pointer;
+    grid-column: 1 / -1;
+    opacity: 0;
+    transition: opacity 120ms ease;
+
+    &:before {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        left: 0;
+        border-top: 2px solid $primary;
+        content: '';
+    }
+
+    &:hover,
+    &:focus-visible {
+        opacity: 1;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.insertPlus {
+    position: relative;
+    display: inline-flex;
+    width: 20px;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: $primary;
+    color: var(--m3-on-primary, #ffffff);
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .insertLine {
+        transition: none;
+    }
 }

@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import Add from '@mui/icons-material/Add';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import ArrowUpward from '@mui/icons-material/ArrowUpward';
 import ArrowDropDownCircle from '@mui/icons-material/ArrowDropDownCircleOutlined';
 import CheckBoxOutlineBlank from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxOutlined from '@mui/icons-material/CheckBoxOutlined';
@@ -20,6 +22,7 @@ import {
     type Question,
     type QuestionType,
 } from '../ConversationModules/conversationModule';
+import { moveItem } from './journey';
 import { nextId } from './ids';
 import { TranslatableField, type TextChange } from './TranslatableField';
 import styles from './styles.module.scss';
@@ -117,16 +120,33 @@ export const JourneyQuestionsEditor = ({
                                     number: index + 1,
                                 })}
                             </h3>
-                            <IconButton
-                                icon={<DeleteOutline />}
-                                ariaLabel={t('journeys.question.remove', { number: index + 1 })}
-                                onClick={() =>
-                                    onChange(
-                                        questions.filter((_, i) => i !== index),
-                                        'typed',
-                                    )
-                                }
-                            />
+                            <span className={styles.rowActions}>
+                                <IconButton
+                                    icon={<ArrowUpward />}
+                                    size={32}
+                                    ariaLabel={t('journeys.question.moveUp', { number: index + 1 })}
+                                    disabled={index === 0}
+                                    onClick={() => onChange(moveItem(questions, index, -1), 'typed')}
+                                />
+                                <IconButton
+                                    icon={<ArrowDownward />}
+                                    size={32}
+                                    ariaLabel={t('journeys.question.moveDown', { number: index + 1 })}
+                                    disabled={index === questions.length - 1}
+                                    onClick={() => onChange(moveItem(questions, index, 1), 'typed')}
+                                />
+                                <IconButton
+                                    icon={<DeleteOutline />}
+                                    size={32}
+                                    ariaLabel={t('journeys.question.remove', { number: index + 1 })}
+                                    onClick={() =>
+                                        onChange(
+                                            questions.filter((_, i) => i !== index),
+                                            'typed',
+                                        )
+                                    }
+                                />
+                            </span>
                         </div>
 
                         <div
@@ -193,18 +213,48 @@ export const JourneyQuestionsEditor = ({
                                                 )
                                             }
                                         />
-                                        <IconButton
-                                            icon={<Close />}
-                                            size={32}
-                                            ariaLabel={t('journeys.question.removeAnswer', { number: optionIndex + 1 })}
-                                            disabled={question.options.length <= 2}
-                                            onClick={() =>
-                                                replace(index, {
-                                                    ...question,
-                                                    options: question.options.filter((_, i) => i !== optionIndex),
-                                                })
-                                            }
-                                        />
+                                        <span className={styles.answerActions}>
+                                            <IconButton
+                                                icon={<ArrowUpward />}
+                                                size={32}
+                                                ariaLabel={t('journeys.question.answerUp', { number: optionIndex + 1 })}
+                                                disabled={optionIndex === 0}
+                                                onClick={() =>
+                                                    replace(index, {
+                                                        ...question,
+                                                        options: moveItem(question.options, optionIndex, -1),
+                                                    })
+                                                }
+                                            />
+                                            <IconButton
+                                                icon={<ArrowDownward />}
+                                                size={32}
+                                                ariaLabel={t('journeys.question.answerDown', {
+                                                    number: optionIndex + 1,
+                                                })}
+                                                disabled={optionIndex === question.options.length - 1}
+                                                onClick={() =>
+                                                    replace(index, {
+                                                        ...question,
+                                                        options: moveItem(question.options, optionIndex, 1),
+                                                    })
+                                                }
+                                            />
+                                            <IconButton
+                                                icon={<Close />}
+                                                size={32}
+                                                ariaLabel={t('journeys.question.removeAnswer', {
+                                                    number: optionIndex + 1,
+                                                })}
+                                                disabled={question.options.length <= 2}
+                                                onClick={() =>
+                                                    replace(index, {
+                                                        ...question,
+                                                        options: question.options.filter((_, i) => i !== optionIndex),
+                                                    })
+                                                }
+                                            />
+                                        </span>
                                     </li>
                                 ))}
                                 {question.other && (
