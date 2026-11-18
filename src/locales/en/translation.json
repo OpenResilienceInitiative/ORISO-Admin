@@ -4061,5 +4061,11 @@
     "tenants.permissions.caseSharing.option.none.label": "None",
     "tenants.permissions.caseSharing.option.none.description": "The case stays with the counsellor who accepted it.",
     "tenants.permissions.caseSharing.bothActive": "Team counselling and case handover are both active today. Choose one option.",
-    "tenants.permissions.caseSharing.handoverSettings": "Case handover settings"
+    "tenants.permissions.caseSharing.handoverSettings": "Case handover settings",
+    "tenants.permissions.card.summary.off": "Off",
+    "tenants.permissions.card.summary.onPlain": "On",
+    "tenants.permissions.card.summary.on": "On · {{count}} of {{total}} extra features",
+    "tenants.permissions.caseSharing.summary.caseHandover": "Case handover",
+    "tenants.permissions.caseSharing.summary.teamCounselling": "Team counselling",
+    "tenants.permissions.caseSharing.summary.none": "No case sharing"
 }

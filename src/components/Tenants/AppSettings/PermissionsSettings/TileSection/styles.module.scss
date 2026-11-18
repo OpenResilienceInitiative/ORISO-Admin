@@ -1,0 +1,45 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* ORISO-Admin#1558 — a section of a conversation-type tile on a surface of its own. */
+.section {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border: 1px solid var(--m3-outline-variant, #c4c7c5);
+    border-radius: 16px;
+    background: var(--m3-surface-container-low, #f7f2f3);
+    gap: mui.$mui-unit * 1.5;
+}
+
+.title {
+    margin: 0;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+
+    /* Some labels were written for an all-caps style and start lowercase. */
+    &:first-letter {
+        text-transform: uppercase;
+    }
+}
+
+.description {
+    margin-top: -(mui.$mui-unit);
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    line-height: 18px;
+
+    p {
+        margin: 0;
+    }
+}
+
+@media (max-width: 599px) {
+    .section {
+        padding: mui.$mui-unit * 1.5;
+    }
+}

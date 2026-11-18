@@ -4061,5 +4061,11 @@
     "tenants.permissions.caseSharing.option.none.label": "Keine",
     "tenants.permissions.caseSharing.option.none.description": "Der Fall bleibt bei der Berater:in, die ihn angenommen hat.",
     "tenants.permissions.caseSharing.bothActive": "Heute sind Teamberatung und Fallübergabe beide aktiv. Wählen Sie eine Variante.",
-    "tenants.permissions.caseSharing.handoverSettings": "Einstellungen zur Fallübergabe"
+    "tenants.permissions.caseSharing.handoverSettings": "Einstellungen zur Fallübergabe",
+    "tenants.permissions.card.summary.off": "Aus",
+    "tenants.permissions.card.summary.onPlain": "An",
+    "tenants.permissions.card.summary.on": "An · {{count}} von {{total}} Zusatzfunktionen",
+    "tenants.permissions.caseSharing.summary.caseHandover": "Fallübergabe",
+    "tenants.permissions.caseSharing.summary.teamCounselling": "Teamberatung",
+    "tenants.permissions.caseSharing.summary.none": "Keine Fallteilung"
 }

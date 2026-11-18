@@ -4,6 +4,7 @@ import RadioGroup from '@mui/material/RadioGroup';
 import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CaseSharingMode } from './caseSharingMode';
+import { TileSection } from '../TileSection';
 import styles from './styles.module.scss';
 
 const K = 'tenants.permissions.caseSharing';
@@ -52,11 +53,12 @@ export const CaseSharingSection = ({
     const disabled = Boolean(disabledReason);
 
     return (
-        <div className={styles.section} data-testid="case-sharing-section">
-            <div id={titleId} className={styles.title}>
-                {t(`${K}.title`)}
-            </div>
-            <p className={styles.note}>{t(`${K}.description`)}</p>
+        <TileSection
+            title={t(`${K}.title`)}
+            description={t(`${K}.description`)}
+            titleId={titleId}
+            dataTestId="case-sharing-section"
+        >
             {bothActive && (
                 <p className={styles.warning} role="status">
                     {t(`${K}.bothActive`)}
@@ -90,6 +92,6 @@ export const CaseSharingSection = ({
                     {handoverSettings}
                 </div>
             )}
-        </div>
+        </TileSection>
     );
 };

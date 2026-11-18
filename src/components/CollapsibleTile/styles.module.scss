@@ -117,10 +117,13 @@
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
+    /* A long summary wraps instead of pushing the page sideways (#1558). */
     .chip {
+        max-width: 100%;
         grid-column: 2;
         grid-row: 2;
         justify-self: start;
+        white-space: normal;
     }
 
     .chevron {

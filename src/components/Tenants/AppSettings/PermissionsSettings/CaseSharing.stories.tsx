@@ -200,3 +200,17 @@ export const AfterBothActiveToday: Story = {
         await expect(mail.getByRole('status')).toHaveTextContent(/beide aktiv|both active/);
     },
 };
+
+/** Every conversation-type tile folded: the page becomes an overview, each header says what is set. */
+export const AfterFolded: Story = {
+    args: { caseSharing: { mode: 'caseHandover' } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const headers = ['oneOnOne', 'liveChat', 'group', 'groupInternal'].map(
+            (key) => within(canvas.getByTestId(`chat-type-card-${key}`)).getAllByRole('button', { expanded: true })[0],
+        );
+        await headers.reduce((previous, header) => previous.then(() => userEvent.click(header)), Promise.resolve());
+        headers.forEach((header) => expect(header).toHaveAttribute('aria-expanded', 'false'));
+        await expect(headers[0]).toHaveTextContent(/Fallübergabe|Case handover/);
+    },
+};

@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { PermissionsSettingsViewProps } from './PermissionsSettingsView';
 
@@ -82,5 +83,52 @@ describe('case sharing on the Mailberatung tile', () => {
         await renderView({ caseSharing: { mode: 'none' } });
 
         expect(screen.getByTestId('asker-card')).toBeInTheDocument();
+    });
+});
+
+// Frank 2026-11-18: long tiles fold up to an overview, as on the Legal page.
+describe('folding conversation-type tiles', () => {
+    beforeEach(() => {
+        vi.resetModules();
+    });
+
+    it('folds the Mailberatung tile to a header that still says what is set', async () => {
+        await renderView({ caseSharing: { mode: 'caseHandover' } });
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+        const header = mail.getByRole('button', { name: /tenants\.permissions\.card\.oneOnOne\.title/ });
+
+        expect(header).toHaveAttribute('aria-expanded', 'true');
+        expect(header).toHaveTextContent('tenants.permissions.card.summary.on');
+        expect(header).toHaveTextContent('tenants.permissions.caseSharing.summary.caseHandover');
+
+        await userEvent.click(header);
+
+        expect(header).toHaveAttribute('aria-expanded', 'false');
+        expect(
+            mail.getByRole('radiogroup', { hidden: true, name: 'tenants.permissions.caseSharing.title' }),
+        ).not.toBeVisible();
+    });
+
+    it('says "off" in the header when the conversation type is switched off', async () => {
+        await renderView({
+            initialValues: { settings: { featureCallsEnabled: false } },
+            permissionPolicies: { featureCallsEnabled: { value: false, mode: 'SUGGESTED' } },
+        });
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+
+        expect(mail.getByRole('button', { name: /oneOnOne\.title/ })).toHaveTextContent(
+            'tenants.permissions.card.summary.off',
+        );
+    });
+
+    it('puts every topic of the tile in a section of its own', async () => {
+        await renderView({ caseSharing: { mode: 'none' } });
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+
+        const sections = mail.getAllByRole('region').map((section) => section.getAttribute('aria-labelledby'));
+        expect(sections.length).toBeGreaterThanOrEqual(4);
+        expect(mail.getByRole('region', { name: 'tenants.permissions.card.configurableFeatures' })).toBeInTheDocument();
+        expect(mail.getByRole('region', { name: 'tenants.permissions.caseSharing.title' })).toBeInTheDocument();
+        expect(mail.getByRole('region', { name: 'tenants.permissions.directInvite.title' })).toBeInTheDocument();
     });
 });

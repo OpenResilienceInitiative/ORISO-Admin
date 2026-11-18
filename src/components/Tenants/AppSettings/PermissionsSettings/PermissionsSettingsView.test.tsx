@@ -55,7 +55,8 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
     it('orders the title before the activated control, with the explanation behind the help button', () => {
         renderOneOnOne();
 
-        const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
+        // #1558: the folding header also carries the summary chip.
+        const title = screen.getByRole('heading', { name: /^tenants\.permissions\.card\.oneOnOne\.title/ });
         const activated = screen.getByRole('button', {
             name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
         });
@@ -288,15 +289,24 @@ describe('PermissionsSettingsView tiles', () => {
         renderOneOnOne();
 
         // The page's own wrapper card shares the heading level but is not a tile.
-        const tiles = screen
+        const cardTiles = screen
             .getAllByRole('heading', { level: 5 })
             .filter((heading) => heading.textContent !== 'tenants.permissions.title');
-        expect(tiles.map((heading) => heading.textContent)).toContain('tenants.permissions.asker.title');
-        expect(tiles.length).toBeGreaterThan(1);
-        tiles.forEach((heading) => {
+        expect(cardTiles.map((heading) => heading.textContent)).toContain('tenants.permissions.asker.title');
+        cardTiles.forEach((heading) => {
             expect(heading.parentElement?.querySelector('[class*="headerIcon"]')).toBeTruthy();
         });
-        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ })).toHaveLength(tiles.length);
+        // #1558: conversation-type tiles fold up; their header button carries the icon.
+        const foldingTiles = screen
+            .getAllByRole('heading', { level: 3 })
+            .filter((heading) => heading.closest('[data-testid^="chat-type-card-"]'));
+        expect(foldingTiles.length).toBeGreaterThan(0);
+        foldingTiles.forEach((heading) => {
+            expect(heading.querySelector('[class*="icon"][aria-hidden]')).toBeTruthy();
+        });
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ })).toHaveLength(
+            cardTiles.length + foldingTiles.length,
+        );
     });
 
     it('shows direct invitations inside the one-on-one tile, independent of its master switch', () => {
