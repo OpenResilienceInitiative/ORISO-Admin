@@ -64,12 +64,18 @@ const CENTRES = [
 ];
 
 const handlers = [
-    http.get('*/service/agencyadmin/agencies', () =>
-        HttpResponse.json({
-            _embedded: CENTRES.map((centre) => ({ _embedded: { ...centre, tenantId: 21, deleteDate: null } })),
-            total: CENTRES.length,
-        }),
-    ),
+    http.get('*/service/agencyadmin/agencies', ({ request }) => {
+        // The server matches by name; `*` is "all".
+        const query = new URL(request.url).searchParams.get('q') ?? '*';
+        const rows =
+            query === '*'
+                ? CENTRES
+                : CENTRES.filter((centre) => centre.name.toLowerCase().includes(query.toLowerCase()));
+        return HttpResponse.json({
+            _embedded: rows.map((centre) => ({ _embedded: { ...centre, tenantId: 21, deleteDate: null } })),
+            total: rows.length,
+        });
+    }),
     http.get('*/service/tenantadmin/*/dpa/gate', () => HttpResponse.json({ dpaPublished: true, dpaSigned: true })),
 ];
 
@@ -152,5 +158,37 @@ export const ListLoadErrorRetry: Story = {
         await waitFor(() => expect(listRequests).toBeGreaterThan(before));
         await expect(await within(canvasElement).findByText('Caritas Beratungsstelle Mitte')).toBeVisible();
         await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+    },
+};
+
+/**
+ * One search for the whole admin: the list has no search field of its own any more (it used to sit
+ * beside the ⌘K search). ⌘K → "Alle Treffer in der Liste zeigen" opens the list with `?q=`.
+ */
+export const NarrowedBySearch: Story = {
+    parameters: { route: '/admin/agency?q=Mitte' },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Caritas Beratungsstelle Mitte')).toBeVisible();
+        // the search reaches the list: a centre that does not match is not shown
+        await expect(canvas.queryByText('Online-Beratung Süd')).toBeNull();
+        await expect(canvas.queryByRole('textbox')).toBeNull();
+        const bar = canvas.getByTestId('list-search-bar');
+        await expect(bar).toHaveTextContent('„Mitte“');
+        await userEvent.click(within(bar).getByRole('button', { name: 'Ganze Liste zeigen' }));
+        await waitFor(() => expect(canvas.queryByTestId('list-search-bar')).toBeNull());
+        // the whole list is back
+        await expect(await canvas.findByText('Online-Beratung Süd')).toBeVisible();
+    },
+};
+
+export const NarrowedBySearchPhone: Story = {
+    parameters: { route: '/admin/agency?q=Mitte' },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('Caritas Beratungsstelle Mitte')).toBeVisible();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Mitte“');
+        await expect(canvas.queryByRole('textbox')).toBeNull();
     },
 };

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import classNames from 'classnames';
 import { PlaceholderTextField } from './PlaceholderTextField';
 import { TemplateSplitButton, type TemplateOption } from './TemplateSplitButton';
 import type { PlaceholderTokenDef } from './placeholderTokens';
@@ -65,6 +66,8 @@ export interface PlaceholderTemplateEditorProps<V extends Record<string, string>
      * the chooser into the editor's function bar.
      */
     hideTemplateChooser?: boolean;
+    /** Equal desktop columns; the last multiline field grows to the preview's bottom. */
+    matchPreviewHeight?: boolean;
 }
 
 /**
@@ -90,6 +93,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
     templateIcon,
     readOnly = false,
     hideTemplateChooser = false,
+    matchPreviewHeight = false,
 }: PlaceholderTemplateEditorProps<V>) => (
     <section aria-label={heading} className={styles.editor}>
         <header className={styles.header}>
@@ -111,7 +115,7 @@ export const PlaceholderTemplateEditor = <V extends Record<string, string>>({
                 />
             )}
         </header>
-        <div className={styles.formAndPreview}>
+        <div className={classNames(styles.formAndPreview, { [styles.matchPreviewHeight]: matchPreviewHeight })}>
             <div className={styles.fields}>
                 {fields.map((field) => (
                     <PlaceholderTextField

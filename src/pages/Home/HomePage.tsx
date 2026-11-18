@@ -31,6 +31,8 @@ import {
     type HomeTileLink,
 } from './homeModel';
 import { useHomeFacts } from './useHomeFacts';
+import { buildContactPersonTip } from './contactPersonTip';
+import { MissingContactPersonTip } from './MissingContactPersonTip';
 import { HomeIntroVideo } from './HomeIntroVideo';
 import styles from './home.module.scss';
 
@@ -246,6 +248,8 @@ export const HomePage = () => {
                 </div>
                 <img className={styles.heroPicture} src={welcomePicture} alt="" aria-hidden />
             </header>
+
+            <MissingContactPersonTip tip={buildContactPersonTip(role, facts.contactCoverage)} />
 
             <div className={styles.startRow}>
                 {showChecklist && (

@@ -4,16 +4,24 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
 import { CardGrid } from '../../../CardGrid';
 import { CardEditable } from '../../../CardEditable';
-import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { APP_ONLY_HINT_KEY, CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { DirectInviteSection } from './DirectInviteSection';
+import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
 import { CONVERSATION_HELP } from './tileHelpTopics';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
-import { isSubToggleDisabled, resolvePermissionPolicy } from './permissionsSettingsUtils';
+import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
+import {
+    type EffectivePolicy,
+    isSubToggleDisabled,
+    permissionPolicySource,
+    resolvePermissionPolicy,
+} from './permissionsSettingsUtils';
+
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import { runtimeConfig } from '../../../../config/runtimeConfig';
 import type {
@@ -26,6 +34,13 @@ import type {
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import styles from './styles.module.scss';
+
+/** Own value plus a differing suggestion from above reads "Eigene Auswahl · Vorschlag: an/aus". */
+const sourceHintKey = (policy: EffectivePolicy) => {
+    const source = permissionPolicySource(policy);
+    if (source !== 'own' || policy.suggestedValue === undefined) return source;
+    return policy.suggestedValue ? 'ownSuggestedOn' : 'ownSuggestedOff';
+};
 
 /**
  * Reason a toggle cannot control anything in this environment, or `null` when
@@ -66,12 +81,16 @@ export type PermissionsSettingsViewProps = {
     onToggleUpdate: ToggleAfterChangeHandler;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
+    /** Values this level stored itself; they win over a suggestion from above (TenantService#363). */
+    ownSettings?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
     /** Centre page: the Träger's policies for "Direkteinladung erlauben" (a Träger "off" wins). */
     traegerDirectInvitePolicies?: Record<string, PolicyValue<boolean>>;
     /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
     recipientScope?: Omit<RecipientScopeControlProps, 'level' | 'disabled'>;
+    /** Calendar visibility (ADR-032); like the group-chat scope it is per Träger, so none on the agency page. */
+    calendar?: Omit<CalendarCardProps, 'level'>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
 };
@@ -91,9 +110,11 @@ export const PermissionsSettingsView = ({
     onToggleUpdate,
     policyLevel = 'tenant',
     permissionPolicies,
+    ownSettings,
     pendingPolicyFields,
     onPolicyChange,
     recipientScope,
+    calendar,
     traegerDirectInvitePolicies,
     liveChatLinks,
 }: PermissionsSettingsViewProps) => {
@@ -121,8 +142,14 @@ export const PermissionsSettingsView = ({
 
     const policyFor = useCallback(
         (fieldKey: string, currentValue: unknown): PolicyValue<boolean> =>
-            resolvePermissionPolicy(permissionPolicies, fieldKey, currentValue, restrictedFields),
-        [permissionPolicies, restrictedFields],
+            resolvePermissionPolicy(
+                permissionPolicies,
+                fieldKey,
+                currentValue,
+                restrictedFields,
+                ownSettings?.[fieldKey],
+            ),
+        [permissionPolicies, restrictedFields, ownSettings],
     );
     const policyPending = useCallback(
         (fieldKey: string) => pendingPolicyFields?.has(fieldKey) === true,
@@ -147,7 +174,7 @@ export const PermissionsSettingsView = ({
     // One row for every switch on a tile: feature toggles and notification channels alike.
     const toggleRow = (
         form: FormInstance,
-        row: { setting: string; labelKey: string; policy: PolicyValue<boolean>; disabled?: boolean; note?: string },
+        row: { setting: string; labelKey: string; policy: EffectivePolicy; disabled?: boolean; note?: string },
     ) => (
         <PolicyOptionCard
             key={row.setting}
@@ -158,7 +185,12 @@ export const PermissionsSettingsView = ({
             policy={row.policy}
             pending={policyPending(row.setting)}
             disabled={row.disabled}
-            supportingText={row.note}
+            supportingText={
+                row.note ??
+                (policyLevel === 'platform'
+                    ? undefined
+                    : t(`tenants.permissions.policy.source.${sourceHintKey(row.policy)}`))
+            }
             onChange={(next) => changePolicy(row.setting, next, form)}
         />
     );
@@ -370,10 +402,17 @@ export const PermissionsSettingsView = ({
                                                                 return toggleRow(form, {
                                                                     setting: toggle.field[1],
                                                                     labelKey: toggle.labelKey,
-                                                                    policy: policyFor(
-                                                                        toggle.field[1],
-                                                                        getFieldValue(toggle.field),
-                                                                    ),
+                                                                    // Nothing implements it yet: locked off.
+                                                                    policy: unavailableHintKey
+                                                                        ? {
+                                                                              value: false,
+                                                                              mode: 'ENFORCED',
+                                                                              inherited: true,
+                                                                          }
+                                                                        : policyFor(
+                                                                              toggle.field[1],
+                                                                              getFieldValue(toggle.field),
+                                                                          ),
                                                                     disabled:
                                                                         Boolean(unavailableHintKey) || disabledByMaster,
                                                                     note: disabledHintKey
@@ -389,11 +428,12 @@ export const PermissionsSettingsView = ({
                                                         {/* The reason is long: below the cards, so one card does not stretch the row. */}
                                                         {[
                                                             ...new Set(
-                                                                card.toggles.map((toggle) =>
+                                                                card.toggles.flatMap((toggle) => [
                                                                     unavailableCapabilityHintKey(
                                                                         toggle.requiresCapability,
                                                                     ),
-                                                                ),
+                                                                    toggle.appOnly ? APP_ONLY_HINT_KEY : null,
+                                                                ]),
                                                             ),
                                                         ]
                                                             .filter(Boolean)
@@ -429,6 +469,37 @@ export const PermissionsSettingsView = ({
                                                                         changePolicy(fieldKey, next, form)
                                                                     }
                                                                 />
+                                                                {/* ORISO-UserService#1662: no Beratungsstelle value exists. */}
+                                                                {policyLevel !== 'agency' && (
+                                                                    <>
+                                                                        <div className={styles.cardDivider} />
+                                                                        <div className={styles.togglesSectionLabel}>
+                                                                            {t(
+                                                                                'tenants.permissions.guestAccountModes.title',
+                                                                            )}
+                                                                        </div>
+                                                                        <p className={styles.cardDescriptionSecondary}>
+                                                                            {t(
+                                                                                'tenants.permissions.guestAccountModes.description',
+                                                                            )}
+                                                                        </p>
+                                                                        <GuestAccountModeSection
+                                                                            restrictedFields={restrictedFields}
+                                                                            policyLevel={policyLevel}
+                                                                            permissionPolicies={permissionPolicies}
+                                                                            fallbackValues={
+                                                                                initialValues.settings as
+                                                                                    | Record<string, unknown>
+                                                                                    | undefined
+                                                                            }
+                                                                            ownSettings={ownSettings}
+                                                                            pendingPolicyFields={pendingPolicyFields}
+                                                                            onPolicyChange={(fieldKey, next) =>
+                                                                                changePolicy(fieldKey, next, form)
+                                                                            }
+                                                                        />
+                                                                    </>
+                                                                )}
                                                             </>
                                                         )}
 
@@ -458,6 +529,11 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardGrid.Item>
                         ))}
+                        {calendar && policyLevel !== 'agency' && (
+                            <CardGrid.Item span={2}>
+                                <CalendarCard {...calendar} level={policyLevel} />
+                            </CardGrid.Item>
+                        )}
                     </CardGrid>
                 </div>
             )}

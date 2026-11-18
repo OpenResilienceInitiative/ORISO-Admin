@@ -168,6 +168,7 @@ export const CreateConsultantModal = ({
                 if (
                     reason === X_REASON.EMAIL_NOT_AVAILABLE ||
                     reason === X_REASON.USERNAME_NOT_AVAILABLE ||
+                    reason === X_REASON.USERNAME_IN_DELETION ||
                     reason === X_REASON.NUMBER_OF_LICENSES_EXCEEDED ||
                     reason === X_REASON.PASSWORD_NOT_VALID
                 ) {

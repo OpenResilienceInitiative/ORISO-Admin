@@ -121,3 +121,36 @@ export const TenantsLoadErrorRetry: Story = {
         await waitFor(() => expect(within(canvasElement).getByDisplayValue('Träger Nord')).toBeVisible());
     },
 };
+
+const LIVE_CHAT_SWITCH = /Weitere Beratung im Live-Chat empfehlen|Recommend further counselling in the live chat/;
+
+/**
+ * ORISO-Frontend#2251: a Träger admin sees the centre switch „Weitere Beratung im Live-Chat empfehlen“,
+ * off by default, and can switch it on.
+ */
+export const LiveChatFurtherCounsellingTraegerAdmin: Story = {
+    beforeEach: () => {
+        setStoryAuth([UserRole.TenantAdmin], 3);
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const toggle = await canvas.findByRole('switch', { name: LIVE_CHAT_SWITCH });
+        await expect(toggle).not.toBeChecked();
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).toBeChecked());
+    },
+};
+
+/** ORISO-Frontend#2251: a restricted counselling-centre admin does not get the switch. */
+export const LiveChatFurtherCounsellingHiddenForCentreAdmin: Story = {
+    beforeEach: () => {
+        setStoryAuth([UserRole.RestrictedAgencyAdmin], 3);
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('combobox', {
+            name: /Themen & Fachbereiche neuer Berater:innen|Topics & departments of new counsellors/,
+        });
+        await expect(canvas.queryByRole('switch', { name: LIVE_CHAT_SWITCH })).toBeNull();
+    },
+};

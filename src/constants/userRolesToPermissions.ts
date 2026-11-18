@@ -11,6 +11,7 @@ const rolesPriority: UserRole[] = [
     UserRole.UserAdmin,
     UserRole.SingleTenantAdmin,
     UserRole.TenantAdmin,
+    UserRole.StatisticsReader,
 ];
 
 export const getEffectivePermissionRoles = (roles: UserRole[]): UserRole[] => {
@@ -130,6 +131,17 @@ export const useUserRolesToPermission = () => {
             },
             // Tenant admins also manage the agency admins inside their tenant.
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
+            // Statistik-Leser·innen see platform-wide numbers, so only a platform admin manages
+            // them (ORISO-UserService#1666); the server answers 403 to everyone else.
+            StatisticsReaderUser: {
+                read: isSuperAdmin,
+                create: isSuperAdmin,
+                update: isSuperAdmin,
+                delete: isSuperAdmin,
+            },
+            // The platform admin manages the platform-wide topic catalogue (Settings → Themen), whether
+            // or not the registration uses topics yet. Träger admins do not.
+            ...(isSuperAdmin ? { Topic: { read: true, create: true, update: true, delete: true } } : {}),
         },
         [UserRole.TopicAdmin]: {
             Topic: { read: isTopicsEnabled, create: isTopicsEnabled, update: isTopicsEnabled, delete: isTopicsEnabled },
@@ -143,8 +155,16 @@ export const useUserRolesToPermission = () => {
             },
             Statistic: { read: true },
         },
+        // ORISO-UserService#1666: reading statistics is the whole role. Nothing else is granted, so
+        // the OR-merge can never widen a pure reader beyond Statistic.read.
+        [UserRole.StatisticsReader]: {
+            Statistic: { read: true },
+        },
         [UserRole.UserAdmin]: {
             Consultant: { read: true, create: true, update: true, delete: true },
+            // GET/DELETE /useradmin/askers need user-admin; the server narrows to the caller's
+            // Träger or centres (ORISO-Admin#1521). Advice seekers are never created here.
+            AdviceSeeker: { read: true, delete: true },
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
         },
     };

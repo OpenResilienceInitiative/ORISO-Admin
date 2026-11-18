@@ -1,12 +1,14 @@
-import { Button, Space, Tag } from 'antd';
+import { Tag } from 'antd';
 import { ColumnType } from 'antd/lib/table';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Select } from '../../../components/M3Select';
 import { ListingTable } from '../../../components/ListingTable';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { useInactiveAccountAuditLogsData } from '../../../hooks/useInactiveAccountAuditLogsData';
 import { InactiveAccountAuditLogEntry } from '../../../types/inactiveAccountAuditLogs';
+import { LogFilterBar } from '../LogFilterBar';
+
+const ACCOUNT_ROLES = ['ASKER', 'CONSULTANT', 'ADMIN'] as const;
 
 const roleColorMap: Record<string, string> = {
     ADMIN: 'purple',
@@ -43,7 +45,11 @@ export const InactiveAccountAuditLogsPage = () => {
                 dataIndex: 'accountRole',
                 key: 'accountRole',
                 width: 110,
-                render: (value: string) => <Tag color={roleColorMap[value] ?? 'default'}>{value}</Tag>,
+                render: (value: string) => (
+                    <Tag color={roleColorMap[value] ?? 'default'}>
+                        {t(`inactiveAudit.role.${value}`, { defaultValue: value })}
+                    </Tag>
+                ),
             },
             {
                 title: t('inactiveAudit.table.accountId'),
@@ -96,9 +102,27 @@ export const InactiveAccountAuditLogsPage = () => {
 
     return (
         <>
-            <Space style={{ marginBottom: 16 }} wrap>
+            <LogFilterBar
+                search={{
+                    label: t('inactiveAudit.filters.accountId'),
+                    value: accountIdInput,
+                    onChange: setAccountIdInput,
+                    onSearch: (value) => {
+                        setAccountIdFilter(value);
+                        setPage(1);
+                    },
+                }}
+                activeCount={[accountRole, accountIdFilter].filter(Boolean).length}
+                onReset={() => {
+                    setAccountRole(undefined);
+                    setAccountIdInput('');
+                    setAccountIdFilter('');
+                    setPage(1);
+                }}
+            >
                 <M3Select
                     allowClear
+                    aria-label={t('inactiveAudit.filters.role')}
                     placeholder={t('inactiveAudit.filters.role')}
                     style={{ width: 180 }}
                     value={accountRole}
@@ -106,35 +130,9 @@ export const InactiveAccountAuditLogsPage = () => {
                         setAccountRole(value);
                         setPage(1);
                     }}
-                    options={[
-                        { value: 'ASKER', label: 'ASKER' },
-                        { value: 'CONSULTANT', label: 'CONSULTANT' },
-                        { value: 'ADMIN', label: 'ADMIN' },
-                    ]}
+                    options={ACCOUNT_ROLES.map((value) => ({ value, label: t(`inactiveAudit.role.${value}`) }))}
                 />
-                <GlobalSearchBar
-                    ariaLabel={t('inactiveAudit.filters.accountId')}
-                    defaultExpanded
-                    expandedWidth={320}
-                    searchPlaceholder={t('inactiveAudit.filters.accountId')}
-                    value={accountIdInput}
-                    onSearchChange={setAccountIdInput}
-                    onSearch={(value) => {
-                        setAccountIdFilter(value);
-                        setPage(1);
-                    }}
-                />
-                <Button
-                    onClick={() => {
-                        setAccountRole(undefined);
-                        setAccountIdInput('');
-                        setAccountIdFilter('');
-                        setPage(1);
-                    }}
-                >
-                    {t('btn.cancel')}
-                </Button>
-            </Space>
+            </LogFilterBar>
 
             <ListingTable<InactiveAccountAuditLogEntry>
                 rowKey={(row) => `${row.id}`}

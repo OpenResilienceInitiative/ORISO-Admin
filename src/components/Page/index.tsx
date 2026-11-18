@@ -4,8 +4,8 @@ import {
     BalanceOutlined,
     CategoryOutlined,
     ChatOutlined,
-    ChevronLeft,
     EmailOutlined,
+    InterestsOutlined,
     ManageAccountsOutlined,
     SettingsApplicationsOutlined,
     SettingsOutlined,
@@ -20,6 +20,7 @@ import { ReactComponent as TabStarIcon } from '../../resources/img/svg/permissio
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { useRegisterMobileNav } from '../AdminMobileNav/MobileNavContext';
 import { AdminSegmentedTabs, type AdminSegmentedTabItem } from '../AdminSegmentedTabs/AdminSegmentedTabs';
+import { BackButton } from '../BackButton';
 import styles from './styles.module.scss';
 
 interface PageProps {
@@ -75,6 +76,7 @@ export const tabIcons: Record<string, SvgIconComponent> = {
     global_settings: SettingsApplicationsOutlined,
     legal: BalanceOutlined,
     master_data: ManageAccountsOutlined,
+    topics: InterestsOutlined,
 };
 
 type PageTab = { to: string; titleKey; iconName?: string; icon?: JSX.Element };
@@ -192,18 +194,16 @@ export const PageBack = forwardRef(
         const finalTabs = useMemo(() => tabs?.filter?.(Boolean) || [], [tabs]);
         const headline = getTruncatedTitle(title ?? (titleKey ? t<string>(titleKey) : ''), titleMaxLength);
         const parentLabel = parentKey ? t<string>(parentKey) : undefined;
+        // Names the list back leads to ("Zurück zu Beratungsstellen"); the same text is the accessible
+        // name of the desktop button and of its icon-only twin in the mobile bottom bar.
+        const backLabel = String(parentLabel ? t('page.back.to', { parent: parentLabel }) : t('page.back.label'));
         const visibleMeta = (meta ?? []).filter(
             (item) => item !== null && item !== undefined && item !== false && item !== '',
         );
 
         return (
             <div className={styles.back} ref={ref as Ref<HTMLDivElement>} data-admin-page-header>
-                <PageMobileNavRegistration
-                    id="page-back"
-                    tabs={finalTabs}
-                    backPath={path}
-                    backLabel={typeof headline === 'string' ? headline : undefined}
-                />
+                <PageMobileNavRegistration id="page-back" tabs={finalTabs} backPath={path} backLabel={backLabel} />
                 {/* On mobile the back button lives in the bottom bar, icon only and
                 without the entity name (Figma 1683:40339) — repeating it here
                 would be a second control for the same thing. */}
@@ -212,15 +212,7 @@ export const PageBack = forwardRef(
                 back pill that carried nothing but the name. */}
                 {isDesktopLayout && (
                     <div className={classNames(styles.backBar, { [styles.backWithTabs]: !!finalTabs?.length })}>
-                        <NavLink
-                            to={path}
-                            className={styles.backButton}
-                            aria-label={String(
-                                parentLabel ? t('page.back.to', { parent: parentLabel }) : t('page.back.label'),
-                            )}
-                        >
-                            <ChevronLeft />
-                        </NavLink>
+                        <BackButton iconOnly label={backLabel} to={path} />
                         <div className={styles.backText}>
                             {parentLabel && (
                                 <nav aria-label={String(t('page.breadcrumb'))}>

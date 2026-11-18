@@ -28,6 +28,7 @@ describe('buildAdminNavTree', () => {
             'settings:global-config',
             'settings:master-data',
             'settings:general',
+            'settings:topics',
             'settings:legal',
             'settings:smtp',
             'settings:service-notices',
@@ -38,9 +39,26 @@ describe('buildAdminNavTree', () => {
             'users:tenant-admins',
             'users:agency-admins',
             'users:counsellors',
+            'users:advice-seekers',
+            'users:statistics-readers',
         ]);
         expect(ids(tree, 'links')).toEqual(['links:tenants', 'links:counsellor']);
         expect(ids(tree, 'logs')).toContain('logs:inactive');
+        expect(ids(tree, 'logs')).toContain('logs:addons');
+    });
+
+    it('lists the add-on log only for admins who may change the Träger', () => {
+        const withTenantUpdate = (allowed: boolean) =>
+            buildAdminNavTree({
+                ...base,
+                isSuperAdmin: false,
+                hasRole: () => false,
+                can: (action, resource) =>
+                    allowed && action === PermissionAction.Update && resource === Resource.Tenant,
+            });
+
+        expect(ids(withTenantUpdate(true), 'logs')).toEqual(['logs:addons']);
+        expect(ids(withTenantUpdate(false), 'logs')).not.toContain('logs:addons');
     });
 
     it('offers an agency admin only what the pages would let them open', () => {
@@ -86,6 +104,13 @@ describe('buildAdminNavTree', () => {
         // The single tab stays in the tree, so the app-wide search still finds it.
         expect(ids(tree, 'theme')).toEqual(['settings:legal']);
         expect(tree.theme[0].to).toBe(`${routePathNames.themeSettings}/legal`);
+    });
+
+    // ORISO-UserService#1666: only a platform admin manages Statistik-Leser·innen.
+    it('keeps the Statistik-Leser list from a Träger admin even with every permission', () => {
+        const tree = buildAdminNavTree({ ...base, isSuperAdmin: false, hasRole: () => true, can: () => true });
+
+        expect(ids(tree, 'counselors')).not.toContain('users:statistics-readers');
     });
 
     it('returns empty lists for an admin without permissions', () => {

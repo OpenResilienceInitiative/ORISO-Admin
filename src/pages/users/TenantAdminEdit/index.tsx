@@ -28,6 +28,7 @@ import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIde
 import { CounselorData } from '../../../types/counselor';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { AccessDenied } from '../../ErrorPages/AccessDenied';
+import { AdminContactEmailField } from '../AdminContact';
 
 const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
@@ -212,6 +213,7 @@ const TenantAdminEditor = () => {
                                         },
                                     ]}
                                 />
+                                <AdminContactEmailField disabled={isReadOnly || !canWrite} />
                             </Card>
                         </Col>
                         {!isEditing && (

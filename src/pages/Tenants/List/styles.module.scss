@@ -1,26 +1,21 @@
 /* Toolbar of the Träger list; the table lives in tenantDataTable.module.scss. */
 .toolbar {
     display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: 672px;
     min-width: 0;
     margin-bottom: 24px;
+    gap: 12px;
 }
 
-.searchField {
-    width: 100%;
-    max-width: 672px;
-    min-width: 0;
-    flex: 1 1 672px;
-}
-
+/* The list has no search field of its own (⌘K is the one place to type), so "New" sits alone on the right. */
 .toolbarActions {
-    display: inline-flex;
-    flex-shrink: 0;
+    display: flex;
+    justify-content: flex-end;
     align-items: center;
 }
 
-/* Same 56px pill as the search field next to it (accounts toolbar). */
+/* Same 56px pill as the accounts toolbar. */
 .createButton {
     height: 56px;
     min-width: 96px;

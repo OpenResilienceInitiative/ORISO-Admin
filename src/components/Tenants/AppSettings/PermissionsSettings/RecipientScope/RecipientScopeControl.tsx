@@ -11,7 +11,7 @@ import { RECIPIENT_SCOPES, isRecipientScopeLocked, resolveRecipientScopePolicy }
 import styles from './styles.module.scss';
 import { Notify } from '../../../../Notify';
 
-const KEY = 'tenants.permissions.card.groupInternal.recipientScope';
+const RECIPIENT_SCOPE_KEY = 'tenants.permissions.card.groupInternal.recipientScope';
 
 export type RecipientScopeControlProps = {
     /**
@@ -24,6 +24,12 @@ export type RecipientScopeControlProps = {
     disabled?: boolean;
     /** Rejects when the save fails; the control then keeps the edit and says so. */
     onSave: (next: Pick<RecipientScopePolicy, 'value' | 'mode'>) => Promise<unknown>;
+    /**
+     * Translation prefix of the texts. The same three scopes (centre, Träger, platform) also set how
+     * far counsellors see colleagues' calendars (ADR-032), with their own wording.
+     */
+    i18nKey?: string;
+    testId?: string;
 };
 
 /**
@@ -32,7 +38,14 @@ export type RecipientScopeControlProps = {
  * requirement for the Träger; a Träger admin sees a requirement read-only. Saving is explicit, so a
  * failed save can keep the edit instead of silently jumping back.
  */
-export const RecipientScopeControl = ({ policy, level, disabled = false, onSave }: RecipientScopeControlProps) => {
+export const RecipientScopeControl = ({
+    policy,
+    level,
+    disabled = false,
+    onSave,
+    i18nKey: KEY = RECIPIENT_SCOPE_KEY,
+    testId = 'recipient-scope-control',
+}: RecipientScopeControlProps) => {
     const { t } = useTranslation();
     const idBase = useId();
     const available = policy != null;
@@ -102,12 +115,7 @@ export const RecipientScopeControl = ({ policy, level, disabled = false, onSave 
 
     const titleId = `${idBase}-title`;
     return (
-        <section
-            ref={rootRef}
-            className={styles.control}
-            data-testid="recipient-scope-control"
-            aria-labelledby={titleId}
-        >
+        <section ref={rootRef} className={styles.control} data-testid={testId} aria-labelledby={titleId}>
             <div className={styles.heading}>
                 <h3 id={titleId} className={styles.title}>
                     {t(`${KEY}.title`)}

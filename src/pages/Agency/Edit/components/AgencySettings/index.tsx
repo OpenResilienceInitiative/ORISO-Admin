@@ -21,6 +21,7 @@ import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 import { TOPIC_PERMISSION_LABEL_KEYS, TOPIC_PERMISSIONS } from '../../../../Links/inviteModel';
 import { Notify } from '../../../../../components/Notify';
 import { HintText } from '../../../../../components/HintText';
+import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 
 interface AgencySettingsProps {
     isEditMode: boolean;
@@ -45,7 +46,9 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
 
     const { isEnabled } = useFeatureContext();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
+    // ORISO-Frontend#2251: a centre-owned switch only Träger and platform admins may change.
+    const canEditLiveChatFurtherCounselling = isEditMode && (isSuperAdmin || isTenantScopedAdmin);
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
     const [tenantsFailed, setTenantsFailed] = useState(false);
@@ -147,6 +150,14 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                         value,
                         label: t(...TOPIC_PERMISSION_LABEL_KEYS[value].title),
                     }))}
+                />
+            )}
+
+            {canEditLiveChatFurtherCounselling && (
+                <MuiSwitchField
+                    label={t('agency.form.settings.liveChatFurtherCounselling.title')}
+                    helpText={t('agency.form.settings.liveChatFurtherCounselling.help')}
+                    name={['settings', 'featureLiveChatFurtherCounsellingEnabled']}
                 />
             )}
 

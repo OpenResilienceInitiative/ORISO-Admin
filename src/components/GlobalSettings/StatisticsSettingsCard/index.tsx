@@ -30,6 +30,7 @@ import { statisticsHelp } from './help';
 import { downloadStatisticsSettingsProtocol, statisticsSettingValueLabel } from './statisticsSettingsProtocolCsv';
 import styles from './styles.module.scss';
 import { Notify } from '../../Notify';
+import { toIntlLocale } from '../../../utils/language';
 
 interface Props {
     data?: StatisticsSettings;
@@ -82,7 +83,7 @@ const SyncConfirmedSettings = ({ data, editing }: { data?: StatisticsSettings; e
 const formatDay = (dateTime: string, language: string) => {
     const [year, month, day] = dateTime.slice(0, 10).split('-').map(Number);
     if (!year || !month || !day) return dateTime;
-    return new Intl.DateTimeFormat(language, {
+    return new Intl.DateTimeFormat(toIntlLocale(language), {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',

@@ -25,6 +25,12 @@ vi.mock('../../components/GlobalSettings/AccountInactivitySettingsCard', () => (
 vi.mock('../../components/GlobalSettings/OneTopicPerAgencySettingsCard', () => ({
     OneTopicPerAgencySettingsCardContainer: () => <div data-testid="topics-card" />,
 }));
+vi.mock('../../components/GlobalSettings/LiveChatFreeChoiceSettingsCard', () => ({
+    LiveChatFreeChoiceSettingsCardContainer: () => <div data-testid="live-chat-free-choice-card" />,
+}));
+vi.mock('../../components/GlobalSettings/ChatMessageSettingsCard', () => ({
+    ChatMessageSettingsCardContainer: () => <div data-testid="chat-message-settings-card" />,
+}));
 vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
     TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
 }));
@@ -49,5 +55,5 @@ it('places the tutorial preview after topics and before translation settings', (
         Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(screen.getByText('Kommt bald')).toBeVisible();
-    expect(screen.getAllByRole('switch')).toHaveLength(5);
+    expect(screen.getAllByRole('switch')).toHaveLength(4);
 });

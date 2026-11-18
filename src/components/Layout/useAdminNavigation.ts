@@ -23,7 +23,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
     const { t, i18n } = useTranslation();
     const { settings } = useAppConfigContext();
     const { can } = useUserPermissions();
-    const { hasRole, isSuperAdmin, isTechnicalAccount, tokenUnreadable } = useUserRoles();
+    const { hasRole, isSuperAdmin, isStatisticsReader, isTechnicalAccount, tokenUnreadable } = useUserRoles();
     const { isEnabled: isReleaseEnabled } = useReleasesToggle();
 
     const shouldShowThemeSettings =
@@ -35,6 +35,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
     const navLabel = (key: string, fallbackKey: string) => t(key, t(fallbackKey));
     const labels = {
         account: navLabel('sidebar.account', 'profile.title'),
+        addons: navLabel('sidebar.addons', 'addons.title'),
         agency: navLabel('sidebar.agency', 'agency'),
         home: navLabel('sidebar.home', 'home.title'),
         links: navLabel('sidebar.links', 'links.navTitle'),
@@ -59,6 +60,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
         ? []
         : buildAdminNavItems({
               isSuperAdmin,
+              isStatisticsReader,
               hasRole,
               can,
               labels,
@@ -67,7 +69,8 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
 
     const tree = useMemo(
         () =>
-            restricted
+            // A Statistik-Leser·in has no sections with subsections (ORISO-UserService#1666).
+            restricted || isStatisticsReader
                 ? {}
                 : buildAdminNavTree({
                       isSuperAdmin,
@@ -83,6 +86,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
             canManageServiceNotices,
             hasRole,
             isSuperAdmin,
+            isStatisticsReader,
             isTenantSettingsEditEnabled,
             restricted,
             settings.multitenancyWithSingleDomainEnabled,
@@ -103,7 +107,7 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
         navItems,
         accountItem,
         tree,
-        settingsTabs: restricted ? [] : getSettingsTabs(settingsContext),
+        settingsTabs: restricted || isStatisticsReader ? [] : getSettingsTabs(settingsContext),
         logoutLabel: labels.logout,
         navLanguage: i18n.resolvedLanguage || i18n.language,
     };

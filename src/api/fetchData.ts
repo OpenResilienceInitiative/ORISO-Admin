@@ -64,6 +64,9 @@ export const FETCH_ERRORS = {
 export const X_REASON = {
     EMAIL_NOT_AVAILABLE: 'EMAIL_NOT_AVAILABLE',
     USERNAME_NOT_AVAILABLE: 'USERNAME_NOT_AVAILABLE',
+    // The name belongs to a counsellor whose deletion is still running; it becomes free once the
+    // hard deletion has run after the safeguard window (ORISO-Admin#1489).
+    USERNAME_IN_DELETION: 'USERNAME_IN_DELETION',
     NUMBER_OF_LICENSES_EXCEEDED: 'NUMBER_OF_LICENSES_EXCEEDED',
     TENANT_LICENSING_NOT_CONFIGURED: 'TENANT_LICENSING_NOT_CONFIGURED',
     SUBDOMAIN_NOT_UNIQUE: 'SUBDOMAIN_NOT_UNIQUE',
@@ -83,6 +86,7 @@ export const X_REASON = {
 
 export const FETCH_SUCCESS = {
     CONTENT: 'CONTENT',
+    TEXT: 'TEXT',
 };
 
 export class FetchErrorWithOptions extends Error {
@@ -164,6 +168,12 @@ const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Pro
             .then((response) => {
                 if (response.status === 204) {
                     resolve(response);
+                } else if (
+                    response.status >= 200 &&
+                    response.status < 300 &&
+                    props.responseHandling?.includes(FETCH_SUCCESS.TEXT)
+                ) {
+                    resolve(response.text());
                 } else if (response.status >= 200 && response.status < 300) {
                     const data =
                         props.method === FETCH_METHODS.GET ||

@@ -242,17 +242,25 @@ export const NarrowContainerInDesktopViewport: Story = {
     },
 };
 
-/** Phone viewport: cards, with the filter row scrolling locally instead of the page. */
+/** Phone viewport: cards; the ID search and the "Filter" button share one row, nothing scrolls sideways (Admin#1510). */
 export const Phone390: Story = {
     globals: { viewport: { value: 'phone', isRotated: false } },
     parameters: handlers(),
     decorators: [inContainer(390)],
     play: async ({ canvasElement }) => {
         await expectLayout(canvasElement, 'cards');
-        const toolbar = canvasElement.querySelector('[class*="toolbar"]') as HTMLElement;
-        await expect(getComputedStyle(toolbar).flexWrap).toBe('nowrap');
-        await expect(getComputedStyle(toolbar).overflowX).toBe('auto');
-        await expect(toolbar.scrollWidth).toBeGreaterThan(toolbar.clientWidth);
+        const filter = within(canvasElement).getByRole('button', { name: /^Filter(?! zurück)/ });
+        const search = within(canvasElement).getByRole('textbox', { name: /ID/i });
+        const middle = (element: HTMLElement) => {
+            const box = element.getBoundingClientRect();
+            return box.top + box.height / 2;
+        };
+        await expect(Math.abs(middle(filter) - middle(search))).toBeLessThan(8);
+        await expect(filter.getBoundingClientRect().right).toBeLessThanOrEqual(
+            canvasElement.getBoundingClientRect().right + 1,
+        );
+        const root = canvasElement.ownerDocument.documentElement;
+        await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     },
 };
 
@@ -276,37 +284,34 @@ export const LongContentCombined: Story = {
     },
 };
 
-/** Tabbing through the filter row keeps every focused control inside the toolbar's scrollport. */
+/** Tabbing through the filter bar reaches search, "Filter" and the opened selects, all inside the container. */
 export const KeyboardFocusInNarrowContainer: Story = {
     globals: desktop,
     parameters: handlers(),
     decorators: [inContainer(390)],
     play: async ({ canvasElement, userEvent: user }) => {
         await expectLayout(canvasElement, 'cards');
-        // A late font swap would resize the buttons after the browser scrolled them into view.
         await canvasElement.ownerDocument.fonts.ready;
-        const toolbar = canvasElement.querySelector('[class*="toolbar"]') as HTMLElement;
-        let focusedInToolbar = 0;
-        for (let step = 0; step < 12; step += 1) {
+        const filter = within(canvasElement).getByRole('button', { name: /^Filter(?! zurück)/ });
+        filter.focus();
+        await user.keyboard('{Enter}');
+        await expect(filter).toHaveAttribute('aria-expanded', 'true');
+        const bounds = canvasElement.getBoundingClientRect();
+        const group = within(canvasElement).getByRole('group', { name: /filtern|Filter the log/ });
+        let focusedInGroup = 0;
+        for (let step = 0; step < 6; step += 1) {
             // eslint-disable-next-line no-await-in-loop
             await user.tab();
             const active = canvasElement.ownerDocument.activeElement as HTMLElement;
-            if (!toolbar.contains(active)) {
-                if (focusedInToolbar > 0) break;
-            } else {
-                focusedInToolbar += 1;
-                const box = active.getBoundingClientRect();
-                const port = toolbar.getBoundingClientRect();
-                // eslint-disable-next-line no-await-in-loop
-                await waitFor(() => {
-                    const now = active.getBoundingClientRect();
-                    expect(now.left).toBeGreaterThanOrEqual(port.left - 1);
-                    expect(now.right).toBeLessThanOrEqual(port.right + 1);
-                });
-                expect(box.height).toBeGreaterThan(0);
-            }
+            if (!group.contains(active)) break;
+            focusedInGroup += 1;
+            const box = active.getBoundingClientRect();
+            // eslint-disable-next-line no-await-in-loop
+            await expect(box.left).toBeGreaterThanOrEqual(bounds.left - 1);
+            // eslint-disable-next-line no-await-in-loop
+            await expect(box.right).toBeLessThanOrEqual(bounds.right + 1);
         }
-        await expect(focusedInToolbar).toBeGreaterThanOrEqual(3);
+        await expect(focusedInGroup).toBeGreaterThanOrEqual(1);
         const root = canvasElement.ownerDocument.documentElement;
         await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth);
     },

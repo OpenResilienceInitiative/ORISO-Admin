@@ -8,7 +8,7 @@ describe('buildSearchIndex: what each role may find', () => {
     it('gives the platform admin the platform configuration, tenants and logs', () => {
         const list = ids({ role: 'platform', singleDomain: false });
 
-        expect(has(list, 'global:login-function@')).toBe(true);
+        expect(has(list, 'global:one-topic@')).toBe(true);
         expect(has(list, 'global:translation@')).toBe(true);
         expect(has(list, 'page:tenants')).toBe(true);
         expect(has(list, 'page:topics')).toBe(true);

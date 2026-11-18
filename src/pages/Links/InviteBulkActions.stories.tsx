@@ -93,9 +93,8 @@ const handlers = [
             acceptUrl: 'https://admin.example/account-invite/token',
         }),
     ),
-    http.post(`${INVITES_ENDPOINT}/:id/revoke`, ({ params }) =>
-        HttpResponse.json({ ...MIXED_INVITES[0], id: Number(params.id), inviteStatus: 'REVOKED' }),
-    ),
+    // ORISO-Admin#1522: delete answers 204.
+    http.delete(`${INVITES_ENDPOINT}/:id`, () => new HttpResponse(null, { status: 204 })),
 ];
 
 const meta = {
@@ -136,8 +135,8 @@ export const TwoSelected: Story = {
 };
 
 /**
- * The "Ausgewählte löschen" confirmation: the dialog is explicit that deleting
- * means revoking — links become invalid, entries stay visible as "Widerrufen".
+ * The "Ausgewählte löschen" confirmation (ORISO-Admin#1522): open links stop
+ * working at once and the invites leave the list.
  */
 export const DeleteConfirmOpen: Story = {
     play: async ({ canvasElement }) => {
@@ -148,7 +147,7 @@ export const DeleteConfirmOpen: Story = {
         // Dropdown + modal render in portals outside the canvas element.
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(await body.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
-        await body.findByText(/widerrufen\?/i);
+        await body.findByText(/Einladungen löschen\?|Delete \d+ invites\?/i);
     },
 };
 

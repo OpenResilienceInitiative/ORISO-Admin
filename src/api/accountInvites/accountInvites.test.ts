@@ -8,6 +8,7 @@ import {
     counsellorOnboardingAcceptBaseUrl,
     createAccountInvite,
     createInviteEmailTemplate,
+    deleteAccountInvite,
     getInviteEmailPreview,
     inviteEmailPreviewEndpoint,
     listAccountInvites,
@@ -35,6 +36,20 @@ vi.mock('../fetchData', async () => {
 describe('account invite API', () => {
     beforeEach(() => {
         mocks.fetchData.mockReset();
+    });
+
+    it('deletes an invite with DELETE on its own path (ORISO-Admin#1522)', async () => {
+        mocks.fetchData.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+        await expect(deleteAccountInvite(42)).resolves.toBeUndefined();
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: FETCH_METHODS.DELETE,
+                url: `${accountInvitesEndpoint}/42`,
+                skipAuth: false,
+            }),
+        );
     });
 
     it('lists account invites with target role and status filters', async () => {

@@ -1,3 +1,5 @@
+@use '../../styles/muiSpacing' as mui;
+
 .content {
     height: 100vh;
     overflow: auto;
@@ -16,8 +18,11 @@
     }
 }
 
-// Slim row with the search bar, centred. The page below keeps the rest of the height.
-$top-bar-height: 56px;
+// Row with the search bar, centred. The page below keeps the rest of the height.
+// The 48px bar sits 16px below the window edge (two 8px grid steps) and 8px above the page.
+$top-bar-padding-top: mui.$mui-unit * 2;
+$top-bar-padding-bottom: mui.$mui-unit;
+$top-bar-height: 48px + $top-bar-padding-top + $top-bar-padding-bottom;
 
 .topBar {
     display: flex;
@@ -25,7 +30,7 @@ $top-bar-height: 56px;
     flex: none;
     align-items: center;
     justify-content: center;
-    padding: 0 24px;
+    padding: $top-bar-padding-top mui.$mui-unit * 3 $top-bar-padding-bottom;
     background: var(--admin-workspace-background, #fcf9f9);
 }
 

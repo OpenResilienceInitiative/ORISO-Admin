@@ -126,6 +126,28 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
             col('actions', true, false, 80),
         ],
     },
+    // Rendered by AdviceSeekersTable, not the generic table: advice seekers have no names or
+    // e-mail to show. The entry keeps the section's permission in the shared lookups.
+    [TypeOfUser.AdviceSeekers]: {
+        sectionId: TypeOfUser.AdviceSeekers,
+        sectionKind: 'users',
+        readResource: Resource.AdviceSeeker,
+        createResource: Resource.AdviceSeeker,
+        updateResource: Resource.AdviceSeeker,
+        defaultSort,
+        showAgencyExpand: false,
+        showStatus: true,
+        editPathPrefix: routePathNames.adviceSeekers,
+        searchPlaceholderKey: 'adviceSeekers.searchHint',
+        emptyTextKey: 'adviceSeekers.empty',
+        columns: [
+            col('username', true, false, 220),
+            col('status', true, false, 160),
+            col('agency', true, false, 220),
+            col('tenant', true, false, 120),
+            col('actions', true, false, 80),
+        ],
+    },
     [TypeOfUser.AgencyAdmins]: {
         sectionId: TypeOfUser.AgencyAdmins,
         sectionKind: 'users',
@@ -178,6 +200,20 @@ export const USER_TABLE_CONFIGS: Record<TypeOfUser, UserTableSectionConfig> = {
         searchPlaceholderKey: 'admin-search-placeholder',
         columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 80)],
     },
+    // Statistik-Leser·innen (ORISO-UserService#1666): platform-wide, so no Träger column.
+    [TypeOfUser.StatisticsReaders]: {
+        sectionId: TypeOfUser.StatisticsReaders,
+        sectionKind: 'users',
+        readResource: Resource.StatisticsReaderUser,
+        createResource: Resource.StatisticsReaderUser,
+        updateResource: Resource.StatisticsReaderUser,
+        defaultSort,
+        showAgencyExpand: false,
+        showStatus: true,
+        editPathPrefix: routePathNames.statisticsReaders,
+        searchPlaceholderKey: 'admin-search-placeholder',
+        columns: [...tenantAdminIdentityColumns(), col('actions', true, false, 80)],
+    },
     [TypeOfUser.Users]: {
         sectionId: TypeOfUser.Users,
         sectionKind: 'users',
@@ -209,6 +245,7 @@ export const canReadSection = (sectionId: TypeOfUser, can: (action: PermissionAc
 // A platform admin sees every Träger, so each row names its Träger; a Träger admin only sees their own.
 export const shouldShowTenantColumn = (sectionId: TypeOfUser, isSuperAdmin: boolean) =>
     isSuperAdmin &&
+    sectionId !== TypeOfUser.StatisticsReaders &&
     (USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants]).sectionKind === 'users';
 /**
  * The Träger-Admins and Platform-Admins sections share Resource.TenantAdminUser,
@@ -216,7 +253,8 @@ export const shouldShowTenantColumn = (sectionId: TypeOfUser, isSuperAdmin: bool
  * section. The platform-admins section mirrors the isSuperAdmin gate of its pill in
  * UserSectionPills: a tenant-scoped admin who opens the list by direct URL may read
  * it, but never sees create/edit/delete there. Every other section is governed by the
- * permission map only.
+ * permission map only. Statistik-Leser·innen (ORISO-UserService#1666) are platform-only the
+ * same way.
  */
 export const canManageSectionActions = (sectionId: TypeOfUser, isSuperAdmin: boolean): boolean =>
-    sectionId !== TypeOfUser.PlatformAdmins || isSuperAdmin;
+    (sectionId !== TypeOfUser.PlatformAdmins && sectionId !== TypeOfUser.StatisticsReaders) || isSuperAdmin;

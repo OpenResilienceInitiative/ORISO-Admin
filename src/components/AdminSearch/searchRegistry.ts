@@ -120,15 +120,6 @@ const EMAIL_AND_BROWSER_NOTIFICATION = NOTIFICATION_LABELS.slice(1);
 export const SEARCH_TILES: RegistryTile[] = [
     // ── Settings › Configuration (platform admin) ────────────────────────────
     tile(
-        'global:login-function',
-        'tenants.globalSettings.anonymousChat.title',
-        ['settings:global-config'],
-        'src/components/GlobalSettings/LoginFunctionCard/index.tsx',
-        {
-            fieldKeys: ['tenants.permissions.anonymousChat.title'],
-        },
-    ),
-    tile(
         'global:one-topic',
         'globalSettings.oneTopicPerAgency.title',
         ['settings:global-config'],
@@ -157,6 +148,15 @@ export const SEARCH_TILES: RegistryTile[] = [
         'globalSettings.topicDuplicate.title',
         ['settings:global-config'],
         'src/components/GlobalSettings/TopicDuplicateSettingsCard/index.tsx',
+    ),
+    tile(
+        'global:live-chat-free-choice',
+        'globalSettings.liveChatFreeChoice.title',
+        ['settings:global-config'],
+        'src/components/GlobalSettings/LiveChatFreeChoiceSettingsCard/index.tsx',
+        {
+            fieldKeys: ['globalSettings.liveChatFreeChoice.switch'],
+        },
     ),
     tile(
         'global:tutorials',
@@ -643,6 +643,7 @@ export const NAV_TITLE_KEYS: Record<string, string> = {
     counselors: 'sidebar.users',
     statistics: 'sidebar.statistics',
     links: 'sidebar.links',
+    addons: 'sidebar.addons',
     logs: 'sidebar.logs',
     account: 'sidebar.account',
 };

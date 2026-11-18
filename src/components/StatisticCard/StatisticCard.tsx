@@ -205,9 +205,15 @@ const CardValueRow = ({
         );
     }
 
+    // A word (a topic name) instead of a figure: smaller and on up to two lines, so it stays readable.
+    const isTextValue = /\p{L}{2,}/u.test(value);
+
     return (
         <div className="statisticDashboard__cardValueRow">
-            <strong>
+            <strong
+                className={isTextValue ? 'statisticDashboard__cardValue--text' : undefined}
+                title={isTextValue ? value : undefined}
+            >
                 <AnimatedValue locale={locale} value={value} />
             </strong>
             <TrendBadge locale={locale} translate={translate} trend={trend} />
