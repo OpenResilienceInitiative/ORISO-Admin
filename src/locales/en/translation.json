@@ -33,6 +33,7 @@
     "consultant-search-placeholder": "First name, last name, display name, email, ID or counselling centre",
     "password": "Password",
     "toHomePage": "Back to homepage",
+    "errorPages.notFound.title": "Page not found",
     "errorPages.notFound.description": "The web address you entered does not exist on our website.",
     "otp": "One-time password",
     "password.forgot": "Forgot password?",
