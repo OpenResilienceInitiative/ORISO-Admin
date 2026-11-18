@@ -7,6 +7,8 @@ import { CardEditable } from '../../../CardEditable';
 import { APP_ONLY_HINT_KEY, CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
+import { CaseSharingSection } from './CaseSharingSection';
+import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
@@ -67,6 +69,17 @@ export type PermissionsSettingsViewProps = {
     caseHandoverTenantId?: number;
     /** The Träger is still being resolved (centre page): the card waits instead of saying "none". */
     caseHandoverTenantPending?: boolean;
+    /**
+     * ORISO-Admin#1558: case handover, team counselling or neither as one choice on the Mailberatung
+     * tile; the separate handover tile goes. Without it the page keeps the separate tile.
+     */
+    caseSharing?: {
+        mode: CaseSharingMode | undefined;
+        onChange?: (mode: CaseSharingMode) => void;
+        /** The choice is held by another level; says which. */
+        disabledReason?: string;
+        bothActive?: boolean;
+    };
     /** Centre page: AgencyService does not store channel switches, so they are the Träger's, read-only. */
     channelsSetOnTraeger?: boolean;
     /** The Träger's channel policies shown when `channelsSetOnTraeger`. */
@@ -99,6 +112,7 @@ export const PermissionsSettingsView = ({
     tenantId,
     caseHandoverTenantId,
     caseHandoverTenantPending = false,
+    caseSharing,
     channelsSetOnTraeger = false,
     traegerChannelPolicies,
     traegerChannelPoliciesStatus = 'success',
@@ -275,18 +289,21 @@ export const PermissionsSettingsView = ({
                 <div className={styles.cardGridOuter}>
                     <CardGrid raster>
                         {/* ORISO-Admin#602: these two settings govern the account and the handover, so they
-                            come before the per-chat-type feature cards. */}
-                        <CardGrid.Item span={showsHandoverRules ? 3 : 1}>
-                            <CaseHandoverCard
-                                tenantId={caseHandoverTenantId}
-                                tenantPending={caseHandoverTenantPending}
-                                policyLevel={policyLevel}
-                                permissionPolicies={permissionPolicies}
-                                pendingPolicyFields={pendingPolicyFields}
-                                onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
-                            />
-                        </CardGrid.Item>
-                        <CardGrid.Item span={showsHandoverRules ? 3 : 2}>
+                            come before the per-chat-type feature cards. #1558: with the case-sharing
+                            choice the handover lives on the Mailberatung tile instead. */}
+                        {!caseSharing && (
+                            <CardGrid.Item span={showsHandoverRules ? 3 : 1}>
+                                <CaseHandoverCard
+                                    tenantId={caseHandoverTenantId}
+                                    tenantPending={caseHandoverTenantPending}
+                                    policyLevel={policyLevel}
+                                    permissionPolicies={permissionPolicies}
+                                    pendingPolicyFields={pendingPolicyFields}
+                                    onFeaturePolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                />
+                            </CardGrid.Item>
+                        )}
+                        <CardGrid.Item span={caseSharing || showsHandoverRules ? 3 : 2}>
                             <AskerPermissionsCard
                                 restrictedFields={restrictedFields}
                                 policyLevel={policyLevel}
@@ -449,6 +466,33 @@ export const PermissionsSettingsView = ({
                                                         {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                                                         {card.key === 'oneOnOne' && (
                                                             <>
+                                                                {caseSharing && (
+                                                                    <>
+                                                                        <div className={styles.cardDivider} />
+                                                                        <CaseSharingSection
+                                                                            value={caseSharing.mode}
+                                                                            onChange={caseSharing.onChange}
+                                                                            disabledReason={caseSharing.disabledReason}
+                                                                            bothActive={caseSharing.bothActive}
+                                                                            handoverSettings={
+                                                                                <CaseHandoverCard
+                                                                                    embedded
+                                                                                    tenantId={caseHandoverTenantId}
+                                                                                    tenantPending={
+                                                                                        caseHandoverTenantPending
+                                                                                    }
+                                                                                    policyLevel={policyLevel}
+                                                                                    permissionPolicies={
+                                                                                        permissionPolicies
+                                                                                    }
+                                                                                    pendingPolicyFields={
+                                                                                        pendingPolicyFields
+                                                                                    }
+                                                                                />
+                                                                            }
+                                                                        />
+                                                                    </>
+                                                                )}
                                                                 <div className={styles.cardDivider} />
                                                                 <div className={styles.togglesSectionLabel}>
                                                                     {t('tenants.permissions.directInvite.title')}

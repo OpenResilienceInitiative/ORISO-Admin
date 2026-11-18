@@ -36,6 +36,8 @@ export type CaseHandoverCardProps = {
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Inside the Mailberatung tile's case-sharing choice instead of a tile of its own (#1558). */
+    embedded?: boolean;
 };
 
 export const CaseHandoverCard = ({
@@ -47,6 +49,7 @@ export const CaseHandoverCard = ({
     openPolicyMenu,
     onOpenPolicyMenu,
     onFeaturePolicyChange,
+    embedded,
 }: CaseHandoverCardProps = {}) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
@@ -130,6 +133,7 @@ export const CaseHandoverCard = ({
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}
             onFeaturePolicyChange={onFeaturePolicyChange}
+            embedded={embedded}
         />
     );
 };

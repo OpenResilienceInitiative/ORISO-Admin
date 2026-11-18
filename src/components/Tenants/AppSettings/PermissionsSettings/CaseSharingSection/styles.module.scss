@@ -1,0 +1,76 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* ORISO-Admin#1558 — one choice for how a Mailberatung case is shared. */
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+/* Same look as the tile's other section labels (togglesSectionLabel); it also names the radiogroup. */
+.title {
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.note {
+    margin: 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: 0.3px;
+}
+
+.warning {
+    margin: 0;
+    padding: mui.$mui-unit mui.$mui-unit * 1.5;
+    border-radius: 8px;
+    background: var(--m3-secondary-container, #e8def8);
+    color: var(--m3-on-secondary-container, #1d192b);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.options {
+    display: grid !important;
+    gap: mui.$mui-unit;
+    grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+}
+
+.option {
+    align-items: flex-start !important;
+    margin: 0 !important;
+    padding: mui.$mui-unit;
+    border: 1px solid var(--m3-outline-variant, #c4c7c5);
+    border-radius: 12px;
+}
+
+.optionText {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 6px;
+}
+
+.optionLabel {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.optionDescription {
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.handoverSettings {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit * 1.5;
+    padding-top: mui.$mui-unit;
+}

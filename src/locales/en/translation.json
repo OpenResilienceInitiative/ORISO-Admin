@@ -4053,5 +4053,13 @@
     "statisticsReaders.delete.success": "Statistics reader deleted successfully.",
     "statisticsReaders.loadError.title": "Statistics reader could not be loaded",
     "statisticsReaders.loadError.text": "The data could not be loaded right now. Please try again.",
-    "statisticsReaders.loadError.retry": "Try again"
+    "statisticsReaders.loadError.retry": "Try again",
+    "tenants.permissions.caseSharing.title": "Sharing cases",
+    "tenants.permissions.caseSharing.description": "How counsellors look after a case together. Exactly one option applies.",
+    "tenants.permissions.caseSharing.option.caseHandover.label": "Case handover",
+    "tenants.permissions.caseSharing.option.caseHandover.description": "A case belongs to one counsellor. For absence or advice it is handed over or briefly shared.",
+    "tenants.permissions.caseSharing.option.none.label": "None",
+    "tenants.permissions.caseSharing.option.none.description": "The case stays with the counsellor who accepted it.",
+    "tenants.permissions.caseSharing.bothActive": "Team counselling and case handover are both active today. Choose one option.",
+    "tenants.permissions.caseSharing.handoverSettings": "Case handover settings"
 }
