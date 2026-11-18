@@ -228,6 +228,7 @@ export const StatisticsReader: Story = {
             can: canFor(Resource.Statistic),
             labels: {
                 account: 'Mein Konto',
+                addons: 'Add-ons',
                 agency: 'Beratungsstellen',
                 home: 'Home',
                 links: 'Einladen',
