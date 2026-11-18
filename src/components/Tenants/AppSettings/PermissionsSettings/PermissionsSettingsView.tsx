@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Card } from '../../../Card';
 import { CardGrid } from '../../../CardGrid';
 import { CardEditable } from '../../../CardEditable';
-import { CHAT_TYPE_CARDS } from './chatTypeCards';
+import { APP_ONLY_HINT_KEY, CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { DirectInviteSection } from './DirectInviteSection';
@@ -428,11 +428,12 @@ export const PermissionsSettingsView = ({
                                                         {/* The reason is long: below the cards, so one card does not stretch the row. */}
                                                         {[
                                                             ...new Set(
-                                                                card.toggles.map((toggle) =>
+                                                                card.toggles.flatMap((toggle) => [
                                                                     unavailableCapabilityHintKey(
                                                                         toggle.requiresCapability,
                                                                     ),
-                                                                ),
+                                                                    toggle.appOnly ? APP_ONLY_HINT_KEY : null,
+                                                                ]),
                                                             ),
                                                         ]
                                                             .filter(Boolean)

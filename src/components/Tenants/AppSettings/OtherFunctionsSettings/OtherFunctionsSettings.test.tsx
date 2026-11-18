@@ -88,6 +88,14 @@ describe('OtherFunctionsSettings', () => {
         ].forEach((labelKey) => expect(screen.getByText(labelKey)).toBeInTheDocument());
     });
 
+    // ORISO-Helm#466: in supervision chats too, the app uploads encrypted files straight to the
+    // chat server, so voice messages and media upload only hide the buttons.
+    it('says once that voice messages and media upload only hide the button', () => {
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        expect(screen.getAllByText('tenants.permissions.feature.appOnlyHint')).toHaveLength(1);
+    });
+
     it('places the "Allow group chat" switch next to the Supervision block', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 
