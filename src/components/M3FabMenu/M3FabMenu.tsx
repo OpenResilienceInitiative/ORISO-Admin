@@ -156,6 +156,35 @@ export const M3FabMenu = ({
                 }
                 ancestor = ancestor.parentElement;
             }
+            // Sticky page headers and the floating mobile navigation are not
+            // ancestors, but they cover the same screen area as the menu.
+            document.querySelectorAll<HTMLElement>('[data-admin-page-header]').forEach((header) => {
+                const rect = header.getBoundingClientRect();
+                const headerStyle = window.getComputedStyle(header);
+                if (
+                    headerStyle.position === 'sticky' &&
+                    headerStyle.visibility !== 'hidden' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.bottom <= fabRect.top &&
+                    rect.right > visibleLeft &&
+                    rect.left < visibleRight
+                ) {
+                    visibleTop = Math.max(visibleTop, rect.bottom);
+                }
+            });
+            const mobileNav = document.querySelector<HTMLElement>('[data-admin-mobile-nav]');
+            if (mobileNav) {
+                const rect = mobileNav.getBoundingClientRect();
+                if (
+                    window.getComputedStyle(mobileNav).visibility !== 'hidden' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.top < visibleBottom
+                ) {
+                    visibleBottom = Math.max(visibleTop, rect.top);
+                }
+            }
             // CSS adds an 8px gap at the FAB; keep another 8px at the visible edge.
             const edgeAndTriggerGap = 16;
             const spaceAbove = Math.max(0, fabRect.top - visibleTop - edgeAndTriggerGap);
@@ -206,6 +235,11 @@ export const M3FabMenu = ({
         const stackResizeObserver =
             typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedulePlacement);
         if (stackRef.current) stackResizeObserver?.observe(stackRef.current);
+        document
+            .querySelectorAll<HTMLElement>('[data-admin-page-header], [data-admin-mobile-nav]')
+            .forEach((element) => {
+                stackResizeObserver?.observe(element);
+            });
         // A settings pane can be resized without a window resize; its clip
         // bounds must be recalculated even if the menu itself has not changed.
         let observedAncestor = rootRef.current?.parentElement;

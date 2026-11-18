@@ -414,3 +414,99 @@ export const FocusDoesNotScrollDeck: Story = {
         await expect(canvas.getByRole('button', { name: 'Menü öffnen' })).toHaveFocus();
     },
 };
+
+const StickyHeaderFrame = () => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            data-testid="sticky-deck"
+            style={{ position: 'fixed', top: 0, left: 0, width: 360, height: 400, overflow: 'auto' }}
+        >
+            <div
+                data-admin-page-header
+                style={{ position: 'sticky', top: 0, height: 80, zIndex: 900, background: 'white' }}
+            >
+                Fixed page header
+            </div>
+            <div style={{ height: 260 }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 16 }}>
+                <M3FabMenu
+                    variant="action"
+                    items={Array.from({ length: 6 }, (_, index) => ({
+                        key: `${index}`,
+                        label: `Option ${index + 1}`,
+                        description: 'Eine längere Erklärung zur Auswahl.',
+                    }))}
+                    open={open}
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={setOpen}
+                />
+            </div>
+            <div style={{ height: 800 }} />
+        </div>
+    );
+};
+
+/** A page's sticky header must not cover menu choices. */
+export const ActionBelowStickyHeader: Story = {
+    args: { open: false },
+    render: () => <StickyHeaderFrame />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const deck = canvas.getByTestId('sticky-deck');
+        deck.scrollTop = 120;
+        await userEvent.click(canvas.getByRole('button', { name: 'Menü öffnen' }));
+        const header = canvasElement.querySelector<HTMLElement>('[data-admin-page-header]')!;
+        const stack = canvasElement.querySelector<HTMLElement>('[data-admin-fab-menu-stack]')!;
+        await waitFor(() => {
+            expect(stack.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom + 7);
+        });
+        await expect(canvas.getByRole('button', { name: 'Option 1' })).toHaveFocus();
+    },
+};
+
+const MobileNavigationFrame = () => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: 360, height: 400, overflow: 'hidden' }}>
+            <div style={{ height: 80 }} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', paddingRight: 16 }}>
+                <M3FabMenu
+                    variant="action"
+                    items={Array.from({ length: 6 }, (_, index) => ({
+                        key: `${index}`,
+                        label: `Option ${index + 1}`,
+                        description: 'Eine längere Erklärung zur Auswahl.',
+                    }))}
+                    open={open}
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={setOpen}
+                />
+            </div>
+            <div
+                data-admin-mobile-nav
+                style={{ position: 'absolute', top: 320, height: 80, width: '100%', background: 'white' }}
+            >
+                Mobile navigation
+            </div>
+        </div>
+    );
+};
+
+/** A downward menu must stop before the floating mobile navigation. */
+export const ActionAboveMobileNavigation: Story = {
+    args: { open: false },
+    render: () => <MobileNavigationFrame />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('button', { name: 'Menü öffnen' }));
+        const nav = canvasElement.querySelector<HTMLElement>('[data-admin-mobile-nav]')!;
+        const stack = canvasElement.querySelector<HTMLElement>('[data-admin-fab-menu-stack]')!;
+        await waitFor(() => {
+            expect(stack.getBoundingClientRect().bottom).toBeLessThanOrEqual(nav.getBoundingClientRect().top - 7);
+        });
+        await expect(canvas.getByRole('button', { name: 'Option 1' })).toHaveFocus();
+    },
+};
