@@ -20,6 +20,8 @@ interface CardProps {
     variant?: CardVariant;
     headerIcon?: React.ReactElement<any> | number | string;
     titleKey: string;
+    /** A title that is not an i18n key, e.g. a name the platform admin chose. Replaces `t(titleKey)`. */
+    title?: React.ReactNode;
     subTitle?: React.ReactElement<any> | number | string;
     subTitleKey?: string;
     cardTitleClassName?: string;
@@ -43,6 +45,7 @@ export const Card = ({
     className,
     isLoading,
     titleKey,
+    title,
     subTitle,
     subTitleKey,
     fullHeight,
@@ -86,7 +89,7 @@ export const Card = ({
                 <div className={classNames(styles.titleContainer, { [styles.dialogTitleContainer]: isDialog })}>
                     {headerIcon && <div className={styles.headerIcon}>{headerIcon}</div>}
                     <Title className={classNames(styles.title)} level={5}>
-                        {t(titleKey)}
+                        {title ?? t(titleKey)}
                     </Title>
 
                     {tooltip && (
