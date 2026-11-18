@@ -114,7 +114,6 @@ export interface JourneysSettingsProps {
     appearance?: AppearanceSettings;
     /** Only the platform admin renames conversation types and changes their icons. */
     canEditAppearance?: boolean;
-    /** Machine translation of one text. Without it no "translate with AI" is offered. */
     /** Machine translation through the Admin endpoint (`adminTranslator`); without it none is offered. */
     translator?: Translator;
     /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
