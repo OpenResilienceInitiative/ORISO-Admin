@@ -266,6 +266,43 @@ describe('useUserRolesToPermission — TenantAdminUser', () => {
     });
 });
 
+// ORISO-UserService#1666: the Statistik-Leser·in reads statistics and nothing else.
+describe('useUserRolesToPermission — statistics reader', () => {
+    const resolvePermissions = (
+        roles: UserRole[],
+        isSuperAdmin: boolean,
+        isTenantScopedAdmin: boolean,
+    ): UserPermissions => {
+        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin });
+
+        return renderHook(() => useUserRolesToPermission()).result.current;
+    };
+
+    it('grants a pure reader exactly Statistic.read', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader], false, false)).toEqual({ Statistic: { read: true } });
+    });
+
+    it('ignores non-admin roles next to the reader role', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader, UserRole.Consultant], false, false)).toEqual({
+            Statistic: { read: true },
+        });
+    });
+
+    it('lets only a platform admin manage Statistik-Leser accounts', () => {
+        const platform = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true, false);
+        const traeger = resolvePermissions([UserRole.TenantAdmin], false, true);
+        const agency = resolvePermissions([UserRole.AgencyAdmin, UserRole.UserAdmin], false, false);
+
+        expect(platform.StatisticsReaderUser).toEqual({ read: true, create: true, update: true, delete: true });
+        expect(traeger.StatisticsReaderUser).toEqual({ read: false, create: false, update: false, delete: false });
+        expect(agency.StatisticsReaderUser).toBeUndefined();
+    });
+
+    it('never lets a reader manage other readers', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader], false, false).StatisticsReaderUser).toBeUndefined();
+    });
+});
+
 describe('useUserRolesToPermission — Topic', () => {
     const resolvePermissions = (roles: UserRole[], isSuperAdmin: boolean): UserPermissions => {
         hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin: !isSuperAdmin });

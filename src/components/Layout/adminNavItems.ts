@@ -30,6 +30,8 @@ export interface AdminNavLabels {
 
 export interface AdminNavContext {
     isSuperAdmin: boolean;
+    /** A pure Statistik-Leser·in (ORISO-UserService#1666): statistics is the only destination. */
+    isStatisticsReader?: boolean;
     hasRole: HasRoleFn;
     can: CanFn;
     labels: AdminNavLabels;
@@ -93,11 +95,25 @@ export const resolveLogsPage = (
  */
 export const buildAdminNavItems = ({
     isSuperAdmin,
+    isStatisticsReader = false,
     hasRole,
     can,
     labels,
     settingsPath,
 }: AdminNavContext): AdminSidebarNavItem[] => {
+    const statisticsItem: AdminSidebarNavItem = {
+        key: 'statistics',
+        to: routePathNames.statistic,
+        label: labels.statistics,
+        iconPath: routePathNames.statistic,
+    };
+
+    // A Statistik-Leser·in has no Home: every other route sends them to statistics
+    // (ORISO-UserService#1666), so a Home tile would only bounce.
+    if (isStatisticsReader) {
+        return can(PermissionAction.Read, Resource.Statistic) ? [statisticsItem] : [];
+    }
+
     // Home is the start page for every admin (ORISO-Admin#1323): an overview of
     // the areas below, so it needs no permission of its own.
     const items: AdminSidebarNavItem[] = [
@@ -163,12 +179,7 @@ export const buildAdminNavItems = ({
         });
     }
     if (can(PermissionAction.Read, Resource.Statistic)) {
-        items.push({
-            key: 'statistics',
-            to: routePathNames.statistic,
-            label: labels.statistics,
-            iconPath: routePathNames.statistic,
-        });
+        items.push(statisticsItem);
     }
     if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({

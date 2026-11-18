@@ -1933,7 +1933,11 @@
         "fileName": "empty_state_96px.svg",
         "sourcePath": "src/resources/img/svg/oriso/empty_state_96px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/AdminEmpty/index.tsx", "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"],
+        "usageFiles": [
+            "src/components/AdminEmpty/index.tsx",
+            "src/pages/ErrorPages/AdminNotFound.tsx",
+            "src/pages/Links/inviteProgress/InviteProgressBoard.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -3111,6 +3115,7 @@
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/components/Snackbar/Snackbar.tsx",
+            "src/pages/ErrorPages/AdminNotFound.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",
             "src/pages/Links/InvitePanel.tsx",

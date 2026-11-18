@@ -245,3 +245,18 @@ it('opens the editor only once a running visibility change and its reload are do
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     expect(catalogueReads).toBeGreaterThan(readsBefore);
 });
+
+it('says the name is taken when the service rejects a rename with 409, and keeps the edit', async () => {
+    server.use(http.put('*/service/topicadmin/catalogue', () => new HttpResponse(null, { status: 409 })));
+    showTab();
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    const dialog = await screen.findByRole('dialog');
+    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Diesen Namen hat schon ein anderes Thema');
+    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled();
+});

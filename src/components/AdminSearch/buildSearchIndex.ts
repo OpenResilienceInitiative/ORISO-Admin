@@ -57,6 +57,7 @@ const levelOfSub = (id: string, isSuperAdmin: boolean): SearchLevel | undefined 
     }
     switch (id) {
         case 'users:platform-admins':
+        case 'users:statistics-readers':
             return 'platform';
         case 'users:tenant-admins':
             return 'tenant';

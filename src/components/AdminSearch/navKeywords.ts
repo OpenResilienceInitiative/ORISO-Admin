@@ -249,6 +249,13 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
 
     // Accounts
     'users:platform-admins': ['plattform admin', 'superadmin', 'administrator', 'platform admin', 'super admin'],
+    'users:statistics-readers': [
+        'statistik leser',
+        'statistik-leser',
+        'statistikleser',
+        'statistics reader',
+        'read only statistics',
+    ],
     'users:tenant-admins': ['träger admin', 'trägeradmin', 'mandanten admin', 'tenant admin', 'organisation admin'],
     'users:agency-admins': [
         'beratungsstellen admin',

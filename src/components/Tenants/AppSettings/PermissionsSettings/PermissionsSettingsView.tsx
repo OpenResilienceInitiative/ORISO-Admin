@@ -8,6 +8,7 @@ import { CHAT_TYPE_CARDS } from './chatTypeCards';
 import { AskerPermissionsCard } from './AskerPermissionsCard';
 import { CaseHandoverCard } from './CaseHandoverCard';
 import { DirectInviteSection } from './DirectInviteSection';
+import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
 import { CONVERSATION_HELP } from './tileHelpTopics';
@@ -467,6 +468,37 @@ export const PermissionsSettingsView = ({
                                                                         changePolicy(fieldKey, next, form)
                                                                     }
                                                                 />
+                                                                {/* ORISO-UserService#1662: no Beratungsstelle value exists. */}
+                                                                {policyLevel !== 'agency' && (
+                                                                    <>
+                                                                        <div className={styles.cardDivider} />
+                                                                        <div className={styles.togglesSectionLabel}>
+                                                                            {t(
+                                                                                'tenants.permissions.guestAccountModes.title',
+                                                                            )}
+                                                                        </div>
+                                                                        <p className={styles.cardDescriptionSecondary}>
+                                                                            {t(
+                                                                                'tenants.permissions.guestAccountModes.description',
+                                                                            )}
+                                                                        </p>
+                                                                        <GuestAccountModeSection
+                                                                            restrictedFields={restrictedFields}
+                                                                            policyLevel={policyLevel}
+                                                                            permissionPolicies={permissionPolicies}
+                                                                            fallbackValues={
+                                                                                initialValues.settings as
+                                                                                    | Record<string, unknown>
+                                                                                    | undefined
+                                                                            }
+                                                                            ownSettings={ownSettings}
+                                                                            pendingPolicyFields={pendingPolicyFields}
+                                                                            onPolicyChange={(fieldKey, next) =>
+                                                                                changePolicy(fieldKey, next, form)
+                                                                            }
+                                                                        />
+                                                                    </>
+                                                                )}
                                                             </>
                                                         )}
 
