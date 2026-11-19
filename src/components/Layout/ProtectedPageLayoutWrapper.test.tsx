@@ -79,6 +79,7 @@ vi.mock('./AdminMobileNavBar', () => ({
     ),
 }));
 vi.mock('../productTour/TourHost', () => ({ TourHost: () => <div data-testid="tour-host" /> }));
+vi.mock('../productTour/TourLauncher', () => ({ TourLauncher: () => <div data-testid="tour-launcher" /> }));
 vi.mock('./AdminSidebar', () => ({
     default: ({ items, account, logout }: any) => (
         <nav data-testid="desktop-navigation">
@@ -156,7 +157,7 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByRole('button', { name: 'logout' })).toBeVisible();
     });
 
-    it('mounts the global tour host on an ordinary authenticated page', () => {
+    it('mounts the global tour host and the "?" launcher on an ordinary authenticated page', () => {
         renderAtRoute(
             <ProtectedPageLayoutWrapper>
                 <main>Protected content</main>
@@ -164,6 +165,7 @@ describe('Admin layout footer ownership', () => {
         );
 
         expect(screen.getByTestId('tour-host')).toBeInTheDocument();
+        expect(screen.getByTestId('tour-launcher')).toBeInTheDocument();
     });
 
     it('renders no tour host behind the two-factor gate', () => {
@@ -174,6 +176,7 @@ describe('Admin layout footer ownership', () => {
         );
 
         expect(screen.queryByTestId('tour-host')).toBeNull();
+        expect(screen.queryByTestId('tour-launcher')).toBeNull();
     });
 
     it('honors hideFooter on public pages', () => {

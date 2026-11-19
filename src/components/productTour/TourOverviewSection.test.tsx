@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TourOverviewSection } from './TourOverviewSection';
 import { tourLaunchStore } from './tourLaunchStore';
+import { readTourLauncherVisible, resetTourLauncherPreference } from './tourLauncherPreference';
 import { versionedTourProgressRepository } from './versionedTourProgressRepository';
 
 vi.mock('react-i18next', () => ({
@@ -36,6 +37,8 @@ beforeEach(() => {
 afterEach(() => {
     cleanup();
     tourLaunchStore.reset();
+    window.localStorage.clear();
+    resetTourLauncherPreference();
 });
 
 describe('TourOverviewSection', () => {
@@ -56,5 +59,16 @@ describe('TourOverviewSection', () => {
         act(() => tourLaunchStore.finish());
 
         await waitFor(() => expect(versionedTourProgressRepository.getProgress).toHaveBeenCalledTimes(2));
+    });
+
+    it('switches the "?" tour launcher off and on for this user', async () => {
+        render(<TourOverviewSection />);
+        const toggle = screen.getByRole('switch', { name: 'productTour.launcher.switch' });
+        expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+        fireEvent.click(toggle);
+
+        expect(toggle).toHaveAttribute('aria-checked', 'false');
+        expect(readTourLauncherVisible(undefined)).toBe(false);
     });
 });
