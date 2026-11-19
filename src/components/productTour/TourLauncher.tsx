@@ -51,7 +51,8 @@ export const TourLauncher = ({ tours = adminTours }: TourLauncherProps) => {
         tourRunning: request !== null,
         availableTourCount: available.length,
     });
-    const progress = useAdminTourProgress(progressRevision, visible);
+    // Loaded when the card opens, not on every admin page the "?" shows on.
+    const progress = useAdminTourProgress(progressRevision, visible && open);
     const navInset = useMobileNavInset(visible);
 
     useEffect(() => {

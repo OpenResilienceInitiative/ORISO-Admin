@@ -50,6 +50,7 @@ beforeEach(() => {
     appSettings.current = {};
     roles.isSuperAdmin = false;
     roles.isStatisticsReader = false;
+    vi.mocked(versionedTourProgressRepository.getProgress).mockClear();
     vi.mocked(versionedTourProgressRepository.getProgress).mockResolvedValue([
         { surface: 'admin', tourId: 'intro-tour', tourVersion: 1, status: 'completed' } as any,
     ]);
@@ -76,6 +77,16 @@ describe('TourLauncher', () => {
             'href',
             routePathNames.userProfile,
         );
+    });
+
+    it('loads the progress only when the card opens, not on every page', async () => {
+        renderLauncher();
+        expect(fab()).not.toBeNull();
+        expect(versionedTourProgressRepository.getProgress).not.toHaveBeenCalled();
+
+        await userEvent.click(fab()!);
+
+        expect(versionedTourProgressRepository.getProgress).toHaveBeenCalledTimes(1);
     });
 
     it('requests the selected tour from the global host', async () => {
