@@ -36,12 +36,11 @@ jobs:
             - name: Build Storybook
               run: npm run build-storybook
 
-            - name: Create Docker image
+            - name: Build and scan Docker image
               uses: ./.github/actions/docker-build-push
               with:
                   push_to_ghcr: false
                   image_name: oriso-admin
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
 
     # Split out of `build` and sharded: the suite is 407 jsdom files and was
     # 20 of the 24 minutes of that job, most of it module import cost paid once
