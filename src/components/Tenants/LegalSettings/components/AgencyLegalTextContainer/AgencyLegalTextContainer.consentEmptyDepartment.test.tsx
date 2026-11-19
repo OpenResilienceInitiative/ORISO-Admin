@@ -122,7 +122,7 @@ const renderContainer = (props: Record<string, unknown> = {}) =>
     );
 
 const selectDepartment = async (name: string) => {
-    await userEvent.click(screen.getByRole('button', { name: 'Fachbereich wählen' }));
+    await userEvent.click(screen.getByRole('button', { name: /Fachbereich wählen/ }));
     await userEvent.click(await screen.findByText(name));
 };
 

@@ -21,6 +21,8 @@ export interface AgencyTile {
     document?: boolean;
     /** What the header of a collapsible tile shows. Without it the tile never collapses. */
     summary?: AgencyTileSummary;
+    /** A document already using the shared LegalDocumentTile supplies its own foldable shell. */
+    ownCollapsibleTile?: boolean;
     node: ReactNode;
 }
 
@@ -37,9 +39,9 @@ export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile
     if (layout === 'collapsible') {
         return (
             <CardGrid raster>
-                {tiles.map(({ id, summary, document, node }, index) => (
+                {tiles.map(({ id, summary, document, node, ownCollapsibleTile }, index) => (
                     <CardGrid.Item key={id} span={3}>
-                        {summary ? (
+                        {summary && !ownCollapsibleTile ? (
                             <CollapsibleTile {...summary} defaultOpen={index === 0}>
                                 {/* A form stays form-wide; only a document uses the whole row. */}
                                 <div className={document ? styles.collapsedDocument : styles.collapsedForm}>{node}</div>

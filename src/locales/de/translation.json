@@ -1168,6 +1168,7 @@
     "editor.listMenu.bullet": "Aufzählung",
     "editor.listMenu.checklist": "Checkliste",
     "editor.listMenu.ordered": "Nummerierte Liste",
+    "editor.toolbar.label": "Formatierungswerkzeuge",
     "editor.toolbar.add": "Hinzufügen",
     "editor.toolbar.addImage": "Bild hinzufügen",
     "editor.toolbar.alignCenter": "Zentriert",

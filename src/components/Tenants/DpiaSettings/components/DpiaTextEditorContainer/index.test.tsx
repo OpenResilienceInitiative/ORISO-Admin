@@ -158,7 +158,7 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         // the chapter selector re-enabling, which only happens once `saving` flips back to false
         // — instead of an arbitrary zero-delay timer.
         releaseSave(1, 1, { texts: { governance: '<p>SECOND-RESULT</p>' }, statusBySection: {} });
-        await waitFor(() => expect(screen.getByRole('button', { name: 'dpia.sections.choose' })).toBeEnabled());
+        await waitFor(() => expect(screen.getByRole('button', { name: /dpia\.sections\.choose/ })).toBeEnabled());
         expect(dispatchedCount(1)).toBe(2);
         expect(screen.queryByText('dpia.editor.saveError')).not.toBeInTheDocument();
     });
@@ -208,7 +208,7 @@ describe('DpiaTextEditorContainer tenant-switch save race', () => {
         render(<DpiaTextEditorContainer tenantId={1} gateway={gateway} />);
 
         await screen.findByTestId('editor');
-        const chapterSelect = screen.getByRole('button', { name: 'dpia.sections.choose' });
+        const chapterSelect = screen.getByRole('button', { name: /dpia\.sections\.choose/ });
         expect(chapterSelect).toBeEnabled();
 
         await user.click(screen.getByRole('button', { name: 'saveDraft' }));
