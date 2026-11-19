@@ -2608,7 +2608,7 @@
     "productTour.adminIntroduction.step.welcome.title": "Willkommen in der Verwaltung",
     "productTour.adminIntroduction.step.welcome.content": "Dieser Rundgang zeigt Ihnen in wenigen Schritten, wo Sie was finden. Sie schauen nur zu, es wird nichts verändert. Mit „Weiter“ geht es zum nächsten Schritt.",
     "productTour.adminIntroduction.step.navigation.title": "Die Navigation",
-    "productTour.adminIntroduction.step.navigation.content": "Links finden Sie alle Bereiche, die Ihre Rolle freigibt. Was hier fehlt, ist für Ihr Konto nicht vorgesehen.",
+    "productTour.adminIntroduction.step.navigation.content": "In der Navigation finden Sie alle Bereiche, die Ihre Rolle freigibt. Was hier fehlt, ist für Ihr Konto nicht vorgesehen.",
     "productTour.adminIntroduction.step.settings.title": "Einstellungen",
     "productTour.adminIntroduction.step.settings.content": "Unter „Einstellungen“ legen Sie fest, wie die Plattform für Ihre Organisation aussieht und arbeitet, zum Beispiel Erscheinungsbild, Rechtstexte und Funktionen.",
     "productTour.adminIntroduction.step.tenants.title": "Träger",

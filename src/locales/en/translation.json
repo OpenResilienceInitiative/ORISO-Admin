@@ -2608,7 +2608,7 @@
     "productTour.adminIntroduction.step.welcome.title": "Welcome to the admin area",
     "productTour.adminIntroduction.step.welcome.content": "This tour shows you in a few steps where to find what. You only watch, nothing is changed. Select “Next” to continue.",
     "productTour.adminIntroduction.step.navigation.title": "The navigation",
-    "productTour.adminIntroduction.step.navigation.content": "On the left you find every area your role allows. Anything missing here is not intended for your account.",
+    "productTour.adminIntroduction.step.navigation.content": "The navigation holds every area your role allows. Anything missing here is not intended for your account.",
     "productTour.adminIntroduction.step.settings.title": "Settings",
     "productTour.adminIntroduction.step.settings.content": "Under “Settings” you decide how the platform looks and works for your organisation, for example branding, legal texts and features.",
     "productTour.adminIntroduction.step.tenants.title": "Providers",
