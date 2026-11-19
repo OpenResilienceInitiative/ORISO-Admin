@@ -3,32 +3,19 @@ import { OtherFunctionsSettings } from '../OtherFunctionsSettings';
 
 interface FunctionalitiesGridProps {
     tenantId: string;
-    /** Parts a level does not offer. Every flag defaults to showing the part. */
-    hideCalls?: boolean;
+    /** The counsellor statistics switch; not offered to a Träger admin on the single domain. */
     hideStatistics?: boolean;
-    hideGroupChatToggle?: boolean;
 }
 
 /**
- * The Träger "Funktionalitäten" tab: one grid for the Träger admin's own settings and for the platform
- * admin editing a Träger, so both levels see the same tile; each level only passes what it hides.
- * ORISO-Admin#1577: one full-width tile whose topics are folding sections, as on the conversation-type
- * tiles in Funktionszugriff. The email server has its own tab.
+ * The Träger "Weitere" tab (ORISO-Admin#1577; route `functionalities` / `app-settings`): one grid for the
+ * Träger admin's own settings and for the platform admin editing a Träger, so both levels see the same
+ * tile; each level only passes what it hides. Settings of a conversation type live in Funktionszugriff.
  */
-export const FunctionalitiesGrid = ({
-    tenantId,
-    hideCalls,
-    hideStatistics,
-    hideGroupChatToggle,
-}: FunctionalitiesGridProps) => (
+export const FunctionalitiesGrid = ({ tenantId, hideStatistics }: FunctionalitiesGridProps) => (
     <CardGrid raster>
         <CardGrid.Item span={3}>
-            <OtherFunctionsSettings
-                tenantId={tenantId}
-                hideCalls={hideCalls}
-                hideStatistics={hideStatistics}
-                hideGroupChatToggle={hideGroupChatToggle}
-            />
+            <OtherFunctionsSettings tenantId={tenantId} hideStatistics={hideStatistics} />
         </CardGrid.Item>
     </CardGrid>
 );

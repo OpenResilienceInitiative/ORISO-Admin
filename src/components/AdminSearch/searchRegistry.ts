@@ -437,7 +437,8 @@ export const SEARCH_TILES: RegistryTile[] = [
         PERMISSIONS,
         `${CHAT}/chatTypeCards.ts`,
         {
-            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
+            // ORISO-Admin#1577: Team-Chat is a section of this tile.
+            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS, 'teamFunctions.chat.name'],
         },
     ),
     tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
@@ -456,7 +457,18 @@ export const SEARCH_TILES: RegistryTile[] = [
         },
     ),
 
-    // ── Functionalities (Träger) ─────────────────────────────────────────────
+    // ORISO-Admin#1577: supervision chats, a tile of Funktionszugriff after the conversation types.
+    tile(
+        'access:supervision',
+        'tenants.permissions.supervision.title',
+        PERMISSIONS,
+        `${CHAT}/SupervisionTile/index.tsx`,
+        {
+            fieldKeys: ['tenants.permissions.supervision.configure', 'tenants.permissions.supervision.dialogTitle'],
+        },
+    ),
+
+    // ── Weitere (Träger; ORISO-Admin#1577, formerly Funktionalitäten) ───────────
     tile(
         'app:other',
         'tenants.appSettings.otherFunctions.title',
@@ -464,12 +476,9 @@ export const SEARCH_TILES: RegistryTile[] = [
         'src/components/Tenants/AppSettings/OtherFunctionsSettings/index.tsx',
         {
             fieldKeys: [
-                'tenants.appSettings.communications.video.title',
-                'tenants.appSettings.otherFunctions.statistics.title',
-                'tenants.appSettings.otherFunctions.groupChat.title',
-                'teamFunctions.chat.name',
-                'tenants.appSettings.otherFunctions.supervision.title',
                 'tileHelp.otherFunctions.general.title',
+                'tenants.appSettings.otherFunctions.allowTopicCreation.title',
+                'tenants.appSettings.otherFunctions.statistics.title',
             ],
         },
     ),

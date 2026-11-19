@@ -15,7 +15,10 @@ vi.mock('react-i18next', () => {
 });
 
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({ data: { settings: {} }, isLoading: false }),
+    useSingleTenantData: () => ({
+        data: { settings: { featureTopicsEnabled: false, featureStatisticsEnabled: true } },
+        isLoading: false,
+    }),
 }));
 
 const mutate = vi.fn();
@@ -23,22 +26,9 @@ vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
     useTenantAdminDataMutation: () => ({ mutate }),
 }));
 
-// ORISO-TenantService#363: the effective value comes from the Träger's permission policies.
-const policies: Record<string, { value: boolean; mode: 'SUGGESTED' | 'ENFORCED'; inherited?: boolean }> = {
-    featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: true },
-};
-const policyState = { isError: false };
-const savePolicies = vi.fn(async (next: unknown) => next);
-vi.mock('../../../../hooks/useTenantPermissionPolicies', () => ({
-    useTenantPermissionPolicies: () =>
-        policyState.isError
-            ? { data: undefined, isLoading: false, isError: true }
-            : { data: { tenantId: 1, policies }, isLoading: false, isError: false },
-    useTenantPermissionPoliciesMutation: () => ({ mutateAsync: savePolicies }),
-}));
-
+const appConfig = { multitenancyWithSingleDomainEnabled: false };
 vi.mock('../../../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: false } }),
+    useAppConfigContext: () => ({ settings: appConfig }),
 }));
 
 import { OtherFunctionsSettings } from './index';
@@ -57,161 +47,59 @@ Object.defineProperty(window, 'matchMedia', {
     })),
 });
 
-describe('OtherFunctionsSettings', () => {
-    it('renders the Team-Chat toggle bound to featureTeamDiscussionEnabled', () => {
+const TOPICS = 'tenants.appSettings.otherFunctions.allowTopicCreation.title';
+const STATISTICS = 'tenants.appSettings.otherFunctions.statistics.title';
+
+/**
+ * The tile of the Träger tab "Weitere" (ORISO-Admin#1577, Frank 2026-11-19): topics and counsellor
+ * statistics only. Calls, group chats, Team-Chat and supervision moved to Funktionszugriff.
+ */
+describe('OtherFunctionsSettings ("Weitere")', () => {
+    it('holds topics and statistics in one folding section, each with what it does', async () => {
+        const user = userEvent.setup();
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getByRole('switch', { name: 'teamFunctions.chat.name' })).toBeInTheDocument();
-        expect(screen.getByText('teamFunctions.chat.description')).toBeInTheDocument();
+        const section = screen.getByRole('group', { name: 'tileHelp.otherFunctions.general.title' });
+        expect(section).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: TOPICS })).not.toBeChecked();
+        expect(screen.getByRole('switch', { name: STATISTICS })).toBeChecked();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.allowTopicCreation.description')).toBeVisible();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.statistics.description')).toBeVisible();
+
+        await user.click(screen.getByRole('button', { name: 'tileHelp.otherFunctions.general.title' }));
+        expect(screen.getByText('tenants.appSettings.otherFunctions.statistics.description')).not.toBeVisible();
     });
 
-    /**
-     * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
-     * conversation type of its own. Its master and seven feature toggles used to be wired to the
-     * "groupInternal" chat-type card (Functionality access) — they now live here, next to "Allow
-     * group chat".
-     */
-    it('renders the Supervision block with its master and all seven feature toggles', () => {
+    it('offers nothing that moved to Funktionszugriff', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getByText('tenants.appSettings.otherFunctions.supervision.title')).toBeInTheDocument();
-        expect(screen.getByText('tenants.appSettings.otherFunctions.supervision.description')).toBeInTheDocument();
-
+        expect(screen.getAllByRole('switch')).toHaveLength(2);
         [
-            'tenants.permissions.feature.videoCalls',
-            'tenants.permissions.feature.audioCalls',
-            'tenants.permissions.feature.voiceMessages',
-            'tenants.permissions.feature.threads',
-            'tenants.permissions.feature.mediaUpload',
-            'tenants.permissions.feature.mediaInlineDisplay',
-            'tenants.permissions.feature.mediaAiScan',
-        ].forEach((labelKey) => expect(screen.getByText(labelKey)).toBeInTheDocument());
+            'teamFunctions.chat.name',
+            'tenants.appSettings.otherFunctions.supervision.title',
+            'tenants.appSettings.otherFunctions.groupChat.title',
+            'tenants.appSettings.communications.video.title',
+        ].forEach((label) => expect(screen.queryByText(label)).toBeNull());
     });
 
-    // ORISO-Helm#466: in supervision chats too, the app uploads encrypted files straight to the
-    // chat server, so voice messages and media upload only hide the buttons.
-    it('says once that voice messages and media upload only hide the button', () => {
-        render(<OtherFunctionsSettings tenantId="1" />);
+    it('hides the statistics switch when the level does not offer it', () => {
+        render(<OtherFunctionsSettings tenantId="1" hideStatistics />);
 
-        expect(screen.getAllByText('tenants.permissions.feature.appOnlyHint')).toHaveLength(1);
+        expect(screen.getByRole('switch', { name: TOPICS })).toBeInTheDocument();
+        expect(screen.queryByRole('switch', { name: STATISTICS })).toBeNull();
     });
 
-    it('places the "Allow group chat" switch next to the Supervision block', () => {
-        render(<OtherFunctionsSettings tenantId="1" />);
-
-        const groupChatLabel = screen.getByText('tenants.appSettings.otherFunctions.groupChat.title');
-        const supervisionLabel = screen.getByText('tenants.appSettings.otherFunctions.supervision.title');
-        const comparison = groupChatLabel.compareDocumentPosition(supervisionLabel);
-        // DOCUMENT_POSITION_FOLLOWING (4): supervision comes right after the group chat switch.
-        // eslint-disable-next-line no-bitwise
-        const supervisionFollowsGroupChat = comparison & Node.DOCUMENT_POSITION_FOLLOWING;
-        expect(supervisionFollowsGroupChat).toBeTruthy();
-    });
-
-    // OBP 2.1 #107: a supervisor reads along, so switching supervision on for the Träger reminds
-    // the admin that it must be named in the privacy policy.
-    it('asks about the privacy policy before supervision is switched on', async () => {
+    it('saves both as plain Träger settings, without any permission-policy write', async () => {
         const user = userEvent.setup();
         render(<OtherFunctionsSettings tenantId="1" />);
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
-        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
-        await user.click(master);
-
-        expect(await screen.findByText('supervision.privacyConfirm.title')).toBeInTheDocument();
-        expect(master).not.toBeChecked();
-    });
-
-    // Single writer: a supervision switch saved here becomes the Träger's own policy, never a raw setting.
-    it('saves a feature switch as an own permission policy, not as a raw setting', async () => {
-        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
-        const user = userEvent.setup();
-        render(<OtherFunctionsSettings tenantId="1" />);
-
-        await user.click(screen.getByRole('button', { name: 'edit' }));
-        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
-        expect(master).toBeChecked();
-        await user.click(master);
+        await user.click(screen.getByRole('switch', { name: TOPICS }));
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
 
         await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
-        expect(savePolicies).toHaveBeenCalledWith({
-            tenantId: 1,
-            policies: { featureSupervisionEnabled: { value: false, mode: 'SUGGESTED', inherited: false } },
+        expect(mutate.mock.calls.at(-1)?.[0]).toMatchObject({
+            settings: { featureTopicsEnabled: true, featureStatisticsEnabled: true },
         });
-        expect(mutate.mock.calls[0][0].settings).not.toHaveProperty('featureSupervisionEnabled');
-        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
-    });
-
-    it('writes the settings only after the policy save succeeded, and reopens on failure', async () => {
-        policies.featureSupervisionEnabled = { value: true, mode: 'SUGGESTED', inherited: true };
-        mutate.mockClear();
-        let reject: (error: Error) => void = () => undefined;
-        savePolicies.mockImplementationOnce(
-            () =>
-                new Promise((_resolve, rejectPromise) => {
-                    reject = rejectPromise;
-                }),
-        );
-        const user = userEvent.setup();
-        render(<OtherFunctionsSettings tenantId="1" />);
-
-        await user.click(screen.getByRole('button', { name: 'edit' }));
-        await user.click(screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' }));
-        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
-        await vi.waitFor(() => expect(savePolicies).toHaveBeenCalled());
-        expect(mutate).not.toHaveBeenCalled();
-
-        reject(new Error('rejected'));
-        expect(await screen.findByRole('button', { name: 'card.edit.save' })).toBeInTheDocument();
-        expect(mutate).not.toHaveBeenCalled();
-        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
-    });
-
-    it.each([
-        [true, 'checked'],
-        [false, 'unchecked'],
-    ])('shows an inherited lock %s as %s and disabled', (value) => {
-        policies.featureSupervisionEnabled = { value, mode: 'ENFORCED', inherited: true };
-        render(<OtherFunctionsSettings tenantId="1" />);
-        const master = screen.getByRole('switch', { name: 'tenants.appSettings.otherFunctions.supervision.title' });
-        if (value) expect(master).toBeChecked();
-        else expect(master).not.toBeChecked();
-        expect(master).toBeDisabled();
-        policies.featureSupervisionEnabled = { value: false, mode: 'SUGGESTED', inherited: true };
-    });
-
-    it('shows an error instead of editable switches when the policies cannot be read', () => {
-        policyState.isError = true;
-        render(<OtherFunctionsSettings tenantId="1" />);
-        expect(screen.getByRole('alert')).toHaveTextContent('error.loading');
-        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-        policyState.isError = false;
-    });
-
-    // ORISO-Admin#1577: the calls switch is a section of this tile, and every topic folds like the
-    // sections of the conversation-type tiles.
-    it('holds the calls switch in a section of its own, unless the level hides it', async () => {
-        const { unmount } = render(<OtherFunctionsSettings tenantId="1" />);
-        expect(
-            screen.getByRole('group', { name: 'tenants.appSettings.otherFunctions.calls.title' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('switch', { name: 'tenants.appSettings.communications.video.title' }),
-        ).toBeInTheDocument();
-        unmount();
-
-        render(<OtherFunctionsSettings tenantId="1" hideCalls />);
-        expect(screen.queryByRole('switch', { name: 'tenants.appSettings.communications.video.title' })).toBeNull();
-    });
-
-    it('lets every section fold up to its heading', async () => {
-        const user = userEvent.setup();
-        render(<OtherFunctionsSettings tenantId="1" />);
-        const toggles = screen.getAllByRole('button', { expanded: true });
-
-        expect(toggles).toHaveLength(5);
-        await user.click(screen.getByRole('button', { name: 'tileHelp.otherFunctions.supervision.title' }));
-        expect(screen.queryByText('tenants.appSettings.otherFunctions.supervision.description')).not.toBeVisible();
     });
 });

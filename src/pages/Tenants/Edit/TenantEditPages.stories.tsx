@@ -33,7 +33,9 @@ export const EmailServer: Story = { decorators: [tenantEditDecorator('smtp')] };
 
 /**
  * ORISO-Admin#1577: the same tiles as the platform page. The Live Chat tile is there, with this Träger's chat links
- * on it (not in a card of its own), and the page intro says that changes apply to this Träger only.
+ * on it (not in a card of its own), and the page intro says that changes apply to this Träger only. The former
+ * Funktionalitäten tab (now "Weitere") gave up Team-Chat (on the Mail counselling tile) and supervision (its own
+ * tile after the conversation types).
  */
 export const FunctionalityAccess: Story = {
     decorators: [tenantEditDecorator('global-settings')],
@@ -46,33 +48,30 @@ export const FunctionalityAccess: Story = {
         await expect(canvas.getAllByRole('region', { name: i18n.t('liveChatLinks.title') })).toHaveLength(1);
         await expect(
             within(canvas.getByTestId('permissions-intro')).getByText(
-                i18n.t('tenants.globalSettings.superAdminWarning.description'),
+                String(i18n.t('tenants.globalSettings.superAdminWarning.description')),
             ),
         ).toBeVisible();
+        await expect(
+            canvas.getByRole('group', { name: String(i18n.t('teamFunctions.chat.name')) }),
+        ).toBeInTheDocument();
+        await expect(canvas.getByTestId('supervision-tile')).toBeVisible();
         const page = canvasElement.ownerDocument.documentElement;
         await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
     },
 };
 
-/**
- * ORISO-Admin#1577: one tile, its topics as folding sections like the conversation-type tiles. Settings of a
- * conversation type are not repeated here; they live on its tile in Funktionszugriff.
- */
-export const Functionalities: Story = {
+/** ORISO-Admin#1577: the tab "Weitere" (formerly Funktionalitäten): topics and counsellor statistics only. */
+export const More: Story = {
     decorators: [tenantEditDecorator('functionalities')],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByRole(
+        const section = await canvas.findByRole(
             'group',
-            { name: i18n.t('tileHelp.otherFunctions.supervision.title') },
+            { name: String(i18n.t('tileHelp.otherFunctions.general.title')) },
             { timeout: 8000 },
         );
-        [
-            'tenants.appSettings.otherFunctions.calls.title',
-            'tileHelp.otherFunctions.general.title',
-            'tenants.appSettings.otherFunctions.groupChat.sectionTitle',
-            'teamFunctions.chat.name',
-        ].forEach((key) => expect(canvas.getByRole('group', { name: i18n.t(key) })).toBeInTheDocument());
+        await expect(within(section).getAllByRole('switch')).toHaveLength(2);
+        await expect(canvas.getAllByText(String(i18n.t('tenants.edit.tabs.appSettings'))).length).toBeGreaterThan(0);
         const page = canvasElement.ownerDocument.documentElement;
         await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
     },

@@ -15,8 +15,8 @@ export const AppSettingsPage = () => {
     }
 
     if (settings.multitenancyWithSingleDomainEnabled) {
-        return <FunctionalitiesGrid tenantId={resolvedTenantId} hideCalls hideStatistics hideGroupChatToggle />;
+        return <FunctionalitiesGrid tenantId={resolvedTenantId} hideStatistics />;
     }
 
-    return <FunctionalitiesGrid tenantId={resolvedTenantId} hideGroupChatToggle />;
+    return <FunctionalitiesGrid tenantId={resolvedTenantId} />;
 };

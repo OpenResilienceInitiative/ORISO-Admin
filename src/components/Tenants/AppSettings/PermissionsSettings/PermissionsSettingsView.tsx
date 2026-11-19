@@ -12,13 +12,24 @@ import { CaseSharingSection } from './CaseSharingSection';
 import { TileSections } from '../../../TileSections';
 import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
+import { SupervisionTile } from './SupervisionTile';
+import { TraegerSettingCard } from './TraegerSettingCard';
+import { TRAEGER_ONLY_SETTINGS, type TraegerOnlySettings } from './traegerFunctions';
+import {
+    GROUP_CHAT_UMBRELLA,
+    affectsCalls,
+    callsAllowed,
+    groupChatUmbrellaPolicy,
+    isGroupChatMaster,
+} from './derivedLegacySettings';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
 import { ASKER_HELP, CONVERSATION_HELP, GUEST_ACCOUNT_HELP } from './tileHelpTopics';
-import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp } from './help';
+import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp, TEAM_CHAT_HELP } from './help';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
@@ -136,6 +147,16 @@ export type PermissionsSettingsViewProps = {
     liveChatLinks?: ReactNode;
     /** What this page applies to, said in the page intro (e.g. one Träger, ORISO-Admin#1577). */
     introScopeNote?: ReactNode;
+    /**
+     * ORISO-Admin#1577: Team-Chat, stored per Träger only. Without it the page says it is set per
+     * Träger (platform).
+     */
+    traegerSettings?: TraegerOnlySettings;
+    /**
+     * Träger page only: called after a call setting of a tile changed, with whether any conversation
+     * type still offers calls, so the Träger's `isVideoCallAllowed` follows the tiles.
+     */
+    onCallsAllowedChange?: (allowed: boolean, change: { field: string; value: boolean }) => void;
 };
 
 export const PermissionsSettingsView = ({
@@ -164,6 +185,8 @@ export const PermissionsSettingsView = ({
     traegerDirectInvitePolicies,
     liveChatLinks,
     introScopeNote,
+    traegerSettings = { source: 'none' },
+    onCallsAllowedChange,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const cardsToRender = excludeCardKeys?.length
@@ -206,7 +229,7 @@ export const PermissionsSettingsView = ({
         [pendingPolicyFields],
     );
 
-    const changePolicy = useCallback(
+    const applyPolicy = useCallback(
         (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
             const fieldPath = ['settings', fieldKey];
             form.setFieldValue(fieldPath, next.value);
@@ -219,6 +242,38 @@ export const PermissionsSettingsView = ({
             onToggleUpdate(fieldPath, next.value, currentFormData);
         },
         [onPolicyChange, onToggleUpdate],
+    );
+
+    /**
+     * ORISO-Admin#1577: a tile change also keeps the two older switches the counselling app still
+     * reads in step (see derivedLegacySettings.ts): the group-chat umbrella on every level, and the
+     * Träger's call permission where the page can write it.
+     */
+    const changePolicy = useCallback(
+        (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
+            const policyOf = (field: string): PolicyValue<boolean> =>
+                field === fieldKey ? next : policyFor(field, form.getFieldValue(['settings', field]));
+            applyPolicy(fieldKey, next, form);
+
+            if (isGroupChatMaster(fieldKey)) {
+                const current = policyOf(GROUP_CHAT_UMBRELLA);
+                const lockedAbove =
+                    restrictedFields.has(GROUP_CHAT_UMBRELLA) ||
+                    (current.mode === 'ENFORCED' && current.inherited === true);
+                const umbrella = groupChatUmbrellaPolicy(policyOf);
+                const target = policyLevel === 'agency' ? { ...umbrella, mode: 'SUGGESTED' as const } : umbrella;
+                if (!lockedAbove && (current.value !== target.value || current.mode !== target.mode)) {
+                    applyPolicy(GROUP_CHAT_UMBRELLA, target, form);
+                }
+            }
+            if (onCallsAllowedChange && affectsCalls(fieldKey)) {
+                onCallsAllowedChange(
+                    callsAllowed((field) => policyOf(field).value),
+                    { field: fieldKey, value: next.value },
+                );
+            }
+        },
+        [applyPolicy, onCallsAllowedChange, policyFor, policyLevel, restrictedFields],
     );
 
     // One row for every switch on a tile: feature toggles and notification channels alike.
@@ -510,6 +565,27 @@ export const PermissionsSettingsView = ({
                                 />
                             )}
 
+                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here. */}
+                            {card.key === 'oneOnOne' && (
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-teamChat`}
+                                    title={t(TEAM_FUNCTIONS.chat.nameKey)}
+                                    note={t('tenants.permissions.teamChat.note')}
+                                    titleAction={<SectionHelp topic={TEAM_CHAT_HELP} />}
+                                    collapsible
+                                >
+                                    <div className={styles.togglesList}>
+                                        <TraegerSettingCard
+                                            field={TRAEGER_ONLY_SETTINGS.teamChat}
+                                            labelKey={TEAM_FUNCTIONS.chat.nameKey}
+                                            descriptionKey={TEAM_FUNCTIONS.chat.descriptionKey}
+                                            settings={traegerSettings}
+                                        />
+                                    </div>
+                                </TileSections.Section>
+                            )}
+
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                             {card.key === 'oneOnOne' && (
                                 <TileSections.Section
@@ -675,6 +751,15 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardGrid.Item>
                         ))}
+                        {/* ORISO-Admin#1577: supervision chats, after the conversation types. */}
+                        <CardGrid.Item span={3}>
+                            <SupervisionTile
+                                level={policyLevel}
+                                policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                pending={policyPending}
+                                onChange={(field, next) => changePolicy(field, next, form)}
+                            />
+                        </CardGrid.Item>
                         {calendar && policyLevel !== 'agency' && (
                             <CardGrid.Item span={2}>
                                 <CalendarCard {...calendar} level={policyLevel} />

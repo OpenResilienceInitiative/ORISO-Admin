@@ -52,7 +52,6 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
         shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled,
-        multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     };
 
     const navItems = restricted
@@ -78,7 +77,6 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
                       canManageServiceNotices,
                       shouldShowThemeSettings,
                       isTenantSettingsEditEnabled,
-                      multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
                   }),
         [
             can,
@@ -88,7 +86,6 @@ export const useAdminNavigation = ({ restricted = false }: { restricted?: boolea
             isStatisticsReader,
             isTenantSettingsEditEnabled,
             restricted,
-            settings.multitenancyWithSingleDomainEnabled,
             shouldShowThemeSettings,
         ],
     );

@@ -5,10 +5,10 @@ import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../i18n';
 
 /**
- * ORISO-Admin#1577: a setting lives in one place. What belongs to a conversation type sits on its
- * tile in Funktionszugriff; Funktionalitäten keeps only what belongs to no single type. The two Träger
- * tabs a platform admin opens must therefore never offer the same setting. The API is mocked at the
- * request boundary (`fetchData`).
+ * ORISO-Admin#1577: a setting lives in one place. What belongs to a conversation type (and Team-Chat
+ * and supervision) sits in Funktionszugriff; "Weitere" (formerly Funktionalitäten) keeps only topics
+ * and counsellor statistics. The two Träger tabs must never offer the same setting. The API is mocked
+ * at the request boundary (`fetchData`).
  */
 
 type Request = { url: string; method: string };
@@ -54,7 +54,7 @@ beforeAll(async () => {
     await i18n.changeLanguage('en');
 });
 
-describe('Träger tabs Funktionszugriff and Funktionalitäten (ORISO-Admin#1577)', () => {
+describe('Träger tabs Funktionszugriff and Weitere (ORISO-Admin#1577)', () => {
     it('never offer the same setting', async () => {
         const access = renderAt('/admin/tenants/7/global-settings', <TenantGlobalSettings />);
         await waitFor(() =>
@@ -75,10 +75,10 @@ describe('Träger tabs Funktionszugriff and Funktionalitäten (ORISO-Admin#1577)
             .filter(Boolean);
 
         expect(accessSettings.size).toBeGreaterThan(20);
-        expect(functionalitySettings).toEqual(
-            expect.arrayContaining(['isVideoCallAllowed', 'featureSupervisionEnabled', 'featureTeamDiscussionEnabled']),
+        expect(functionalitySettings.sort()).toEqual(['featureStatisticsEnabled', 'featureTopicsEnabled']);
+        ['featureSupervisionEnabled', 'featureTeamDiscussionEnabled', 'featureSupervisionOneOnOneChatsEnabled'].forEach(
+            (setting) => expect(accessSettings).toContain(setting),
         );
-        expect(accessSettings).toContain('featureSupervisionOneOnOneChatsEnabled');
         expect(functionalitySettings.filter((setting) => accessSettings.has(setting))).toEqual([]);
     });
 });

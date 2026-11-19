@@ -21,6 +21,8 @@ import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarP
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 import { Notify } from '../../../Notify';
+import type { TraegerOnlySetting, TraegerOnlySettings } from './traegerFunctions';
+import type { TenantAdminData } from '../../../../types/TenantAdminData';
 
 export const TenantPermissionsSettings = ({
     tenantId,
@@ -54,6 +56,9 @@ export const TenantPermissionsSettings = ({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+    // ORISO-Admin#1577: follows the tiles in the background; the tile change already said "saved".
+    const { mutateAsync: writeCallsAllowed } = useTenantAdminDataMutation({ id: tenantId, successMessageKey: null });
+    const [pendingTraegerFields, setPendingTraegerFields] = useState<ReadonlySet<string>>(new Set());
 
     useEffect(() => {
         tenantGeneration.current += 1;
@@ -264,6 +269,56 @@ export const TenantPermissionsSettings = ({
         [rebuildEffectivePolicyData, t, tenantId, updateCalendar],
     );
 
+    // Team-Chat: a plain Träger setting (no policy), saved like every other Träger setting.
+    const changeTraegerSetting = useCallback(
+        (field: TraegerOnlySetting, value: boolean) => {
+            setPendingTraegerFields((current) => new Set([...current, field]));
+            updateTenantSettings(
+                { settings: { [field]: value } },
+                {
+                    onSettled: () =>
+                        setPendingTraegerFields((current) => new Set([...current].filter((f) => f !== field))),
+                },
+            );
+        },
+        [updateTenantSettings],
+    );
+    const traegerSettings = useMemo<TraegerOnlySettings>(
+        () => ({
+            source: 'own',
+            values: tenantData?.settings as TraegerOnlySettings['values'],
+            pendingFields: pendingTraegerFields,
+            onChange: changeTraegerSetting,
+        }),
+        [changeTraegerSetting, pendingTraegerFields, tenantData?.settings],
+    );
+
+    /**
+     * ORISO-Admin#1577: the counselling app shows call buttons only while the Träger's
+     * `extendedSettings.isVideoCallAllowed` is on, so it follows the tiles. It runs after the tile's own
+     * save in the same queue, and only if that save went through.
+     */
+    const handleCallsAllowedChange = useCallback(
+        (allowed: boolean, change: { field: string; value: boolean }) => {
+            const operationGeneration = tenantGeneration.current;
+            const run = async () => {
+                if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
+                const saved = confirmedPolicyData.current?.policies?.[change.field];
+                if (saved && saved.value !== change.value) return;
+                if (tenantData?.settings?.extendedSettings?.isVideoCallAllowed === allowed) return;
+                try {
+                    await writeCallsAllowed({
+                        settings: { extendedSettings: { isVideoCallAllowed: allowed } },
+                    } as Partial<TenantAdminData>);
+                } catch {
+                    // The mutation hook reports the error; the tile value stays as saved.
+                }
+            };
+            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
+        },
+        [tenantData?.settings?.extendedSettings?.isVideoCallAllowed, tenantId, writeCallsAllowed],
+    );
+
     if (policiesError) {
         return (
             <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
@@ -279,6 +334,8 @@ export const TenantPermissionsSettings = ({
             excludeCardKeys={excludeCardKeys}
             liveChatLinks={liveChatLinks}
             introScopeNote={introScopeNote}
+            traegerSettings={traegerSettings}
+            onCallsAllowedChange={handleCallsAllowedChange}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}

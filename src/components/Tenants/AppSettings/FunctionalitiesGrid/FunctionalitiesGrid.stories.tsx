@@ -7,17 +7,17 @@ import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/ad
 import { FunctionalitiesGrid } from './index';
 
 /**
- * The Träger "Funktionalitäten" tab as production shows it (ORISO-Admin#1577): one full-width tile whose topics
- * (calls, topics and statistics, group chats, team chat, supervision) are folding sections.
+ * The Träger "Weitere" tab (formerly Funktionalitäten) as production shows it (ORISO-Admin#1577): one
+ * full-width tile with the folding section "Themen und Statistik".
  */
 const tenant = {
     id: 7,
     name: 'Träger Süd',
-    settings: { extendedSettings: { isVideoCallAllowed: true }, featureGroupChatV2Enabled: true },
+    settings: { featureTopicsEnabled: true, featureStatisticsEnabled: true },
 };
 
 const meta = {
-    title: 'Settings/Einstellungen/Funktionalitäten/FunctionalitiesGrid',
+    title: 'Settings/Einstellungen/Weitere/FunctionalitiesGrid',
     id: 'organisms-appsettings-functionalitiesgrid',
     component: FunctionalitiesGrid,
     args: { tenantId: '7' },
@@ -25,13 +25,6 @@ const meta = {
         layout: 'padded',
         msw: {
             handlers: [
-                // OtherFunctionsSettings reads the Träger's policies (ORISO-TenantService#363).
-                http.get('*/service/tenantadmin/:id/permission-policies', () =>
-                    HttpResponse.json({ tenantId: 7, policies: {} }),
-                ),
-                http.put('*/service/tenantadmin/:id/permission-policies', () =>
-                    HttpResponse.json({ tenantId: 7, policies: {} }),
-                ),
                 http.get('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.put('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 7, settings: {} })),

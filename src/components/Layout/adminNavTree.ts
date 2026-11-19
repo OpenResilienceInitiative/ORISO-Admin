@@ -28,7 +28,6 @@ export interface AdminNavTreeContext {
     canManageServiceNotices: boolean;
     shouldShowThemeSettings: boolean;
     isTenantSettingsEditEnabled: boolean;
-    multitenancyWithSingleDomainEnabled: boolean;
 }
 
 const LINK_TAB_ROUTES: Record<LinksTabKey, { to: string; labelKey: string }> = {
@@ -59,7 +58,6 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
         shouldShowThemeSettings: context.shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled: context.isTenantSettingsEditEnabled,
-        multitenancyWithSingleDomainEnabled: context.multitenancyWithSingleDomainEnabled,
     }).map((tab) => ({ id: settingsId(tab.to), to: tab.to, labelKey: tab.titleKey }));
 
     const users = getUserSections({ isSuperAdmin, can }).map((section) => ({

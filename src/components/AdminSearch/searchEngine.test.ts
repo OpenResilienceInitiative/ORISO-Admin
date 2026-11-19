@@ -206,8 +206,22 @@ const CASES: Case[] = [
     { options: PLATFORM_EN, query: 'dpa', top: 'legal:contracts' },
     { options: PLATFORM_DE, query: 'Vertrag', top: 'legal:contracts' },
     // Group chat in two languages and two roles
-    { options: TENANT_DE, query: 'Gruppenchat', top: 'access:group-internal', within: ['app:other'] },
-    { options: TENANT_EN, query: 'group chat', top: 'access:group-internal', within: ['app:other'] },
+    { options: TENANT_DE, query: 'Gruppenchat', top: 'access:group-internal' },
+    { options: TENANT_EN, query: 'group chat', top: 'access:group-internal' },
+    // ORISO-Admin#1577: the former Funktionalitäten settings are tiles of Funktionszugriff.
+    {
+        options: TENANT_DE,
+        query: 'Supervision',
+        top: ['access:supervision', 'logs:supervisors'],
+        within: ['access:supervision'],
+    },
+    { options: TENANT_DE, query: 'Statistik für Berater', top: 'app:other' },
+    {
+        options: TENANT_EN,
+        query: 'team chat',
+        top: ['access:group-internal', 'access:mail-counselling'],
+        within: ['access:mail-counselling'],
+    },
     { options: PLATFORM_EN, query: 'group chat', top: 'access:group-internal' },
     // Passwords and security, typed as a question, umlaut-free, or with the number
     { options: PLATFORM_DE, query: 'Passwort ändern', top: 'account:password' },
@@ -249,7 +263,7 @@ const CASES: Case[] = [
     { options: PLATFORM_EN, query: 'api key', top: 'global:translation' },
     { options: PLATFORM_DE, query: 'PLZ', top: 'global:postcode' },
     // The calls switch is a section of the other-functions tile (ORISO-Admin#1577).
-    { options: TENANT_DE, query: 'Videoberatung', top: 'access:mail-counselling', within: ['app:other'] },
+    { options: TENANT_DE, query: 'Videoberatung', top: 'access:mail-counselling' },
 ];
 
 describe('real queries against the index of a role', () => {
