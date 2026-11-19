@@ -1,0 +1,35 @@
+name: Verify supported Admin runtime without publishing
+
+on:
+    push:
+        branches:
+            - evidence/1603-admin-supported-runtime
+
+permissions:
+    contents: read
+
+env:
+    REGISTRY: ghcr.io
+    ORG: openresilienceinitiative
+
+jobs:
+    build-scan-and-start:
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        steps:
+            - name: Checkout the combined evidence source
+              uses: actions/checkout@v6
+              with:
+                  persist-credentials: false
+            - name: Build the Admin app using regular repository validation
+              uses: ./.github/actions/node-build
+            - name: Build and scan the OCI archive with publishing disabled
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: oriso-admin
+            - name: Start the exact scanned archive on an isolated network
+              shell: bash
+              env:
+                  ADMIN_IMAGE_ARCHIVE: ${{ runner.temp }}/oriso-admin.tar
+              run: bash scripts/ci-audit/admin-1603-startup-smoke.sh "$ADMIN_IMAGE_ARCHIVE"
