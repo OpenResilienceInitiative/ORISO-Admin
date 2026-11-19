@@ -1,0 +1,44 @@
+name: Verify Admin headers on both runtimes without publishing
+
+on:
+    push:
+        branches:
+            - evidence/1607-admin-headers
+
+permissions:
+    contents: read
+
+env:
+    REGISTRY: ghcr.io
+    ORG: openresilienceinitiative
+
+jobs:
+    response-headers:
+        runs-on: ubuntu-latest
+        timeout-minutes: 25
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - runtime: legacy
+                      dockerfile: Dockerfile
+                    - runtime: supported
+                      dockerfile: Dockerfile.supported-audit
+        steps:
+            - name: Checkout the isolated evidence source
+              uses: actions/checkout@v6
+              with:
+                  persist-credentials: false
+            - name: Build the Admin using normal repository validation
+              uses: ./.github/actions/node-build
+            - name: Build and scan the OCI archive without publishing
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: oriso-admin-headers-${{ matrix.runtime }}
+                  dockerfile: ${{ matrix.dockerfile }}
+            - name: Check actual headers on the exact scanned image
+              shell: bash
+              env:
+                  ADMIN_HEADER_ARCHIVE: ${{ runner.temp }}/oriso-admin-headers-${{ matrix.runtime }}.tar
+              run: bash scripts/ci-audit/admin-1607-headers-smoke.sh "$ADMIN_HEADER_ARCHIVE"
