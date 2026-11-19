@@ -103,7 +103,9 @@
 }
 
 .label {
+    /* The floated label masks the outline; it must paint above the later sibling. */
     position: absolute;
+    z-index: 1;
     top: 28px;
     left: 12px;
     padding: 0 4px;

@@ -50,6 +50,40 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+/** The floating label must cover the top border while focused and after entering a value. */
+export const ShortLabelClearsOutline: Story = {
+    play: async ({ canvasElement }) => {
+        const input = within(canvasElement).getByLabelText('Name');
+        const label = canvasElement.querySelector<HTMLLabelElement>('label[for]');
+        const outline = input.closest<HTMLElement>('[data-field-outline]');
+        if (!label || !outline) throw new Error('Expected the label and field outline');
+
+        const expectLabelOverBorder = async () => {
+            await waitFor(() => {
+                const labelRect = label.getBoundingClientRect();
+                const outlineRect = outline.getBoundingClientRect();
+                expect(labelRect.top).toBeLessThan(outlineRect.top);
+                expect(labelRect.bottom).toBeGreaterThan(outlineRect.top);
+                // Labels ignore pointer events in production; temporarily enable them
+                // to test the actual painted stacking order at the outline crossing.
+                const previous = label.style.pointerEvents;
+                label.style.pointerEvents = 'auto';
+                try {
+                    expect(document.elementFromPoint(labelRect.left + 2, outlineRect.top + 0.5)).toBe(label);
+                } finally {
+                    label.style.pointerEvents = previous;
+                }
+            });
+        };
+
+        await userEvent.click(input);
+        await expectLabelOverBorder();
+        await userEvent.type(input, 'A');
+        await userEvent.tab();
+        await expectLabelOverBorder();
+    },
+};
+
 export const Required: Story = {
     args: { required: true },
     decorators: [
