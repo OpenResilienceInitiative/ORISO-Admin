@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { FETCH_ERRORS } from '../../api/fetchData';
+import type { ConversationType } from '../ConversationModules/conversationModule';
 import { shippedJourneys, pruneUnknownTopics, type Journey, type JourneyLevel, type JourneyTopic } from './journey';
 import { effectiveJourneys, inheritedJourneys, layersFrom, type JourneyLayer } from './journeyEditing';
 import {
@@ -21,8 +23,14 @@ export interface JourneyScope {
     agencyId?: string;
 }
 
-/** Why a save did not go through, as the section shows it. */
-export type JourneySaveFailure = 'conflict' | 'rejected' | 'failed';
+/**
+ * Why a save did not go through, as the section shows it. `conflict` also covers a journey the
+ * platform deleted meanwhile (404): reloading is the way on in both cases.
+ */
+export type JourneySaveFailure = 'conflict' | 'rejected' | 'forbidden' | 'failed';
+
+/** What a save stored: the platform journeys, or this level's own layers. */
+export type JourneySaveResult = { ok: false } | { ok: true; journeys?: Journey[]; layers?: JourneyLayer[] };
 
 /**
  * What an editor started from: the stored versions and what was shown. A save always names these
@@ -39,19 +47,20 @@ export interface JourneyBase {
 }
 
 export interface JourneyWorkspace {
-    status: 'loading' | 'error' | 'ready';
+    /** `forbidden`: this admin may not read the journeys of this level (403). */
+    status: 'loading' | 'error' | 'forbidden' | 'ready';
     /** What this level sees: the platform's journeys with the layers above and its own. */
     journeys: Journey[];
     /** Below the platform: nothing is stored on the platform yet, so there is nothing to layer on. */
     platformMissing: boolean;
-    /** Topics deleted since a journey was saved; they were dropped from its routes. */
-    prunedTopics: number;
+    /** Topics deleted since a journey of this type was saved; they were dropped from its routes. */
+    prunedTopicsOf: (type: ConversationType) => number;
     saving: boolean;
     failure?: JourneySaveFailure;
     /** What an editor starts from; take it when the dialog opens. */
     base: JourneyBase;
-    /** Saves the edited journeys of this level against `base`; resolves whether it went through. */
-    save: (next: Journey[], base: JourneyBase) => Promise<boolean>;
+    /** Saves the edited journeys of this level against `base`; resolves what was stored. */
+    save: (next: Journey[], base: JourneyBase) => Promise<JourneySaveResult>;
     /** After a conflict: load again and forget the failure. */
     reload: () => void;
     dismissFailure: () => void;
@@ -62,9 +71,12 @@ const NONE: StoredLayer[] = [];
 const NO_JOURNEYS: StoredJourney[] = [];
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+const isForbidden = (error: unknown) => error instanceof Error && error.message === FETCH_ERRORS.FORBIDDEN;
+
 const failureOf = (error: unknown): JourneySaveFailure => {
     if (error instanceof JourneyConflictError) return 'conflict';
     if (error instanceof JourneyRejectedError) return 'rejected';
+    if (isForbidden(error)) return 'forbidden';
     return 'failed';
 };
 
@@ -102,6 +114,22 @@ export const useJourneyWorkspace = (
         // An empty topic list says nothing about which topics exist: then nothing is dropped.
         return topics && topics.length > 0 ? pruneUnknownTopics(base, topics) : { journeys: base, removed: [] };
     }, [stored, topics]);
+    const prunedTopicsOf = useCallback(
+        (type: ConversationType) => {
+            if (loaded.removed.length === 0) return 0;
+            const used = new Set(
+                (stored ?? NO_JOURNEYS)
+                    .map((entry) => entry.journey)
+                    .filter((journey) => journey.conversationType === type)
+                    .flatMap((journey) => [
+                        ...journey.routes.registration,
+                        ...journey.routes.links.flatMap((link) => link.topicIds),
+                    ]),
+            );
+            return loaded.removed.filter((id) => used.has(id)).length;
+        },
+        [loaded, stored],
+    );
     const layers = useMemo<JourneyLayer[]>(
         () => [...(tenantLayers.data ?? NONE), ...(agencyLayers.data ?? NONE)].map((entry) => entry.layer),
         [tenantLayers.data, agencyLayers.data],
@@ -118,7 +146,9 @@ export const useJourneyWorkspace = (
     ];
     let status: JourneyWorkspace['status'] = 'ready';
     if (!enabled || topics === undefined || queries.some((query) => query.isPending)) status = 'loading';
-    if (queries.some((query) => query.isError)) status = 'error';
+    if (queries.some((query) => query.isError)) {
+        status = queries.some((query) => isForbidden(query.error)) ? 'forbidden' : 'error';
+    }
 
     const reload = useCallback(() => {
         setFailure(undefined);
@@ -151,19 +181,21 @@ export const useJourneyWorkspace = (
                     });
                     const saved = await savePlatformChanges(store, from.stored, kept);
                     client.setQueryData([KEY, 'platform'], saved);
-                } else {
+                    return { ok: true, journeys: saved.map((entry) => entry.journey) };
+                }
+                {
                     const ownerId = level === 'tenant' ? tenantId : agencyId;
                     const own = layersFrom(next, inheritedJourneys(from.shown, from.layers, level), level, ownerId);
                     const before = level === 'tenant' ? from.tenantLayers : from.agencyLayers;
                     const saved = await saveLayerChanges(store, before, own);
                     client.setQueryData([KEY, level, ownerId], saved);
+                    return { ok: true, layers: saved.map((entry) => entry.layer) };
                 }
-                return true;
             } catch (error) {
                 setFailure(failureOf(error));
                 // Show what is stored now, part of this save included; the open draft keeps its base.
                 client.invalidateQueries({ queryKey: [KEY] });
-                return false;
+                return { ok: false };
             } finally {
                 setSaving(false);
             }
@@ -175,7 +207,7 @@ export const useJourneyWorkspace = (
         status,
         journeys,
         platformMissing,
-        prunedTopics: loaded.removed.length,
+        prunedTopicsOf,
         saving,
         failure,
         base,

@@ -4634,6 +4634,9 @@
     "journeys.saveFailure.rejected.text": "It breaks a rule of journeys, for example the order of steps. Check the steps and save again.",
     "journeys.saveFailure.failed.title": "Saving did not work",
     "journeys.saveFailure.failed.text": "Your changes are still here; part of them may already be saved. Try again in a moment; if someone else saved meanwhile, reload.",
+    "journeys.tile.noAccess": "You have no access to the journeys of this level.",
+    "journeys.saveFailure.forbidden.title": "No permission",
+    "journeys.saveFailure.forbidden.text": "You may not change these journeys. Ask the platform administration if you need to.",
     "journeys.tile.loading": "Loading journeys …",
     "journeys.tile.notLoaded": "The journeys could not be loaded. Reload the page.",
     "journeys.tile.platformFirst": "The platform has not stored its journeys yet. Once it has, you can adapt your steps here."

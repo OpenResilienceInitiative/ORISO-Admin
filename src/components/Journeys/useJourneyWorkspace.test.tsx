@@ -35,7 +35,7 @@ describe('the journeys of one level against the store (#1571)', () => {
         expect(result.current.journeys.length).toBeGreaterThan(0);
         let ok = false;
         await act(async () => {
-            ok = await result.current.save(result.current.journeys, result.current.base);
+            ok = (await result.current.save(result.current.journeys, result.current.base)).ok;
         });
         expect(ok).toBe(true);
         expect((await store.loadPlatform()).every((entry) => entry.version === 1)).toBe(true);
@@ -116,7 +116,7 @@ describe('the journeys of one level against the store (#1571)', () => {
         const store = memoryJourneyStore([withGone]);
         const { result } = mount(store, { level: 'platform' });
         await ready(result);
-        expect(result.current.prunedTopics).toBe(1);
+        expect(result.current.prunedTopicsOf('AGENCY_COUNSELLING')).toBe(1);
         await act(async () => {
             await result.current.save(result.current.journeys, result.current.base);
         });
@@ -124,5 +124,19 @@ describe('the journeys of one level against the store (#1571)', () => {
             version: 1,
             journey: { routes: { registration: [1, 99] } },
         });
+    });
+
+    it('a 403 reads as no access, not as a broken server', async () => {
+        const store = { ...memoryJourneyStore(), loadPlatform: () => Promise.reject(new Error('FORBIDDEN')) };
+        const { result } = mount(store, { level: 'platform' });
+        await waitFor(() => expect(result.current.status).toBe('forbidden'));
+    });
+
+    it('counts deleted topics per conversation type', async () => {
+        const withGone = { ...mail('a'), routes: { ...mail('a').routes, registration: [1, 99] } };
+        const { result } = mount(memoryJourneyStore([withGone]), { level: 'platform' });
+        await ready(result);
+        expect(result.current.prunedTopicsOf('AGENCY_COUNSELLING')).toBe(1);
+        expect(result.current.prunedTopicsOf('LIVE_CHAT')).toBe(0);
     });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import EditOutlined from '@mui/icons-material/EditOutlined';
 import HowToRegOutlined from '@mui/icons-material/HowToRegOutlined';
@@ -14,10 +14,8 @@ import { TypeIcon } from '../ConversationTypeAppearance/TypeIcon';
 import {
     coveredTopicsOf,
     hasRegistrationRoute,
-    pruneUnknownTopics,
     journeysOf,
     phasesOf,
-    shippedJourneys,
     topicsWithoutRoute,
     typeSummary,
     type Journey,
@@ -27,7 +25,9 @@ import {
 import { FlightPath } from './FlightPath';
 import { JourneysDialog, type JourneysDialogOpen } from './JourneysDialog';
 import type { KeywordSuggester, Translator } from './journeyTranslation';
-import { effectiveJourneys, inheritedJourneys, layersFrom, type JourneyLayer } from './journeyEditing';
+import type { JourneyLayer } from './journeyEditing';
+import { memoryJourneyStore, type JourneyStore } from './journeyStore';
+import { useJourneyWorkspace, type JourneyBase, type JourneyScope } from './useJourneyWorkspace';
 import styles from './styles.module.scss';
 
 const NO_LAYERS: JourneyLayer[] = [];
@@ -109,11 +109,13 @@ export interface JourneysSettingsProps {
     /** Topics of the installation; they are what journeys lead to. */
     topics: JourneyTopic[];
     /**
-     * The platform's journeys of every conversation type. Without any, the shipped ones are shown.
-     * May arrive after the first render (loading); the section follows until something is edited.
+     * Where the journeys live. Without one, a store in memory is made from `journeys` and `layers`
+     * (stories, tests); the section saves exactly as Funktionszugriff does (`useJourneyWorkspace`).
      */
+    store?: JourneyStore;
+    /** The platform's journeys of every conversation type, for the memory store. Without any, the shipped ones are shown. */
     journeys?: Journey[];
-    /** Below the platform: the layers of the viewer's Träger and Beratungsstelle (decision 29). */
+    /** The layers of the viewer's Träger and Beratungsstelle, for the memory store (decision 29). */
     layers?: JourneyLayer[];
     /** Below the platform: the Träger or Beratungsstelle whose layer is edited. */
     ownerId?: string;
@@ -131,19 +133,27 @@ export interface JourneysSettingsProps {
     blocked?: readonly string[];
     /** Opens one dialog right away (stories). */
     initiallyOpen?: { type: ConversationType; appearance?: boolean } & Partial<JourneysDialogOpen>;
-    /** Platform: the changed platform journeys. */
+    /** Platform: the stored platform journeys after a save. */
     onSave?: (journeys: Journey[]) => void;
-    /** Below the platform: the viewer's own layers; the platform journeys never change there. */
+    /** Below the platform: the viewer's own stored layers after a save. */
     onSaveLayers?: (layers: JourneyLayer[]) => void;
     onSaveAppearance?: (appearance: AppearanceSettings) => void;
 }
 
+/** Below the platform, which Träger a level builds on: its own id, or the Träger of the layers given. */
+const scopeOf = (level: JourneyLevel, ownerId: string, layers: JourneyLayer[]): JourneyScope => {
+    if (level === 'platform') return { level };
+    if (level === 'tenant') return { level, tenantId: ownerId };
+    return { level, agencyId: ownerId, tenantId: layers.find((layer) => layer.level === 'tenant')?.ownerId ?? '-' };
+};
+
 /**
- * The Journeys section: one tile per conversation type with its journeys and destinations.
- * Prototype — local state only until the storage exists.
+ * The Journeys section: one tile per conversation type with its journeys and destinations. A view
+ * over `useJourneyWorkspace`, the one module that loads, layers and saves journeys.
  */
 export const JourneysSettings = ({
     topics,
+    store: given,
     journeys: initial,
     layers: initialLayers = NO_LAYERS,
     ownerId = '',
@@ -159,35 +169,35 @@ export const JourneysSettings = ({
     onSaveAppearance,
 }: JourneysSettingsProps) => {
     const { t, i18n } = useTranslation();
-    // Topics deleted since a journey was saved drop out of its routes; the section says which.
-    const loaded = useMemo(() => pruneUnknownTopics(initial ?? shippedJourneys(topics), topics), [initial, topics]);
-    const [platformJourneys, setPlatformJourneys] = useState<Journey[]>(loaded.journeys);
-    const [layers, setLayers] = useState<JourneyLayer[]>(initialLayers);
-    const [edited, setEdited] = useState(false);
-    useEffect(() => {
-        if (!edited) setPlatformJourneys(loaded.journeys);
-    }, [loaded, edited]);
-    useEffect(() => {
-        if (!edited) setLayers(initialLayers);
-    }, [initialLayers, edited]);
-    const isPlatform = level === 'platform';
-    const journeys = isPlatform ? platformJourneys : effectiveJourneys(platformJourneys, layers);
+    const [store] = useState(() => given ?? memoryJourneyStore(initial ?? [], initialLayers));
+    const [scope] = useState(() => scopeOf(level, ownerId, initialLayers));
+    const workspace = useJourneyWorkspace(store, scope, topics);
+    const { journeys } = workspace;
     const [appearance, setAppearance] = useState<AppearanceSettings>(initialAppearance);
     const [open, setOpen] = useState<ConversationType | undefined>(
         initiallyOpen && !initiallyOpen.appearance ? initiallyOpen.type : undefined,
     );
+    // The dialog edits what was there when it opened and saves against exactly those versions.
+    const [base, setBase] = useState<JourneyBase>();
+    const ready = workspace.status === 'ready';
+    const openType = ready ? open : undefined;
+    const openBase = openType ? base ?? workspace.base : undefined;
     const [editingAppearance, setEditingAppearance] = useState<ConversationType | undefined>(
         initiallyOpen?.appearance ? initiallyOpen.type : undefined,
     );
     const typeName = (type: ConversationType) =>
         nameOf(appearance, type, i18n.language, t(`conversationModules.type.${type}`));
+    // The page names every deleted topic; with a dialog open, only those of its type.
+    const pruned = openType
+        ? workspace.prunedTopicsOf(openType)
+        : CONVERSATION_TYPES.reduce((sum, type) => sum + workspace.prunedTopicsOf(type), 0);
 
     return (
         <div className={styles.page}>
             <p className={styles.intro}>{t('journeys.intro')}</p>
-            {loaded.removed.length > 0 && (
+            {pruned > 0 && (
                 <div className={styles.notice} role="status" data-testid="journeys-pruned-topics">
-                    <p>{t('journeys.prunedTopics', { count: loaded.removed.length })}</p>
+                    <p>{t('journeys.prunedTopics', { count: pruned })}</p>
                 </div>
             )}
             <div className={styles.grid}>
@@ -204,46 +214,50 @@ export const JourneysSettings = ({
                             type={type}
                             journeys={journeys}
                             topics={topics}
-                            onOpen={() => setOpen(type)}
+                            onOpen={
+                                workspace.platformMissing
+                                    ? undefined
+                                    : () => {
+                                          setBase(workspace.base);
+                                          setOpen(type);
+                                      }
+                            }
                             onEditAppearance={canEditAppearance ? () => setEditingAppearance(type) : undefined}
                         />
                     </Card>
                 ))}
             </div>
-            {open && (
+            {openType && openBase && (
                 <JourneysDialog
-                    key={open}
-                    type={open}
-                    typeName={typeName(open)}
+                    key={openType}
+                    type={openType}
+                    typeName={typeName(openType)}
                     journeys={journeys}
                     topics={topics}
                     translator={translator}
                     suggester={suggester}
                     level={level}
                     blocked={blocked}
+                    saving={workspace.saving}
+                    saveBlocked={workspace.failure === 'conflict'}
                     initially={
-                        initiallyOpen?.type === open && initiallyOpen.journeyId
+                        initiallyOpen?.type === openType && initiallyOpen.journeyId
                             ? (initiallyOpen as JourneysDialogOpen)
                             : undefined
                     }
-                    onSave={(next) => {
-                        setEdited(true);
-                        if (level === 'platform') {
-                            setPlatformJourneys(next);
-                            onSave?.(next);
-                        } else {
-                            const own = layersFrom(
-                                next,
-                                inheritedJourneys(platformJourneys, layers, level),
-                                level,
-                                ownerId,
-                            );
-                            setLayers([...layers.filter((layer) => layer.level !== level), ...own]);
-                            onSaveLayers?.(own);
-                        }
+                    onSave={async (next) => {
+                        const result = await workspace.save(next, openBase);
+                        if (!result.ok) return;
+                        if (result.journeys) onSave?.(result.journeys);
+                        if (result.layers) onSaveLayers?.(result.layers);
+                        setBase(undefined);
                         setOpen(undefined);
                     }}
-                    onClose={() => setOpen(undefined)}
+                    onClose={() => {
+                        workspace.dismissFailure();
+                        setBase(undefined);
+                        setOpen(undefined);
+                    }}
                 />
             )}
             {editingAppearance && (

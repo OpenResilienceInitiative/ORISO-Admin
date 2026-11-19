@@ -4634,6 +4634,9 @@
     "journeys.saveFailure.rejected.text": "Sie verstößt gegen eine Regel der Reisen, zum Beispiel die Reihenfolge der Schritte. Prüfen Sie die Schritte und speichern Sie erneut.",
     "journeys.saveFailure.failed.title": "Speichern hat nicht geklappt",
     "journeys.saveFailure.failed.text": "Ihre Änderungen sind noch hier, ein Teil kann schon gespeichert sein. Versuchen Sie es gleich noch einmal; meldet sich wieder jemand anderes dazwischen, laden Sie neu.",
+    "journeys.tile.noAccess": "Sie haben keinen Zugriff auf die Reisen dieser Ebene.",
+    "journeys.saveFailure.forbidden.title": "Keine Berechtigung",
+    "journeys.saveFailure.forbidden.text": "Sie dürfen diese Reisen nicht ändern. Fragen Sie die Plattform-Administration, wenn Sie das brauchen.",
     "journeys.tile.loading": "Reisen werden geladen …",
     "journeys.tile.notLoaded": "Die Reisen konnten nicht geladen werden. Laden Sie die Seite neu.",
     "journeys.tile.platformFirst": "Die Plattform hat die Reisen noch nicht gespeichert. Sobald sie das tut, können Sie hier Ihre Schritte anpassen."

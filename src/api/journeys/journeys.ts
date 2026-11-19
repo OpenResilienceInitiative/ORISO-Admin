@@ -31,6 +31,8 @@ const rethrow = async (error: unknown): Promise<never> => {
         const body = await error.json().catch(() => ({}));
         if (error.status === 409) throw new JourneyConflictError(Number(body.currentVersion ?? -1));
         if (error.status === 400) throw new JourneyRejectedError(String(body.error ?? ''));
+        // The journey is gone (the platform deleted it meanwhile): reload, as after a conflict.
+        if (error.status === 404) throw new JourneyConflictError(-1);
     }
     throw error;
 };

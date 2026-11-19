@@ -89,6 +89,7 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
 
     const loadFailed = workspace.status === 'error' || topicQuery.isError;
     const renderJourneys = (cardKey: ChatTypeCardKey) => {
+        if (workspace.status === 'forbidden') return <TileState text={t('journeys.tile.noAccess')} />;
         if (loadFailed) return <TileState text={t('journeys.tile.notLoaded')} alert />;
         if (workspace.status === 'loading') return <TileState text={t('journeys.tile.loading')} />;
         const type = TYPE_OF_TILE[cardKey];
@@ -109,6 +110,7 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
         workspace.dismissFailure();
         setOpen(undefined);
     };
+    const pruned = opened ? workspace.prunedTopicsOf(opened.type) : 0;
     const dialog = opened && (
         <JourneysDialog
             key={opened.type}
@@ -121,9 +123,9 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
             saveBlocked={workspace.failure === 'conflict'}
             notice={
                 <>
-                    {workspace.prunedTopics > 0 && (
+                    {pruned > 0 && (
                         <div className={styles.notice} role="status" data-testid="journeys-pruned-topics">
-                            <p>{t('journeys.prunedTopics', { count: workspace.prunedTopics })}</p>
+                            <p>{t('journeys.prunedTopics', { count: pruned })}</p>
                         </div>
                     )}
                     <SaveFailure
@@ -136,7 +138,7 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
                 </>
             }
             onSave={async (next) => {
-                if (await workspace.save(next, opened.base)) setOpen(undefined);
+                if ((await workspace.save(next, opened.base)).ok) setOpen(undefined);
             }}
             onClose={close}
         />

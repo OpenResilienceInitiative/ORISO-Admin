@@ -120,7 +120,7 @@ const mail = (open: Record<string, unknown> = {}) => ({ type: 'AGENCY_COUNSELLIN
 export const Tiles: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const entry = canvas.getByTestId('journeys-entry-AGENCY_COUNSELLING');
+        const entry = await canvas.findByTestId('journeys-entry-AGENCY_COUNSELLING');
         await expect(entry).toHaveTextContent('3 Reisen');
         await expect(entry).toHaveTextContent('6 Ziele');
     },
@@ -485,7 +485,9 @@ export const DeletedTopic: Story = {
     args: { topics: topics.filter((topic) => topic.id !== 6) },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByTestId('journeys-pruned-topics')).toHaveTextContent('Ein Thema gibt es nicht mehr');
+        await expect(await canvas.findByTestId('journeys-pruned-topics')).toHaveTextContent(
+            'Ein Thema gibt es nicht mehr',
+        );
     },
 };
 
