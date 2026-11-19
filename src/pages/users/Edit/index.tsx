@@ -15,6 +15,7 @@ import {
     type ConsultantFieldName,
 } from '../../../components/ConsultantFields';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import profileStyles from '../accountProfile.module.scss';
 import { Page } from '../../../components/Page';
 import { MuiSelectField, Option } from '../../../components/mui/MuiSelectField';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -1018,19 +1019,8 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             </Page.BackWithActions>
 
             <ThemeProvider theme={orisoMuiTheme}>
-                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
-                    <ManagedEntityStatus
-                        entityKind="account"
-                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
-                        entityId={id}
-                        targetTenantId={singleData.tenantId}
-                        canManage={can(
-                            PermissionAction.Update,
-                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
-                        )}
-                    />
-                )}
                 <Form
+                    className={profileStyles.form}
                     disabled={isReadOnly}
                     labelAlign="left"
                     labelWrap
@@ -1248,6 +1238,18 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                         </Col>
                     </Row>
                 </Form>
+                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        targetTenantId={singleData.tenantId}
+                        canManage={can(
+                            PermissionAction.Update,
+                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
+                        )}
+                    />
+                )}
             </ThemeProvider>
             {tenantMove && (
                 <ChangeTraegerDialog

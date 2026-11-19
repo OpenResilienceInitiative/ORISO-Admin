@@ -339,6 +339,24 @@ describe('TenantAdminEditOrAdd', () => {
             await waitFor(() => expect(mocks.mutate).toHaveBeenCalledWith(expect.objectContaining({ tenantId: '2' })));
         });
 
+        it.each(['tenant-admins', 'platform-admins'])(
+            'shows the %s account access after the profile form',
+            (section) => {
+                asSuperAdmin();
+                mocks.params.id = '42';
+                mocks.location.pathname = `/admin/users/${section}/42`;
+                mocks.useTenantUserAdminData.mockReturnValue({
+                    data: { tenantId: section === 'tenant-admins' ? '2' : '0' },
+                    isLoading: false,
+                });
+                const { container } = renderPage();
+
+                const form = container.querySelector('form');
+                const accountAccess = screen.getByTestId('entity-status-card');
+                expect(form?.nextElementSibling).toBe(accountAccess);
+            },
+        );
+
         it('submits an authorized own-tenant update', async () => {
             mocks.params.id = '42';
             mocks.location.pathname = '/admin/users/tenant-admins/42';
