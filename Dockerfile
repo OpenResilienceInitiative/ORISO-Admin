@@ -24,6 +24,7 @@ RUN set -eux; \
 COPY build /usr/share/nginx/html/admin
 COPY scripts /usr/share/nginx/html/admin-auth-bff
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-headers.conf /etc/nginx/admin-response-headers.conf
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]
