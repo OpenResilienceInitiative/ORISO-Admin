@@ -39,8 +39,7 @@ describe('Träger admin Funktionalitäten page', () => {
     it('renders the shared raster grid with the Träger level flags', () => {
         render(<AppSettingsPage />);
 
-        // The SMTP tile lives on the Email Server tab only; it is not repeated here.
-        expect(gridProps()).toEqual({ tenantId: '5', hideSmtp: true, hideGroupChatToggle: true });
+        expect(gridProps()).toEqual({ tenantId: '5', hideGroupChatToggle: true });
     });
 
     it('falls back to the loaded tenant when the token carries no usable tenant id', () => {
@@ -50,14 +49,13 @@ describe('Träger admin Funktionalitäten page', () => {
         expect(gridProps().tenantId).toBe('9');
     });
 
-    it('keeps the single-domain variant: only the other-functions tile, without statistics and group chat', () => {
+    it('keeps the single-domain variant: without calls, statistics and group chat', () => {
         mocks.multitenancyWithSingleDomainEnabled = true;
         render(<AppSettingsPage />);
 
         expect(gridProps()).toEqual({
             tenantId: '5',
-            hideSmtp: true,
-            hideCommunication: true,
+            hideCalls: true,
             hideStatistics: true,
             hideGroupChatToggle: true,
         });

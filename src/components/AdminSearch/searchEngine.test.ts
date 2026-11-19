@@ -248,8 +248,8 @@ const CASES: Case[] = [
     { options: PLATFORM_DE, query: 'Fallübergabe', top: ['access:case-handover', 'logs:case-handover'] },
     { options: PLATFORM_EN, query: 'api key', top: 'global:translation' },
     { options: PLATFORM_DE, query: 'PLZ', top: 'global:postcode' },
-    // A Träger setting that only exists on the multi-tenant domain.
-    { options: TENANT_DE, query: 'Videoberatung', top: 'app:communication' },
+    // The calls switch is a section of the other-functions tile (ORISO-Admin#1577).
+    { options: TENANT_DE, query: 'Videoberatung', top: 'access:mail-counselling', within: ['app:other'] },
 ];
 
 describe('real queries against the index of a role', () => {

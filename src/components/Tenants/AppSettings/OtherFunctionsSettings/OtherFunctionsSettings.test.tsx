@@ -188,4 +188,30 @@ describe('OtherFunctionsSettings', () => {
         expect(screen.queryByRole('switch')).not.toBeInTheDocument();
         policyState.isError = false;
     });
+
+    // ORISO-Admin#1577: the calls switch is a section of this tile, and every topic folds like the
+    // sections of the conversation-type tiles.
+    it('holds the calls switch in a section of its own, unless the level hides it', async () => {
+        const { unmount } = render(<OtherFunctionsSettings tenantId="1" />);
+        expect(
+            screen.getByRole('group', { name: 'tenants.appSettings.otherFunctions.calls.title' }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('switch', { name: 'tenants.appSettings.communications.video.title' }),
+        ).toBeInTheDocument();
+        unmount();
+
+        render(<OtherFunctionsSettings tenantId="1" hideCalls />);
+        expect(screen.queryByRole('switch', { name: 'tenants.appSettings.communications.video.title' })).toBeNull();
+    });
+
+    it('lets every section fold up to its heading', async () => {
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+        const toggles = screen.getAllByRole('button', { expanded: true });
+
+        expect(toggles).toHaveLength(5);
+        await user.click(screen.getByRole('button', { name: 'tileHelp.otherFunctions.supervision.title' }));
+        expect(screen.queryByText('tenants.appSettings.otherFunctions.supervision.description')).not.toBeVisible();
+    });
 });

@@ -628,7 +628,8 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
     ],
 
     // ── Functionalities (Träger) ─────────────────────────────────────────────
-    'app:communication': [
+    // ORISO-Admin#1577: the calls switch is a section of the other-functions tile.
+    'app:other': [
         'video',
         'videoberatung',
         'videoanruf',
@@ -639,8 +640,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'jitsi',
         'telefonieren',
         'kommunikation',
-    ],
-    'app:other': [
         'gruppenchat',
         'gruppenchats',
         'teamdiskussion',

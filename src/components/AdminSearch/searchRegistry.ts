@@ -44,7 +44,7 @@ export interface SearchContext {
 }
 
 /** Who sees a tile on top of its tab. */
-export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin' | 'selfCounsel' | 'documentation';
+export type TileGate = 'platform' | 'singleDomain' | 'notTenantAdmin' | 'selfCounsel' | 'documentation';
 
 /** The admin roles that see "make me a counsellor" on the account page (rule of `SelfConsultantIdentity`). */
 export const SELF_COUNSEL_ROLES = [
@@ -57,7 +57,6 @@ export const SELF_COUNSEL_ROLES = [
 export const TILE_GATES: Record<TileGate, (context: SearchContext) => boolean> = {
     platform: (context) => context.isSuperAdmin,
     singleDomain: (context) => context.singleDomain,
-    multiTenant: (context) => !context.singleDomain,
     notTenantAdmin: (context) => !context.isTenantAdmin,
     // The card renders nothing for platform admins, service accounts and accounts without an admin role.
     selfCounsel: (context) =>
@@ -93,8 +92,6 @@ const tile = (
 ): RegistryTile => ({ id, titleKey, parents, source, ...options });
 
 const PERMISSIONS = ['settings:permissions', 'tenant:global-settings', 'agency:functionalities'];
-// The Träger page (`TenantGlobalSettings`) passes `excludeCardKeys={['liveChat']}`: no live-chat card there.
-const PERMISSIONS_WITHOUT_LIVE_CHAT = PERMISSIONS.filter((parent) => parent !== 'tenant:global-settings');
 const CHAT = 'src/components/Tenants/AppSettings/PermissionsSettings';
 const FEATURE_LABELS = [
     'tenants.permissions.feature.videoCalls',
@@ -443,15 +440,9 @@ export const SEARCH_TILES: RegistryTile[] = [
             fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
         },
     ),
-    tile(
-        'access:live-chat',
-        'tenants.permissions.card.liveChat.title',
-        PERMISSIONS_WITHOUT_LIVE_CHAT,
-        `${CHAT}/chatTypeCards.ts`,
-        {
-            fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
-        },
-    ),
+    tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
+        fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
+    }),
     tile('access:group', 'tenants.permissions.card.group.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
         fieldKeys: [...WITHOUT_SUPERVISION, ...NOTIFICATION_LABELS],
     }),
@@ -467,22 +458,13 @@ export const SEARCH_TILES: RegistryTile[] = [
 
     // ── Functionalities (Träger) ─────────────────────────────────────────────
     tile(
-        'app:communication',
-        'tenants.appSettings.communications.title',
-        ['settings:app-settings', 'tenant:functionalities'],
-        'src/components/Tenants/AppSettings/CommunicationSettings/index.tsx',
-        {
-            fieldKeys: ['tenants.appSettings.communications.video.title'],
-            gate: 'multiTenant',
-        },
-    ),
-    tile(
         'app:other',
         'tenants.appSettings.otherFunctions.title',
         ['settings:app-settings', 'tenant:functionalities'],
         'src/components/Tenants/AppSettings/OtherFunctionsSettings/index.tsx',
         {
             fieldKeys: [
+                'tenants.appSettings.communications.video.title',
                 'tenants.appSettings.otherFunctions.statistics.title',
                 'tenants.appSettings.otherFunctions.groupChat.title',
                 'teamFunctions.chat.name',

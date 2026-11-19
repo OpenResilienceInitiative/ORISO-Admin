@@ -143,11 +143,33 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
     });
 });
 
+describe('Same tiles as the platform page (ORISO-Admin#1577)', () => {
+    it('shows the Live Chat tile, with the chat links of this Träger on it', async () => {
+        serve({ traegerSettings: {} });
+        mocks.routes.set('GET /service/useradmin/invitelinks/topics', () => []);
+        mocks.routes.set('GET /service/useradmin/invitelinks', () => ({ content: [], totalElements: 0 }));
+        renderPage();
+
+        const tile = await screen.findByTestId('chat-type-card-liveChat');
+        expect(await within(tile).findByRole('region', { name: 'Live chat links' })).toBeInTheDocument();
+        // The links live on the tile only, not in a card of their own above the tiles.
+        expect(screen.getAllByRole('region', { name: 'Live chat links' })).toHaveLength(1);
+        expect(await findRow('featureAnonymousChatEnabled')).toBeInTheDocument();
+    });
+
+    it('says in the page intro that the changes apply to this Träger only', async () => {
+        serve({ traegerSettings: {} });
+        renderPage();
+
+        const intro = await screen.findByTestId('permissions-intro');
+        expect(within(intro).getByText(i18n.t('tenants.globalSettings.superAdminWarning.description'))).toBeVisible();
+    });
+});
+
 describe('Live-chat links for the selected Träger (ORISO-Admin#1321)', () => {
     it.each(['abc', '0'])('does not mount or request live-chat links for invalid tenant ID %s', (id) => {
         renderPage(id);
 
-        expect(screen.getByText(i18n.t('tenants.globalSettings.superAdminWarning.title'))).toBeInTheDocument();
         expect(screen.queryByRole('region', { name: 'Live chat links' })).not.toBeInTheDocument();
         expect(
             mocks.requests.filter(({ url }) => /\/service\/useradmin\/invitelinks(?:[/?]|$)/.test(url)),

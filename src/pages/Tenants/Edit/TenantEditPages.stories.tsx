@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import i18n from '../../../i18n';
 import {
     applyAdminInvertedTheme,
     applyAdminTheme,
@@ -30,9 +31,52 @@ export const Introduction: Story = { decorators: [tenantEditDecorator('erstantwo
 
 export const EmailServer: Story = { decorators: [tenantEditDecorator('smtp')] };
 
-export const FunctionalityAccess: Story = { decorators: [tenantEditDecorator('global-settings')] };
+/**
+ * ORISO-Admin#1577: the same tiles as the platform page. The Live Chat tile is there, with this Träger's chat links
+ * on it (not in a card of its own), and the page intro says that changes apply to this Träger only.
+ */
+export const FunctionalityAccess: Story = {
+    decorators: [tenantEditDecorator('global-settings')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const liveChat = await canvas.findByTestId('chat-type-card-liveChat', {}, { timeout: 8000 });
+        await expect(
+            await within(liveChat).findByRole('region', { name: i18n.t('liveChatLinks.title') }, { timeout: 8000 }),
+        ).toBeInTheDocument();
+        await expect(canvas.getAllByRole('region', { name: i18n.t('liveChatLinks.title') })).toHaveLength(1);
+        await expect(
+            within(canvas.getByTestId('permissions-intro')).getByText(
+                i18n.t('tenants.globalSettings.superAdminWarning.description'),
+            ),
+        ).toBeVisible();
+        const page = canvasElement.ownerDocument.documentElement;
+        await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    },
+};
 
-export const Functionalities: Story = { decorators: [tenantEditDecorator('functionalities')] };
+/**
+ * ORISO-Admin#1577: one tile, its topics as folding sections like the conversation-type tiles. Settings of a
+ * conversation type are not repeated here; they live on its tile in Funktionszugriff.
+ */
+export const Functionalities: Story = {
+    decorators: [tenantEditDecorator('functionalities')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole(
+            'group',
+            { name: i18n.t('tileHelp.otherFunctions.supervision.title') },
+            { timeout: 8000 },
+        );
+        [
+            'tenants.appSettings.otherFunctions.calls.title',
+            'tileHelp.otherFunctions.general.title',
+            'tenants.appSettings.otherFunctions.groupChat.sectionTitle',
+            'teamFunctions.chat.name',
+        ].forEach((key) => expect(canvas.getByRole('group', { name: i18n.t(key) })).toBeInTheDocument());
+        const page = canvasElement.ownerDocument.documentElement;
+        await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    },
+};
 
 /** The platform admin's "create Träger" dialog (`/admin/tenants/add`): the Träger's parts and the first admin as panels. */
 export const CreateTenant: Story = { decorators: [tenantEditDecorator('general', 'add')] };

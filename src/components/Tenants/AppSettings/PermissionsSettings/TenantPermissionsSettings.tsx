@@ -26,6 +26,7 @@ export const TenantPermissionsSettings = ({
     tenantId,
     excludeCardKeys,
     liveChatLinks,
+    introScopeNote,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
@@ -277,6 +278,7 @@ export const TenantPermissionsSettings = ({
             caseHandoverTenantId={Number(tenantId) || undefined}
             excludeCardKeys={excludeCardKeys}
             liveChatLinks={liveChatLinks}
+            introScopeNote={introScopeNote}
             isLoading={isLoading || policiesLoading}
             initialValues={initialValues}
             formStateKey={formStateKey}

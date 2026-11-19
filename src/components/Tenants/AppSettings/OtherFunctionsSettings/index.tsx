@@ -3,7 +3,13 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CardEditable } from '../../../CardEditable';
 import { TileSections } from '../../../TileSections';
-import { otherFunctionsHelp } from './help';
+import {
+    otherFunctionsGeneralHelp,
+    otherFunctionsHelp,
+    otherFunctionsSupervisionHelp,
+    otherFunctionsTeamHelp,
+} from './help';
+import { SectionHelp } from '../PermissionsSettings/SectionHelp';
 import { FormSwitchField } from '../../../FormSwitchField';
 import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
@@ -53,14 +59,15 @@ const SUPERVISION_FEATURE_TOGGLES: Array<{ labelKey: string; field: string }> = 
 
 interface OtherFunctionsSettingsArgs {
     tenantId: string;
-    hideTopics?: boolean;
+    /** The calls switch (`extendedSettings.isVideoCallAllowed`); not offered on the single domain. */
+    hideCalls?: boolean;
     hideStatistics?: boolean;
     hideGroupChatToggle?: boolean;
 }
 
 export const OtherFunctionsSettings = ({
     tenantId,
-    hideTopics,
+    hideCalls,
     hideStatistics,
     hideGroupChatToggle,
 }: OtherFunctionsSettingsArgs) => {
@@ -161,24 +168,47 @@ export const OtherFunctionsSettings = ({
             editButtonPlacement="footer"
             help={otherFunctionsHelp}
         >
+            {/* ORISO-Admin#1577: the sections fold and explain themselves like the sections of the
+                conversation-type tiles in Funktionszugriff. Only functions that belong to no single
+                conversation type live here; per-type settings live on their tile there. */}
             <TileSections>
-                <div className={styles.column}>
-                    <TileSections.Section id="other-general" title={t('tileHelp.otherFunctions.general.title')}>
-                        {!hideTopics && (
+                <TileSections.Stack>
+                    {!hideCalls && (
+                        <TileSections.Section
+                            id="other-calls"
+                            title={t('tenants.appSettings.otherFunctions.calls.title')}
+                            note={t('tileHelp.communications.essence')}
+                            collapsible
+                        >
                             <div className={styles.checkGroup}>
                                 <FormSwitchField
-                                    labelKey={`tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.title`}
-                                    name={['settings', 'featureTopicsEnabled']}
+                                    labelKey="tenants.appSettings.communications.video.title"
+                                    name={['settings', 'extendedSettings', 'isVideoCallAllowed']}
                                     inline
                                     disableLabels
                                 />
-                                <p className={styles.checkInfo}>
-                                    {t(
-                                        `tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.description`,
-                                    )}
-                                </p>
                             </div>
-                        )}
+                        </TileSections.Section>
+                    )}
+                    <TileSections.Section
+                        id="other-general"
+                        title={t('tileHelp.otherFunctions.general.title')}
+                        titleAction={<SectionHelp topic={otherFunctionsGeneralHelp} />}
+                        collapsible
+                    >
+                        <div className={styles.checkGroup}>
+                            <FormSwitchField
+                                labelKey={`tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.title`}
+                                name={['settings', 'featureTopicsEnabled']}
+                                inline
+                                disableLabels
+                            />
+                            <p className={styles.checkInfo}>
+                                {t(
+                                    `tenants.appSettings.otherFunctions${extraI18nTopicKey}.allowTopicCreation.description`,
+                                )}
+                            </p>
+                        </div>
                         {!hideStatistics && (
                             <div className={styles.checkGroup}>
                                 <FormSwitchField
@@ -192,7 +222,16 @@ export const OtherFunctionsSettings = ({
                                 </p>
                             </div>
                         )}
-                        {!hideGroupChatToggle && (
+                    </TileSections.Section>
+                </TileSections.Stack>
+                <TileSections.Stack>
+                    {!hideGroupChatToggle && (
+                        <TileSections.Section
+                            id="other-group-chat"
+                            title={t('tenants.appSettings.otherFunctions.groupChat.sectionTitle')}
+                            note={t('tenants.appSettings.otherFunctions.groupChat.note')}
+                            collapsible
+                        >
                             <div className={styles.checkGroup}>
                                 <FormSwitchField
                                     labelKey="tenants.appSettings.otherFunctions.groupChat.title"
@@ -205,10 +244,15 @@ export const OtherFunctionsSettings = ({
                                     {t('tenants.appSettings.otherFunctions.groupChat.description')}
                                 </p>
                             </div>
-                        )}
-                    </TileSections.Section>
-                    <TileSections.Section id="other-team" title={t(TEAM_FUNCTIONS.chat.nameKey)}>
-                        {/* Same row as its siblings in this tile; name and description come from the shared source. */}
+                        </TileSections.Section>
+                    )}
+                    <TileSections.Section
+                        id="other-team"
+                        title={t(TEAM_FUNCTIONS.chat.nameKey)}
+                        titleAction={<SectionHelp topic={otherFunctionsTeamHelp} />}
+                        collapsible
+                    >
+                        {/* Name and description come from the shared source. */}
                         <div className={styles.checkGroup}>
                             <FormSwitchField
                                 labelKey={TEAM_FUNCTIONS.chat.nameKey}
@@ -219,8 +263,13 @@ export const OtherFunctionsSettings = ({
                             <p className={styles.checkInfo}>{t(TEAM_FUNCTIONS.chat.descriptionKey)}</p>
                         </div>
                     </TileSections.Section>
-                </div>
-                <TileSections.Section id="other-supervision" title={t('tileHelp.otherFunctions.supervision.title')}>
+                </TileSections.Stack>
+                <TileSections.Section
+                    id="other-supervision"
+                    title={t('tileHelp.otherFunctions.supervision.title')}
+                    titleAction={<SectionHelp topic={otherFunctionsSupervisionHelp} />}
+                    collapsible
+                >
                     <div className={styles.checkGroup}>
                         <FormSwitchField
                             labelKey="tenants.appSettings.otherFunctions.supervision.title"
@@ -235,31 +284,29 @@ export const OtherFunctionsSettings = ({
                         </p>
                         {confirmSupervision.dialog}
                     </div>
-                    <>
-                        {SUPERVISION_FEATURE_TOGGLES.map(({ labelKey, field }) => {
-                            const capabilityUnavailable =
-                                field === 'featureMediaAiScanSupervisionChatsEnabled' &&
-                                !runtimeConfig.mediaAiScanAvailable;
-                            return (
-                                <div key={field} className={classNames(styles.checkGroup, styles.supervisionChild)}>
-                                    <FormSwitchField
-                                        labelKey={labelKey}
-                                        name={['settings', field]}
-                                        inline
-                                        disableLabels
-                                        disabled={capabilityUnavailable || lockedFromAbove(field)}
-                                    />
-                                    {capabilityUnavailable && (
-                                        <p className={styles.checkInfo}>
-                                            {t('tenants.permissions.feature.mediaAiScanUnavailable')}
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })}
-                        {/* ORISO-Helm#466: voice messages and media upload only hide the button. */}
-                        <p className={styles.checkInfo}>{t(APP_ONLY_HINT_KEY)}</p>
-                    </>
+                    {SUPERVISION_FEATURE_TOGGLES.map(({ labelKey, field }) => {
+                        const capabilityUnavailable =
+                            field === 'featureMediaAiScanSupervisionChatsEnabled' &&
+                            !runtimeConfig.mediaAiScanAvailable;
+                        return (
+                            <div key={field} className={classNames(styles.checkGroup, styles.supervisionChild)}>
+                                <FormSwitchField
+                                    labelKey={labelKey}
+                                    name={['settings', field]}
+                                    inline
+                                    disableLabels
+                                    disabled={capabilityUnavailable || lockedFromAbove(field)}
+                                />
+                                {capabilityUnavailable && (
+                                    <p className={styles.checkInfo}>
+                                        {t('tenants.permissions.feature.mediaAiScanUnavailable')}
+                                    </p>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {/* ORISO-Helm#466: voice messages and media upload only hide the button. */}
+                    <p className={styles.checkInfo}>{t(APP_ONLY_HINT_KEY)}</p>
                 </TileSections.Section>
             </TileSections>
         </CardEditable>

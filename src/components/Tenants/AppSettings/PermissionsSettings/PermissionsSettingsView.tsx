@@ -134,6 +134,8 @@ export type PermissionsSettingsViewProps = {
     calendar?: Omit<CalendarCardProps, 'level'>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
+    /** What this page applies to, said in the page intro (e.g. one Träger, ORISO-Admin#1577). */
+    introScopeNote?: ReactNode;
 };
 
 export const PermissionsSettingsView = ({
@@ -161,6 +163,7 @@ export const PermissionsSettingsView = ({
     calendar,
     traegerDirectInvitePolicies,
     liveChatLinks,
+    introScopeNote,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const cardsToRender = excludeCardKeys?.length
@@ -617,6 +620,7 @@ export const PermissionsSettingsView = ({
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
                     <PermissionsIntro
+                        scopeNote={introScopeNote}
                         cards={cardsToRender.map((card) => ({
                             key: card.key,
                             name: typeNames?.[card.key] ?? t(card.titleKey),

@@ -47,6 +47,14 @@ export const tenantEditHandlers = [
         HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
     ),
     http.get('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 7, policies: {} })),
+    // Funktionszugriff: the case-handover rules and the live-chat links of this Träger.
+    http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([])),
+    http.get('*/service/useradmin/invitelinks/topics', () =>
+        HttpResponse.json([{ id: 5, name: 'Schuldnerberatung', status: 'ACTIVE' }]),
+    ),
+    http.get('*/service/useradmin/invitelinks', () =>
+        HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    ),
     http.get('*/service/tenantadmin/:id/dpa/versions', () =>
         HttpResponse.json([
             {

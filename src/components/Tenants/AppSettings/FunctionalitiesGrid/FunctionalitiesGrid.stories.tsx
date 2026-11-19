@@ -7,8 +7,8 @@ import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/ad
 import { FunctionalitiesGrid } from './index';
 
 /**
- * The Träger "Funktionalitäten" tab as production shows it: no email server tile (both callers hide it, the email
- * server has its own tab), so the remaining tiles sit in the raster, other functions two columns wide.
+ * The Träger "Funktionalitäten" tab as production shows it (ORISO-Admin#1577): one full-width tile whose topics
+ * (calls, topics and statistics, group chats, team chat, supervision) are folding sections.
  */
 const tenant = {
     id: 7,
@@ -20,7 +20,7 @@ const meta = {
     title: 'Settings/Einstellungen/Funktionalitäten/FunctionalitiesGrid',
     id: 'organisms-appsettings-functionalitiesgrid',
     component: FunctionalitiesGrid,
-    args: { tenantId: '7', hideSmtp: true },
+    args: { tenantId: '7' },
     parameters: {
         layout: 'padded',
         msw: {
@@ -54,8 +54,8 @@ const PHONE_WIDTH = 390;
 
 const noSidewaysScroll: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const items = () => canvasElement.querySelectorAll('[data-admin-card-grid-item]');
-    // At least communication and other functions; the number of tiles is not fixed here.
-    await waitFor(() => expect(items().length).toBeGreaterThanOrEqual(2));
+    // The functionalities tile; the number of tiles is not fixed here.
+    await waitFor(() => expect(items().length).toBeGreaterThanOrEqual(1));
     const page = canvasElement.ownerDocument.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
 };
@@ -85,7 +85,7 @@ export const Phone: Story = {
         );
 
         await expect(hostWidth).toBe(PHONE_WIDTH);
-        await expect(tiles.length).toBeGreaterThanOrEqual(2);
+        await expect(tiles.length).toBeGreaterThanOrEqual(1);
         tiles.forEach((tile, index) => {
             expect(Math.abs(tile.width - hostWidth)).toBeLessThanOrEqual(1);
             // A tile that is as wide as the host but shifted sideways would still reach outside it.

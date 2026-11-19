@@ -50,9 +50,8 @@ describe('buildSearchIndex: what each role may find', () => {
         expect(has(ids({ role: 'agency', singleDomain: true }), 'account:self-counsel')).toBe(true);
     });
 
-    // Found in review: the Träger's "Global settings" tab leaves the live-chat card out, so a result for it
-    // would open a page that cannot show the tile.
-    it('does not offer live chat on the Träger tab that hides that card', () => {
+    // ORISO-Admin#1577: the Träger's Funktionszugriff tab shows the live-chat tile like the platform page.
+    it('offers live chat on the Träger tab, which shows that tile', () => {
         const list = buildFixtureIndex({
             role: 'platform',
             singleDomain: false,
@@ -61,8 +60,7 @@ describe('buildSearchIndex: what each role may find', () => {
         const onTenantTab = (id: string) => list.some((entry) => entry.id === `${id}@tenant:global-settings`);
 
         expect(onTenantTab('access:group')).toBe(true);
-        expect(onTenantTab('access:live-chat')).toBe(false);
-        expect(list.some((entry) => entry.id.startsWith('access:live-chat@'))).toBe(true);
+        expect(onTenantTab('access:live-chat')).toBe(true);
     });
 
     // Found in review: the profile page renders the Documentation card only when the app config enables it.
@@ -98,11 +96,6 @@ describe('buildSearchIndex: single and multi-tenant domain gates', () => {
     it('offers the legal settings tile only on the single domain', () => {
         expect(has(ids({ role: 'tenant', singleDomain: true }), 'legal:settings@')).toBe(true);
         expect(has(ids({ role: 'tenant', singleDomain: false }), 'legal:settings@')).toBe(false);
-    });
-
-    it.each(['app:communication@'])('offers %s only on the multi-tenant domain', (prefix) => {
-        expect(has(ids({ role: 'tenant', singleDomain: false }), prefix)).toBe(true);
-        expect(has(ids({ role: 'tenant', singleDomain: true }), prefix)).toBe(false);
     });
 });
 
