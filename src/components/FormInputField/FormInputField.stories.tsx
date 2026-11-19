@@ -149,6 +149,8 @@ export const LongLabel: Story = {
         await expect(label.getBoundingClientRect().height).toBe(restingHeight);
         await userEvent.tab();
         await expectReadable();
+        await userEvent.click(label);
+        await expect(input).toHaveFocus();
     },
 };
 

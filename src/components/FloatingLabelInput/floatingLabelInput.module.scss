@@ -155,6 +155,7 @@
 /* Long labels remain fully readable, including required markers, at any width. */
 .fieldLongLabel .label,
 .fieldMultiline.fieldLongLabel .label {
+    /* The label sits outside the input, so taps must activate its htmlFor target. */
     position: static;
     margin-bottom: 8px;
     padding: 0;
@@ -163,6 +164,7 @@
     letter-spacing: 0.5px;
     line-height: 24px;
     overflow-wrap: anywhere;
+    pointer-events: auto;
     transform: none;
 }
 
