@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ComponentProps, type ReactNode } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves for TypeScript and Vite
 import { expect, waitFor } from 'storybook/test';
@@ -43,7 +43,7 @@ const StepGallery = () => {
                             skipProps: { onClick: noop },
                             tooltipProps: {},
                             controls: { next: noop, prev: noop, skip: noop, close: noop },
-                        } as never)}
+                        } as unknown as ComponentProps<typeof ProductTourTooltip>)}
                     />
                 </li>
             ))}
