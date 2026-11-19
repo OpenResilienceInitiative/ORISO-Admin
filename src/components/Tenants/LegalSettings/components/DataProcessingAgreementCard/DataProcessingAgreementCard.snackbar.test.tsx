@@ -40,7 +40,7 @@ describe('DataProcessingAgreementCard tip (platform admin)', () => {
 
         expect(screen.getByText('legal.help.dpa.platform.empty.text')).toBeInTheDocument();
         expect(screen.getByText(/legal\.help\.dpa\.platform\.empty\.hint/)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'legal.dpa.hideHint' })).toBeInTheDocument();
         // Permanent help is tile text: nothing is raised on the pop-up channel.
         expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
     });
@@ -59,11 +59,11 @@ describe('DataProcessingAgreementCard tip (platform admin)', () => {
         expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
     });
 
-    it('"nicht mehr anzeigen" removes the CTA text completely and persists', async () => {
+    it('"Hinweis ausblenden" removes the CTA text completely and persists', async () => {
         const user = userEvent.setup();
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
-        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
+        await user.click(screen.getByRole('button', { name: 'legal.dpa.hideHint' }));
 
         expect(screen.queryByText(/legal\.help\.dpa\.platform\.empty\.hint/)).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBe('true');
@@ -90,7 +90,7 @@ describe('DataProcessingAgreementCard tip (platform admin)', () => {
         const first = render(
             <DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant-1:user-1" />,
         );
-        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
+        await user.click(screen.getByRole('button', { name: 'legal.dpa.hideHint' }));
         first.unmount();
 
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant-2:user-1" />);
@@ -109,6 +109,6 @@ describe('DataProcessingAgreementCard tip (platform admin)', () => {
         expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
         expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'legal.help.snackbar.dismiss' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.dpa.hideHint' })).not.toBeInTheDocument();
     });
 });

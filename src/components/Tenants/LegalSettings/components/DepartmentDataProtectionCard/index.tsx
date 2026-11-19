@@ -373,6 +373,7 @@ export const DepartmentDataProtectionCard = ({
             <M3RichTextEditor
                 snackbarSlot={editorNotices.some(Boolean) ? <EditorSnackbarQueue items={editorNotices} /> : undefined}
                 comparison={comparison}
+                fullscreenLabel={t(readOnly ? 'legal.m3Editor.readFullscreen' : 'legal.m3Editor.openFullscreen')}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 headerAction={

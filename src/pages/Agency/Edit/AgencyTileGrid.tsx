@@ -19,6 +19,8 @@ export interface AgencyTile {
     span?: 1 | 2 | 3;
     /** A document editor: the tile lets it use the whole row instead of the 800px card. */
     document?: boolean;
+    /** This document already supplies its own disclosure. */
+    ownDisclosure?: boolean;
     /** What the header of a collapsible tile shows. Without it the tile never collapses. */
     summary?: AgencyTileSummary;
     node: ReactNode;
@@ -37,10 +39,10 @@ export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile
     if (layout === 'collapsible') {
         return (
             <CardGrid raster>
-                {tiles.map(({ id, summary, document, node }, index) => (
+                {tiles.map(({ id, summary, document, ownDisclosure, node }, index) => (
                     <CardGrid.Item key={id} span={3}>
-                        {summary ? (
-                            <CollapsibleTile {...summary} defaultOpen={index === 0}>
+                        {summary && !ownDisclosure ? (
+                            <CollapsibleTile {...summary} defaultOpen={index === 0} documentMotion={document}>
                                 {/* A form stays form-wide; only a document uses the whole row. */}
                                 <div className={document ? styles.collapsedDocument : styles.collapsedForm}>{node}</div>
                             </CollapsibleTile>
@@ -55,9 +57,15 @@ export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile
 
     return (
         <CardGrid raster>
-            {tiles.map(({ id, span, document, node }) => (
+            {tiles.map(({ id, span, document, ownDisclosure, summary, node }) => (
                 <CardGrid.Item key={id} span={span} className={classNames({ [styles.documentTile]: document })}>
-                    {node}
+                    {document && summary && !ownDisclosure ? (
+                        <CollapsibleTile {...summary} documentMotion>
+                            <div className={styles.collapsedDocument}>{node}</div>
+                        </CollapsibleTile>
+                    ) : (
+                        node
+                    )}
                 </CardGrid.Item>
             ))}
         </CardGrid>

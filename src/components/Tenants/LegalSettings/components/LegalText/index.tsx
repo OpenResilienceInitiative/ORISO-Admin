@@ -977,6 +977,9 @@ export const LegalText = ({
                     icon={icon}
                     // In a tile the header, the explanation button and the help text belong to the tile.
                     hideHeader={collapsible}
+                    fullscreenLabel={t(
+                        canEditLegalText ? 'legal.m3Editor.openFullscreen' : 'legal.m3Editor.readFullscreen',
+                    )}
                     headerAction={
                         collapsible
                             ? undefined

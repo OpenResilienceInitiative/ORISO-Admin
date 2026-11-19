@@ -13,6 +13,8 @@ export interface CollapsibleTileProps {
     statusTone?: 'neutral' | 'attention';
     /** Open on first render. */
     defaultOpen?: boolean;
+    /** Centre the document heading and animate its body into the folded tile. */
+    documentMotion?: boolean;
     /** Called with the new state when the header is toggled, so a parent that rebuilds the tile can keep it open. */
     onOpenChange?: (open: boolean) => void;
     children: ReactNode;
@@ -30,6 +32,7 @@ export const CollapsibleTile = ({
     status,
     statusTone = 'neutral',
     defaultOpen = false,
+    documentMotion = false,
     onOpenChange,
     children,
     className,
@@ -46,7 +49,14 @@ export const CollapsibleTile = ({
     };
 
     return (
-        <section className={classNames(styles.tile, { [styles.open]: open }, className)} data-collapsible-tile>
+        <section
+            className={classNames(
+                styles.tile,
+                { [styles.open]: open, [styles.documentMotion]: documentMotion },
+                className,
+            )}
+            data-collapsible-tile
+        >
             <h3 className={styles.heading}>
                 <button
                     type="button"
@@ -55,23 +65,43 @@ export const CollapsibleTile = ({
                     aria-controls={bodyId}
                     onClick={toggle}
                 >
-                    <span className={styles.icon} aria-hidden>
-                        {icon}
-                    </span>
-                    <span className={styles.title}>{title}</span>
-                    {status && (
-                        <span
-                            className={classNames(styles.chip, { [styles.chipAttention]: statusTone === 'attention' })}
-                        >
-                            {status}
+                    <span className={styles.label}>
+                        <span className={styles.icon} aria-hidden>
+                            {icon}
                         </span>
-                    )}
-                    <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                        <span className={styles.title}>{title}</span>
+                    </span>
+                    <span className={styles.trailing}>
+                        {status && (
+                            <span
+                                className={classNames(styles.chip, {
+                                    [styles.chipAttention]: statusTone === 'attention',
+                                })}
+                            >
+                                {status}
+                            </span>
+                        )}
+                        <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                    </span>
                 </button>
             </h3>
-            <div id={bodyId} className={styles.body} hidden={!open} data-collapsible-tile-body>
-                {mounted && children}
-            </div>
+            {documentMotion ? (
+                <div
+                    id={bodyId}
+                    className={styles.motionBody}
+                    aria-hidden={!open}
+                    inert={!open}
+                    data-collapsible-tile-body
+                >
+                    <div className={styles.motionClip}>
+                        <div className={styles.body}>{mounted && children}</div>
+                    </div>
+                </div>
+            ) : (
+                <div id={bodyId} className={styles.body} hidden={!open} data-collapsible-tile-body>
+                    {mounted && children}
+                </div>
+            )}
         </section>
     );
 };

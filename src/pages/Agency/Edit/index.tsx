@@ -676,6 +676,7 @@ const AgencyPageEditForm = ({
             },
             {
                 id: 'contract-documents',
+                ownDisclosure: true,
                 summary: summary(
                     <DescriptionOutlinedIcon />,
                     'tenants.legal.dataProcessingAgreement.title',
@@ -684,7 +685,7 @@ const AgencyPageEditForm = ({
                 document: true,
                 span: 3,
                 // The DPA is managed at tenant (Träger) level — agency admins get a read-only view.
-                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />,
+                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly collapsible defaultOpen />,
             },
             {
                 id: 'imprint',
