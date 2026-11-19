@@ -8,12 +8,12 @@ import { useTenantTopics } from '../../hooks/useTenantTopics';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { UserRole } from '../../enums/UserRole';
 import { httpJourneyStore } from '../../api/journeys/journeys';
-import type { JourneyTopic } from './journey';
+import type { Journey, JourneyTopic } from './journey';
 import type { JourneyStore } from './journeyStore';
 import { adminTranslator } from './journeyTranslation';
 import { JourneysDialog } from './JourneysDialog';
 import { JourneyTileEntry } from './index';
-import { useJourneyWorkspace, type JourneyScope, type JourneyWorkspace } from './useJourneyWorkspace';
+import { useJourneyWorkspace, type JourneyBase, type JourneyScope, type JourneyWorkspace } from './useJourneyWorkspace';
 import styles from './styles.module.scss';
 
 /** The conversation type of each tile in Funktionszugriff. */
@@ -65,8 +65,10 @@ const TileState = ({ text, alert }: { text: string; alert?: boolean }) => (
 const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysInTiles => {
     const { t } = useTranslation();
     const { hasRole, isSuperAdmin } = useUserRoles();
-    const inReach = scope.level === 'platform' || Boolean(scope.level === 'tenant' ? scope.tenantId : scope.agencyId);
-    const on = inReach;
+    // A centre builds on its Träger's layer: without the Träger known there is nothing safe to show.
+    const on =
+        scope.level === 'platform' ||
+        (scope.level === 'tenant' ? Boolean(scope.tenantId) : Boolean(scope.agencyId && scope.tenantId));
     const topicQuery = useTenantTopics(false, on, { failClosed: true });
     const topics = useMemo<JourneyTopic[] | undefined>(
         () =>
@@ -76,7 +78,10 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
         [topicQuery.data],
     );
     const workspace = useJourneyWorkspace(store, scope, topics, on);
-    const [open, setOpen] = useState<ConversationType>();
+    // The dialog edits what was there when it opened, and saves against exactly those versions.
+    const [opened, setOpened] = useState<{ type: ConversationType; base: JourneyBase; journeys: Journey[] }>();
+    const setOpen = (type?: ConversationType) =>
+        setOpened(type && { type, base: workspace.base, journeys: workspace.journeys });
     // The translation endpoint answers Träger and platform admins only.
     const translator = isSuperAdmin || hasRole(UserRole.TenantAdmin) ? adminTranslator : undefined;
 
@@ -104,15 +109,16 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
         workspace.dismissFailure();
         setOpen(undefined);
     };
-    const dialog = open && (
+    const dialog = opened && (
         <JourneysDialog
-            key={open}
-            type={open}
-            journeys={workspace.journeys}
+            key={opened.type}
+            type={opened.type}
+            journeys={opened.journeys}
             topics={topics ?? []}
             translator={translator}
             level={scope.level}
             saving={workspace.saving}
+            saveBlocked={workspace.failure === 'conflict'}
             notice={
                 <>
                     {workspace.prunedTopics > 0 && (
@@ -130,7 +136,7 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
                 </>
             }
             onSave={async (next) => {
-                if (await workspace.save(next)) setOpen(undefined);
+                if (await workspace.save(next, opened.base)) setOpen(undefined);
             }}
             onClose={close}
         />

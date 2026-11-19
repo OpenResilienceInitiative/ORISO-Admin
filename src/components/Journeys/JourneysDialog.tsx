@@ -59,6 +59,8 @@ export interface JourneysDialogProps {
     initially?: JourneysDialogOpen;
     /** Saving to the store is under way: the save button waits. */
     saving?: boolean;
+    /** Saving cannot go on (e.g. after a conflict: reload first). */
+    saveBlocked?: boolean;
     /** Shown on top of the body, e.g. why saving failed. */
     notice?: ReactNode;
     onSave: (journeys: Journey[]) => void | Promise<void>;
@@ -80,6 +82,7 @@ export const JourneysDialog = ({
     blocked = [],
     initially,
     saving = false,
+    saveBlocked = false,
     notice,
     onSave,
     onClose,
@@ -135,7 +138,7 @@ export const JourneysDialog = ({
                         <M3Button variant="text" onClick={onClose}>
                             {t('journeys.action.cancel')}
                         </M3Button>
-                        <M3Button variant="filled" loading={saving} disabled={saving} onClick={save}>
+                        <M3Button variant="filled" loading={saving} disabled={saving || saveBlocked} onClick={save}>
                             {t('journeys.action.save')}
                         </M3Button>
                     </div>

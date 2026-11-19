@@ -35,7 +35,7 @@ describe('the journeys of one level against the store (#1571)', () => {
         expect(result.current.journeys.length).toBeGreaterThan(0);
         let ok = false;
         await act(async () => {
-            ok = await result.current.save(result.current.journeys);
+            ok = await result.current.save(result.current.journeys, result.current.base);
         });
         expect(ok).toBe(true);
         expect((await store.loadPlatform()).every((entry) => entry.version === 1)).toBe(true);
@@ -47,7 +47,7 @@ describe('the journeys of one level against the store (#1571)', () => {
         await ready(result);
         await store.savePlatform({ ...mail('a'), name: 'Theirs' }, 1);
         await act(async () => {
-            await result.current.save([{ ...mail('a'), name: 'Mine' }]);
+            await result.current.save([{ ...mail('a'), name: 'Mine' }], result.current.base);
         });
         expect(result.current.failure).toBe('conflict');
         act(() => result.current.reload());
@@ -62,7 +62,7 @@ describe('the journeys of one level against the store (#1571)', () => {
         const [journey] = result.current.journeys;
         const edited = { ...journey, phases: { ...journey.phases, flight: [...journey.phases.flight, extra] } };
         await act(async () => {
-            await result.current.save([edited]);
+            await result.current.save([edited], result.current.base);
         });
         expect(result.current.failure).toBeUndefined();
         const [layer] = await store.loadLayers('tenant', 't1');
@@ -91,5 +91,38 @@ describe('the journeys of one level against the store (#1571)', () => {
         const store = { ...memoryJourneyStore(), loadPlatform: () => Promise.reject(new Error('down')) };
         const { result } = mount(store, { level: 'platform' });
         await waitFor(() => expect(result.current.status).toBe('error'));
+    });
+
+    it('a second try after a conflict still conflicts: the draft never overwrites the newer version', async () => {
+        const store = memoryJourneyStore([mail('a')]);
+        const { result } = mount(store, { level: 'platform' });
+        await ready(result);
+        const { base } = result.current;
+        await store.savePlatform({ ...mail('a'), name: 'Theirs' }, 1);
+        await act(async () => {
+            await result.current.save([{ ...mail('a'), name: 'Mine' }], base);
+        });
+        // The refetch has loaded the newer version; the open dialog still saves against its base.
+        await waitFor(() => expect(result.current.journeys[0].name).toBe('Theirs'));
+        await act(async () => {
+            await result.current.save([{ ...mail('a'), name: 'Mine' }], base);
+        });
+        expect(result.current.failure).toBe('conflict');
+        expect((await store.loadPlatform())[0].journey.name).toBe('Theirs');
+    });
+
+    it('does not store a deleted topic dropping out of journeys the editor left alone', async () => {
+        const withGone = { ...mail('a'), routes: { ...mail('a').routes, registration: [1, 99] } };
+        const store = memoryJourneyStore([withGone]);
+        const { result } = mount(store, { level: 'platform' });
+        await ready(result);
+        expect(result.current.prunedTopics).toBe(1);
+        await act(async () => {
+            await result.current.save(result.current.journeys, result.current.base);
+        });
+        expect((await store.loadPlatform())[0]).toMatchObject({
+            version: 1,
+            journey: { routes: { registration: [1, 99] } },
+        });
     });
 });

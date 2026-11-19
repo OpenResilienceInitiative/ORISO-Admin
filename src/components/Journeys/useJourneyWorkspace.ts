@@ -8,6 +8,7 @@ import {
     saveLayerChanges,
     savePlatformChanges,
     type JourneyStore,
+    type StoredJourney,
     type StoredLayer,
 } from './journeyStore';
 
@@ -23,6 +24,20 @@ export interface JourneyScope {
 /** Why a save did not go through, as the section shows it. */
 export type JourneySaveFailure = 'conflict' | 'rejected' | 'failed';
 
+/**
+ * What an editor started from: the stored versions and what was shown. A save always names these
+ * versions, never ones loaded later, so a change someone else made meanwhile is a conflict and
+ * never overwritten by an older draft.
+ */
+export interface JourneyBase {
+    stored: StoredJourney[];
+    tenantLayers: StoredLayer[];
+    agencyLayers: StoredLayer[];
+    /** The platform journeys as shown (topics deleted since dropped from their routes). */
+    shown: Journey[];
+    layers: JourneyLayer[];
+}
+
 export interface JourneyWorkspace {
     status: 'loading' | 'error' | 'ready';
     /** What this level sees: the platform's journeys with the layers above and its own. */
@@ -33,8 +48,10 @@ export interface JourneyWorkspace {
     prunedTopics: number;
     saving: boolean;
     failure?: JourneySaveFailure;
-    /** Saves the edited journeys of this level; resolves whether it went through. */
-    save: (next: Journey[]) => Promise<boolean>;
+    /** What an editor starts from; take it when the dialog opens. */
+    base: JourneyBase;
+    /** Saves the edited journeys of this level against `base`; resolves whether it went through. */
+    save: (next: Journey[], base: JourneyBase) => Promise<boolean>;
     /** After a conflict: load again and forget the failure. */
     reload: () => void;
     dismissFailure: () => void;
@@ -42,6 +59,8 @@ export interface JourneyWorkspace {
 
 const KEY = 'JOURNEYS';
 const NONE: StoredLayer[] = [];
+const NO_JOURNEYS: StoredJourney[] = [];
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
 const failureOf = (error: unknown): JourneySaveFailure => {
     if (error instanceof JourneyConflictError) return 'conflict';
@@ -80,7 +99,8 @@ export const useJourneyWorkspace = (
     const platformMissing = level !== 'platform' && stored !== undefined && stored.length === 0;
     const loaded = useMemo(() => {
         const base = stored && stored.length > 0 ? stored.map((entry) => entry.journey) : shippedJourneys(topics ?? []);
-        return pruneUnknownTopics(base, topics ?? []);
+        // An empty topic list says nothing about which topics exist: then nothing is dropped.
+        return topics && topics.length > 0 ? pruneUnknownTopics(base, topics) : { journeys: base, removed: [] };
     }, [stored, topics]);
     const layers = useMemo<JourneyLayer[]>(
         () => [...(tenantLayers.data ?? NONE), ...(agencyLayers.data ?? NONE)].map((entry) => entry.layer),
@@ -105,32 +125,50 @@ export const useJourneyWorkspace = (
         client.invalidateQueries({ queryKey: [KEY] });
     }, [client]);
 
+    const base = useMemo<JourneyBase>(
+        () => ({
+            stored: stored ?? NO_JOURNEYS,
+            tenantLayers: tenantLayers.data ?? NONE,
+            agencyLayers: agencyLayers.data ?? NONE,
+            shown: loaded.journeys,
+            layers,
+        }),
+        [stored, tenantLayers.data, agencyLayers.data, loaded, layers],
+    );
+
     const save = useCallback(
-        async (next: Journey[]) => {
+        async (next: Journey[], from: JourneyBase) => {
             setSaving(true);
             setFailure(undefined);
             try {
                 if (level === 'platform') {
-                    const saved = await savePlatformChanges(store, stored ?? [], next);
+                    // A journey the editor left as shown is written back as stored: dropping a
+                    // deleted topic from journeys nobody opened is not a change of theirs.
+                    const kept = next.map((journey) => {
+                        const shown = from.shown.find((candidate) => candidate.id === journey.id);
+                        const original = from.stored.find((entry) => entry.journey.id === journey.id);
+                        return shown && original && same(shown, journey) ? original.journey : journey;
+                    });
+                    const saved = await savePlatformChanges(store, from.stored, kept);
                     client.setQueryData([KEY, 'platform'], saved);
                 } else {
                     const ownerId = level === 'tenant' ? tenantId : agencyId;
-                    const own = layersFrom(next, inheritedJourneys(loaded.journeys, layers, level), level, ownerId);
-                    const before = (level === 'tenant' ? tenantLayers.data : agencyLayers.data) ?? NONE;
+                    const own = layersFrom(next, inheritedJourneys(from.shown, from.layers, level), level, ownerId);
+                    const before = level === 'tenant' ? from.tenantLayers : from.agencyLayers;
                     const saved = await saveLayerChanges(store, before, own);
                     client.setQueryData([KEY, level, ownerId], saved);
                 }
                 return true;
             } catch (error) {
                 setFailure(failureOf(error));
-                // What was saved before the failure is stored: show it as it now is.
+                // Show what is stored now, part of this save included; the open draft keeps its base.
                 client.invalidateQueries({ queryKey: [KEY] });
                 return false;
             } finally {
                 setSaving(false);
             }
         },
-        [level, store, stored, client, tenantId, agencyId, loaded, layers, tenantLayers.data, agencyLayers.data],
+        [level, store, client, tenantId, agencyId],
     );
 
     return {
@@ -140,6 +178,7 @@ export const useJourneyWorkspace = (
         prunedTopics: loaded.removed.length,
         saving,
         failure,
+        base,
         save,
         reload,
         dismissFailure: useCallback(() => setFailure(undefined), []),

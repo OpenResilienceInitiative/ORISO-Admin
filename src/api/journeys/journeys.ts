@@ -42,10 +42,13 @@ const call = async (url: string, method: string, body?: unknown) => {
             method,
             skipAuth: false,
             ...(body === undefined ? {} : { bodyData: JSON.stringify(body) }),
+            // A 403 is shown on the tiles ("not loaded"), never as a jump to the access-denied page.
             responseHandling: [
+                FETCH_ERRORS.FORBIDDEN,
                 FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
                 FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
-                FETCH_ERRORS.CATCH_ALL,
+                // Every failure is said where it happens (tile, dialog); no extra toast.
+                FETCH_ERRORS.CATCH_ALL_SILENT,
             ],
         });
     } catch (error) {
@@ -59,8 +62,9 @@ const toJourney = (entry: JourneyEntryDTO): StoredJourney => ({ journey: entry.j
 export const httpJourneyStore: JourneyStore = {
     loadPlatform: async () => {
         // fetchData parses GET answers itself.
-        const entries = (await call(`${journeysEndpoint}/platform`, FETCH_METHODS.GET)) as JourneyEntryDTO[];
-        return entries.map(toJourney);
+        const entries = await call(`${journeysEndpoint}/platform`, FETCH_METHODS.GET);
+        // An empty answer (204) means nothing stored.
+        return Array.isArray(entries) ? (entries as JourneyEntryDTO[]).map(toJourney) : [];
     },
     savePlatform: async (journey, version) => {
         const response = await call(
@@ -77,10 +81,11 @@ export const httpJourneyStore: JourneyStore = {
         );
     },
     loadLayers: async (level, ownerId) => {
-        const entries = (await call(
+        const answer = await call(
             `${journeysEndpoint}/${PATH_OF_LEVEL[level]}/${encodeURIComponent(ownerId)}/layers`,
             FETCH_METHODS.GET,
-        )) as LayerEntryDTO[];
+        );
+        const entries: LayerEntryDTO[] = Array.isArray(answer) ? answer : [];
         return entries.map(
             (entry): StoredLayer => ({
                 layer: { journeyId: entry.journeyId, level, ownerId, phases: entry.phases },
