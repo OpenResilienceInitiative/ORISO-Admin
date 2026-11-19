@@ -1,4 +1,5 @@
 name: Reusable Docker build, scan and publish steps
+description: Scan the OCI build archive and publish the same image with its original digest.
 
 inputs:
     push_to_ghcr:
@@ -23,8 +24,8 @@ inputs:
 
 outputs:
     digest:
-        description: Immutable digest of the pushed image, for race-proof verification.
-        value: ${{ steps.build.outputs.digest }}
+        description: Immutable digest of the scanned and published image.
+        value: ${{ steps.publish.outputs.digest }}
 
 runs:
     using: 'composite'
@@ -44,31 +45,37 @@ runs:
                   type=raw,value=dev,enable=${{ github.ref == 'refs/heads/dev' }}
                   type=raw,value=pre-dev,enable=${{ github.ref == 'refs/heads/pre-dev' }}
 
-        # Buildx reuses the local layers for publication. The Docker exporter
-        # loads a single platform without attestations so Trivy can inspect it.
-        - name: Build image locally for scanning
+        # The OCI exporter retains the build action's default provenance.
+        - name: Build the complete image without publishing
+          id: build
           uses: docker/build-push-action@v7
           with:
               context: .
               file: ${{ inputs.dockerfile }}
               platforms: linux/amd64
               push: false
-              load: true
-              provenance: false
-              sbom: false
-              tags: ${{ inputs.image_name }}:ci-scan
+              outputs: type=oci,dest=${{ runner.temp }}/${{ inputs.image_name }}.tar
               labels: ${{ inputs.image_labels || steps.meta.outputs.labels }}
+              # Separate app and Storybook build caches (Admin #424).
               cache-from: type=gha,scope=${{ inputs.image_name }}
+              cache-to: type=gha,mode=max,scope=${{ inputs.image_name }}
+
+        - name: Install OCI transport
+          shell: bash
+          run: sudo apt-get update && sudo apt-get install -y --no-install-recommends skopeo
+
+        - name: Install Trivy
+          uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+          with:
+              version: v0.70.0
+              cache: true
 
         - name: Reject fixable high or critical image vulnerabilities
-          uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-          with:
-              image-ref: ${{ inputs.image_name }}:ci-scan
-              format: table
-              exit-code: '1'
-              ignore-unfixed: true
-              vuln-type: os,library
-              severity: CRITICAL,HIGH
+          shell: bash
+          env:
+              IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
+              IMAGE_PLATFORMS: linux/amd64
+          run: bash "$GITHUB_ACTION_PATH/scan-image-archive.sh" "$IMAGE_ARCHIVE" "$IMAGE_PLATFORMS"
 
         - name: Login to GitHub Container Registry
           if: ${{ inputs.push_to_ghcr == 'true' }}
@@ -78,23 +85,12 @@ runs:
               username: ${{ github.actor }}
               password: ${{ inputs.github_token }}
 
-        - name: Build and publish Docker image
-          id: build
+        - name: Publish the scanned archive without rebuilding
+          id: publish
           if: ${{ inputs.push_to_ghcr == 'true' }}
-          uses: docker/build-push-action@v7
-          with:
-              context: .
-              file: ${{ inputs.dockerfile }}
-              platforms: linux/amd64
-              push: true
-              tags: ${{ inputs.image_tags || steps.meta.outputs.tags }}
-              labels: ${{ inputs.image_labels || steps.meta.outputs.labels }}
-              # Scope the GHA cache per image. `oriso-admin` (Dockerfile) and
-              # `oriso-admin-storybook` (Dockerfile.storybook) build from this same
-              # action on every push to pre-dev/dev/main. Without a scope they share
-              # one GHA cache namespace and race, which let one image restore the
-              # other's (or an older) `COPY build` layer — shipping a stale bundle
-              # under a fresh :pre-dev tag (issue #424). image_name is distinct per
-              # image, so this isolates them while keeping push+PR cache reuse.
-              cache-from: type=gha,scope=${{ inputs.image_name }}
-              cache-to: type=gha,mode=max,scope=${{ inputs.image_name }}
+          shell: bash
+          env:
+              IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
+              IMAGE_TAGS: ${{ inputs.image_tags || steps.meta.outputs.tags }}
+              EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
+          run: bash "$GITHUB_ACTION_PATH/publish-image-archive.sh" "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST"
