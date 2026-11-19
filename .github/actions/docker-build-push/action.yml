@@ -71,11 +71,13 @@ runs:
               cache: true
 
         - name: Reject fixable high or critical image vulnerabilities
+          id: scan
           shell: bash
           env:
               IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
               IMAGE_PLATFORMS: linux/amd64
-          run: bash "$GITHUB_ACTION_PATH/scan-image-archive.sh" "$IMAGE_ARCHIVE" "$IMAGE_PLATFORMS"
+              EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
+          run: bash "$GITHUB_ACTION_PATH/scan-image-archive.sh" "$IMAGE_ARCHIVE" "$IMAGE_PLATFORMS" "$EXPECTED_DIGEST"
 
         - name: Login to GitHub Container Registry
           if: ${{ inputs.push_to_ghcr == 'true' }}
@@ -93,4 +95,5 @@ runs:
               IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
               IMAGE_TAGS: ${{ inputs.image_tags || steps.meta.outputs.tags }}
               EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
-          run: bash "$GITHUB_ACTION_PATH/publish-image-archive.sh" "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST"
+              EXPECTED_ARCHIVE_SHA256: ${{ steps.scan.outputs.archive_sha256 }}
+          run: bash "$GITHUB_ACTION_PATH/publish-image-archive.sh" "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"

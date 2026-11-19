@@ -2,9 +2,17 @@
 set -euo pipefail
 
 archive=${1:?OCI archive is required}
-expected_digest=${2:?Expected image digest is required}
+expected_digest=${2:?Expected OCI index digest is required}
+expected_archive_sha256=${3:?Scanned archive SHA-256 is required}
 : "${IMAGE_TAGS:?Image tags are required}"
 : "${GITHUB_OUTPUT:?GitHub output file is required}"
+
+archive_checksum=$(sha256sum "$archive")
+if [[ "${archive_checksum%% *}" != "$expected_archive_sha256" ]]; then
+  echo "The archive to publish differs from the scanned archive." >&2
+  exit 1
+fi
+
 digest_file=$(mktemp "${TMPDIR:-/tmp}/oriso-image-digest.XXXXXX")
 trap 'rm -f "$digest_file"' EXIT
 copied=false
