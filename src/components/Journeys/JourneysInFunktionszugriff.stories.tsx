@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook subpath export
-import { expect, fn, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../context/useAppConfig';
 import { PermissionsSettingsView } from '../Tenants/AppSettings/PermissionsSettings/PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS } from '../Tenants/AppSettings/PermissionsSettings/permissionsSettingsUtils';
@@ -13,6 +13,9 @@ import { ConversationTypeSettingsDialog } from '../ConversationTypeAppearance/Co
 import { shippedJourneys, type Journey } from './journey';
 import { JourneysDialog } from './JourneysDialog';
 import { JourneyTileEntry } from './index';
+import { JourneyConflictError, memoryJourneyStore, type JourneyStore } from './journeyStore';
+import { useJourneysInTiles } from './JourneysInTiles';
+import type { JourneyScope } from './useJourneyWorkspace';
 
 const topics = [
     { id: 1, name: 'Schwangerschaft' },
@@ -118,5 +121,90 @@ export const OpenedFromTheTile: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByTestId('journeys-dialog')).toBeInTheDocument();
         await expect(body.getByTestId('journey-standard-AGENCY_COUNSELLING-departure')).toHaveTextContent('6 Schritte');
+    },
+};
+
+/** Funktionszugriff as the pages mount it: journeys loaded from and saved to a store (ORISO-Admin#1571). */
+const MountedFunktionszugriff = ({ store, scope }: { store: JourneyStore; scope: JourneyScope }) => {
+    const journeys = useJourneysInTiles(scope, { store, enabled: true });
+    return (
+        <>
+            <PermissionsSettingsView
+                tenantId="tenant-1"
+                isLoading={false}
+                excludeCardKeys={[]}
+                formStateKey="story"
+                restrictedFields={new Set<string>()}
+                onToggleUpdate={fn()}
+                initialValues={{ settings: { ...DEFAULT_PERMISSION_SETTINGS } }}
+                renderJourneys={journeys.renderJourneys}
+            />
+            {journeys.dialog}
+        </>
+    );
+};
+
+const topicHandler = http.get('*/service/topic/', () =>
+    HttpResponse.json(
+        topics.map((topic) => ({ ...topic, description: '', internalIdentifier: null, status: 'ACTIVE' })),
+    ),
+);
+const mountedParameters = {
+    msw: {
+        handlers: [
+            http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([])),
+            topicHandler,
+        ],
+    },
+};
+
+/** Saving on the platform stores the journeys; the tile shows the stored state. */
+export const SavesToTheStore: Story = {
+    parameters: mountedParameters,
+    render: () => <MountedFunktionszugriff store={memoryJourneyStore()} scope={{ level: 'platform' }} />,
+    play: async ({ canvasElement }) => {
+        const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
+        const body = within(canvasElement.ownerDocument.body);
+        await body.findByTestId('journeys-dialog');
+        await userEvent.click(body.getByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(body.queryByTestId('journeys-dialog')).not.toBeInTheDocument());
+    },
+};
+
+/** Another admin saved meanwhile: nothing is overwritten, the dialog says so and offers to reload. */
+export const ConflictWhenSaving: Story = {
+    parameters: mountedParameters,
+    render: () => {
+        // Every save finds a newer version: someone else was quicker.
+        const quicker: JourneyStore = {
+            ...memoryJourneyStore(),
+            savePlatform: async () => {
+                throw new JourneyConflictError(2);
+            },
+        };
+        return <MountedFunktionszugriff store={quicker} scope={{ level: 'platform' }} />;
+    },
+    play: async ({ canvasElement }) => {
+        const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
+        const body = within(canvasElement.ownerDocument.body);
+        await body.findByTestId('journeys-dialog');
+        await userEvent.click(body.getByRole('button', { name: 'Speichern' }));
+        const failure = await body.findByTestId('journeys-save-failure');
+        await expect(failure).toHaveTextContent('Inzwischen hat jemand anderes gespeichert');
+        await expect(within(failure).getByRole('button', { name: 'Neu laden' })).toBeInTheDocument();
+    },
+};
+
+/** A Träger before the platform stored any journeys: shown, not editable, and said why. */
+export const TraegerBeforeThePlatform: Story = {
+    parameters: mountedParameters,
+    render: () => <MountedFunktionszugriff store={memoryJourneyStore()} scope={{ level: 'tenant', tenantId: 't1' }} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const entry = await canvas.findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        await expect(within(entry).queryByRole('button', { name: 'Reisen bearbeiten' })).not.toBeInTheDocument();
+        await expect(canvas.getAllByTestId('journeys-tile-state')[0]).toHaveTextContent('noch nicht gespeichert');
     },
 };

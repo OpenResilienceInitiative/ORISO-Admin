@@ -39,7 +39,8 @@ interface JourneyTileEntryProps {
     type: ConversationType;
     journeys: Journey[];
     topics: JourneyTopic[];
-    onOpen: () => void;
+    /** Without it the journeys are shown only (e.g. below the platform before it stored any). */
+    onOpen?: () => void;
     /** Platform admin only: name and icon of the conversation type. */
     onEditAppearance?: () => void;
 }
@@ -89,9 +90,11 @@ export const JourneyTileEntry = ({ type, journeys, topics, onOpen, onEditAppeara
             )}
             <p className={styles.help}>{t(`journeys.entry.what.${phasesOf(type).length === 3 ? 'all' : 'groups'}`)}</p>
             <div className={styles.entryActions}>
-                <M3Button variant="tonal" icon={<EditOutlined />} onClick={onOpen}>
-                    {t('journeys.entry.open')}
-                </M3Button>
+                {onOpen && (
+                    <M3Button variant="tonal" icon={<EditOutlined />} onClick={onOpen}>
+                        {t('journeys.entry.open')}
+                    </M3Button>
+                )}
                 {onEditAppearance && (
                     <M3Button variant="text" icon={<TuneOutlined />} onClick={onEditAppearance}>
                         {t('typeAppearance.open')}

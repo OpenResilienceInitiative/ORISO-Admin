@@ -25,6 +25,8 @@ export interface AppRuntimeConfig {
      * Absent or anything else keeps the AI media toggles disabled.
      */
     MEDIA_AI_SCAN_AVAILABLE?: string;
+    /** Journeys in Funktionszugriff (ORISO-Admin#1571); only "true" switches them on. */
+    JOURNEYS_ENABLED?: string;
     OTEL_METRICS_URL?: string;
     OTEL_EXPORT_INTERVAL_MS?: string;
     PLATFORM_VERSION?: string;

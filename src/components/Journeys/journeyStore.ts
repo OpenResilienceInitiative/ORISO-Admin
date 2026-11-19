@@ -1,6 +1,7 @@
 /* eslint-disable max-classes-per-file -- the two errors of the store port belong together */
 import type { Journey, JourneyLevel } from './journey';
 import type { JourneyLayer } from './journeyEditing';
+import { isDraftId, issueDraftIds } from './ids';
 
 /**
  * Where journeys live (ORISO-Admin#1571). The section talks to this port only; the HTTP adapter
@@ -104,7 +105,7 @@ export const saveLayerChanges = async (
     return result;
 };
 
-/** A store in memory with the same version rules as the server; for stories and tests. */
+/** A store in memory with the same version and id rules as the server; for stories and tests. */
 export const memoryJourneyStore = (initial: Journey[] = [], layers: JourneyLayer[] = []): JourneyStore => {
     const journeys = new Map<string, StoredJourney>(
         initial.map((journey) => [journey.id, { journey: structuredClone(journey), version: 1 }]),
@@ -120,9 +121,10 @@ export const memoryJourneyStore = (initial: Journey[] = [], layers: JourneyLayer
     return {
         loadPlatform: async () => [...journeys.values()].map((entry) => structuredClone(entry)),
         savePlatform: async (journey, version) => {
-            check(journeys.get(journey.id)?.version ?? 0, version);
-            const entry = { journey: structuredClone(journey), version: version + 1 };
-            journeys.set(journey.id, entry);
+            check(isDraftId(journey.id) ? 0 : journeys.get(journey.id)?.version ?? 0, version);
+            const saved = issueDraftIds(structuredClone(journey));
+            const entry = { journey: saved, version: version + 1 };
+            journeys.set(saved.id, entry);
             return structuredClone(entry);
         },
         deletePlatform: async (journeyId, version) => {
@@ -142,7 +144,7 @@ export const memoryJourneyStore = (initial: Journey[] = [], layers: JourneyLayer
                 stored.delete(key);
                 return undefined;
             }
-            const entry = { layer: structuredClone(layer), version: version + 1 };
+            const entry = { layer: issueDraftIds(structuredClone(layer)), version: version + 1 };
             stored.set(key, entry);
             return structuredClone(entry);
         },

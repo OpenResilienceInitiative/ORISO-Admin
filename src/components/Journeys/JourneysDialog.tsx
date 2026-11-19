@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import Add from '@mui/icons-material/Add';
 import ConnectingAirports from '@mui/icons-material/ConnectingAirports';
@@ -57,7 +57,11 @@ export interface JourneysDialogProps {
     blocked?: readonly string[];
     /** Opens a phase, a step or the destinations of one journey right away (stories). */
     initially?: JourneysDialogOpen;
-    onSave: (journeys: Journey[]) => void;
+    /** Saving to the store is under way: the save button waits. */
+    saving?: boolean;
+    /** Shown on top of the body, e.g. why saving failed. */
+    notice?: ReactNode;
+    onSave: (journeys: Journey[]) => void | Promise<void>;
     onClose: () => void;
 }
 
@@ -75,6 +79,8 @@ export const JourneysDialog = ({
     level = 'platform',
     blocked = [],
     initially,
+    saving = false,
+    notice,
     onSave,
     onClose,
 }: JourneysDialogProps) => {
@@ -129,7 +135,7 @@ export const JourneysDialog = ({
                         <M3Button variant="text" onClick={onClose}>
                             {t('journeys.action.cancel')}
                         </M3Button>
-                        <M3Button variant="filled" onClick={save}>
+                        <M3Button variant="filled" loading={saving} disabled={saving} onClick={save}>
                             {t('journeys.action.save')}
                         </M3Button>
                     </div>
@@ -141,6 +147,7 @@ export const JourneysDialog = ({
             >
                 <div className={styles.dialogBody}>
                     {guard.confirm}
+                    {notice}
                     <FlightPath available={phasesOf(type)} captions />
                     {unrouted.length > 0 && (
                         <div className={styles.notice} data-testid="journeys-unrouted">

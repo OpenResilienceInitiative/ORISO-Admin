@@ -1813,3 +1813,10 @@ button.keyword {
         opacity: 0.5;
     }
 }
+
+/* The one way on after a failed save: as wide as its label. */
+.failureActions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 8px;
+}

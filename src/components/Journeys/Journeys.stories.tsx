@@ -758,7 +758,7 @@ export const InsertBetweenSteps: Story = {
         const order = within(body.getByRole('list', { name: /Schritte der Phase/ }))
             .getAllByRole('listitem')
             .map((item) => item.getAttribute('data-testid'));
-        await expect(order[1]).toMatch(/^journey-step-step-/);
+        await expect(order[1]).toMatch(/^journey-step-new:step-/);
     },
 };
 

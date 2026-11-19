@@ -4626,5 +4626,15 @@
     "journeys.discard.text": "You changed something in this dialog. Closing it loses that.",
     "journeys.discard.discard": "Discard",
     "journeys.discard.keep": "Keep editing",
-    "journeys.step.removeOfHigherLevel": "Delete (not possible: belongs to the platform)"
+    "journeys.step.removeOfHigherLevel": "Delete (not possible: belongs to the platform)",
+    "journeys.saveFailure.conflict.title": "Someone else saved in the meantime",
+    "journeys.saveFailure.conflict.text": "Your changes were not saved, so nothing gets overwritten. Reload the journeys, then change them again.",
+    "journeys.saveFailure.conflict.reload": "Reload",
+    "journeys.saveFailure.rejected.title": "The server refused the journey",
+    "journeys.saveFailure.rejected.text": "It breaks a rule of journeys, for example the order of steps. Check the steps and save again.",
+    "journeys.saveFailure.failed.title": "Saving did not work",
+    "journeys.saveFailure.failed.text": "The server could not be reached. Your changes are still here; try again in a moment.",
+    "journeys.tile.loading": "Loading journeys …",
+    "journeys.tile.notLoaded": "The journeys could not be loaded. Reload the page.",
+    "journeys.tile.platformFirst": "The platform has not stored its journeys yet. Once it has, you can adapt your steps here."
 }
