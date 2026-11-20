@@ -115,15 +115,31 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
         expect(urls()).not.toContain(statisticsAgencyNamesEndpoint);
     });
 
-    it('refetches the topic names when the UI language changes (#564)', async () => {
-        const { rerender } = renderHook(() => useStatisticDashboardData({ isStatisticsReader: true }), {
+    it('shows the topic name of the current UI language, also after a language switch (#564)', async () => {
+        const now = new Date();
+        const month = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}`;
+        getDashboardStatistics.mockResolvedValue({
+            generatedAt: '2026-11-17T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                { ...target('PLATFORM', null), monthlyTopTopics: [{ month, topicId: 7, sessionCount: 3 }] },
+                target('TENANT', 1),
+            ],
+        });
+        fetchData.mockImplementation(({ url }: { url: string }) =>
+            Promise.resolve(url === `${topicEndpoint}public` ? [{ id: 7, name: `Thema-${language.current}` }] : []),
+        );
+        const { result, rerender } = renderHook(() => useStatisticDashboardData({ isStatisticsReader: true }), {
             wrapper: sharedWrapper(),
         });
-        await waitFor(() => expect(urls().filter((url) => url === `${topicEndpoint}public`)).toHaveLength(1));
+        const shownNames = () => JSON.stringify(result.current.data);
+
+        await waitFor(() => expect(shownNames()).toContain('Thema-de'));
 
         language.current = 'en';
         rerender();
 
-        await waitFor(() => expect(urls().filter((url) => url === `${topicEndpoint}public`)).toHaveLength(2));
+        await waitFor(() => expect(shownNames()).toContain('Thema-en'));
+        expect(shownNames()).not.toContain('Thema-de');
     });
 });
