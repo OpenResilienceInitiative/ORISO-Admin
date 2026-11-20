@@ -48,7 +48,10 @@ const LOCKED_OFF: EffectivePolicy = { value: false, mode: 'ENFORCED', inherited:
 const descriptionKeyOf = (feature: ChatFeature) =>
     `tenants.permissions.featureDescription.${feature.labelKey.split('.').at(-1)}`;
 
-/** A feature the server cannot store yet: named, with why, but without a switch. */
+/**
+ * A feature the server cannot store yet: named, marked as prepared, but without a switch. Why is said once
+ * for the whole dialog (`notes`), not on every card; the full sentence stays for assistive technology.
+ */
 const PlannedFeatureCard = ({ feature }: { feature: ChatFeature }) => {
     const { t } = useTranslation();
     const Icon = OPTION_ICONS[feature.labelKey];
@@ -61,9 +64,11 @@ const PlannedFeatureCard = ({ feature }: { feature: ChatFeature }) => {
             )}
             <div className={styles.plannedCopy}>
                 <span className={styles.plannedLabel}>{t(feature.labelKey)}</span>
-                <span className={styles.plannedText}>{t('tenants.permissions.feature.notStoredYet')}</span>
             </div>
-            <span className={styles.plannedChip}>{t('tenants.permissions.feature.planned')}</span>
+            <span className={styles.plannedChip} title={t('tenants.permissions.feature.notStoredYet')}>
+                {t('tenants.permissions.feature.planned')}
+                <span className={styles.visuallyHidden}>: {t('tenants.permissions.feature.notStoredYet')}</span>
+            </span>
         </div>
     );
 };

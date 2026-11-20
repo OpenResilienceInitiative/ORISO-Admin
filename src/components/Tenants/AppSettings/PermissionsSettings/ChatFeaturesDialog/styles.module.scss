@@ -12,13 +12,8 @@
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
-    overflow-wrap: anywhere;
-}
-
-.plannedText {
-    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
-    font-size: 12px;
-    line-height: 16px;
+    hyphens: auto;
+    overflow-wrap: break-word;
 }
 
 .plannedChip {
@@ -30,5 +25,16 @@
     font-size: 12px;
     font-weight: 500;
     line-height: 16px;
+    white-space: nowrap;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
 }

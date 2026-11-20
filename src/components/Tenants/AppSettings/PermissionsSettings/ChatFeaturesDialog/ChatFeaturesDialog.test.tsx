@@ -102,7 +102,8 @@ describe('ChatFeaturesDialog', () => {
         const planned = dialog().querySelector<HTMLElement>('[data-planned-feature="upload"]') as HTMLElement;
         expect(planned).not.toBeNull();
         expect(within(planned).getByText('tenants.permissions.feature.mediaUpload')).toBeVisible();
-        expect(within(planned).getByText('tenants.permissions.feature.notStoredYet')).toBeVisible();
+        expect(planned).toHaveTextContent('tenants.permissions.feature.planned');
+        expect(planned).toHaveTextContent('tenants.permissions.feature.notStoredYet');
         expect(within(planned).queryByRole('button')).toBeNull();
         expect(dialog().querySelector('[data-feature-policy="upload"]')).toBeNull();
     });
