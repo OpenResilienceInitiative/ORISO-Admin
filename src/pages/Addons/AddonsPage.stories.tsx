@@ -273,10 +273,10 @@ export const ServiceNotDeployed: Story = {
 export const AdminPageTab: Story = {
     decorators: [withAddonsRoutes([UserRole.TenantAdmin], TENANT.id, adminPagePath(ADDON, 'report'))],
     play: async ({ canvas }) => {
-        // The app mounts again once the Träger's name has loaded (its host props change), so the
-        // heading of the first mount can be gone by the time it is checked. Wait for the mount that
-        // carries the name, then look the heading up.
-        await expect(await canvas.findByText(`Träger: ${TENANT.name}`)).toBeVisible();
-        await expect(canvas.getByRole('heading', { name: 'Auswertung aus dem Add-on' })).toBeVisible();
+        // The bundle remounts when the asynchronous tenant details become available.
+        await waitFor(async () => {
+            await expect(canvas.getByRole('heading', { name: 'Auswertung aus dem Add-on' })).toBeVisible();
+            await expect(canvas.getByText(`Träger: ${TENANT.name}`)).toBeVisible();
+        });
     },
 };
