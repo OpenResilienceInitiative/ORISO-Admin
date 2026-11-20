@@ -32,7 +32,8 @@ export type ContactPersonTip =
     | { kind: 'tenant'; agencies: UncoveredAgency[] }
     | { kind: 'platform'; total: number; tenants: UncoveredTenant[] };
 
-export const agencyEditLink = (agencyId: number) => `${routePathNames.agencyEdit}/${agencyId}`;
+/** The centre's master data page, which holds its contact person card (#1582). */
+export const agencyEditLink = (agencyId: number) => `${routePathNames.agency}/${agencyId}/general`;
 
 const byName = (a: string, b: string) => a.localeCompare(b, 'de', { sensitivity: 'base' });
 
