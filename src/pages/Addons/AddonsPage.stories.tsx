@@ -273,7 +273,10 @@ export const ServiceNotDeployed: Story = {
 export const AdminPageTab: Story = {
     decorators: [withAddonsRoutes([UserRole.TenantAdmin], TENANT.id, adminPagePath(ADDON, 'report'))],
     play: async ({ canvas }) => {
-        await expect(await canvas.findByRole('heading', { name: 'Auswertung aus dem Add-on' })).toBeVisible();
-        await expect(canvas.getByText(`Träger: ${TENANT.name}`)).toBeVisible();
+        // The bundle remounts when the asynchronous tenant details become available.
+        await waitFor(async () => {
+            await expect(canvas.getByRole('heading', { name: 'Auswertung aus dem Add-on' })).toBeVisible();
+            await expect(canvas.getByText(`Träger: ${TENANT.name}`)).toBeVisible();
+        });
     },
 };

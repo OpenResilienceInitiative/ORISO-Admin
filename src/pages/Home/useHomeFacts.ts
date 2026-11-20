@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     accountInvitesEndpoint,
     agencyEndpointBase,
@@ -8,11 +8,11 @@ import {
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../../api/fetchData';
 import type { AccountInviteListTab, PagedAccountInviteResponse } from '../../api/accountInvites/accountInvites';
 import { USER_TABLE_API_SAFE_SORT } from '../../constants/userTableSort';
-import getPublicTenantData from '../../api/tenant/getPublicTenantData';
 import getTenantData from '../../api/tenant/getTenantData';
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useDpaStatus } from '../../hooks/useDpaStatus.hook';
+import { fetchPublicTenantBySlug } from '../../hooks/publicTenantQuery';
 import { useFeatureContext } from '../../context/FeatureContext';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import removeEmbedded from '../../utils/removeEmbedded';
@@ -186,6 +186,7 @@ export interface HomeFactAccess {
 
 export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
     const { settings } = useAppConfigContext();
+    const queryClient = useQueryClient();
     const { isEnabled } = useFeatureContext();
     const tenantId = access.tenantId ?? null;
     const ownTenant = useFact(
@@ -201,7 +202,7 @@ export const useHomeFacts = (access: HomeFactAccess): HomeFacts => {
                     : undefined;
             const summary = summariseOwnTenant(adminRecord);
             if (summary) return summary;
-            const publicTenant = await getPublicTenantData(settings).catch(() => undefined);
+            const publicTenant = await fetchPublicTenantBySlug(queryClient, settings).catch(() => undefined);
             const record = publicTenant
                 ? await getTenantData(publicTenant, settings.multitenancyWithSingleDomainEnabled).catch(() => undefined)
                 : undefined;

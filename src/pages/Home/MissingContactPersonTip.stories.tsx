@@ -54,7 +54,7 @@ export const AgencyAdmin: Story = {
     play: async ({ canvas }) => {
         await expect(canvas.getByRole('link', { name: /Beratungsstelle Nord/ })).toHaveAttribute(
             'href',
-            '/admin/agency/edit/1',
+            '/admin/agency/1/general',
         );
     },
 };
@@ -74,7 +74,7 @@ export const TenantAdmin: Story = {
         await expect(canvas.getAllByRole('link')).toHaveLength(3);
         await expect(canvas.getByRole('link', { name: /Suchtberatung Ost/ })).toHaveAttribute(
             'href',
-            '/admin/agency/edit/2',
+            '/admin/agency/2/general',
         );
     },
 };

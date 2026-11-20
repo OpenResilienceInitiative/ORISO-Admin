@@ -211,7 +211,7 @@ describe('DataProcessingAgreementCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
@@ -226,7 +226,7 @@ describe('DataProcessingAgreementCard', () => {
                 onPublish={() => undefined}
             />,
         );
-        expect(screen.queryByRole('button', { name: /^languages:/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /languages:/ })).not.toBeInTheDocument();
     });
 
     it('labels the source language as original and MT languages as machine translated', async () => {
@@ -246,7 +246,7 @@ describe('DataProcessingAgreementCard', () => {
         );
 
         // Open the language menu via the split-button's dropdown trigger.
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
 
         // Mocked t(): "key:interpolated-language". The menu lists each language with
         // its translation status (source = original, MT = machine translated).
@@ -310,7 +310,7 @@ describe('DataProcessingAgreementCard — version select wiring (#268)', () => {
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>DE v2</p>');
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('version-v2')).toHaveAttribute('data-content', '<p>EN v2</p>');
