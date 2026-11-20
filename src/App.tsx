@@ -22,6 +22,7 @@ import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { resolveVisibleLinksTabs } from './constants/linksAccess';
+import { canSeeAddonsSection } from './constants/addonsAccess';
 import { UserRole } from './enums/UserRole';
 import {
     canReadCaseHandoverAdmin,
@@ -34,6 +35,10 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
+    LazyAddonAdminPage,
+    LazyAddonAuditLogsPage,
+    LazyAddonsLayout,
+    LazyAddonsOverview,
     LazyAgencyList,
     LazyAgencySetupPage,
     LazyAgencyPageEdit,
@@ -146,6 +151,7 @@ export const App = () => {
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     // Platform admins only — the backend answers 403 to every other role.
     const canSeeDeletionAuditLogs = canSeeDeletionAuditLogsFor(isSuperAdmin, can);
+    const showAddons = canSeeAddonsSection({ isSuperAdmin, can });
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
         isTechnicalAccount,
@@ -368,6 +374,7 @@ export const App = () => {
                                             showCaseHandover={showCaseHandoverLogs}
                                             showInactive={isSuperAdmin}
                                             showDeletion={canSeeDeletionAuditLogs}
+                                            showAddons={showAddons}
                                         />
                                     }
                                 >
@@ -397,6 +404,12 @@ export const App = () => {
                                         <Route
                                             path={routePathNames.caseHandoverLogs}
                                             element={<LazyCaseHandoverLogsPage />}
+                                        />
+                                    )}
+                                    {showAddons && (
+                                        <Route
+                                            path={routePathNames.addonAuditLogs}
+                                            element={<LazyAddonAuditLogsPage />}
                                         />
                                     )}
                                 </Route>
@@ -480,6 +493,13 @@ export const App = () => {
                                     element={<LazyStatisticsReaderEditOrAdd />}
                                 />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
+                                {showAddons && (
+                                    <Route path={routePathNames.addons} element={<LazyAddonsLayout />}>
+                                        <Route index element={<LazyAddonsOverview />} />
+                                        <Route path="apps/:addonName/:appId" element={<LazyAddonAdminPage />} />
+                                        <Route path="*" element={<Navigate to={routePathNames.addons} replace />} />
+                                    </Route>
+                                )}
                                 {visibleLinksTabs.length > 0 && (
                                     <Route path="/admin/links" element={<LazyLinksPage />}>
                                         <Route index element={<LazyLinksIndexRedirect />} />

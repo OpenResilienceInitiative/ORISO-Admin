@@ -91,6 +91,8 @@ export type GuestAccountModeSectionProps = {
     ownSettings?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** The three fields of a medium saved as one request, so a failed save never leaves a mix. */
+    onPoliciesChange?: (changes: Record<string, PolicyValue<boolean>>) => void;
 };
 
 export const GuestAccountModeSection = ({
@@ -101,6 +103,7 @@ export const GuestAccountModeSection = ({
     ownSettings,
     pendingPolicyFields,
     onPolicyChange,
+    onPoliciesChange,
 }: GuestAccountModeSectionProps) => {
     const { t } = useTranslation();
     const idPrefix = useId();
@@ -123,13 +126,17 @@ export const GuestAccountModeSection = ({
                 const policies = modes.map(({ field }) => policyFor(field));
                 const chosen = chosenGuestAccountMode(policies.map((policy) => policy.value !== false));
                 const chosenPolicy = policies[MODES.indexOf(chosen)];
-                const mode: PermissionPolicyMode = policies.some((policy) => policy.mode === 'ENFORCED')
-                    ? 'ENFORCED'
-                    : 'SUGGESTED';
-                const readOnly =
-                    (policyLevel !== 'platform' &&
-                        policies.some((policy) => policy.mode === 'ENFORCED' && policy.inherited === true)) ||
-                    modes.some(({ field }) => restrictedFields.has(field));
+                // A requirement from above is per type: "required on" fixes the choice, "required off"
+                // only removes that type from the menu (code review: one forbidden type must not lock all).
+                const fromAbove = (policy: PolicyValue<boolean>) =>
+                    policyLevel !== 'platform' && policy.mode === 'ENFORCED' && policy.inherited === true;
+                const requiredOn = policies.some((policy) => fromAbove(policy) && policy.value !== false);
+                const forbidden = MODES.filter(
+                    (_, index) => fromAbove(policies[index]) && policies[index].value === false,
+                );
+                const restricted = modes.some(({ field }) => restrictedFields.has(field));
+                const mode: PermissionPolicyMode = chosenPolicy?.mode === 'ENFORCED' ? 'ENFORCED' : 'SUGGESTED';
+                const readOnly = requiredOn || restricted;
                 const pending = modes.some(({ field }) => pendingPolicyFields?.has(field));
                 // All three allowed (the shipped default) simply means the guest chooses; two of three
                 // cannot be shown as one choice, so that is said.
@@ -149,15 +156,18 @@ export const GuestAccountModeSection = ({
                             <LockOpenRightFilledIcon aria-hidden data-icon="lock-open-right-filled" />
                         ),
                 });
+                const choosable = MODES.filter((value) => !forbidden.includes(value));
                 const items = [
-                    ...MODES.map((value) => option(value, 'ENFORCED')),
-                    ...MODES.map((value) => option(value, 'SUGGESTED')),
+                    ...choosable.map((value) => option(value, 'ENFORCED')),
+                    ...choosable.map((value) => option(value, 'SUGGESTED')),
                 ];
                 const select = (key: string) => {
                     const [value, valueMode] = key.split('-') as [GuestAccountMode, PermissionPolicyMode];
-                    modes.forEach(({ field }, index) =>
-                        onPolicyChange?.(field, { value: MODES[index] === value, mode: valueMode }),
+                    const changes = Object.fromEntries(
+                        modes.map(({ field }, index) => [field, { value: MODES[index] === value, mode: valueMode }]),
                     );
+                    if (onPoliciesChange) onPoliciesChange(changes);
+                    else Object.entries(changes).forEach(([field, policy]) => onPolicyChange?.(field, policy));
                     setOpenMedium(null);
                 };
 
@@ -177,7 +187,11 @@ export const GuestAccountModeSection = ({
                                             {t('tenants.permissions.policy.enforced')}
                                         </span>
                                     )}
-                                    <span className={controlStyles.supportingText}>{t(`${K}.effect.${chosen}`)}</span>
+                                    <span className={controlStyles.supportingText}>
+                                        {restricted
+                                            ? t('tenants.permissions.asker.restrictedReason')
+                                            : t(`${K}.effect.${chosen}`)}
+                                    </span>
                                 </div>
                                 {readOnly ? (
                                     <button

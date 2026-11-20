@@ -12,10 +12,18 @@ vi.mock('../../api/fetchData', async (importOriginal) => ({
 }));
 vi.mock('../../hooks/useDpaStatus.hook', () => ({ useDpaStatus: () => ({ data: undefined }) }));
 vi.mock('../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: false } }),
+    useAppConfigContext: () => ({
+        settings: {
+            multitenancyWithSingleDomainEnabled: true,
+            mainTenantSubdomainForSingleDomainMultitenancy: 'main',
+        },
+    }),
 }));
 
+import getPublicTenantData from '../../api/tenant/getPublicTenantData';
+import getTenantData from '../../api/tenant/getTenantData';
 import { getSingleTenantData } from '../../api/tenant/getSingleTenantData';
+import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { fetchData } from '../../api/fetchData';
 import { useHomeFacts, type HomeFactAccess } from './useHomeFacts';
 
@@ -60,6 +68,32 @@ describe('useHomeFacts', () => {
         const second = renderHook(() => useHomeFacts(TENANT_ADMIN), { wrapper });
         await waitFor(() => expect(second.result.current.ownTenant?.appearanceComplete).toBe(true));
         expect(getSingleTenantDataMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('reuses the startup public lookup and refreshes the signed-in facts on the next Home visit', async () => {
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        );
+        const platform: HomeFactAccess = { ...TENANT_ADMIN, role: 'platform', tenantId: 0 };
+        const publicLookup = vi.mocked(getPublicTenantData).mockResolvedValue(tenantRecord(''));
+        const privateLookup = vi.mocked(getTenantData).mockResolvedValue(tenantRecord(''));
+        publicLookup.mockClear();
+        privateLookup.mockClear();
+
+        const startup = renderHook(() => usePublicTenantData(), { wrapper });
+        await waitFor(() => expect(startup.result.current.data?.id).toBe(7));
+
+        const first = renderHook(() => useHomeFacts(platform), { wrapper });
+        await waitFor(() => expect(first.result.current.ownTenant?.appearanceComplete).toBe(false));
+        first.unmount();
+
+        privateLookup.mockResolvedValue(tenantRecord('Wir sind für Sie da'));
+        const second = renderHook(() => useHomeFacts(platform), { wrapper });
+        await waitFor(() => expect(second.result.current.ownTenant?.appearanceComplete).toBe(true));
+
+        expect(publicLookup).toHaveBeenCalledTimes(1);
+        expect(privateLookup).toHaveBeenCalledTimes(2);
     });
 
     it('re-reads the centres on the next Home visit, so completing a centre shows up at once', async () => {

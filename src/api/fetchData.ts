@@ -86,6 +86,7 @@ export const X_REASON = {
 
 export const FETCH_SUCCESS = {
     CONTENT: 'CONTENT',
+    TEXT: 'TEXT',
 };
 
 export class FetchErrorWithOptions extends Error {
@@ -167,6 +168,12 @@ const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Pro
             .then((response) => {
                 if (response.status === 204) {
                     resolve(response);
+                } else if (
+                    response.status >= 200 &&
+                    response.status < 300 &&
+                    props.responseHandling?.includes(FETCH_SUCCESS.TEXT)
+                ) {
+                    resolve(response.text());
                 } else if (response.status >= 200 && response.status < 300) {
                     const data =
                         props.method === FETCH_METHODS.GET ||

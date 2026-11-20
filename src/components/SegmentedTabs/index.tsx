@@ -14,6 +14,8 @@ export interface SegmentedTabsProps {
     onChange: (key: string) => void;
     ariaLabel?: string;
     className?: string;
+    /** Gives each tab the id `<idPrefix>-tab-<key>` and points it at the panel `<idPrefix>-panel`. */
+    idPrefix?: string;
 }
 
 /**
@@ -22,7 +24,7 @@ export interface SegmentedTabsProps {
  * primary underline. Distinct from AdminSegmentedTabs (filled pills) — this is
  * the underline treatment the wizard/settings cards use. Scrolls horizontally.
  */
-export const SegmentedTabs = ({ tabs, activeKey, onChange, ariaLabel, className }: SegmentedTabsProps) => (
+export const SegmentedTabs = ({ tabs, activeKey, onChange, ariaLabel, className, idPrefix }: SegmentedTabsProps) => (
     <div className={classNames(styles.tabs, className)} role="tablist" aria-label={ariaLabel}>
         {tabs.map((tab) => {
             const active = tab.key === activeKey;
@@ -31,6 +33,8 @@ export const SegmentedTabs = ({ tabs, activeKey, onChange, ariaLabel, className 
                     key={tab.key}
                     type="button"
                     role="tab"
+                    id={idPrefix ? `${idPrefix}-tab-${tab.key}` : undefined}
+                    aria-controls={idPrefix && active ? `${idPrefix}-panel` : undefined}
                     aria-selected={active}
                     disabled={tab.disabled}
                     className={classNames(styles.tab, { [styles.tabActive]: active })}

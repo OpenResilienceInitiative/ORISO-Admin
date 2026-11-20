@@ -119,7 +119,10 @@ const understandUrl = (() => {
     const configured = readConfigValue('UNDERSTAND_URL') ?? '';
     try {
         const url = new URL(configured);
-        return url.protocol === 'http:' || url.protocol === 'https:' ? configured.replace(/\/+$/, '') : '';
+        // Origin and path only: a query or hash would end up in front of the feature path.
+        return url.protocol === 'http:' || url.protocol === 'https:'
+            ? `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+            : '';
     } catch {
         return '';
     }
@@ -135,6 +138,7 @@ export const runtimeConfig = {
     agencyServiceOrigin: serviceOrigin('AGENCY_SERVICE_ORIGIN'),
     tenantServiceOrigin: serviceOrigin('TENANT_SERVICE_ORIGIN'),
     consultingTypeServiceOrigin: serviceOrigin('CONSULTING_TYPE_SERVICE_ORIGIN'),
+    addonServiceOrigin: serviceOrigin('ADDON_SERVICE_ORIGIN'),
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
     /** APP_URL as configured, with no API fallback; '' when unset. */
     configuredAppUrl: toAbsoluteUrl(appHost, useHttps),

@@ -137,6 +137,8 @@ export type PermissionsSettingsViewProps = {
     ownSettings?: Record<string, unknown>;
     pendingPolicyFields?: ReadonlySet<string>;
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Several fields that only make sense together, saved as one request (e.g. the guest account type). */
+    onPoliciesChange?: (changes: Record<string, PolicyValue<boolean>>) => void;
     /** Centre page: the Träger's policies for "Direkteinladung erlauben" (a Träger "off" wins). */
     traegerDirectInvitePolicies?: Record<string, PolicyValue<boolean>>;
     /** "Who can be picked" for internal group chats; none on the agency page (the setting is per Träger). */
@@ -180,6 +182,7 @@ export const PermissionsSettingsView = ({
     ownSettings,
     pendingPolicyFields,
     onPolicyChange,
+    onPoliciesChange,
     recipientScope,
     calendar,
     traegerDirectInvitePolicies,
@@ -274,6 +277,21 @@ export const PermissionsSettingsView = ({
             }
         },
         [applyPolicy, onCallsAllowedChange, policyFor, policyLevel, restrictedFields],
+    );
+
+    // Fields that belong together go out as one request where the page can save them so (#1560).
+    const changePolicies = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>, form: FormInstance) => {
+            if (!onPoliciesChange) {
+                Object.entries(changes).forEach(([fieldKey, next]) => changePolicy(fieldKey, next, form));
+                return;
+            }
+            Object.entries(changes).forEach(([fieldKey, next]) => {
+                form.setFieldValue(['settings', fieldKey], next.value);
+            });
+            onPoliciesChange(changes);
+        },
+        [changePolicy, onPoliciesChange],
     );
 
     // One row for every switch on a tile: feature toggles and notification channels alike.
@@ -517,6 +535,7 @@ export const PermissionsSettingsView = ({
                                 {card.key === 'groupInternal' && recipientScope && policyLevel !== 'agency' && (
                                     <RecipientScopeControl
                                         {...recipientScope}
+                                        asPanel
                                         level={policyLevel}
                                         disabled={!masterEnabled}
                                     />
@@ -627,6 +646,7 @@ export const PermissionsSettingsView = ({
                                         ownSettings={ownSettings}
                                         pendingPolicyFields={pendingPolicyFields}
                                         onPolicyChange={(fieldKey, next) => changePolicy(fieldKey, next, form)}
+                                        onPoliciesChange={(changes) => changePolicies(changes, form)}
                                     />
                                 </TileSections.Section>
                             )}
