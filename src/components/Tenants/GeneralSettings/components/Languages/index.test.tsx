@@ -67,6 +67,8 @@ describe('Languages (#910)', () => {
 
         expect(mutate).not.toHaveBeenCalled();
         await waitFor(() => expect(screen.getByRole('checkbox', { name: 'language.en' })).toBeEnabled());
+        // The pending removal must survive the cancel: English is still unchecked.
+        expect(screen.getByRole('checkbox', { name: 'language.en' })).not.toBeChecked();
     });
 
     it('shows the Träger wording for a Träger admin', async () => {
@@ -101,5 +103,20 @@ describe('Languages (#910)', () => {
         onSuccess();
 
         expect(await screen.findByText('organisations.languageModalContent')).toBeInTheDocument();
+    });
+
+    it('uses the platform-admin notice after adding a language as a platform admin', async () => {
+        isSuperAdmin = true;
+        const user = userEvent.setup();
+        render(<Languages tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('checkbox', { name: 'language.ru' }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
+        mutate.mock.calls[0][1].onSuccess();
+
+        expect(await screen.findByText('organisations.languageModalContentPlatformAdmin')).toBeInTheDocument();
     });
 });
