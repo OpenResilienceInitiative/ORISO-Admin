@@ -1,6 +1,7 @@
 import PinDropOutlinedIcon from '@mui/icons-material/PinDropOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { CardEditable } from '../../CardEditable';
 import { MuiRadioGroupField } from '../../mui/MuiRadioGroupField';
 import { TilePicture } from '../../TileFill';
@@ -72,9 +73,8 @@ export const FurtherCounsellingPostcodeSettingsCardContainer = () => {
                     {
                         // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                         onError: () => {
-                            message.error({
+                            snackbar.error({
                                 content: t('globalSettings.furtherCounsellingPostcode.error.generic'),
-                                duration: 5,
                             });
                             options?.onError?.();
                         },

@@ -35,6 +35,9 @@ interface RunContext {
     parameters: {
         a11y?: { disable?: boolean; test?: string; options?: unknown; config?: unknown; context?: unknown };
         verification?: { a11yContext?: unknown };
+        // Other story parameters (msw, layout, ...) are irrelevant here but must not make
+        // Storybook's parameter type look unrelated to this one.
+        [parameter: string]: unknown;
     };
     globals: { a11y?: { manual?: boolean }; ghostStories?: unknown };
     reporting: { reports: { type?: string; version?: number; result?: unknown; status?: string }[] };
@@ -75,7 +78,7 @@ const isAuditResult = (value: unknown): value is AuditResult =>
     !value.error &&
     isRecord(value.testEngine) &&
     value.testEngine.name === 'axe-core' &&
-    value.testEngine.version === '4.12.1' &&
+    value.testEngine.version === '4.14.0' &&
     isRecord(value.testEnvironment) &&
     typeof value.testEnvironment.userAgent === 'string' &&
     value.testEnvironment.userAgent.length > 0 &&

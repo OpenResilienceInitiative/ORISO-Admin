@@ -148,6 +148,28 @@ describe('PhaseStepper', () => {
         expect(screen.getByText(/^Eingeladen – abgeschlossen/)).toHaveTextContent('24.09.2026, 11:01:00');
     });
 
+    it('renders the step tooltip outside the sideways-scrolling dated track, so it is not clipped', async () => {
+        const user = userEvent.setup();
+        render(
+            <PhaseStepper
+                phases={[
+                    {
+                        key: 'invited',
+                        label: 'Eingeladen',
+                        state: 'done',
+                        at: { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' },
+                    },
+                ]}
+            />,
+        );
+
+        await user.hover(screen.getByText(/^Eingeladen – abgeschlossen/));
+        const tooltip = await screen.findByRole('tooltip');
+        expect(tooltip).toHaveTextContent('Eingeladen');
+        expect(tooltip.closest('ol')).toBeNull();
+        expect(tooltip.parentElement).toBe(document.body);
+    });
+
     it('wraps a dated track after maxPerLine steps, still as one ordered list', () => {
         const at = { short: '24.09., 11:01', full: '24.09.2026, 11:01:00' };
         const phases: PhaseStepperPhase[] = [

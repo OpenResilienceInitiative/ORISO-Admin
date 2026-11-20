@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from 'use-debounce';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import {
@@ -13,7 +14,7 @@ import {
     InviteEmailTemplateKind,
     listInviteEmailTemplates,
     resendAccountInvite,
-    revokeAccountInvite,
+    deleteAccountInvite,
     updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
 import { addConsultantRole, changeAccountInviteRole } from '../../api/accountInvites/inviteRoles';
@@ -28,7 +29,10 @@ import {
 } from '../../api/agency/searchInviteAgencies';
 import { resolveInviteViewerScope } from '../../constants/linksAccess';
 import { Modal } from '../../components/Modal';
+import { GlobalSearchBar } from '../../components/GlobalSearch/GlobalSearchBar';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import parseJwt from '../../utils/parseJWT';
+import { getAccessTokenForRequests } from '../../api/auth/auth';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -36,14 +40,15 @@ import { InviteComposer, type InviteSendMode, type InviteSubmitOutcome } from '.
 import { InviteCsvImportModal, type InviteCsvCreateOutcome, type InviteCsvCreateRow } from './InviteCsvImportModal';
 import { InviteProgressBoard } from './inviteProgress/InviteProgressBoard';
 import { useInvitePanelCollapsed } from './InvitePanel';
-import { InviteSearchField, useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
+import { useInviteMoreMenu, type InviteBulkProps, type InviteCsvProps } from './inviteToolbarParts';
 import { SelfAssignDialog, type SelfAssignTopic } from './SelfAssignDialog';
 import type { InviteRole, InviteViewerScope, TopicPermission } from './inviteModel';
 import { explainInviteError, type InviteErrorContext } from './explainInviteError';
-import { toCreateInviteRequest } from './inviteRequest';
+import { findStoredCsvInvite, toCreateInviteRequest } from './inviteRequest';
 import { isBulkSelectable, type InviteTab } from './inviteRules';
 import { useInviteBulk } from './useInviteBulk';
-import { useInviteList } from './useInviteList';
+import { INITIAL_INVITE_QUERY, useInviteList, type InviteListQuery } from './useInviteList';
+import { useInviteTemplateRecents } from './inviteTemplateRecents';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
@@ -92,6 +97,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const { t } = useTranslation();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
+    const auth = parseJwt(getAccessTokenForRequests() ?? '');
+    const { ids: recentTemplateIds, remember: rememberTemplate } = useInviteTemplateRecents(
+        typeof auth?.sub === 'string' && typeof auth?.iss === 'string'
+            ? { subject: auth.sub, issuer: auth.iss }
+            : undefined,
+        templateKind,
+    );
+    const selectTemplate = (id: number) => {
+        rememberTemplate(id);
+        setSelectedTemplateId(id);
+    };
     const [generatedLinks, setGeneratedLinks] = useState<Record<number, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
@@ -106,12 +122,12 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const [selfAssign, setSelfAssign] = useState<{ agency?: IdUnitOption } | undefined>();
     const [topicSavingIds, setTopicSavingIds] = useState<number[]>([]);
     const [roleSavingIds, setRoleSavingIds] = useState<number[]>([]);
-    // Toolbar search (A4/#376). The tab already holds the COMPLETE invite list
-    // (see loadInvites) and the board already filters it client-side by status
-    // bucket, so the query joins that same client-side pipeline instead of
-    // introducing a second, server-paged source the summary counts could not be
-    // derived from.
-    const [searchQuery, setSearchQuery] = useState('');
+    const [listQuery, setListQuery] = useState<InviteListQuery>(INITIAL_INVITE_QUERY);
+    const [listRequest] = useDebounce(listQuery, 250);
+    const searchQuery = listQuery.query;
+    const setSearchQuery = useCallback((query: string) => {
+        setListQuery((current) => ({ ...current, query, page: 1 }));
+    }, []);
 
     // tenantId is a STRING in the JWT: "0" (platform admin) is truthy, so only > 0 is a real own Träger.
     const jwtTenantId = Number(parseUserAuthInfo().tenantId);
@@ -122,7 +138,16 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const viewerScope: InviteViewerScope = resolveInviteViewerScope({ isSuperAdmin, hasRole });
     const isAgencyViewer = viewerScope === 'agency';
     const tab: InviteTab = isTenantInvite ? 'tenant' : 'counsellor';
-    const { invites, setInvites, tileCounts, loading, reload: loadInvites } = useInviteList(tab, viewerScope);
+    const {
+        invites,
+        setInvites,
+        tileCounts,
+        totalElements,
+        loading: listLoading,
+        error: loadError,
+        reload: loadInvites,
+    } = useInviteList(tab, viewerScope, listRequest);
+    const loading = listLoading || listRequest !== listQuery;
 
     // The backend scopes the agency search per role, so an empty query returns
     // exactly the agency admin's own agencies.
@@ -168,74 +193,28 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         knownOwnTenantName ??
         (resolvedOwnTenant && resolvedOwnTenant.id === currentTenantId ? resolvedOwnTenant.name : undefined);
 
-    // Client-side taken-id knowledge (existing tenants + still-active
-    // DRAFT/EMAIL_SENT TENANT_ADMIN invites). The composer's ID field itself now
-    // validates against the authoritative allocation endpoints (#570); this set
-    // only pre-flags collisions in the CSV import preview.
-    const [existingTenantIds, setExistingTenantIds] = useState<Set<number>>(new Set());
-
-    useEffect(() => {
-        // Only the platform admin founds new Träger, so only they need the taken numbers.
-        if (!isTenantInvite || !isSuperAdmin) return undefined;
-        let cancelled = false;
-        const loadAllTenantIds = async () => {
-            const perPage = 200;
-            const ids: number[] = [];
-            let page = 1;
-            let total = Number.POSITIVE_INFINITY;
-            while (ids.length < total) {
-                // Pagination is intentionally sequential so each response determines whether another page exists.
-                // eslint-disable-next-line no-await-in-loop
-                const response = await searchTenantData({ page, perPage });
-                const pageIds = (response.data ?? [])
-                    .map((tenant) => tenant.id)
-                    .filter((id): id is number => id != null);
-                ids.push(...pageIds);
-                total = response.total ?? ids.length;
-                if (response.data.length === 0) break;
-                page += 1;
-            }
-            if (!cancelled) {
-                setExistingTenantIds(new Set(ids));
-            }
-        };
-        loadAllTenantIds().catch(() => {
-            // Best-effort pre-flagging only — the CSV preview falls back to the backend's 409.
-        });
-        return () => {
-            cancelled = true;
-        };
-    }, [isTenantInvite, isSuperAdmin]);
-
-    // Active-invite tenant ids used to need a second, dedicated full fetch;
-    // since the board loads the COMPLETE list (see loadInvites), they are now a
-    // plain derivation of it — the just-created invite is reflected on reload.
-    const activeInviteTenantIds = useMemo(
-        () =>
-            new Set(
-                invites
-                    .filter((invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT')
-                    .map((invite) => invite.tenantId)
-                    .filter((id): id is number => id != null),
-            ),
-        [invites],
-    );
-
-    const takenTenantIds = useMemo(
-        () => new Set<number>([...existingTenantIds, ...activeInviteTenantIds]),
-        [existingTenantIds, activeInviteTenantIds],
-    );
-
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
+    const templateLoadGeneration = useRef(0);
     const loadTemplates = useCallback(() => {
+        templateLoadGeneration.current += 1;
+        const generation = templateLoadGeneration.current;
         listInviteEmailTemplates(templateKind)
-            .then(setTemplates)
-            .catch(() => message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates')));
+            .then((loadedTemplates) => {
+                if (generation === templateLoadGeneration.current) setTemplates(loadedTemplates);
+            })
+            .catch(() => {
+                if (generation === templateLoadGeneration.current)
+                    message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates'));
+            });
     }, [templateKind, t]);
 
     useEffect(() => {
         loadTemplates();
+        return () => {
+            // Requests from a previous scope/unmounted tab cannot replace current templates.
+            templateLoadGeneration.current += 1;
+        };
     }, [loadTemplates]);
 
     // After a template is created/edited in the dialog, refresh the picker — and if it
@@ -255,6 +234,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             loadTemplates();
         },
         [loadTemplates, templateKind],
+    );
+
+    const onTemplateDeleted = useCallback(
+        (id: number) => {
+            setTemplates((current) => current.filter((template) => template.id !== id));
+            setSelectedTemplateId((current) => (current === id ? undefined : current));
+            loadTemplates();
+        },
+        [loadTemplates],
     );
 
     useEffect(() => {
@@ -289,7 +277,13 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             explainInviteError(error, { t, action, role, idKind: isTenantInvite ? 'tenant' : 'agency' }),
         [isTenantInvite, targetRole, t],
     );
-    const bulk = useInviteBulk({ invites, reload: loadInvites, explain, rememberGeneratedLink });
+    const bulk = useInviteBulk({
+        invites,
+        selectionScope: JSON.stringify([tab, viewerScope, searchQuery.trim(), listQuery.phase]),
+        reload: loadInvites,
+        explain,
+        rememberGeneratedLink,
+    });
 
     // The platform admin picks an existing Träger by name.
     const searchTenantsForPicker = useCallback(async (query: string, page = 1) => {
@@ -401,6 +395,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             );
             return {
                 inviteId: created?.id,
+                allocatedId: isTenantInvite ? created?.tenantId ?? undefined : created?.agencyId ?? undefined,
                 waiting: created?.inviteStatus === 'WAITING_FOR_UNIT',
                 noUnitAdmin: created?.queueProblem === 'NO_UNIT_ADMIN',
             };
@@ -421,7 +416,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             try {
                 const updated = await updateAccountInviteTopicPermission(invite.id, topicPermission);
                 setRowPermission(topicPermission, updated);
-                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'), 2);
+                message.success(t('links.accountInvites.topicPermissionSaved', 'Themen-Berechtigung gespeichert'));
             } catch (error) {
                 setRowPermission(previous);
                 message.error((await explain(error, 'topicPermission', invite.targetRole)).message);
@@ -457,18 +452,33 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         [activeTemplates, explain, loadInvites, rememberGeneratedLink, selectedTemplateId, t],
     );
 
-    const onRevoke = useCallback(
-        async (invite: AccountInviteDTO) => {
-            try {
-                await revokeAccountInvite(invite.id);
-                message.success(t('links.accountInvites.revoked', 'Invite revoked'));
-                await loadInvites();
-            } catch {
-                message.error(t('links.accountInvites.revokeFailed', 'Could not revoke invite'));
-            }
-        },
-        [loadInvites, t],
-    );
+    // The role-change pop-up outlives this render: its "Erneut senden" must use the template picked later.
+    const onResendRef = useRef(onResend);
+    onResendRef.current = onResend;
+
+    // The search may change while a DELETE runs: the reload must load the list shown by then.
+    const loadInvitesRef = useRef(loadInvites);
+    loadInvitesRef.current = loadInvites;
+
+    // ORISO-Admin#1522: delete asks first; an open invite's link stops working at once.
+    const [deleteTarget, setDeleteTarget] = useState<AccountInviteDTO>();
+    const onDelete = useCallback((invite: AccountInviteDTO) => setDeleteTarget(invite), []);
+    const { setSelectedIds: setBulkSelectedIds } = bulk;
+    const deleteConfirmed = useCallback(async () => {
+        const invite = deleteTarget;
+        setDeleteTarget(undefined);
+        if (!invite) return;
+        try {
+            await deleteAccountInvite(invite.id);
+        } catch {
+            message.error(t('links.accountInvites.deleteFailed', 'Einladung konnte nicht gelöscht werden'));
+            return;
+        }
+        // A deleted invite is no bulk target any more; a failed delete keeps the selection.
+        setBulkSelectedIds((ids) => ids.filter((id) => id !== invite.id));
+        message.success(t('links.accountInvites.deleted', 'Einladung gelöscht'));
+        await loadInvitesRef.current();
+    }, [deleteTarget, setBulkSelectedIds, t]);
 
     const withRoleSaving = useCallback(async (inviteId: number, run: () => Promise<void>) => {
         setRoleSavingIds((ids) => [...ids, inviteId]);
@@ -493,33 +503,23 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     }
                     // The link stays valid, but the mail already sent named the old role: offer, never force, a resend.
                     const key = `role-changed-${invite.id}`;
-                    message.success({
+                    message.notify({
                         key,
-                        duration: 8,
-                        content: (
-                            <span className={styles.snackbar}>
-                                {t(
-                                    'links.accountInvites.roleChangedMailOutdated',
-                                    'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
-                                )}
-                                <button
-                                    type="button"
-                                    className={styles.snackbarAction}
-                                    onClick={() => {
-                                        message.destroy(key);
-                                        onResend(updated ?? invite);
-                                    }}
-                                >
-                                    {t('links.accountInvites.resendAfterRoleChange', 'Erneut senden')}
-                                </button>
-                            </span>
+                        severity: 'success',
+                        message: t(
+                            'links.accountInvites.roleChangedMailOutdated',
+                            'Rolle geändert. Die Einladungs-Mail nennt noch die alte Rolle.',
                         ),
+                        action: {
+                            label: t('links.accountInvites.resendAfterRoleChange', 'Erneut senden'),
+                            onClick: () => onResendRef.current(updated ?? invite),
+                        },
                     });
                 } catch (error) {
                     message.error((await explain(error, 'roleChange', role)).message);
                 }
             }),
-        [explain, loadInvites, onResend, t, withRoleSaving],
+        [explain, loadInvites, t, withRoleSaving],
     );
 
     const onRoleAdd = useCallback(
@@ -578,7 +578,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         requiresTemplate: bulk.requiresTemplate,
         onSend: () => bulk.send(selectedTemplateId),
         onClear: () => bulk.setSelectedIds([]),
-        onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),
+        onDeleteSelected: () => bulk.setConfirmDeleteOpen(true),
     };
     const moreMenu = useInviteMoreMenu({
         tab,
@@ -629,7 +629,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         templates={{
                             list: templates,
                             selectedId: selectedTemplateId,
-                            onSelect: setSelectedTemplateId,
+                            recentIds: recentTemplateIds,
+                            onSelect: selectTemplate,
                             onManage: (intent) => {
                                 setCreateFromTemplateId(undefined);
                                 setTemplatesDialogView(intent === 'create' ? 'create' : 'list');
@@ -656,12 +657,35 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     <InviteProgressBoard
                         invites={invites}
                         loading={loading}
+                        error={loadError}
+                        onRetry={() => {
+                            loadInvites();
+                        }}
                         searchQuery={searchQuery}
+                        serverList={{
+                            page: listQuery.page,
+                            pageSize: listQuery.pageSize,
+                            total: totalElements,
+                            filter: listQuery.phase,
+                            sort: listQuery.sort,
+                            onPageChange: (page) => setListQuery((current) => ({ ...current, page })),
+                            onPageSizeChange: (pageSize) =>
+                                setListQuery((current) => ({ ...current, pageSize, page: 1 })),
+                            onFilterChange: (phase) => setListQuery((current) => ({ ...current, phase, page: 1 })),
+                            onSortChange: (sort) => setListQuery((current) => ({ ...current, sort, page: 1 })),
+                        }}
                         toolbarSearch={
-                            <InviteSearchField
-                                query={searchQuery}
-                                placeholder={t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen')}
-                                onChange={setSearchQuery}
+                            <GlobalSearchBar
+                                variant="pill"
+                                defaultExpanded
+                                clearable
+                                inputType="search"
+                                value={searchQuery}
+                                searchPlaceholder={t(
+                                    'links.inviteProgress.searchPlaceholder',
+                                    'Einladungen durchsuchen',
+                                )}
+                                onSearchChange={setSearchQuery}
                             />
                         }
                         toolbarActions={moreMenu.moreButton}
@@ -669,11 +693,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         selectedIds={bulk.selectedIds}
                         onSelectionChange={bulk.setSelectedIds}
                         isRowSelectable={isBulkSelectable}
-                        selectionDisabled={bulk.running}
+                        selectionDisabled={bulk.running || loading}
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
-                        onRevoke={onRevoke}
-                        onInviteCta={focusComposer}
+                        onDelete={onDelete}
+                        onInviteCta={isTenantInvite && isAgencyViewer ? undefined : focusComposer}
                         onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                         topicPermissionSavingIds={topicSavingIds}
                         viewerScope={viewerScope}
@@ -693,7 +717,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     onAssigned={() => loadInvites()}
                 />
             )}
-            {bulk.confirmRevokeOpen && (
+            {deleteTarget && (
+                <Modal
+                    titleKey="links.accountInvites.deleteConfirmTitle"
+                    icon={<DeleteOutlineOutlinedIcon />}
+                    contentKey="links.accountInvites.deleteConfirmBody"
+                    contentKeyOptions={{ email: deleteTarget.recipientEmail }}
+                    okLabelKey="links.accountInvites.deleteConfirmOk"
+                    cancelLabelKey="links.bulk.deleteConfirmCancel"
+                    onConfirm={deleteConfirmed}
+                    onClose={() => setDeleteTarget(undefined)}
+                />
+            )}
+            {bulk.confirmDeleteOpen && (
                 <Modal
                     titleKey="links.bulk.deleteConfirmTitle"
                     icon={<DeleteOutlineOutlinedIcon />}
@@ -701,8 +737,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     contentKeyOptions={{ count: bulk.selectedInvites.length }}
                     okLabelKey="links.bulk.deleteConfirmOk"
                     cancelLabelKey="links.bulk.deleteConfirmCancel"
-                    onConfirm={bulk.revokeConfirmed}
-                    onClose={() => bulk.setConfirmRevokeOpen(false)}
+                    onConfirm={bulk.deleteConfirmed}
+                    onClose={() => bulk.setConfirmDeleteOpen(false)}
                 />
             )}
             {csvImport && (
@@ -715,7 +751,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     viewerScope={viewerScope}
                     ownTenantKnown={currentTenantId != null}
                     parseResult={csvImport.result}
-                    takenTenantIds={isTenantInvite ? takenTenantIds : undefined}
+                    recoverStoredInvite={findStoredCsvInvite}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => loadInvites()}
                 />
@@ -731,10 +767,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         setCreateFromTemplateId(undefined);
                     }}
                     onChanged={onTemplateChanged}
+                    onDeleted={onTemplateDeleted}
                     // Picking in the overview selects for the composer and closes
                     // the dialog; create/edit stay inside the dialog itself.
                     onSelect={(template) => {
-                        setSelectedTemplateId(template.id);
+                        selectTemplate(template.id);
                         setTemplatesDialogView(null);
                     }}
                 />

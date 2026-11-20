@@ -151,3 +151,47 @@ const AllStatesDemo = () => {
 export const AllStates: Story = {
     render: () => <AllStatesDemo />,
 };
+
+/** „An“/„Aus“ next to the switch (#1374). */
+export const StateLabelOff: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: false } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' })).not.toBeChecked();
+        await expect(canvas.getByText(/^(Aus|Off)$/)).toBeVisible();
+    },
+};
+
+/** The word follows the bound value when the switch is toggled. */
+export const StateLabelToggles: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: false } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByText(/^(Aus|Off)$/)).toBeVisible();
+        await userEvent.click(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' }));
+        await expect(canvas.getByText(/^(An|On)$/)).toBeVisible();
+    },
+};
+
+export const StateLabelOn: Story = {
+    args: { showStateLabel: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByText(/^(An|On)$/)).toBeVisible();
+    },
+};
+
+export const StateLabelDisabled: Story = {
+    args: { showStateLabel: true, disabled: true, label: 'Rundgänge in Hilfe', switchLabel: 'Rundgänge in Hilfe' },
+    render: (args) => withMuiForm(<MuiSwitchField {...args} />, { initialValues: { enabled: true } }),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+
+        await expect(canvas.getByRole('switch', { name: 'Rundgänge in Hilfe' })).toBeDisabled();
+        await expect(canvas.getByText(/^(An|On)$/)).toBeVisible();
+    },
+};

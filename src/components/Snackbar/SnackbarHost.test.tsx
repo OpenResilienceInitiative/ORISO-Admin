@@ -288,7 +288,7 @@ describe('SnackbarHost', () => {
             window.HTMLElement.prototype.scrollIntoView = vi.fn();
         });
 
-        it('offers "Ansehen", scrolls to the owner, focuses its first button and dismisses the pop-up', async () => {
+        it('offers "Ansehen", scrolls to the owner, focuses its heading and keeps the pop-up', async () => {
             const { api } = mount();
             act(() => {
                 api.error({ title: 'Entwurf fehlt', jump: { target: 'tile-legal' } });
@@ -299,8 +299,9 @@ describe('SnackbarHost', () => {
             });
             const tile = document.getElementById('tile-legal') as HTMLElement;
             expect(tile.scrollIntoView).toHaveBeenCalled();
-            expect(screen.getByRole('button', { name: 'Editor öffnen' })).toHaveFocus();
-            expect(screen.queryByText('Entwurf fehlt')).toBeNull();
+            expect(screen.getByRole('heading', { name: 'Rechtliches' })).toHaveFocus();
+            // An error that is still true is not hidden by looking at it.
+            expect(screen.getByText('Entwurf fehlt')).toBeInTheDocument();
         });
 
         it('runs onJump first, so the owner can open before it is focused, and takes a custom label and a selector', async () => {
@@ -320,28 +321,31 @@ describe('SnackbarHost', () => {
             expect(screen.getByRole('heading', { name: 'Rechtliches' })).toHaveFocus();
         });
 
-        it('keeps the pop-up until the person acts, even for a success', () => {
+        it('lets a success with a jump time out: the jump is a link, not an action', () => {
             const { api } = mount();
             act(() => {
                 api.success({ title: 'Gespeichert', jump: 'tile-legal' });
             });
+            expect(screen.getByRole('button', { name: /Ansehen|View/ })).toBeInTheDocument();
             act(() => {
-                vi.advanceTimersByTime(10 * 60_000);
+                vi.advanceTimersByTime(7000);
             });
-            expect(screen.getByText('Gespeichert')).toBeInTheDocument();
+            expect(screen.queryByText('Gespeichert')).toBeNull();
         });
 
-        it('gives the explicit actions the buttons and puts the jump second when there is room', () => {
+        it('keeps the jump as its own link next to two real actions', () => {
             const { api } = mount();
             act(() => {
                 api.error({
                     title: 'Zwei Entwürfe',
                     action: { label: 'Neuen', onClick: () => undefined },
+                    secondaryAction: { label: 'Gespeicherten', onClick: () => undefined },
                     jump: 'tile-legal',
                 });
             });
             expect(screen.getByRole('button', { name: /Ansehen|View/ })).toBeInTheDocument();
             expect(screen.getByRole('button', { name: 'Neuen' })).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Gespeicherten' })).toBeInTheDocument();
         });
 
         it('does nothing, and does not throw, when the target is gone', async () => {
@@ -353,7 +357,7 @@ describe('SnackbarHost', () => {
             await act(async () => {
                 vi.advanceTimersByTime(50);
             });
-            expect(screen.queryByText('Weg')).toBeNull();
+            expect(screen.getByText('Weg')).toBeInTheDocument();
         });
     });
     describe('keyboard and pointer', () => {

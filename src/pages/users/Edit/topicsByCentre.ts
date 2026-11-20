@@ -91,7 +91,7 @@ export const initialTopicsByCentre = (
 
 /** Picked topics the centre does not offer (any more). */
 export const notOfferedAt = (centre: CentreWithTopics | undefined, picked: Array<Option | string> = []): string[] => {
-    if (!centre) {
+    if (!centre || !Array.isArray(picked)) {
         return [];
     }
     const offered = new Set(centreTopicOptions(centre).map(({ value }) => value));

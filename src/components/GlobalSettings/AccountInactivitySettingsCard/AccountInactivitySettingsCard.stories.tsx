@@ -8,7 +8,8 @@ import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { AccountInactivitySettingsCard } from '.';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/AccountInactivitySettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/AccountInactivitySettingsCard',
+    id: 'organisms-globalsettings-accountinactivitysettingscard',
     component: AccountInactivitySettingsCard,
     decorators: [
         (Story, { parameters }) => (

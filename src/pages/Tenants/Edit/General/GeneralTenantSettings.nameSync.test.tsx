@@ -16,6 +16,10 @@ vi.mock('../../../../hooks/useAddOrUpdateTenant.hook', () => ({ useAddOrUpdateTe
 vi.mock('../../../../hooks/useAddOrUpdateTenantAdmin.hook', () => ({
     useAddOrUpdateTenantAdmin: () => ({ mutate: vi.fn() }),
 }));
+// The status block has its own tests and needs a QueryClient; this one is about the name field.
+vi.mock('../../../../components/EntityStatusCard', () => ({ ManagedEntityStatus: () => null }));
+// The contact-person tile (#1534) loads its own data and has its own tests.
+vi.mock('./TraegerContactPersonTile', () => ({ TraegerContactPersonTile: () => null }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
     GeneralSettings: ({ leadingTiles }: { leadingTiles?: ReactNode }) => <div>{leadingTiles}</div>,
 }));

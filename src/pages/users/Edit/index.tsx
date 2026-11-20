@@ -1,4 +1,4 @@
-import { Alert, Button, Space, Col, Row, Form } from 'antd';
+import { Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { MuiFormField } from '../../../components/mui/MuiFormField';
 import {
     ConsultantPersonalFields,
@@ -27,6 +28,16 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import {
+    AdminContactEmailField,
+    CONTACT_EMAIL_FIELD,
+    CONTACT_ROLES_FIELD,
+    ContactPersonForSection,
+} from '../AdminContact';
+import { centresForAdmin, refreshedRoles } from '../AdminContact/contactRolesModel';
+import { useContactRoleSaver } from '../AdminContact/useContactRoleSaver';
+import { useAgencyContactPairs } from '../../../hooks/useContactPerson';
+import { contactEmailForSave } from '../../../utils/contactEmailForSave';
 import { ADMIN_REMARKS_ROLES } from '../../../utils/adminRemarksRoles';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
@@ -54,6 +65,7 @@ import {
 } from '../../../api/counselor/changeConsultantTenant';
 import { AGENCY_CONSULTANTS_KEY } from '../../../hooks/useAgencyConsultants';
 import { useAppConfigContext } from '../../../context/useAppConfig';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
 import { CentreTopicPickers } from './CentreTopicPickers';
 import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
@@ -73,6 +85,7 @@ import {
     TopicsByCentre,
     TopicsLostByMove,
 } from './topicsByCentre';
+import { HintText } from '../../../components/HintText';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -139,12 +152,17 @@ interface TenantMove {
     result?: ChangeConsultantTenantResult;
 }
 
-export const UserEditOrAdd = () => {
+type UserEditFormProps = {
+    id: string;
+    typeOfUsers: TypeOfUser.Consultants | TypeOfUser.AgencyAdmins;
+    can: ReturnType<typeof useUserPermissions>['can'];
+};
+
+const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
     const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
-    const { can } = useUserPermissions();
     const { t } = useTranslation();
     const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
@@ -152,7 +170,6 @@ export const UserEditOrAdd = () => {
     // question — see `ADMIN_REMARKS_ROLES`.
     const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
-    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
     const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
@@ -166,6 +183,35 @@ export const UserEditOrAdd = () => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
+    // #1534 "Ansprechperson für": the stored pair of every centre of this agency admin.
+    const showContactRoles = isEditing && !isConsultantForm;
+    const contactRoleAgencies = useMemo(
+        () =>
+            showContactRoles
+                ? (singleData?.agencies ?? []).map((agency) => ({
+                      id: Number(agency.id),
+                      name: agency.name,
+                  }))
+                : [],
+        [showContactRoles, singleData?.agencies],
+    );
+    const {
+        pairs: contactPairs,
+        failedIds: contactPairFailedIds,
+        retryFailed: retryContactPairs,
+        isLoading: contactPairsLoading,
+    } = useAgencyContactPairs(contactRoleAgencies, { enabled: showContactRoles });
+    const contactRoleFailedCentres = useMemo(
+        () =>
+            contactRoleAgencies
+                .filter((agency) => contactPairFailedIds.includes(agency.id))
+                .map((agency) => agency.name || `#${agency.id}`),
+        [contactRoleAgencies, contactPairFailedIds],
+    );
+    const contactRoleCentres = useMemo(
+        () => (showContactRoles && id ? centresForAdmin(contactRoleAgencies, contactPairs, id) : []),
+        [showContactRoles, id, contactRoleAgencies, contactPairs],
+    );
     /**
      * ADR-008 "Supervision (auto-assigned)": an agency admin points a counsellor at one standing
      * supervisor, who is then attached read-only to every case that counsellor accepts. Editing
@@ -524,7 +570,6 @@ export const UserEditOrAdd = () => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -532,20 +577,90 @@ export const UserEditOrAdd = () => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
             onAccountCreatedWithoutMail: (content) => {
-                message.warning({ content, duration: 10 });
+                message.warning({ content });
                 navigate(`/admin/users/${typeOfUsers}`);
             },
         }),
     });
 
+    /**
+     * #1534: centres whose role the admin changed. Kept outside the form: when a centre's pair
+     * fails to reload its row unmounts, and an unmounted field reads as untouched and drops out
+     * of the submitted values, so the form alone would forget the edit.
+     */
+    const contactRolesEditedRef = useRef<Set<string>>(new Set());
+    const contactRoleChangedByAdmin = useCallback(
+        (agencyId: string) => contactRolesEditedRef.current.has(agencyId),
+        [],
+    );
+
+    // The pairs load after the form mounted and may reload; refresh every row the admin has not
+    // changed. A programmatic fill does not mark a row as touched, so later reloads still apply.
+    useEffect(() => {
+        if (contactRoleCentres.length === 0) return;
+        form.setFieldValue(
+            CONTACT_ROLES_FIELD,
+            refreshedRoles(form.getFieldValue(CONTACT_ROLES_FIELD), contactRoleCentres, contactRoleChangedByAdmin),
+        );
+    }, [contactRoleCentres, form, contactRoleChangedByAdmin]);
+
+    /** #1534: the role PUTs run before the admin save, which navigates away on success. */
+    const onContactRolePlanErrors = useCallback(
+        (errors: Array<{ agencyId: number; errorKey: string }>) =>
+            form.setFields(
+                errors.map(({ agencyId, errorKey }) => ({
+                    name: [CONTACT_ROLES_FIELD, String(agencyId)],
+                    errors: [t(errorKey)],
+                })),
+            ),
+        [form, t],
+    );
+    // Stop here: the admin save would navigate away and the unsaved role would be lost.
+    const onContactRoleSaveFailed = useCallback(
+        (centreNames: string[]) =>
+            message.warning({
+                content: t('admin.contactPersonFor.saveFailedFor', { centres: centreNames.join(', ') }),
+            }),
+        [message, t],
+    );
+    const contactRoleCentreName = useCallback(
+        (agencyId: number) =>
+            contactRoleAgencies.find((agency) => Number(agency.id) === agencyId)?.name || `#${agencyId}`,
+        [contactRoleAgencies],
+    );
+    const { saveContactRoles, saving: savingContactRoles } = useContactRoleSaver({
+        enabled: showContactRoles,
+        adminId: id,
+        pairs: contactPairs,
+        centres: contactRoleCentres,
+        changedByAdmin: contactRoleChangedByAdmin,
+        nameOf: contactRoleCentreName,
+        onPlanErrors: onContactRolePlanErrors,
+        onSaveFailed: onContactRoleSaveFailed,
+    });
+
     const persist = useCallback(
-        (data, byCentre: TopicsByCentre, onError?: () => void) => {
+        async (data, byCentre: TopicsByCentre, onError?: () => void) => {
             const payload = { ...data };
             delete payload.topicsByAgency;
+            delete payload[CONTACT_ROLES_FIELD];
+            if (!isConsultantForm) {
+                // Absent keeps the stored contact e-mail, "" clears it.
+                payload[CONTACT_EMAIL_FIELD] = contactEmailForSave(
+                    data[CONTACT_EMAIL_FIELD],
+                    (singleData as { contactEmail?: string | null } | undefined)?.contactEmail,
+                    isEditing,
+                );
+                // From the store, not `data`: a row that unmounted after a failed reload still counts.
+                if (!(await saveContactRoles(form.getFieldValue(CONTACT_ROLES_FIELD)))) {
+                    onError?.();
+                    return;
+                }
+            }
             const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
             // null = keep what is stored. Used when the pickers never loaded, and when a topic the
             // centre dropped is still held and nothing changed: the server would reject it (400).
@@ -587,6 +702,9 @@ export const UserEditOrAdd = () => {
             serverStoresTopicsPerCentre,
             mutate,
             canWriteStandingSupervisor,
+            saveContactRoles,
+            singleData,
+            form,
         ],
     );
 
@@ -740,7 +858,6 @@ export const UserEditOrAdd = () => {
             };
             message.error({
                 content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
-                duration: 8,
             });
             return;
         } finally {
@@ -755,7 +872,6 @@ export const UserEditOrAdd = () => {
         persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
             message.warning({
                 content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
-                duration: 8,
             }),
         );
         setPendingMove(null);
@@ -820,16 +936,13 @@ export const UserEditOrAdd = () => {
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
-    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
     let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
 
     if (pendingSlug) {
-        publicSlugAlertType = 'warning';
         publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
     } else if (slugStatus === 'REJECTED') {
         publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
     } else if (activePublicSlug) {
-        publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
 
@@ -867,7 +980,11 @@ export const UserEditOrAdd = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
@@ -892,7 +1009,7 @@ export const UserEditOrAdd = () => {
                             type="text"
                             className="admin-m3-text-button"
                             onClick={() => form.submit()}
-                            disabled={submitted}
+                            disabled={submitted || savingContactRoles}
                         >
                             {t('save')}
                         </Button>
@@ -901,6 +1018,18 @@ export const UserEditOrAdd = () => {
             </Page.BackWithActions>
 
             <ThemeProvider theme={orisoMuiTheme}>
+                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        targetTenantId={singleData.tenantId}
+                        canManage={can(
+                            PermissionAction.Update,
+                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
+                        )}
+                    />
+                )}
                 <Form
                     disabled={isReadOnly}
                     labelAlign="left"
@@ -915,6 +1044,9 @@ export const UserEditOrAdd = () => {
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }
+                        Object.keys(changedValues[CONTACT_ROLES_FIELD] ?? {}).forEach((agencyId) =>
+                            contactRolesEditedRef.current.add(agencyId),
+                        );
                         if (canChangeTraeger && 'tenantId' in changedValues) {
                             resetCentresForTraeger(changedValues.tenantId);
                         }
@@ -931,6 +1063,9 @@ export const UserEditOrAdd = () => {
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
                         assignedSupervisorId: storedSupervisorId || undefined,
+                        // The search row carries the server's list; the form holds a map by centre id,
+                        // filled once the centres are known. Never let the list in (#1302).
+                        topicsByAgency: {},
                         ...storedPublicSlug,
                         rejectPendingPublicSlug: false,
                         tenantId:
@@ -947,6 +1082,7 @@ export const UserEditOrAdd = () => {
                                     usernameLocked={isEditing}
                                     setupEmailHint={!isEditing && typeOfUsers === TypeOfUser.Consultants}
                                 />
+                                {!isConsultantForm && <AdminContactEmailField disabled={isReadOnly} />}
                             </Card>
                         </Col>
                         <Col xs={24} lg={12}>
@@ -1031,6 +1167,17 @@ export const UserEditOrAdd = () => {
                                     {confirmSupervision.dialog}
                                 </Card>
 
+                                {showContactRoles && (
+                                    <ContactPersonForSection
+                                        centres={contactRoleCentres}
+                                        // The save plans from the values at Save; a later change would be lost.
+                                        disabled={isReadOnly || savingContactRoles}
+                                        loading={contactPairsLoading}
+                                        failedCentres={contactRoleFailedCentres}
+                                        onRetry={retryContactPairs}
+                                    />
+                                )}
+
                                 {isConsultantForm && (
                                     <Card titleKey="counselor.publicSlug.status.title">
                                         <MuiFormField
@@ -1077,12 +1224,9 @@ export const UserEditOrAdd = () => {
                                             <input />
                                         </Form.Item>
                                         {isEditing && (
-                                            <Alert
-                                                type={publicSlugAlertType}
-                                                showIcon
-                                                message={t('counselor.publicSlug.status.title')}
-                                                description={publicSlugAlertDescription}
-                                            />
+                                            <HintText title={t('counselor.publicSlug.status.title')}>
+                                                {publicSlugAlertDescription}
+                                            </HintText>
                                         )}
                                         {pendingSlug && (
                                             <Space>
@@ -1137,4 +1281,26 @@ export const UserEditOrAdd = () => {
             )}
         </Page>
     );
+};
+
+export const UserEditOrAdd = () => {
+    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const { can } = useUserPermissions();
+
+    if (!id || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        return <AccessDenied />;
+    }
+
+    if (typeOfUsers === TypeOfUser.AgencyAdmins) {
+        const canOpenEditor =
+            id === 'add'
+                ? can(PermissionAction.Create, Resource.AgencyAdminUser)
+                : can(PermissionAction.Read, Resource.AgencyAdminUser) &&
+                  can(PermissionAction.Update, Resource.AgencyAdminUser);
+        if (!canOpenEditor) {
+            return <AccessDenied />;
+        }
+    }
+
+    return <UserEditForm id={id} typeOfUsers={typeOfUsers} can={can} />;
 };

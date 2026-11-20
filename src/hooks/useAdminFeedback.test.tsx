@@ -1,78 +1,54 @@
-import { App, ConfigProvider, message, theme } from 'antd';
+import { App } from 'antd';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vite-plus/test';
-import { adminMessageConfig } from '../constants/adminMessageConfig';
+import { describe, expect, it } from 'vite-plus/test';
+import { snackbar } from '../components/Snackbar';
+import { snackbarStore } from '../components/Snackbar/snackbarStore';
 import { useAdminFeedback } from './useAdminFeedback';
 
-const ThemedContent = () => {
-    const { token } = theme.useToken();
-    return <span>Themed feedback {token.colorSuccess}</span>;
-};
-
-const Feedback = () => {
-    const feedback = useAdminFeedback();
-    return (
-        <button type="button" onClick={() => feedback.message.success(<ThemedContent />)}>
-            Notify
-        </button>
-    );
-};
-
-describe('admin feedback context', () => {
-    it('uses the installed App holder and its actual dynamic theme', async () => {
-        const user = userEvent.setup();
-        const error = vi.spyOn(console, 'error');
-        try {
-            render(
-                <ConfigProvider prefixCls="scoped" theme={{ token: { colorSuccess: '#123456' } }}>
-                    <App component={false}>
-                        <Feedback />
-                    </App>
-                </ConfigProvider>,
-            );
-            await user.click(screen.getByRole('button', { name: 'Notify' }));
-            const content = await screen.findByText('Themed feedback #123456');
-            expect(content.closest('.scoped-message')).not.toBeNull();
-            expect(error).not.toHaveBeenCalled();
-        } finally {
-            error.mockRestore();
-        }
-    });
-    it('preserves the production top offset and three-message limit', async () => {
-        const Burst = () => {
-            const feedback = useAdminFeedback();
-            return (
-                <button
-                    type="button"
-                    onClick={() => {
-                        for (let index = 1; index <= 4; index += 1)
-                            feedback.message.error({ content: `Feedback ${index}`, duration: 8 });
-                    }}
-                >
-                    Burst
-                </button>
-            );
+describe('admin feedback', () => {
+    it('hands out the one snackbar channel as both message and notification', () => {
+        let selected: ReturnType<typeof useAdminFeedback> | undefined;
+        const Probe = () => {
+            selected = useAdminFeedback();
+            return null;
         };
         render(
-            <App component={false} message={adminMessageConfig}>
-                <Burst />
+            <App component={false}>
+                <Probe />
             </App>,
         );
-        await userEvent.click(screen.getByRole('button', { name: 'Burst' }));
-        const last = await screen.findByText('Feedback 4');
-        expect(last.closest('.ant-message')).toHaveStyle({ top: '100px' });
-        expect(screen.queryByText('Feedback 1')).not.toBeInTheDocument();
-        expect(document.querySelectorAll('.ant-message-notice-content')).toHaveLength(3);
+        expect(selected?.message).toBe(snackbar);
+        expect(selected?.notification).toBe(snackbar);
+        expect(typeof selected?.modal.confirm).toBe('function');
     });
 
-    it('retains the explicit static compatibility API outside App', () => {
+    it('works outside antd App with the same channel and a static modal', () => {
         let selected: ReturnType<typeof useAdminFeedback> | undefined;
         const Probe = () => {
             selected = useAdminFeedback();
             return null;
         };
         render(<Probe />);
-        expect(selected?.message).toBe(message);
+        expect(selected?.message).toBe(snackbar);
+        expect(typeof selected?.modal.confirm).toBe('function');
+    });
+
+    it('a message raised through the hook reaches the store, with the antd call shape', async () => {
+        const Raise = () => {
+            const feedback = useAdminFeedback();
+            return (
+                <button type="button" onClick={() => feedback.message.error({ content: 'Feedback 1', duration: 8 })}>
+                    Raise
+                </button>
+            );
+        };
+        render(<Raise />);
+        await userEvent.click(screen.getByRole('button', { name: 'Raise' }));
+        expect(snackbarStore.getState().current).toMatchObject({
+            message: 'Feedback 1',
+            severity: 'error',
+            durationMs: null,
+        });
     });
 });

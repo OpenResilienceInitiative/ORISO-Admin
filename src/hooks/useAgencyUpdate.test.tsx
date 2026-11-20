@@ -52,6 +52,27 @@ describe('useAgencyUpdate sequential card saves', () => {
         });
     });
 
+    // ORISO-Frontend#2251: a restricted admin never sees the switch, so their save omits it.
+    it('keeps a stored live-chat further counselling setting when a card save omits it', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            settings: { featureLiveChatFurtherCounsellingEnabled: true },
+        });
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ name: 'Updated name' } as never);
+
+        expect(mocks.updateAgencyData.mock.calls[0][1]).toMatchObject({
+            name: 'Updated name',
+            settings: { featureLiveChatFurtherCounsellingEnabled: true },
+        });
+    });
+
     it('does not replay geographic coverage from a previous card while the refetch is pending', async () => {
         const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
         queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
@@ -93,7 +114,8 @@ describe('useAgencyUpdate sequential card saves', () => {
         await result.current.mutateAsync({ online: false, postCodeRangesActive: false } as never);
 
         const request = mocks.updateAgencyData.mock.calls[0][1];
-        expect(request.online).toBe(false);
+        // Availability of an existing centre changes only through the narrow status command, never in this PUT.
+        expect(request.online).toBeUndefined();
         expect(request.dataProtection).toBeUndefined();
         // The cache still holds the contact for the other cards.
         expect(queryClient.getQueryData<{ dataProtection?: unknown }>(['AGENCY', '282'])?.dataProtection).toEqual(

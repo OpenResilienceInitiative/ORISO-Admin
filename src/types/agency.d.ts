@@ -21,6 +21,11 @@ export interface AgencyAdminControls {
  */
 export type AgencySettings = Omit<TenantSettings, 'smtp' | 'tenantAdminControls'> & {
     agencyAdminControls?: AgencyAdminControls;
+    /**
+     * Centre-owned "Weitere Beratung im Live-Chat empfehlen" (ORISO-Frontend#2251). Absent or null
+     * means off; not cascaded from the Träger. Only Träger and platform admins may change it.
+     */
+    featureLiveChatFurtherCounsellingEnabled?: boolean | null;
     /** Read-only effective policies; the agency's own overrides remain the boolean settings. */
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
 };
@@ -73,6 +78,10 @@ export interface AgencyData {
     demographics?: AgencyDemographicsData;
     description: string;
     offline: boolean;
+    active?: boolean | null;
+    ownActive?: boolean;
+    tenantActive?: boolean | null;
+    restrictions?: string[];
     online: boolean;
     postcode: string;
     street?: string;

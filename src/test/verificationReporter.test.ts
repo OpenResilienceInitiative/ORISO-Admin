@@ -103,9 +103,14 @@ describe('durable verification inventory', () => {
         await lifecycle.close();
         const report = JSON.parse(readFileSync(path.join(directory, 'inventory.json'), 'utf8'));
         expect(report.running).toEqual([]);
-        expect(report.inventoryComplete).toBe(false);
+        // The FAIL is recorded and confirmed by the module end, so the inventory is
+        // complete; the run itself stays failed (ORISO-Admin#1506).
+        expect(report.inventoryComplete).toBe(true);
+        expect(report.state).toBe('failed');
         expect(report.eventAnomalies).toHaveLength(1);
+        expect(report.unresolvedEventAnomalies).toEqual([]);
         expect(report.failed).toBe(1);
+        expect(process.exitCode).toBe(1);
     });
 
     it('preserves an unexplained ready event as unfinished evidence at terminal interruption', () => {
@@ -179,7 +184,7 @@ describe('durable verification inventory', () => {
                 },
             },
             runtime: { node: process.version, platform: process.platform, arch: process.arch },
-            toolchain: { vitePlus: '1.3.0', vitest: '5.0.5', storybook: '10.6.3' },
+            toolchain: { vitePlus: '1.6.0', vitest: '5.1.0', storybook: '10.6.7' },
             invocation: { command: expect.any(Array), projects: ['storybook'] },
         });
         reporter.onTestCaseResult(test);
@@ -719,18 +724,70 @@ describe('matching public terminal snapshots for delayed ready events', () => {
         }
         expect(process.exitCode).toBe(1);
     });
-    it.each(['failed', 'skipped'])('does not resolve a matching recorded non-PASS state %s', async (state) => {
-        const f = setup('non-pass-case', 'literal non-pass case', 'src/test/verificationReporter.test.ts', true, state);
+    // ORISO-Admin#1506: expected-negative controls in .superpowers/verification-controls
+    // end FAILED. Observed in CI runs 43202361821 and 43207959462 with a ready event after
+    // the result; the complete inventory must not be lost while the FAIL still counts.
+    it.each([
+        { id: '-1614077556_5', name: 'Uncaught Error' },
+        { id: '-1614077556_6', name: 'Unhandled Rejection' },
+        { id: '-1614077556_7', name: 'Unexpected Request' },
+        { id: '-1614077556_14', name: 'Known Operational Error' },
+    ])('resolves a delayed ready for recorded FAIL $name but keeps the run failed', async ({ id, name }) => {
+        const f = setup(id, name, 'src/test/verificationReporter.test.ts', true, 'failed');
         f.reporter.onTestCaseReady(f.test);
         f.reporter.onTestModuleEnd(f.module);
-        f.reporter.onTestRunEnd([f.module], [], state === 'failed' ? 'failed' : 'passed');
+        f.reporter.onTestRunEnd([f.module], [], 'failed');
+        await f.lifecycle.close();
+        expect(f.read()).toMatchObject({
+            state: 'failed',
+            inventoryComplete: true,
+            passed: 0,
+            failed: 1,
+            running: [],
+            unfinished: [],
+            unresolvedEventAnomalies: [],
+        });
+        expect(f.read().eventAnomalies).toHaveLength(1);
+        expect(f.read().reconciledTerminalEvents).toContainEqual(
+            expect.objectContaining({
+                id,
+                name,
+                state: 'failed',
+                evidence: 'matching public module snapshot for delayed ready',
+            }),
+        );
+        expect(process.exitCode).toBe(1);
+    });
+    it('keeps a recorded FAIL unresolved when the public snapshot reports PASS', async () => {
+        const f = setup('flip-case', 'literal flip case', 'src/test/verificationReporter.test.ts', true, 'failed');
+        f.snapshots.splice(0, 1, { ...f.test, result: () => ({ state: 'passed' }) });
+        f.reporter.onTestCaseReady(f.test);
+        f.reporter.onTestModuleEnd(f.module);
+        f.reporter.onTestRunEnd([f.module], [], 'failed');
+        await f.lifecycle.close();
+        expect(f.read()).toMatchObject({ state: 'failed', inventoryComplete: false, failed: 1 });
+        expect(f.read().unresolvedEventAnomalies).toHaveLength(1);
+        expect(f.read().reconciledTerminalEvents).toEqual([]);
+        expect(process.exitCode).toBe(1);
+    });
+    it('does not resolve a matching recorded SKIPPED state', async () => {
+        const f = setup(
+            'non-pass-case',
+            'literal non-pass case',
+            'src/test/verificationReporter.test.ts',
+            true,
+            'skipped',
+        );
+        f.reporter.onTestCaseReady(f.test);
+        f.reporter.onTestModuleEnd(f.module);
+        f.reporter.onTestRunEnd([f.module], [], 'passed');
         await f.lifecycle.close();
         expect(f.read()).toMatchObject({
             state: 'failed',
             inventoryComplete: false,
             passed: 0,
-            failed: state === 'failed' ? 1 : 0,
-            skipped: state === 'skipped' ? 1 : 0,
+            failed: 0,
+            skipped: 1,
         });
         expect(f.read().unresolvedEventAnomalies).toHaveLength(1);
         expect(f.read().reconciledTerminalEvents).toEqual([]);

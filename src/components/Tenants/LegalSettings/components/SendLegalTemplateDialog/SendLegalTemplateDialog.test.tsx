@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { snackbar } from '../../../../Snackbar';
 import { SendLegalTemplateDialog } from './index';
 
 const mocks = vi.hoisted(() => ({
@@ -33,11 +34,6 @@ vi.mock('../../../../../api/tenant/legalProposals', async () => {
 });
 vi.mock('../../../../../api/agency/getAgencyData', () => ({ default: mocks.getAgencyData }));
 vi.mock('../../../../../api/tenant/searchTenantData', () => ({ searchTenantData: vi.fn() }));
-vi.mock('antd', async () => {
-    const antd = await vi.importActual<typeof import('antd')>('antd');
-    return { ...antd, notification: { ...antd.notification, success: mocks.success, error: mocks.error } };
-});
-
 const agencies = [
     { id: 101, name: 'Beratungsstelle Nordlicht Mitte' },
     { id: 102, name: 'Beratungsstelle Nordlicht Süd' },
@@ -61,6 +57,8 @@ const renderDialog = () => {
 
 describe('SendLegalTemplateDialog — Träger forwards to its Beratungsstellen (#1070)', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'success').mockImplementation(mocks.success as never);
+        vi.spyOn(snackbar, 'error').mockImplementation(mocks.error as never);
         Object.values(mocks).forEach((mock) => mock.mockReset());
         mocks.getAgencyData.mockResolvedValue({ data: agencies, total: agencies.length });
     });

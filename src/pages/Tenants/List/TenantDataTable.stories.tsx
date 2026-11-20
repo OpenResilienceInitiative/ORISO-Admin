@@ -14,6 +14,7 @@ const tenant = (overrides: Record<string, unknown>): TenantRow =>
     ({
         id: 21,
         name: 'Caritas Nord',
+        active: true,
         subdomain: 'nord',
         licensing: { allowedNumberOfUsers: 40 },
         adminEmails: ['admin@nord.example', 'stellvertretung@nord.example'],
@@ -100,21 +101,44 @@ const settle = async (canvasElement: HTMLElement, layout: Layout) => {
     const canvas = within(canvasElement);
     await waitFor(() => {
         if (layout === 'phone') return expect(canvas.queryByRole('table')).toBeNull();
-        const id = canvas.queryByRole('columnheader', { name: /^Träger-ID/ });
+        const id = canvas.queryByRole('columnheader', { name: /^ID/ });
         return layout === 'wide' ? expect(id).not.toBeNull() : expect(id).toBeNull();
     });
     return canvas;
 };
 
-/** 1440 px viewport: 1144 px content next to the rail; admins and both dates per row. */
+/**
+ * 1440 px viewport: 1144 px content next to the rail; status, ID, admins' e-mail and both dates per
+ * row. The maximum of counsellors is in the details; the subdomain is hidden (not technically finished).
+ */
 export const Desktop1440: Story = {
     play: async (context) => {
         const canvas = await settle(context.canvasElement, 'wide');
         await meta.play?.(context);
         await expect(canvas.getByText('+1')).toBeVisible();
+        await expect(canvas.queryByRole('columnheader', { name: /^Subdomain/ })).toBeNull();
+        await expect(canvas.queryByRole('columnheader', { name: /^Max\./ })).toBeNull();
+        // The name column is the widest one.
+        const widths = canvas.getAllByRole('columnheader').map((header) => header.getBoundingClientRect().width);
+        await expect(widths[0]).toBe(Math.max(...widths));
         await userEvent.click(canvas.getByRole('button', { name: 'Details zu Caritas Nord anzeigen' }));
         await expect(canvas.getByRole('link', { name: 'stellvertretung@nord.example' })).toBeVisible();
+        await expect(canvas.queryByRole('link', { name: /^nord\./ })).toBeNull();
+        await expect(canvas.queryByText('Subdomain')).toBeNull();
+        await expect(canvas.getByText('Max. erlaubte Berater')).toBeVisible();
+        await expect(canvas.getByText('40')).toBeVisible();
         await expect(canvas.getByRole('button', { name: 'Caritas Nord löschen' })).toBeDisabled();
+    },
+};
+
+/** Single-domain installation: the details show the maximum of counsellors, still no subdomain. */
+export const SingleDomainDetails: Story = {
+    args: { showSubdomain: false },
+    play: async (context) => {
+        const canvas = await settle(context.canvasElement, 'wide');
+        await userEvent.click(canvas.getByRole('button', { name: 'Details zu Caritas Nord anzeigen' }));
+        await expect(canvas.getByText('Max. erlaubte Berater')).toBeVisible();
+        await expect(canvas.queryByText('Subdomain')).toBeNull();
     },
 };
 
@@ -145,19 +169,13 @@ const expectLayout =
         await meta.play?.(context);
     };
 
-// Boundaries (responsive-tables.md): at and just below each measured threshold.
-/** With the subdomain column: wide from 1070 px. */
-export const SubdomainAtWideThreshold: Story = { args: { width: 1070 }, play: expectLayout('wide') };
-export const SubdomainBelowWideThreshold: Story = { args: { width: 1069 }, play: expectLayout('tablet') };
-
-/** Single-domain installation without the subdomain column: wide from 940 px. */
+// Boundaries (responsive-tables.md): at and just below the measured threshold.
+/** Wide from 875 px, with or without the subdomain (it is in the details). */
+export const AtWideThreshold: Story = { args: { width: 875 }, play: expectLayout('wide') };
+export const BelowWideThreshold: Story = { args: { width: 874 }, play: expectLayout('tablet') };
 export const SingleDomainAtWideThreshold: Story = {
-    args: { width: 940, showSubdomain: false },
+    args: { width: 875, showSubdomain: false },
     play: expectLayout('wide'),
-};
-export const SingleDomainBelowWideThreshold: Story = {
-    args: { width: 939, showSubdomain: false },
-    play: expectLayout('tablet'),
 };
 
 /** The tablet row fits at 600 px; one pixel less shows cards. */

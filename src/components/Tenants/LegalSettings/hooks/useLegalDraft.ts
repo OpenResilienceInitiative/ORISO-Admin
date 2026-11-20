@@ -87,7 +87,7 @@ export const useLegalDraft = (
                 // instead of confirming a save the admin would rely on.
                 const message = t('legal.draft.saveError');
                 if (onError) onError(message);
-                else notification.error({ message, duration: 8 });
+                else notification.error({ message });
                 return false;
             }
             setState((previous) => ({
@@ -111,7 +111,7 @@ export const useLegalDraft = (
             // is gone and resurrecting it on the next load.
             const message = t('legal.draft.discardError');
             if (onError) onError(message);
-            else notification.error({ message, duration: 8 });
+            else notification.error({ message });
             return false;
         }
         setState({ key, draft: undefined, savedAt: undefined, savedBaseVersionId: undefined });

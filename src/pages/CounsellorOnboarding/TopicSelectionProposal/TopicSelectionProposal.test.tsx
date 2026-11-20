@@ -39,9 +39,11 @@ describe('topic selection design proposal', () => {
         const user = userEvent.setup();
         render(<TopicSelectionProposal initialOpen initialStatus="error" />);
         const dialog = within(screen.getByRole('dialog'));
-        expect(dialog.getByRole('alert')).toHaveTextContent('Die Themen konnten nicht geladen werden.');
+        // The failure is an error pop-up on the shared snackbar channel, with the retry as its action.
+        const popup = within(await screen.findByRole('alert'));
+        expect(popup.getByText(/Die Themen konnten nicht geladen werden\./)).toBeInTheDocument();
         expect(dialog.getByRole('button', { name: 'Anwenden' })).toBeDisabled();
-        await user.click(dialog.getByRole('button', { name: 'Erneut versuchen' }));
+        await user.click(popup.getByRole('button', { name: 'Erneut versuchen' }));
         await waitFor(() => expect(dialog.getByRole('checkbox', { name: 'Schulden' })).toBeEnabled());
         expect(dialog.getByRole('button', { name: 'Anwenden' })).toBeEnabled();
     });

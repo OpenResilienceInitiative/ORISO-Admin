@@ -9,7 +9,8 @@ import { LegalConsentField } from './index';
  * #862: closed surface is only the in-card CTA; the editor opens in a dialog.
  */
 const meta = {
-    title: 'Organisms/Legal/LegalConsentField',
+    title: 'Settings/Einstellungen/Rechtliches/LegalConsentField',
+    id: 'organisms-legal-legalconsentfield',
     component: LegalConsentField,
     parameters: { layout: 'padded' },
     args: { language: 'de', onChange: () => undefined },

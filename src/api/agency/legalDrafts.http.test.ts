@@ -13,7 +13,6 @@ vi.mock('../../appConfig', () => ({
     CSRF_WHITELIST_HEADER: '',
     default: { login: '/admin/login' },
 }));
-vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first

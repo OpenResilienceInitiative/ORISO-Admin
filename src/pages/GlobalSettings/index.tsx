@@ -11,9 +11,6 @@ import { Card } from '../../components/Card';
 import { CardGrid } from '../../components/CardGrid';
 import { MuiSwitchField } from '../../components/mui/MuiSwitchField/index';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
-import { useTenantData } from '../../hooks/useTenantData.hook';
-import { useTenantAdminDataMutation } from '../../hooks/useTenantAdminDataMutation.hook';
-import { mapTenantDataToTenantAdminData } from '../../utils/mapTenantDataToTenantAdminData';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useSettingsAdminMutation } from '../../hooks/useSettingsAdminMutation.hook';
 import { useUserData } from '../../hooks/useUserData.hook';
@@ -28,9 +25,7 @@ import { TilePicture } from '../../components/TileFill';
 import { TileSections } from '../../components/TileSections';
 import mailServerPicture from '../../resources/img/tile-help/mail-server.webp';
 import styles from './styles.module.scss';
-import { resolveTenantId } from '../../utils/resolveTenantId';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
-import { LoginFunctionCard } from '../../components/GlobalSettings/LoginFunctionCard';
 import { ChatRecoverySettingsCard } from '../../components/GlobalSettings/ChatRecoverySettingsCard';
 import { useChatRecoverySettings } from '../../hooks/useChatRecoverySettings.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
@@ -40,8 +35,11 @@ import { SupportEmailSettingsCardContainer } from '../../components/GlobalSettin
 import { CounsellorTutorialSettingsCardContainer } from '../../components/GlobalSettings/CounsellorTutorialSettingsCard';
 import { FurtherCounsellingPostcodeSettingsCardContainer } from '../../components/GlobalSettings/FurtherCounsellingPostcodeSettingsCard';
 import { TopicDuplicateSettingsCardContainer } from '../../components/GlobalSettings/TopicDuplicateSettingsCard';
+import { LiveChatFreeChoiceSettingsCardContainer } from '../../components/GlobalSettings/LiveChatFreeChoiceSettingsCard';
+import { ChatMessageSettingsCardContainer } from '../../components/GlobalSettings/ChatMessageSettingsCard';
 import { TemporaryAccountSettingsCardsContainer } from '../../components/GlobalSettings/TemporaryAccountSettingsCards';
 import { StatisticsSettingsCardContainer } from '../../components/GlobalSettings/StatisticsSettingsCard';
+import { Notify } from '../../components/Notify';
 
 const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
     UNKNOWN: 'globalSettings.smtp.sync.unknown',
@@ -51,28 +49,12 @@ const smtpSyncMessageKeys: Record<SmtpSyncStatus, string> = {
 };
 
 export const GlobalLoginSettingsPage = () => {
-    const { data, isLoading } = useTenantData();
-    const tenantId = resolveTenantId(undefined, data?.id);
-    const seedTenantAdminData = useMemo(
-        () => (data?.id == null ? undefined : mapTenantDataToTenantAdminData(data)),
-        [data],
-    );
-    const { mutate } = useTenantAdminDataMutation({
-        id: tenantId,
-        seedTenantAdminData,
-        prefetchTenantAdminData: false,
-        successMessageKey: 'tenants.message.settingsUpdate',
-    });
-    const initialValues = useMemo(() => ({ ...data }), [data]);
     const { isSuperAdmin } = useUserRoles();
     const recoverySettings = useChatRecoverySettings(isSuperAdmin);
 
     return (
         <ThemeProvider theme={orisoMuiTheme}>
             <CardGrid raster>
-                <CardGrid.Item>
-                    <LoginFunctionCard isLoading={isLoading} initialValues={initialValues} onSave={mutate} />
-                </CardGrid.Item>
                 <CardGrid.Item>
                     <OneTopicPerAgencySettingsCardContainer />
                 </CardGrid.Item>
@@ -84,6 +66,14 @@ export const GlobalLoginSettingsPage = () => {
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <TopicDuplicateSettingsCardContainer />
+                </CardGrid.Item>
+                {/* ORISO-Admin#1497: live-chat queue rule. Platform admin only (visible, disabled
+                    for everyone else); the UserService reads it on every accept. */}
+                <CardGrid.Item>
+                    <LiveChatFreeChoiceSettingsCardContainer />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <ChatMessageSettingsCardContainer />
                 </CardGrid.Item>
                 <CardGrid.Item>
                     <CounsellorTutorialSettingsCardContainer />
@@ -368,16 +358,14 @@ export const GlobalSmtpSettingsPage = () => {
                             </p>
                         )}
                         {!isSummaryLoading && (isError || !platformSmtp) && (
-                            <div className={styles.smtpReadStatus} role="alert">
-                                <p>{t('globalSettings.smtp.saved.error')}</p>
-                                <Button
-                                    onClick={() => {
-                                        refetch();
-                                    }}
-                                >
-                                    {t('globalSettings.smtp.saved.retry')}
-                                </Button>
-                            </div>
+                            <Notify
+                                title={t('notify.title.globalSettings')}
+                                severity="error"
+                                quietText={t('notify.tile.notLoaded')}
+                                actions={[{ label: t('globalSettings.smtp.saved.retry'), onClick: () => refetch() }]}
+                            >
+                                {t('globalSettings.smtp.saved.error')}
+                            </Notify>
                         )}
                         {!isSummaryLoading && !isError && platformSmtp && (
                             <dl className={styles.smtpReadOnly}>
@@ -427,7 +415,8 @@ export const GlobalSmtpSettingsPage = () => {
                                 </div>
                             </dl>
                         )}
-                        {syncStatus && (
+                        {/* The sync status speaks about the saved settings: only when they were read. */}
+                        {syncStatus && !isSummaryLoading && !isError && platformSmtp && (
                             <p className={styles.smtpReadStatus} role="status">
                                 {t(smtpSyncMessageKeys[syncStatus])}
                             </p>

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, notification } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useSingleTenantData } from '../../../../hooks/useSingleTenantData';
 import { useTenantAdminDataMutation } from '../../../../hooks/useTenantAdminDataMutation.hook';
 import {
+    useTenantCalendarPoliciesMutation,
     useTenantPermissionPolicies,
     useTenantPermissionPoliciesMutation,
     useTenantRecipientScopeMutation,
@@ -16,8 +17,10 @@ import {
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
+import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarPolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
+import { Notify } from '../../../Notify';
 
 export const TenantPermissionsSettings = ({
     tenantId,
@@ -33,6 +36,7 @@ export const TenantPermissionsSettings = ({
     } = useTenantPermissionPolicies(tenantId);
     const updatePermissionPolicies = useTenantPermissionPoliciesMutation(tenantId);
     const updateRecipientScope = useTenantRecipientScopeMutation(tenantId);
+    const updateCalendar = useTenantCalendarPoliciesMutation(tenantId);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
     const [effectivePolicyData, setEffectivePolicyData] = useState<TenantPermissionPolicies | undefined>(
         permissionPolicyData,
@@ -212,7 +216,7 @@ export const TenantPermissionsSettings = ({
                 if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
                 confirmedPolicyData.current = saved;
                 rebuildEffectivePolicyData();
-                notification.success({
+                snackbar.success({
                     message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
                     duration: 3,
                 });
@@ -226,8 +230,45 @@ export const TenantPermissionsSettings = ({
         [rebuildEffectivePolicyData, t, tenantId, updateRecipientScope],
     );
 
+    // Same queue again. Only `calendar` goes out: the group-chat scope and the switches stay as stored.
+    const handleCalendarSave = useCallback(
+        (change: CalendarPolicyChange) => {
+            const operationGeneration = tenantGeneration.current;
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPolicyData.current;
+                if (
+                    !confirmed ||
+                    String(confirmed.tenantId) !== tenantId ||
+                    activeTenantId.current !== tenantId ||
+                    tenantGeneration.current !== operationGeneration
+                ) {
+                    throw new Error('Permission policies of this Träger are not loaded');
+                }
+                const saved = await updateCalendar.mutateAsync({
+                    tenantId: confirmed.tenantId,
+                    policies: {},
+                    ...toCalendarWrite(confirmed.calendar, change),
+                });
+                if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
+                confirmedPolicyData.current = saved;
+                rebuildEffectivePolicyData();
+                snackbar.success({ message: t('tenants.permissions.calendar.saved'), duration: 3 });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            return save;
+        },
+        [rebuildEffectivePolicyData, t, tenantId, updateCalendar],
+    );
+
     if (policiesError) {
-        return <Alert type="error" message={t('error.loading')} showIcon role="alert" />;
+        return (
+            <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
+                {t('error.loading')}
+            </Notify>
+        );
     }
 
     return (
@@ -243,6 +284,7 @@ export const TenantPermissionsSettings = ({
             onToggleUpdate={handleToggleUpdate}
             policyLevel="tenant"
             permissionPolicies={effectivePolicyData?.policies}
+            ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
             recipientScope={{
@@ -250,6 +292,10 @@ export const TenantPermissionsSettings = ({
                 // absent field means "backend too old", and must not flash while loading.
                 policy: (effectivePolicyData ?? loadedPolicyData)?.internalGroupChat?.recipientScope,
                 onSave: handleRecipientScopeSave,
+            }}
+            calendar={{
+                policies: (effectivePolicyData ?? loadedPolicyData)?.calendar,
+                onSave: handleCalendarSave,
             }}
         />
     );

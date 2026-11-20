@@ -208,6 +208,30 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         expect(within(master).queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
     });
 
+    // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
+    // Caritas Berlin case: raw false + inherited suggestion on -> stays OFF, hint "Vorschlag: an".
+    it.each([
+        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', 'own'],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'deactivated', 'ownSuggestedOn'],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', 'suggested'],
+        [undefined, false, 'deactivated', 'own'],
+    ] as const)('policy %o with raw %s shows %s with source %s', (videoPolicy, own, state, source) => {
+        renderOneOnOne(vi.fn(), {
+            permissionPolicies: {
+                featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
+                ...(videoPolicy ? { featureVideoCallsOneOnOneChatsEnabled: videoPolicy } : {}),
+            },
+            ownSettings: { featureVideoCallsOneOnOneChatsEnabled: own },
+        });
+        const control = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        expect(
+            within(control).getByRole('button', { name: new RegExp(`tenants.permissions.policy.${state}`) }),
+        ).toBeInTheDocument();
+        expect(within(control).getByText(`tenants.permissions.policy.source.${source}`)).toBeInTheDocument();
+    });
+
     it('uses false form values when an asker policy is absent from a partial response', () => {
         render(
             <PermissionsSettingsView
@@ -288,6 +312,41 @@ describe('PermissionsSettingsView tiles', () => {
         within(chat)
             .getAllByRole('button')
             .forEach((button) => expect(button).toBeEnabled());
+    });
+});
+
+// ORISO-UserService#1662: guest account modes per chat type, next to the direct invitations.
+describe('PermissionsSettingsView guest account modes', () => {
+    const permanentVideo = () =>
+        screen
+            .getByTestId('chat-type-card-oneOnOne')
+            .querySelector('[data-feature-policy="featureGuestAccountPermanentVideoEnabled"]') as HTMLElement | null;
+
+    it('shows the guest account modes in the one-on-one tile and writes a Träger choice as a policy', async () => {
+        const onPolicyChange = vi.fn();
+        renderOneOnOne(onPolicyChange, { policyLevel: 'tenant' });
+
+        expect(screen.getByText('tenants.permissions.guestAccountModes.title')).toBeTruthy();
+        const row = permanentVideo();
+        expect(row).toBeTruthy();
+        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.deactivate$/ }));
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+    });
+
+    it('is part of the platform page too', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'platform' });
+
+        expect(permanentVideo()).toBeTruthy();
+    });
+
+    it('is not offered on a Beratungsstelle page, which has no value of its own', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'agency' });
+
+        expect(screen.queryByText('tenants.permissions.guestAccountModes.title')).toBeNull();
+        expect(permanentVideo()).toBeNull();
     });
 });
 

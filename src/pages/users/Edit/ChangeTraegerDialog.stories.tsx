@@ -3,6 +3,7 @@ import i18n from 'i18next';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test';
 import { CHANGE_TENANT_ERRORS, type ChangeTenantErrorCode } from '../../../api/counselor/changeConsultantTenant';
+import { findPopup } from '../../../test/storyPopups';
 import { ChangeTraegerDialog } from './ChangeTraegerDialog';
 
 /**
@@ -116,7 +117,7 @@ const refused = (error: ChangeTenantErrorCode, message: RegExp, retry: boolean):
     args: { error },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByRole('alert')).toHaveTextContent(message);
+        await expect(await findPopup(document.body, message, 'error')).toHaveTextContent(message);
         await expect(dialog.getByRole('button', { name: 'Zurück zum Bearbeiten' })).toBeEnabled();
         if (retry) {
             await expect(dialog.getByRole('button', { name: 'Erneut versuchen' })).toBeEnabled();
@@ -166,7 +167,9 @@ export const ErrorNoAnswer: Story = {
     args: { error: CHANGE_TENANT_ERRORS.NETWORK },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByRole('alert')).toHaveTextContent(/Keine Antwort vom Server/);
+        await expect(await findPopup(document.body, /Keine Antwort vom Server/, 'error')).toHaveTextContent(
+            /Keine Antwort vom Server/,
+        );
         await expect(dialog.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull();
         await expect(dialog.getByRole('button', { name: 'Liste prüfen' })).toBeEnabled();
     },
@@ -193,9 +196,11 @@ export const English: Story = {
     args: { openCases: 12 },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('12 open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(
+            dialog.getByText('12 open cases stay with the previous provider “Caritas Augsburg”.'),
+        ).toBeVisible();
         await expect(dialog.getByText(/“Assignment ended”/)).toBeVisible();
-        await expect(dialog.getByRole('button', { name: 'Change Träger' })).toBeEnabled();
+        await expect(dialog.getByRole('button', { name: 'Change provider' })).toBeEnabled();
     },
 };
 
@@ -203,7 +208,7 @@ export const EnglishNotCountedYet: Story = {
     beforeEach: english,
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('Open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(dialog.getByText('Open cases stay with the previous provider “Caritas Augsburg”.')).toBeVisible();
     },
 };
 
@@ -212,7 +217,9 @@ export const EnglishError: Story = {
     args: { error: CHANGE_TENANT_ERRORS.LAST_COUNSELLOR_OF_CENTRE },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByRole('alert')).toHaveTextContent(/last one of a counselling centre/);
+        await expect(await findPopup(document.body, /last one of a counselling centre/, 'error')).toHaveTextContent(
+            /last one of a counselling centre/,
+        );
         await expect(dialog.getByRole('button', { name: 'Back to editing' })).toBeEnabled();
     },
 };
@@ -222,7 +229,9 @@ export const EnglishDone: Story = {
     args: { step: 'done', result: { casesLeftWithPreviousTenant: 3, matrixAccessRevocationsQueued: 2 } },
     play: async () => {
         const dialog = await openDialog();
-        await expect(dialog.getByText('3 open cases stay with the previous Träger “Caritas Augsburg”.')).toBeVisible();
+        await expect(
+            dialog.getByText('3 open cases stay with the previous provider “Caritas Augsburg”.'),
+        ).toBeVisible();
         await expect(dialog.getByRole('button', { name: 'Done' })).toBeVisible();
     },
 };

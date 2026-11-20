@@ -17,6 +17,7 @@ import {
     type DataTableColumn,
     type DataTableSort,
 } from '../../../components/DataTable';
+import { entityStatusListAttributes, statusLabel } from '../../../components/EntityStatusCard/presentation';
 import { IconButton } from '../../../components/IconButton';
 import { LoadMoreFooter } from '../../../components/UserTable/LoadMoreFooter';
 import { RelativeTime } from '../../../components/UserTable/RelativeTime';
@@ -26,6 +27,7 @@ import { useMeasuredListLayout } from '../../../hooks/useMeasuredListLayout';
 import type { BasicTenantData } from '../../../types/tenant';
 import decodeHTML from '../../../utils/decodeHTML';
 import { getDomain } from '../../../utils/getDomain';
+import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../config/subdomainFeature';
 import styles from './tenantDataTable.module.scss';
 
 /** TenantService search rows carry the Träger admins' e-mails (AdminTenantDTO.adminEmails). */
@@ -52,12 +54,12 @@ export interface TenantDataTableProps {
     ariaLabel: string;
 }
 
-// Measured in Storybook "Pages/Tenants/TenantList" (2026-11-01) on the list container, with long
-// names, subdomains and e-mails: the wide row needs 931px, 1061px with the subdomain column. The
-// tablet row fits down to 400px; below 600px cards read better (same band as the accounts list).
+// Measured in Storybook "Pages/Tenants/TenantList" (2026-11-10) on the list container, with long
+// names and e-mails: the wide row (name, status, ID, e-mail, both dates, actions) needs 862px; subdomain
+// and the maximum of counsellors are in the details. The tablet row fits down to 400px; below 600px
+// cards read better (same band as the accounts list).
 const PHONE_BELOW = 600;
-const WIDE_BASE = 940;
-const WIDE_SUBDOMAIN = 130;
+const WIDE_FROM = 875;
 
 const adminsOf = (row: TenantRow) => (row.adminEmails ?? []).filter(Boolean);
 const nameOf = (row: TenantRow) => decodeHTML(row.name);
@@ -181,7 +183,7 @@ export const TenantDataTable = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const layout = useMeasuredListLayout(containerRef, {
         phoneBelow: PHONE_BELOW,
-        wideFrom: WIDE_BASE + (showSubdomain ? WIDE_SUBDOMAIN : 0),
+        wideFrom: WIDE_FROM,
     });
     const tablet = layout === 'tablet';
     const [openRows, setOpenRows] = useState<number[]>([]);
@@ -194,12 +196,13 @@ export const TenantDataTable = ({
     const rowIds = rows.map((row) => row.id).join(',');
     useEffect(() => setOpenRows([]), [rowIds]);
 
+    // The maximum of allowed counsellors lives in the details (expanded row, phone card); the subdomain
+    // would too, but is hidden for now (SUBDOMAINS_TECHNICALLY_FINISHED).
     const columns: DataTableColumn[] = [
-        { key: 'name', label: t('tenants.list.name'), sortable: true },
-        ...(tablet ? [] : [{ key: 'id', label: t('tenants.list.tenantId'), sortable: true, width: 96 }]),
-        ...(showSubdomain ? [{ key: 'subdomain', label: t('tenants.list.subdomain'), sortable: true }] : []),
+        { key: 'name', label: t('tenants.list.name'), sortable: true, width: tablet ? undefined : '28%' },
+        { key: 'status', label: t('entityStatus.title'), width: 110 },
+        ...(tablet ? [] : [{ key: 'id', label: t('tenants.list.tenantIdShort'), sortable: true, width: 72 }]),
         { key: 'admins', label: t('tenants.list.adminEmails') },
-        { key: 'licences', label: t('tenants.list.maxConsultants'), sortable: true, align: 'right', width: 120 },
         ...(tablet ? [] : [{ key: 'created', label: t('tenants.list.created', 'Angelegt'), width: 120 }]),
         ...(tablet ? [] : [{ key: 'lastChange', label: t('users.table.lastUpdated'), width: 160 }]),
         {
@@ -218,16 +221,21 @@ export const TenantDataTable = ({
             </Link>
         ) : null;
 
+    const statusCell = (row: TenantRow) => (
+        <span {...entityStatusListAttributes('tenant', row.id, row.active)}>{t(statusLabel(row.active))}</span>
+    );
+
     const details = (row: TenantRow, { withSummary }: { withSummary: boolean }) => {
         const admins = adminsOf(row);
         const facts: [string, ReactNode][] = [
             ...(withSummary
                 ? ([
+                      [t('entityStatus.title'), statusCell(row)],
                       [t('tenants.list.tenantId'), row.id],
-                      [t('tenants.list.subdomain'), showSubdomain ? subdomainLink(row) : null],
-                      [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
                   ] as [string, ReactNode][])
                 : []),
+            [t('tenants.list.subdomain'), SUBDOMAINS_TECHNICALLY_FINISHED && showSubdomain ? subdomainLink(row) : null],
+            [t('tenants.list.maxConsultants'), row.licensing?.allowedNumberOfUsers ?? null],
             [
                 t('tenants.list.adminEmails'),
                 admins.length ? (
@@ -266,10 +274,10 @@ export const TenantDataTable = ({
                         {tablet && <span className={styles.secondary}>ID {row.id}</span>}
                     </span>
                 );
+            case 'status':
+                return statusCell(row);
             case 'id':
                 return <span className={styles.secondary}>{row.id}</span>;
-            case 'subdomain':
-                return subdomainLink(row);
             case 'admins': {
                 const [first, ...more] = adminsOf(row);
                 if (!first) return <span className={styles.secondary}>{t('tenants.list.noAdmins', 'Kein Admin')}</span>;
@@ -282,8 +290,6 @@ export const TenantDataTable = ({
                     </span>
                 );
             }
-            case 'licences':
-                return row.licensing?.allowedNumberOfUsers ?? '—';
             case 'created':
                 return formatDate(row.createDate, locale) ?? '—';
             case 'lastChange':

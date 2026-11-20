@@ -194,6 +194,6 @@ describe('deliberate logout from centre setup', () => {
 
         await user.click(screen.getByRole('button', { name: 'logout' }));
 
-        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login);
+        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login, 'explicit');
     });
 });

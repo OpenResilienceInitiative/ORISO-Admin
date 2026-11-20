@@ -32,7 +32,8 @@ const ControlledAskerPermissionsCard = (args: ComponentProps<typeof AskerPermiss
  *   switch, so a Träger admin can see the choice exists and who holds it.
  */
 const meta = {
-    title: 'Tenants/Permissions/AskerPermissionsCard',
+    title: 'Settings/Einstellungen/Funktionszugriff/AskerPermissionsCard',
+    id: 'tenants-permissions-askerpermissionscard',
     component: AskerPermissionsCard,
     render: (args) => <ControlledAskerPermissionsCard {...args} />,
     tags: ['autodocs'],

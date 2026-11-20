@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent as userEventApi, waitFor, within } from 'storybook/test';
 import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
@@ -198,8 +198,12 @@ export const NoSelectableTopics: Story = {
             invite: { departmentId: null, agencyExists: true, topics: [], availableTopics: [] },
         }),
     },
-    play: async ({ canvas }) => {
-        await expect(await canvas.findByRole('alert')).toHaveTextContent('keine Themenfelder hinterlegt');
+    play: async ({ canvas, canvasElement }) => {
+        // A permanent explanation: plain text in the section, not a pop-up (P5).
+        const none = await canvas.findByTestId('wizard-topics-none');
+        await expect(none).toHaveTextContent('keine Themenfelder hinterlegt');
+        await expect(none).not.toHaveAttribute('role', 'alert');
+        await expect(within(canvasElement.ownerDocument.body).queryAllByTestId('snackbar')).toHaveLength(0);
         await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
     },
 };
@@ -507,6 +511,79 @@ export const NewCentreOneTopicPolicy: Story = {
         await userEvent.click(add);
         await userEvent.click(await within(document.body).findByRole('menuitem', { name: 'Familienberatung' }));
         await expect(add).toBeDisabled();
+    },
+};
+
+/** Fills the account and centre name of a new centre so the submit is enabled. */
+const fillNewCentre = async (canvas: ReturnType<typeof within>, userEvent: Pick<typeof userEventApi, 'type'>) => {
+    await userEvent.type(await canvas.findByLabelText('Benutzername'), 'lena_b');
+    await userEvent.type(canvas.getByLabelText('Passwort'), 'SecurePassword1!');
+    await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), 'Beratungsstelle Nord');
+};
+
+const NEW_CENTRE_INVITE = {
+    agencyExists: false,
+    departmentId: null,
+    topicPermission: 'CREATE' as const,
+    topics: [
+        { id: 12, name: 'Familienberatung' },
+        { id: 13, name: 'Schuldnerberatung' },
+    ],
+    availableTopics: [],
+};
+
+/**
+ * The platform allows one topic per new centre, but two were selected (P5): submitting raises ONE
+ * error pop-up (not a box above the button) naming the rule; the selection stays so it can be
+ * corrected, and the submit stays disabled until it is.
+ */
+export const SubmitTopicPolicyError: Story = {
+    name: 'Submit — topic policy error pop-up',
+    args: {
+        client: (() => {
+            const client = createStubCounsellorOnboardingClient({ latencyMs: 0, invite: NEW_CENTRE_INVITE });
+            client.registerCounsellor = async () => {
+                throw new Error('ONE_TOPIC_PER_AGENCY');
+            };
+            return client;
+        })(),
+    },
+    play: async ({ canvas, canvasElement, userEvent }) => {
+        await fillNewCentre(canvas, userEvent);
+        await userEvent.click(canvas.getByRole('button', { name: 'Konto erstellen' }));
+        const popup = await within(canvasElement.ownerDocument.body).findByTestId('wizard-topic-policy-error');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(popup).toHaveTextContent('Diese Plattform erlaubt nur ein Thema');
+        // Not in the form: the pop-up lives in the screen-corner host.
+        await expect(canvasElement.contains(popup)).toBe(false);
+        await expect(canvas.getByRole('button', { name: 'Konto erstellen' })).toBeDisabled();
+    },
+};
+
+/**
+ * Registration fails for any other reason (P5): ONE error pop-up with the failure text; the form
+ * keeps everything that was entered and can be submitted again.
+ */
+export const SubmitRegistrationError: Story = {
+    name: 'Submit — registration error pop-up',
+    args: {
+        client: (() => {
+            const client = createStubCounsellorOnboardingClient({ latencyMs: 0, invite: NEW_CENTRE_INVITE });
+            client.registerCounsellor = async () => {
+                throw new Error('Registration unavailable');
+            };
+            return client;
+        })(),
+    },
+    play: async ({ canvas, canvasElement, userEvent }) => {
+        await fillNewCentre(canvas, userEvent);
+        await userEvent.type(canvas.getByLabelText('Name der Beratungsstelle'), ' II');
+        await userEvent.click(canvas.getByRole('button', { name: 'Konto erstellen' }));
+        const popup = await within(canvasElement.ownerDocument.body).findByTestId('wizard-registration-error');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(popup).toHaveTextContent('Die Registrierung konnte nicht abgeschlossen werden.');
+        await expect(canvasElement.contains(popup)).toBe(false);
+        await expect(canvas.getByLabelText('Name der Beratungsstelle')).toHaveValue('Beratungsstelle Nord II');
     },
 };
 

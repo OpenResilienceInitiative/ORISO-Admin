@@ -9,7 +9,6 @@ import { App as AntdApp, ConfigProvider } from 'antd';
 import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
 import en_GB from 'antd/es/locale/en_GB';
-import { adminMessageConfig } from './constants/adminMessageConfig';
 import { App } from './App';
 import routePathNames from './appConfig';
 import { queryClient } from './constants/client';
@@ -32,7 +31,7 @@ import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetCon
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
-import { TransportFeedbackBridge } from './components/TransportFeedbackBridge';
+import { SnackbarHost } from './components/Snackbar';
 
 interface LangMap {
     [key: string]: Locale;
@@ -79,9 +78,9 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     // instead of antd's stock tray drawing.
     return (
         <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-            <AntdApp component={false} message={adminMessageConfig}>
-                <TransportFeedbackBridge />
+            <AntdApp component={false}>
                 {children}
+                <SnackbarHost />
             </AntdApp>
         </ConfigProvider>
     );
@@ -90,7 +89,7 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
 /**
  * The admin's provider + route composition, extracted from `index.tsx` so it can
  * be rendered in tests. `index.tsx` keeps the module-level side effects
- * (observability bootstrap, antd message config, `createRoot`).
+ * (observability bootstrap, `createRoot`).
  */
 export const AdminApp = () => (
     <ErrorBoundary scope="app">

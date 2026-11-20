@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { PrivateData } from './index';
 
 const meta = {
-    title: 'Pages/Profile/PrivateData',
+    title: 'Settings/Mein Account/PrivateData',
+    id: 'pages-profile-privatedata',
     component: PrivateData,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin'])],

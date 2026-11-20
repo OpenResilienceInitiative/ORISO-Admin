@@ -42,4 +42,12 @@ describe('Admin docker-entrypoint runtime config', () => {
         expect(result.stderr).not.toMatch(/VITE_API_URL/);
         expect(result.envJs).toContain('"API_URL": "https://admin.example.org"');
     });
+
+    it('writes the add-on service origin when it is set', () => {
+        const result = runEntrypoint({
+            VITE_API_URL: 'https://admin.example.org',
+            VITE_ADDON_SERVICE_ORIGIN: 'https://addons.example.org',
+        });
+        expect(result.envJs).toContain('"ADDON_SERVICE_ORIGIN": "https://addons.example.org"');
+    });
 });

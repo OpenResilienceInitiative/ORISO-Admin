@@ -8,7 +8,8 @@ import { OneTopicPerAgencySettingsCard } from '.';
 
 /** ORISO-UserService#1264 (ADR-014 amendment 2026-09-25): global switch, default off. */
 const meta = {
-    title: 'Organisms/GlobalSettings/OneTopicPerAgencySettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/OneTopicPerAgencySettingsCard',
+    id: 'organisms-globalsettings-onetopicperagencysettingscard',
     component: OneTopicPerAgencySettingsCard,
     decorators: [
         (Story, { parameters }) => (

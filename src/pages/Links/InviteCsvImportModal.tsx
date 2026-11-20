@@ -8,7 +8,7 @@ import { ListingTable } from '../../components/ListingTable';
 import { Modal, DialogButton } from '../../components/Modal';
 import type { AccountInviteDTO, InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import {
-    assignBatchTenantIds,
+    type InviteCsvIdKind,
     type InviteCsvRejectionReason,
     type InviteCsvTarget,
     type ParseInviteCsvResult,
@@ -22,7 +22,7 @@ import {
 } from './inviteModel';
 import { explainInviteError } from './explainInviteError';
 import type { InviteCsvCreateRow } from './inviteRequest';
-import { csvInvitableRoles, csvSendOrder, invitableRoles, OPEN_STATUSES } from './inviteRules';
+import { csvInvitableRoles, csvSendOrder, invitableRoles } from './inviteRules';
 import styles from './inviteCsvImport.module.scss';
 
 export type { InviteCsvCreateRow } from './inviteRequest';
@@ -31,18 +31,13 @@ export type { InviteCsvCreateRow } from './inviteRequest';
 export interface InviteCsvCreateOutcome {
     /** The created invite, so the preview can follow its status in the invite list. */
     inviteId?: number;
+    /** Authoritatively allocated unit ID returned by the create operation. */
+    allocatedId?: number;
     /** Stored, not sent: the row waits for its new Beratungsstelle / Träger. */
     waiting?: boolean;
     /** Waiting, and no admin row for that unit has arrived (yet). */
     noUnitAdmin?: boolean;
 }
-
-/**
- * Which id space the CSV's 4th column addresses. `tenant` (Träger tab) resolves
- * empty cells client-side from the free-id sequence; `agency` leaves them empty
- * because AgencyService assigns the id when the invite is created (AUTO mode).
- */
-export type InviteCsvIdKind = 'tenant' | 'agency';
 
 type RowState = 'pending' | 'creating' | 'created' | 'failed';
 
@@ -70,14 +65,13 @@ interface ImportRow {
     failure?: { label: string; message?: string };
     /** `failed` by an SMTP 502 on its own create call, which may have stored the invite anyway. */
     mayBeStored?: boolean;
+    storedInvite?: AccountInviteDTO;
 }
 
 export interface InviteCsvImportModalProps {
     parseResult: ParseInviteCsvResult;
     /** Which id space the 4th column addresses — drives the labels and the empty-cell handling. */
     idKind: InviteCsvIdKind;
-    /** `tenant` kind: ids the auto-population must skip (existing tenants + active invites). */
-    takenTenantIds?: Set<number>;
     /** Default for an empty "Rolle" cell. */
     tabRole?: InviteRole;
     /** Limits the roles a row may hand out. */
@@ -86,6 +80,8 @@ export interface InviteCsvImportModalProps {
     templates?: InviteEmailTemplateDTO[];
     /** Creates ONE invite; rejections (e.g. a 409 `Response`) mark the row as failed. */
     createInvite: (row: InviteCsvCreateRow) => Promise<InviteCsvCreateOutcome | void>;
+    /** Independent owner read after an SMTP failure; never inferred from the visible page. */
+    recoverStoredInvite?: (row: InviteCsvCreateRow) => Promise<AccountInviteDTO | undefined>;
     /** A platform admin has no own Träger, so a Träger-admin row cannot name one on the counsellor tab. */
     ownTenantKnown?: boolean;
     /** The tab's invite list; created rows follow their live status in it. */
@@ -99,21 +95,19 @@ export interface InviteCsvImportModalProps {
  * CSV import preview (#315, Figma "Import CSV File"): every parsed row is
  * listed with a status chip, inline-editable name fields and a remove action;
  * rejected rows (invalid e-mail / id) stay visible with their line number but
- * are excluded from the import. Empty Träger-IDs are auto-populated with
- * consecutive free ids (continuing the composer's suggestion sequence and
- * skipping ids claimed earlier in the same batch); empty Beratungsstellen-IDs
- * stay empty because AgencyService allocates them on create. Confirming creates
+ * are excluded from the import. Empty unit IDs stay empty until the server
+ * allocates them authoritatively on create. Confirming creates
  * the invites sequentially; per-row failures are marked in place — a 409 shows
  * up as "… vergeben" — and can be retried without re-uploading.
  */
 export const InviteCsvImportModal = ({
     parseResult,
     idKind,
-    takenTenantIds,
     tabRole = idKind === 'tenant' ? 'TENANT_ADMIN' : 'COUNSELLOR',
     viewerScope = 'platform',
     templates = [],
     createInvite,
+    recoverStoredInvite,
     ownTenantKnown = true,
     invites,
     onClose,
@@ -179,7 +173,7 @@ export const InviteCsvImportModal = ({
         if (!allowedRoles.includes(role)) {
             return t(
                 'links.csvImport.issue.roleOtherTab',
-                'Die Rolle „{{role}}“ wird im Tab „Berater-Invites“ eingeladen, nicht hier (Zeile {{line}}).',
+                'Die Rolle „{{role}}“ wird im Tab „Beratende-Einladungen“ eingeladen, nicht hier (Zeile {{line}}).',
                 { role: roleLabel(role), ...line },
             );
         }
@@ -200,7 +194,7 @@ export const InviteCsvImportModal = ({
         if (!isTenantId && role === 'TENANT_ADMIN' && !ownTenantKnown) {
             return t(
                 'links.csvImport.issue.tenantAdminNeedsTenantTab',
-                'Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Invites“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).',
+                'Träger-Admins laden Sie als Plattform-Admin im Tab „Träger-Einladungen“ ein (Ziel „bestehend“ mit der Träger-ID) (Zeile {{line}}).',
                 line,
             );
         }
@@ -245,31 +239,11 @@ export const InviteCsvImportModal = ({
 
     const importableRows = rows.filter((row) => !row.rejectedReason && !issueByLine.has(row.line));
 
-    // Effective id per line. Träger tab: the explicit file value, else the next free
-    // id of the batch sequence — deleting a row re-packs the autos, created rows are
-    // frozen via `explicitId`. Agency tab: only the explicit value; an empty cell
-    // stays empty because AgencyService, not the browser, picks the free agency id.
-    const idByLine =
-        idKind === 'tenant'
-            ? assignBatchTenantIds(
-                  importableRows.map((row) => ({ line: row.line, id: row.explicitId })),
-                  takenTenantIds ?? new Set<number>(),
-              )
-            : new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
-
-    // The reloaded list tells whether a 502 row's invite exists; a retry would then only collide with it.
-    // Only an open invite can be this run's: an expired or revoked one for the same address is history.
-    const storedInvite = (row: ImportRow) =>
-        row.state === 'failed' && row.mayBeStored
-            ? invites?.find(
-                  (invite) =>
-                      OPEN_STATUSES.has(invite.inviteStatus) &&
-                      invite.recipientEmail.trim().toLowerCase() === row.email.trim().toLowerCase(),
-              )
-            : undefined;
-
+    // Empty cells remain AUTO until the server returns the reserved ID.
+    const idByLine = new Map<number, number | undefined>(importableRows.map((row) => [row.line, row.explicitId]));
+    const storedInvite = (row: ImportRow) => row.storedInvite;
     const pendingRows = importableRows.filter(
-        (row) => row.state === 'pending' || (row.state === 'failed' && storedInvite(row) == null),
+        (row) => row.state === 'pending' || (row.state === 'failed' && !row.mayBeStored && !row.storedInvite),
     );
 
     const patchRow = (line: number, patch: Partial<ImportRow>) => {
@@ -284,7 +258,9 @@ export const InviteCsvImportModal = ({
     const runImport = async () => {
         setRunning(true);
         const assigned = idByLine;
-        const order = (row: ImportRow) => csvSendOrder(row.role ?? tabRole, row.target ?? 'NEW');
+        // Reserve pinned tenant IDs first, so AUTO cannot consume a later manual row's number.
+        const order = (row: ImportRow) =>
+            2 * csvSendOrder(row.role ?? tabRole, row.target ?? 'NEW') + (isTenantId && row.explicitId == null ? 1 : 0);
         const queue = [...pendingRows].sort((a, b) => order(a) - order(b));
         let created = 0;
         let failed = 0;
@@ -314,7 +290,7 @@ export const InviteCsvImportModal = ({
                 created += 1;
                 patchRow(row.line, {
                     state: 'created',
-                    explicitId: id,
+                    explicitId: outcome.allocatedId ?? id,
                     inviteId: outcome.inviteId,
                     waiting: outcome.waiting ?? false,
                     noUnitAdmin: outcome.noUnitAdmin ?? false,
@@ -328,7 +304,29 @@ export const InviteCsvImportModal = ({
                     label: explained.label,
                     message: explained.stopsBatch ? undefined : explained.message,
                 };
-                patchRow(row.line, { state: 'failed', failure, mayBeStored: explained.smtp });
+                let recovered: AccountInviteDTO | undefined;
+                let storageUnconfirmed = explained.smtp;
+                if (explained.smtp && recoverStoredInvite) {
+                    try {
+                        // eslint-disable-next-line no-await-in-loop -- resolve this failed operation before moving on
+                        recovered = await recoverStoredInvite({
+                            recipientEmail: row.email,
+                            id,
+                            target: row.target ?? 'NEW',
+                            role,
+                        });
+                        storageUnconfirmed = false;
+                    } catch {
+                        // A failed lookup cannot prove absence. Keep this row out of any create retry.
+                    }
+                }
+                patchRow(row.line, {
+                    state: 'failed',
+                    failure,
+                    mayBeStored: storageUnconfirmed,
+                    storedInvite: recovered,
+                    explicitId: recovered ? (isTenantId ? recovered.tenantId : recovered.agencyId) ?? id : id,
+                });
                 if (explained.stopsBatch) {
                     // An SMTP 502 fails every further row the same way: mark them and stop.
                     firstStop = explained.message;
@@ -341,21 +339,24 @@ export const InviteCsvImportModal = ({
         }
 
         setRunning(false);
-        if (firstStop) message.error(firstStop);
         // After an SMTP stop the invite may exist without a success reply: reload to find out.
         if (created > 0 || firstStop) {
             onCreated();
         }
-        if (failed === 0 && created > 0) {
+        const partialSummary = t(
+            'links.csvImport.summaryPartial',
+            '{{created}} Empfänger angelegt, {{failed}} fehlgeschlagen',
+            { created, failed },
+        );
+        if (firstStop) {
+            // One event, one snackbar: the batch-wide cause and the count belong together, so the
+            // channel does not stack two pop-ups for one import.
+            message.error(failed > 0 ? { message: firstStop, description: partialSummary } : firstStop);
+        } else if (failed === 0 && created > 0) {
             message.success(t('links.csvImport.summaryAllCreated', '{{count}} Empfänger angelegt', { count: created }));
             onClose();
         } else if (failed > 0) {
-            message.warning(
-                t('links.csvImport.summaryPartial', '{{created}} Empfänger angelegt, {{failed}} fehlgeschlagen', {
-                    created,
-                    failed,
-                }),
-            );
+            message.warning(partialSummary);
         }
     };
 
@@ -374,6 +375,24 @@ export const InviteCsvImportModal = ({
         switch (row.rejectedReason) {
             case 'invalidEmail':
                 return t('links.csvImport.reason.invalidEmail', 'Ungültige E-Mail-Adresse (Zeile {{line}})', line);
+            case 'ambiguousId':
+                return t('links.csvImport.reason.ambiguousId', 'Mehrere ID-Spalten (Zeile {{line}})', line);
+            case 'wrongIdType':
+                // The parser rejects only a header naming the other organisation type, so the file's label is the other ID.
+                return t(
+                    'links.csvImport.reason.wrongIdType',
+                    'Die ID-Spalte heißt {{headerLabel}}, die Datei wird aber im Tab „{{tab}}“ importiert, der eine {{idLabel}} erwartet. Bitte Organisation, ID und Tab prüfen (Zeile {{line}})',
+                    {
+                        headerLabel: isTenantId
+                            ? t('links.accountInvites.agencyId', 'Beratungsstellen-ID')
+                            : t('links.accountInvites.tenantId', 'Träger-ID'),
+                        tab: isTenantId
+                            ? t('links.tabs.tenants', 'Träger-Einladungen')
+                            : t('links.tabs.counsellor', 'Beratende-Einladungen'),
+                        idLabel,
+                        ...line,
+                    },
+                );
             case 'invalidId':
                 return t('links.csvImport.reason.invalidId', 'Ungültige {{idLabel}} (Zeile {{line}})', {
                     idLabel,
@@ -475,7 +494,18 @@ export const InviteCsvImportModal = ({
                         <Tag color="red">
                             {row.failure?.label ?? t('links.csvImport.status.failed', 'Fehlgeschlagen')}
                         </Tag>
-                        {row.failure?.message && <span className={styles.rejectionReason}>{row.failure.message}</span>}
+                        {row.mayBeStored ? (
+                            <span className={styles.rejectionReason}>
+                                {t(
+                                    'links.csvImport.status.storageUnconfirmedHint',
+                                    'Ob die Einladung gespeichert wurde, konnte nicht geprüft werden. Prüfen Sie die Einladung vor einem erneuten Import.',
+                                )}
+                            </span>
+                        ) : (
+                            row.failure?.message && (
+                                <span className={styles.rejectionReason}>{row.failure.message}</span>
+                            )
+                        )}
                     </span>
                 );
             default:
@@ -532,12 +562,9 @@ export const InviteCsvImportModal = ({
                 if (row.rejectedReason) return '—';
                 const id = idByLine.get(row.line);
                 if (id == null) {
-                    // Agency tab: the free id is picked by AgencyService when the invite is
-                    // created, so there is no number to show yet — naming the mechanism beats
-                    // inventing an id the browser cannot reserve.
-                    return isTenantId ? (
-                        '—'
-                    ) : (
+                    // The server reserves the free unit ID when the invite is created.
+                    // A filtered browser page cannot predict that number.
+                    return (
                         <Tooltip title={t('links.csvImport.autoOnCreate', 'Wird beim Anlegen automatisch vergeben')}>
                             <span className={styles.autoId}>{t('links.csvImport.auto', 'Automatisch')}</span>
                         </Tooltip>

@@ -29,7 +29,6 @@ vi.mock('../appConfig', () => ({
     },
 }));
 const messageError = vi.hoisted(() => vi.fn());
-vi.mock('antd', () => ({ message: { error: messageError } }));
 // These node tests isolate HTTP/auth contracts; the real dispatcher owns DOM/no-window tests.
 vi.mock('./transportFeedback', () => ({ captureTransportFeedback: () => messageError }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));

@@ -64,7 +64,8 @@ const View = ({ excludeCardKeys }: { excludeCardKeys?: ChatTypeCardKey[] }): Rea
 );
 
 const meta = {
-    title: 'Organisms/Permissions/ChatTypeNotificationSwitches',
+    title: 'Settings/Einstellungen/Funktionszugriff/ChatTypeNotificationSwitches',
+    id: 'organisms-permissions-chattypenotificationswitches',
     component: View,
     parameters: { layout: 'fullscreen' },
     decorators: [

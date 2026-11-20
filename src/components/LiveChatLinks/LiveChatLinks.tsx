@@ -3,9 +3,9 @@ import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined';
-import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import {
     buildTopicInviteLinkUrl,
     createTopicInviteLink,
@@ -20,7 +20,7 @@ import { IconButton } from '../IconButton';
 import { M3Button } from '../M3Button';
 import { M3Tooltip } from '../M3Tooltip';
 import { Modal } from '../Modal';
-import { useTenantTopics } from '../../hooks/useTenantTopics';
+import { useLiveChatLinkTopics } from '../../hooks/useLiveChatLinkTopics';
 import type { LiveChatLinksAccess } from '../../constants/liveChatLinksAccess';
 import styles from './liveChatLinks.module.scss';
 
@@ -32,6 +32,7 @@ const PAGE_SIZE = 20;
 export interface LiveChatLinksProps {
     /** `manage`: platform admin. `read`: Träger and Beratungsstellen admins copy only. */
     mode: Exclude<LiveChatLinksAccess, 'none'>;
+    tenantId?: number;
 }
 
 /**
@@ -40,10 +41,10 @@ export interface LiveChatLinksProps {
  * switches them on and off or deletes them; everyone else sees the active links
  * of their scope — the server limits the list — and copies them.
  */
-export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
+export const LiveChatLinks = ({ mode, tenantId }: LiveChatLinksProps) => {
     const canManage = mode === 'manage';
     const { t } = useTranslation();
-    const { data: topics = [], isLoading: isLoadingTopics } = useTenantTopics(true);
+    const { data: topics = [], isLoading: isLoadingTopics, isError: topicsFailed } = useLiveChatLinkTopics(tenantId);
     const [topicId, setTopicId] = useState<number>();
     // FloatingLabelSelect keeps its own value once cleared, so a new link remounts it.
     const [createdCount, setCreatedCount] = useState(0);
@@ -78,6 +79,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
             const response = await listTopicInviteLinks({
                 page: 0,
                 size,
+                tenantId,
                 // Without the kind filter the server also returns account invites.
                 linkKind: LINK_KIND,
                 // A copied link that no longer works is worse than none.
@@ -86,11 +88,11 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
             setLinks(response.content ?? []);
             setTotal(response.totalElements ?? 0);
         } catch {
-            message.error(t('links.error.loadFailed', 'Could not load links'));
+            snackbar.error(t('links.error.loadFailed', 'Could not load links'));
         } finally {
             setLoadingLinks(false);
         }
-    }, [canManage, size, t]);
+    }, [canManage, size, t, tenantId]);
 
     useEffect(() => {
         loadLinks();
@@ -100,28 +102,31 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const url = buildTopicInviteLinkUrl(link.token, resolveTopicName(link));
         navigator.clipboard
             .writeText(url)
-            .then(() => message.success(t('links.copied', 'Link copied')))
-            .catch(() => message.error(t('links.copyFailed', 'Copy failed')));
+            .then(() => snackbar.success(t('links.copied', 'Link copied')))
+            .catch(() => snackbar.error(t('links.copyFailed', 'Copy failed')));
     };
 
     const onCreate = async () => {
-        if (topicId == null) {
+        if (topicId == null || topicsFailed) {
             return;
         }
         setSubmitting(true);
         try {
-            await createTopicInviteLink({
-                topicId,
-                linkKind: LINK_KIND,
-                chatType: CHAT_TYPE,
-                anonymity: DEFAULT_ANONYMITY,
-            });
-            message.success(t('links.created', 'Link created'));
+            await createTopicInviteLink(
+                {
+                    topicId,
+                    linkKind: LINK_KIND,
+                    chatType: CHAT_TYPE,
+                    anonymity: DEFAULT_ANONYMITY,
+                },
+                tenantId,
+            );
+            snackbar.success(t('links.created', 'Link created'));
             setTopicId(undefined);
             setCreatedCount((count) => count + 1);
             await loadLinks();
         } catch {
-            message.error(t('links.error.createFailed', 'Could not create link'));
+            snackbar.error(t('links.error.createFailed', 'Could not create link'));
         } finally {
             setSubmitting(false);
         }
@@ -134,10 +139,10 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const { id } = linkToDeactivate;
         setLinkToDeactivate(null);
         try {
-            await deactivateTopicInviteLink(id);
-            message.success(t('links.deactivated', 'Link deactivated'));
+            await deactivateTopicInviteLink(id, tenantId);
+            snackbar.success(t('links.deactivated', 'Link deactivated'));
         } catch {
-            message.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
+            snackbar.error(t('links.error.deactivateFailed', 'Could not deactivate link'));
         }
         // Reload either way: a failed call is most often a link that changed state meanwhile.
         await loadLinks();
@@ -145,10 +150,10 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
 
     const onReactivate = async ({ id }: TopicInviteLinkDTO) => {
         try {
-            await reactivateTopicInviteLink(id);
-            message.success(t('liveChatLinks.reactivated'));
+            await reactivateTopicInviteLink(id, tenantId);
+            snackbar.success(t('liveChatLinks.reactivated'));
         } catch {
-            message.error(t('liveChatLinks.reactivateFailed'));
+            snackbar.error(t('liveChatLinks.reactivateFailed'));
         }
         await loadLinks();
     };
@@ -160,10 +165,10 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
         const { id } = linkToDelete;
         setLinkToDelete(null);
         try {
-            await deleteTopicInviteLink(id);
-            message.success(t('liveChatLinks.deleted'));
+            await deleteTopicInviteLink(id, tenantId);
+            snackbar.success(t('liveChatLinks.deleted'));
         } catch {
-            message.error(t('liveChatLinks.deleteFailed'));
+            snackbar.error(t('liveChatLinks.deleteFailed'));
         }
         await loadLinks();
     };
@@ -196,7 +201,7 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
                         variant="filled"
                         className={styles.createButton}
                         icon={<AddIcon />}
-                        disabled={topicId == null}
+                        disabled={topicId == null || topicsFailed}
                         loading={submitting}
                         onClick={onCreate}
                     >
@@ -205,6 +210,12 @@ export const LiveChatLinks = ({ mode }: LiveChatLinksProps) => {
                 </div>
             ) : (
                 <p className={styles.note}>{t('liveChatLinks.readOnly.hint')}</p>
+            )}
+
+            {canManage && topicsFailed && (
+                <p className={styles.note} role="alert">
+                    {t('liveChatLinks.topicsFailed')}
+                </p>
             )}
 
             {isEmpty && (

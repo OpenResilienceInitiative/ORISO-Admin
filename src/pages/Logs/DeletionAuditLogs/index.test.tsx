@@ -101,6 +101,9 @@ vi.mock('../../../hooks/useDeletionAuditLogsData', () => ({
     },
 }));
 
+// The selects sit behind the one "Filter" button of the log filter bar (Admin#1510).
+const openFilters = () => fireEvent.click(screen.getByRole('button', { name: /filterDisclosure\.button|^Filter/ }));
+
 describe('DeletionAuditLogsPage', () => {
     beforeEach(() => {
         mocks.isError = false;
@@ -149,6 +152,7 @@ describe('DeletionAuditLogsPage', () => {
 
     it('offers the partly failed outcome as a filter', () => {
         render(<DeletionAuditLogsPage />);
+        openFilters();
 
         fireEvent.change(screen.getByLabelText('deletionAudit.filters.outcome'), {
             target: { value: 'PARTIAL_FAILURE' },
@@ -224,6 +228,7 @@ describe('DeletionAuditLogsPage', () => {
             fireEvent.click(screen.getByText('go-to-page-3'));
             expect(last().page).toBe(3);
 
+            openFilters();
             fireEvent.change(screen.getByLabelText('deletionAudit.filters.targetType'), {
                 target: { value: 'AGENCY' },
             });
@@ -257,6 +262,7 @@ describe('DeletionAuditLogsPage', () => {
 
         it('resets every filter', () => {
             render(<DeletionAuditLogsPage />);
+            openFilters();
             fireEvent.change(screen.getByLabelText('deletionAudit.filters.targetType'), {
                 target: { value: 'AGENCY' },
             });
@@ -268,7 +274,7 @@ describe('DeletionAuditLogsPage', () => {
             fireEvent.keyDown(search, { key: 'Enter' });
             fireEvent.click(screen.getByText('go-to-page-3'));
 
-            fireEvent.click(screen.getByRole('button', { name: 'deletionAudit.filters.reset' }));
+            fireEvent.click(screen.getByRole('button', { name: /logs\.filters\.reset|Filter zurücksetzen/ }));
             expect(last()).toMatchObject({ page: 1, targetType: undefined, outcome: undefined, targetId: '' });
             expect(search).toHaveValue('');
         });

@@ -88,7 +88,6 @@ export const useTenantAdminDataMutation = ({
         onError: (error, updatedData, onMutateResult, context) => {
             notification.error({
                 message: t('message.error.default'),
-                duration: 8,
             });
             options?.onError?.(error, updatedData, onMutateResult, context);
         },

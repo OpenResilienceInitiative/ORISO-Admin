@@ -32,6 +32,17 @@ export interface M3TooltipProps {
     placement?: 'top' | 'bottom';
     /** Render into `document.body` so a clipping container (a scrolling row) cannot cut the bubble off. */
     portal?: boolean;
+    /**
+     * The text only repeats the trigger's accessible name (an icon button's `aria-label`): show
+     * it, but do not wire it up as a description too, or screen readers hear it twice.
+     */
+    nameOnly?: boolean;
+    /**
+     * Keep the same wrapper around the trigger while `text` is empty (no bubble then). Without it an
+     * empty `text` returns the trigger unwrapped, so a text that comes and goes (a label that is only
+     * sometimes cut off) remounts the trigger and a focused one loses keyboard focus.
+     */
+    keepWrapper?: boolean;
     className?: string;
 }
 
@@ -54,7 +65,15 @@ const UNPLACED: CSSProperties = { position: 'fixed', top: 0, left: 0, transform:
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, Math.max(min, max)));
 
-export const M3Tooltip = ({ text, children, placement = 'top', portal = false, className }: M3TooltipProps) => {
+export const M3Tooltip = ({
+    text,
+    children,
+    placement = 'top',
+    portal = false,
+    nameOnly = false,
+    keepWrapper = false,
+    className,
+}: M3TooltipProps) => {
     const id = useId();
     const wrapperRef = useRef<HTMLSpanElement>(null);
     const [open, setOpen] = useState(false);
@@ -98,7 +117,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
     };
 
     // Fixed coordinates go stale when the row scrolls, so re-measure while the bubble is up.
-    const visible = open && !dismissed;
+    const visible = open && !dismissed && !!text;
     useEffect(() => {
         if (!portal || !visible) return undefined;
         window.addEventListener('scroll', measure, true);
@@ -114,7 +133,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
         if (portal && visible) measure();
     }, [portal, visible, placement, text]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (!text || !isValidElement(children)) {
+    if ((!text && !keepWrapper) || !isValidElement(children)) {
         return children;
     }
 
@@ -143,6 +162,10 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
         </span>
     );
 
+    // Cloning must not wipe a description the trigger already carries: keep it, and add the bubble to it.
+    const ownDescription = (children.props as { 'aria-describedby'?: string })['aria-describedby'];
+    const describedBy = [ownDescription, visible && !nameOnly ? id : undefined].filter(Boolean).join(' ') || undefined;
+
     return (
         <span
             ref={wrapperRef}
@@ -153,7 +176,7 @@ export const M3Tooltip = ({ text, children, placement = 'top', portal = false, c
             onMouseLeave={() => setOpen(false)}
         >
             {cloneElement(children as ReactElement<{ 'aria-describedby'?: string }>, {
-                'aria-describedby': visible ? id : undefined,
+                'aria-describedby': describedBy,
             })}
             {visible && (portal ? createPortal(bubble, document.body) : bubble)}
         </span>

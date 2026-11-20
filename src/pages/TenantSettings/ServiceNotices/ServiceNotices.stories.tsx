@@ -5,8 +5,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { findPopup } from '../../../test/storyPopups';
 import { walkThroughTileHelp } from '../../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../enums/UserRole';
+import i18n from '../../../i18n';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { ServiceNoticesPage } from './index';
 import { App } from '../../../App';
@@ -84,7 +86,8 @@ const fixtureHandlers = () => {
 };
 
 const meta = {
-    title: 'Organisms/Pages/Settings/ServiceNotices',
+    title: 'Settings/Einstellungen/Systemhinweise/ServiceNotices',
+    id: 'organisms-pages-settings-servicenotices',
     component: ServiceNoticesPage,
     parameters: { layout: 'fullscreen' },
     decorators: [
@@ -121,22 +124,39 @@ const ExistingPlatformRoute = () => {
 
 export const PlatformRoute: Story = {
     render: () => <ExistingPlatformRoute />,
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 1, settings: {}, licensing: {} })),
+            ],
+        },
+    },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByLabelText('Entwurfsreferenz', {}, { timeout: 8000 });
+        await canvas.findByLabelText(i18n.t<string>('serviceNotices.reference'), {}, { timeout: 8000 });
         await expect(canvas.getByTestId('service-notice-route')).toHaveTextContent(
             '/admin/theme-settings/service-notices',
         );
-        await expect(canvas.getByLabelText('Öffentliche Statusseiten-URL')).toHaveValue('');
-        ['Beginn', 'Ende'].forEach((name) => {
+        await expect(canvas.getByLabelText(i18n.t<string>('serviceNotices.statusUrl'))).toHaveValue('');
+        [i18n.t<string>('serviceNotices.start'), i18n.t<string>('serviceNotices.end')].forEach((name) => {
             const clockInput = canvas.getByLabelText(name);
             const label = canvas.getByText(name, { selector: 'label' });
             expect(label.getBoundingClientRect().bottom).toBeLessThanOrEqual(clockInput.getBoundingClientRect().top);
         });
-        await expect(canvas.getByRole('link', { name: 'Systemhinweise' })).toHaveAttribute(
+        await expect(canvas.getByRole('tab', { name: i18n.t<string>('serviceNotices.title') })).toHaveAttribute(
             'href',
             routePathNames.serviceNotices,
         );
+    },
+};
+
+/** The route and its controls work with English selected. */
+export const PlatformRouteEnglish: Story = {
+    ...PlatformRoute,
+    beforeEach: async () => {
+        const previousLanguage = i18n.language;
+        await i18n.changeLanguage('en');
+        return () => i18n.changeLanguage(previousLanguage);
     },
 };
 
@@ -220,9 +240,12 @@ export const ConflictKeepsInputs: Story = {
         await userEvent.clear(url);
         await userEvent.type(url, 'https://changed.example.org');
         await userEvent.click(canvas.getByRole('button', { name: 'Entwurf speichern' }));
-        await canvas.findByText(
+        const popup = await findPopup(
+            canvasElement,
             'Diese Referenz gehört zu einem anderen Entwurf. Ihre Eingaben bleiben erhalten. Verwenden Sie für einen neuen Entwurf eine andere Referenz.',
+            'error',
         );
+        await expect(popup).toHaveTextContent('Servicehinweise');
         await expect(url).toHaveValue('https://changed.example.org');
         await expect(canvas.getByText('Configured product · de-sie')).toBeInTheDocument();
         await expect(conflictFixture.requests.filter((request) => request.method === 'PUT')).toHaveLength(2);
@@ -238,9 +261,10 @@ export const TechnicalAccountDenied: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByRole('alert')).toHaveTextContent(
-            'Nur ein Plattform-Admin kann diese Entwürfe verwalten.',
-        );
+        const popup = await findPopup(canvasElement, 'Nur ein Plattform-Admin kann diese Entwürfe verwalten.', 'error');
+        await expect(popup).toHaveTextContent('Servicehinweise');
+        // The tile keeps the same reason as quiet text.
+        await expect(canvas.getByText('Nur ein Plattform-Admin kann diese Entwürfe verwalten.')).toBeInTheDocument();
         await expect(canvas.queryByLabelText('Entwurfsreferenz')).not.toBeInTheDocument();
     },
 };

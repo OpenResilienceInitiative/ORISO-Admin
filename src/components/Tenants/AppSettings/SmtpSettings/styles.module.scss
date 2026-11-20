@@ -17,10 +17,12 @@
     margin-bottom: 18px;
 
     :global(.MuiFormControlLabel-root) {
+        min-width: 0;
         align-items: flex-start;
     }
 
     :global(.MuiFormControlLabel-label) {
+        min-width: 0;
         max-width: calc(100% - 76px);
     }
 
@@ -31,8 +33,14 @@
 
 .switchCopy {
     display: flex;
+    min-width: 0;
     flex-direction: column;
     gap: 8px;
+
+    /* A long German compound ("Systembenachrichtigungen") must wrap inside its panel, not push the switch out. `anywhere`,
+       unlike `break-word`, also lowers the min-content width, so the grid track cannot be widened by the word. */
+    hyphens: auto;
+    overflow-wrap: anywhere;
     white-space: normal;
 }
 
@@ -59,7 +67,7 @@
        next field sits ~8px above its box, so the rows need room or a two-line hint runs into it. */
     display: grid;
     gap: 16px 0;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .colorField {

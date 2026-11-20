@@ -1,8 +1,10 @@
 import { Fragment, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AssistantIdentity } from './components/AssistantIdentity';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { CardGrid } from '../../CardGrid';
+import { ReadOnlyHintContext } from '../../CardEditable/ReadOnlyHintContext';
 import { useAppearanceEditingRights } from '../../../hooks/useAppearanceEditingRights.hook';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
@@ -11,6 +13,8 @@ import { EditingRightsCard } from './components/EditingRightsCard';
 import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
+import { OwnTenantInformation } from '../OwnTenantInformation';
+import { TraegerContactPersonTile } from '../../../pages/Tenants/Edit/General/TraegerContactPersonTile';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
@@ -65,6 +69,7 @@ interface GeneralSettingsProps {
 }
 
 export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: GeneralSettingsProps) => {
+    const { t } = useTranslation();
     const { data } = useTenantData();
     const finalTenantId = resolveTenantId(tenantId, data?.id);
     const { can } = useUserPermissions();
@@ -101,7 +106,24 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
                 <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
             </CardGrid.Item>
         ),
-        leadingTiles,
+        // The platform admin's Träger page brings its own editable card and the Träger default contact
+        // person; a Träger admin on their own settings page gets the same information, editable with
+        // the tenant update permission (ORISO-Admin#1466), and sets the default contact person here
+        // (ORISO-Admin#1534). The contact tile decides itself who may see or edit it.
+        leadingTiles:
+            leadingTiles ??
+            (!isSuperAdmin && (
+                <>
+                    <CardGrid.Item>
+                        <OwnTenantInformation />
+                    </CardGrid.Item>
+                    {Number(finalTenantId) > 0 && (
+                        <CardGrid.Item>
+                            <TraegerContactPersonTile tenantId={Number(finalTenantId)} />
+                        </CardGrid.Item>
+                    )}
+                </>
+            )),
         nameAndSlogan: (
             <CardGrid.Item>
                 <NameAndSlogan tenantId={finalTenantId} readOnly={readOnly} />
@@ -116,6 +138,7 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
             <CardGrid.Item>
                 <EditingRightsCard
                     allowEdit={isSuperAdmin && editable !== undefined}
+                    readOnlyAccess={!isSuperAdmin}
                     editable={editable}
                     isLoading={rightsLoading}
                     onSave={onSaveTenantAdminControls}
@@ -125,13 +148,18 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
     };
     const order = [...(showAppearance ? APPEARANCE_TILE_ORDER : []), ...(showMasterData ? MASTER_DATA_TILE_ORDER : [])];
 
+    // A locked tile names who can release it: the platform admins' switch on the master data tab.
+    const readOnlyHint = readOnly ? t('settings.masterData.editable.readOnlyHint') : undefined;
+
     return (
         <div className={styles.appearancePage}>
-            <CardGrid raster>
-                {order.map((tile) => (
-                    <Fragment key={tile}>{tiles[tile]}</Fragment>
-                ))}
-            </CardGrid>
+            <ReadOnlyHintContext.Provider value={readOnlyHint}>
+                <CardGrid raster>
+                    {order.map((tile) => (
+                        <Fragment key={tile}>{tiles[tile]}</Fragment>
+                    ))}
+                </CardGrid>
+            </ReadOnlyHintContext.Provider>
         </div>
     );
 };

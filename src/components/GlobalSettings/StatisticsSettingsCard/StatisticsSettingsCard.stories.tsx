@@ -87,7 +87,8 @@ const settings: StatisticsSettings = {
 };
 
 const meta = {
-    title: 'Organisms/GlobalSettings/StatisticsSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/StatisticsSettingsCard',
+    id: 'organisms-globalsettings-statisticssettingscard',
     component: StatisticsSettingsCard,
     decorators: [
         (Story, { parameters }) => (

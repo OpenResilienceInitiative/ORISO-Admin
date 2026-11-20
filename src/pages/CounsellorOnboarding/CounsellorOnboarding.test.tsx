@@ -191,7 +191,9 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.passwordUnchanged');
+        // A rejected password is field-level hint text under the password, not a pop-up.
+        expect(await screen.findByText('accountSetup.passwordUnchanged')).toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'accountSetup.submit' })).toBeEnabled();
     });
@@ -207,7 +209,7 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.serviceError');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('accountSetup.serviceError');
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
         expect(mocks.fetchData.mock.calls.length - before).toBe(1);
         expect(client.activateTwoFactor).not.toHaveBeenCalled();
@@ -270,7 +272,7 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
         await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByRole('alert');
+        await screen.findByTestId('snackbar');
         view.rerender(
             <MemoryRouter>
                 <CounsellorOnboarding inviteToken="second" client={client} />
@@ -279,7 +281,7 @@ describe('CounsellorOnboarding', () => {
         await screen.findByText('second@example.org');
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
         expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
@@ -542,7 +544,14 @@ describe('CounsellorOnboarding', () => {
         await screen.findByLabelText('cards.advisorAccount.username');
         await addTopic(user, 'Familienberatung');
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeDisabled();
-        await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+        // antd keeps a closed dropdown mounted and marks it `ant-dropdown-hidden`. The unit setup
+        // injects no antd CSS, so that class, not computed style, is what says the menu is closed.
+        await waitFor(() => {
+            const menu = screen.queryByRole('menu');
+            if (menu) {
+                expect(menu.closest('.ant-dropdown')).toHaveClass('ant-dropdown-hidden');
+            }
+        });
         await user.click(within(screen.getAllByTestId('input-chip')[0]).getByRole('button'));
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeEnabled();
         await addTopic(user, 'Schuldnerberatung');
@@ -734,7 +743,7 @@ describe('CounsellorOnboarding', () => {
         });
         renderFlow(client);
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
+        expect(await screen.findByTestId('wizard-topics-none')).toHaveTextContent('counsellorOnboarding.topics.none');
         expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
         expect(submit()).toBeDisabled();
@@ -770,6 +779,10 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         expect(await screen.findByTestId('onboarding-load-error')).toBeInTheDocument();
+        // This view blocks the invitee after an async failure: it is announced, as in the tenant flow.
+        expect(within(screen.getByTestId('onboarding-load-error')).getByRole('alert')).toHaveTextContent(
+            'counsellorOnboarding.loadError.description',
+        );
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.loadError.retry' }));
 
         expect(await screen.findByTestId('counsellor-onboarding-form')).toBeInTheDocument();

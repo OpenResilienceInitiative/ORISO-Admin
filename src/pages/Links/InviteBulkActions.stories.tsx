@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
-import { message } from 'antd';
+import { snackbar } from '../../components/Snackbar';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import type {
@@ -93,9 +93,8 @@ const handlers = [
             acceptUrl: 'https://admin.example/account-invite/token',
         }),
     ),
-    http.post(`${INVITES_ENDPOINT}/:id/revoke`, ({ params }) =>
-        HttpResponse.json({ ...MIXED_INVITES[0], id: Number(params.id), inviteStatus: 'REVOKED' }),
-    ),
+    // ORISO-Admin#1522: delete answers 204.
+    http.delete(`${INVITES_ENDPOINT}/:id`, () => new HttpResponse(null, { status: 204 })),
 ];
 
 const meta = {
@@ -136,8 +135,8 @@ export const TwoSelected: Story = {
 };
 
 /**
- * The "Ausgewählte löschen" confirmation: the dialog is explicit that deleting
- * means revoking — links become invalid, entries stay visible as "Widerrufen".
+ * The "Ausgewählte löschen" confirmation (ORISO-Admin#1522): open links stop
+ * working at once and the invites leave the list.
  */
 export const DeleteConfirmOpen: Story = {
     play: async ({ canvasElement }) => {
@@ -148,7 +147,7 @@ export const DeleteConfirmOpen: Story = {
         // Dropdown + modal render in portals outside the canvas element.
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(await body.findByRole('menuitem', { name: /Ausgewählte löschen/ }));
-        await body.findByText(/widerrufen\?/i);
+        await body.findByText(/Einladungen löschen\?|Delete \d+ invites\?/i);
     },
 };
 
@@ -178,7 +177,7 @@ const rowsResponse = (rows: AccountInviteDTO[]) =>
 /** Real checkbox → toolbar → protected HTTP POST, including a never-sent setup row. */
 export const SetupOnlyWithoutTemplates: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         bulkSetupRequests.length = 0;
         bulkOrdinaryRequests.length = 0;
         bulkListReads = 0;
@@ -248,7 +247,7 @@ export const SetupOnlyWithoutTemplates: Story = {
 /** Adding one ordinary row retains its template guard and sends no part of the batch. */
 export const MixedSelectionRequiresTemplate: Story = {
     beforeEach: () => {
-        message.destroy();
+        snackbar.clear();
         bulkSetupRequests.length = 0;
         bulkOrdinaryRequests.length = 0;
     },

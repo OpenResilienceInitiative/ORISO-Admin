@@ -4,7 +4,8 @@ import { transferableAbortController } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { message, Modal, notification } from 'antd';
+import { Modal } from 'antd';
+import { snackbar } from '../../../Snackbar';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
 import { SmtpSettings } from './index';
 
@@ -72,8 +73,7 @@ beforeEach(() => {
     client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Infinity }, mutations: { retry: false } },
     });
-    vi.spyOn(message, 'success').mockImplementation(vi.fn());
-    vi.spyOn(notification, 'success').mockImplementation(vi.fn());
+    vi.spyOn(snackbar, 'success').mockImplementation(vi.fn());
     vi.stubGlobal('AbortController', function NativeRequestAbortController() {
         return transferableAbortController();
     });
@@ -162,7 +162,7 @@ describe('OWN transport decisions through the real component, mutation, serializ
         expect(post.url).toBe('https://admin.example.test/service/tenant/42/smtp-test-deliveries');
         expect(await post.text()).toBe('');
         expect(requests.some((request) => request.method === 'PUT')).toBe(false);
-        await waitFor(() => expect(message.success).toHaveBeenCalledWith('tenants.appSettings.smtp.test.success'));
+        await waitFor(() => expect(snackbar.success).toHaveBeenCalledWith('tenants.appSettings.smtp.test.success'));
     });
 
     it.each([
@@ -172,7 +172,7 @@ describe('OWN transport decisions through the real component, mutation, serializ
         [429, 'tenants.appSettings.smtp.test.errorCooldown'],
         [502, 'tenants.appSettings.smtp.test.errorDelivery'],
     ])('explains a %i test response in place', async (status, key) => {
-        vi.spyOn(message, 'error').mockImplementation(vi.fn());
+        vi.spyOn(snackbar, 'error').mockImplementation(vi.fn());
         vi.mocked(fetch).mockImplementation(async (request: Request) => {
             requests.push(request);
             return request.method === 'GET'
@@ -183,8 +183,8 @@ describe('OWN transport decisions through the real component, mutation, serializ
         renderStoredSettings();
         fireEvent.click(screen.getByRole('button', { name: 'tenants.appSettings.smtp.test.button' }));
 
-        await waitFor(() => expect(message.error).toHaveBeenCalledWith(key));
-        expect(message.success).not.toHaveBeenCalled();
+        await waitFor(() => expect(snackbar.error).toHaveBeenCalledWith(key));
+        expect(snackbar.success).not.toHaveBeenCalled();
         expect(writeRequests()).toHaveLength(1);
         expect(window.location.href).toBe(page);
     });

@@ -5,6 +5,9 @@ import { TenantsList } from './index';
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
+    // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
+    query: '',
+    setSearchParams: vi.fn(),
     deleteTenant: vi.fn(),
     deleteOptions: undefined as { onSuccess?: () => void; onError?: () => void } | undefined,
     useTenantsData: vi.fn(),
@@ -15,6 +18,15 @@ const mocks = vi.hoisted(() => ({
     can: (() => true) as (action: string, resource: string) => boolean,
 }));
 
+// The subdomain switch is read through this mock, so each test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+
 const translations: Record<string, string> = {
     'tenants.list.empty': 'No tenants',
     'tenants.list.maxConsultants': 'Max. allowed consultants',
@@ -22,6 +34,7 @@ const translations: Record<string, string> = {
     'tenants.list.new': 'New',
     'tenants.list.subdomain': 'Subdomain',
     'tenants.list.tenantId': 'Tenant ID',
+    'tenants.list.tenantIdShort': 'ID',
     'tenants.list.adminEmails': 'Admin e-mail',
     'tenants.list.created': 'Created',
     'tenants.list.noAdmins': 'No admin',
@@ -54,6 +67,7 @@ vi.mock('react-router-dom', () => ({
         </a>
     ),
     useNavigate: () => mocks.navigate,
+    useSearchParams: () => [new URLSearchParams(mocks.query ? { q: mocks.query } : {}), mocks.setSearchParams],
 }));
 
 vi.mock('../../../components/Page', () => {
@@ -61,12 +75,6 @@ vi.mock('../../../components/Page', () => {
     Page.Title = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
     return { Page };
 });
-
-vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children }: { children?: React.ReactNode }) => (
-        <div data-testid="global-search">{children}</div>
-    ),
-}));
 
 vi.mock('../../../components/Modal', () => ({
     Modal: ({ onConfirm, titleKeyOptions }: { onConfirm: () => void; titleKeyOptions: { name: string } }) => (
@@ -143,6 +151,8 @@ const rowOf = (name: string) => screen.getByText(name).closest('tr') as HTMLElem
 
 describe('TenantsList in the accounts-table design (#1184)', () => {
     beforeEach(() => {
+        mocks.query = '';
+        mocks.setSearchParams.mockReset();
         mocks.navigate.mockReset();
         mocks.deleteTenant.mockReset();
         mocks.useTenantsData.mockReset();
@@ -151,13 +161,14 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             multitenancyWithSingleDomainEnabled: true,
         };
         mocks.can = () => true;
+        subdomainFeature.finished = false;
         withTenants([]);
         setWidth(1440);
     });
 
     afterEach(() => setWidth(1024));
 
-    it('shows the first admin e-mail, how many more there are, licences and both dates', () => {
+    it('shows the first admin e-mail, how many more there are and both dates', () => {
         withTenants([tenant()]);
 
         render(<TenantsList />);
@@ -166,7 +177,6 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(within(row).getByText('21')).toBeInTheDocument();
         expect(within(row).getByText('admin@nord.example')).toBeInTheDocument();
         expect(within(row).getByText('+2')).toBeInTheDocument();
-        expect(within(row).getByText('40')).toBeInTheDocument();
         expect(within(row).getByText('12/03/2025')).toBeInTheDocument();
     });
 
@@ -191,31 +201,67 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         );
     });
 
+    it('has no search field of its own and narrows the list by ?q= from the admin search', () => {
+        withTenants([tenant()]);
+        mocks.query = 'nord';
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'nord', page: 1 }));
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„nord“');
+        fireEvent.click(within(screen.getByTestId('list-search-bar')).getByRole('button'));
+        expect(mocks.setSearchParams).toHaveBeenCalled();
+    });
+
+    // Found in review (PR #1530): the page went back to 1 in an effect, so a new ?q= first asked for the old
+    // page with the new search (usually empty: a flash of "no results").
+    it('asks for page 1 of a new search at once, never for the old page', () => {
+        mocks.useTenantsData.mockReturnValue({ data: { total: 30, data: [tenant()] }, isLoading: false });
+        const { rerender } = render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: '', page: 2 }));
+
+        mocks.query = 'nord';
+        rerender(<TenantsList />);
+
+        const pagesOfNewSearch = mocks.useTenantsData.mock.calls
+            .map(([params]) => params)
+            .filter((params) => params.search === 'nord')
+            .map((params) => params.page);
+        expect(pagesOfNewSearch.length).toBeGreaterThan(0);
+        expect(pagesOfNewSearch.every((page) => page === 1)).toBe(true);
+
+        // Paging on within the new search still works.
+        fireEvent.click(screen.getByRole('button', { name: 'Nächste Seite' }));
+        expect(mocks.useTenantsData).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'nord', page: 2 }));
+    });
+
     it('shows sortable tenant columns and forwards the selected sort to tenant search', async () => {
         withTenants([tenant()]);
 
         render(<TenantsList />);
 
-        fireEvent.click(screen.getByRole('button', { name: /^Tenant ID/ }));
+        fireEvent.click(screen.getByRole('button', { name: /^ID/ }));
         await waitFor(() =>
             expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
                 expect.objectContaining({ dir: 'ASC', sort: 'ID', page: 1 }),
             ),
         );
 
-        fireEvent.click(screen.getByRole('button', { name: /^Max. allowed consultants/ }));
-        await waitFor(() =>
-            expect(mocks.useTenantsData).toHaveBeenLastCalledWith(
-                expect.objectContaining({ dir: 'ASC', sort: 'BERATERCOUNT' }),
-            ),
-        );
+        // Subdomain, maximum of counsellors and the dates are no columns of the wide row.
+        expect(screen.queryByRole('columnheader', { name: /^Max. allowed consultants/ })).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: /^Created/ })).not.toBeInTheDocument();
     });
 
-    it('shows the subdomain only when Träger have their own domain', () => {
+    it('keeps the subdomain out of the details (not technically finished), also with own domains', () => {
         withTenants([tenant()]);
         const { unmount } = render(<TenantsList />);
-        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.getByText('Max. allowed consultants')).toBeInTheDocument();
+        expect(screen.getByText('40')).toBeInTheDocument();
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
         unmount();
 
         mocks.settings = {
@@ -223,7 +269,27 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
             multitenancyWithSingleDomainEnabled: false,
         };
         render(<TenantsList />);
-        expect(screen.getByRole('columnheader', { name: /^Subdomain/ })).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
+    });
+
+    it('shows the subdomain in the details only when Träger have their own domain, once subdomains are finished', () => {
+        subdomainFeature.finished = true;
+        withTenants([tenant()]);
+        const { unmount } = render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.queryByText('Subdomain')).not.toBeInTheDocument();
+        unmount();
+
+        mocks.settings = {
+            mainTenantSubdomainForSingleDomainMultitenancy: '',
+            multitenancyWithSingleDomainEnabled: false,
+        };
+        render(<TenantsList />);
+        fireEvent.click(screen.getByRole('button', { name: 'Show details of Caritas Nord' }));
+        expect(screen.getByText('Subdomain')).toBeInTheDocument();
+        expect(screen.queryByRole('columnheader', { name: /^Subdomain/ })).not.toBeInTheDocument();
     });
 
     it('opens a Träger for editing', () => {

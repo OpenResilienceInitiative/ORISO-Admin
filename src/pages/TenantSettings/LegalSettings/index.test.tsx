@@ -55,4 +55,13 @@ describe('LegalSettingsPage — which tenant the platform legal texts belong to'
         expect(lastProps().tenantId).toBe(7);
         expect(lastProps().draftTenantId).toBe('7');
     });
+
+    it('shows the legal documents as tiles', () => {
+        mocks.tenantId = 7;
+        mocks.loadedTenantId = 1;
+
+        render(<LegalSettingsPage />);
+
+        expect(lastProps().collapsible).toBe(true);
+    });
 });

@@ -1,5 +1,5 @@
-import { message } from 'antd';
 import i18next from 'i18next';
+import { snackbar } from '../../components/Snackbar';
 import { agencyDataAgencyId } from '../../appConfig';
 
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
@@ -37,9 +37,8 @@ const getAgencyDataById = (agencyId: string) => {
         // Any other failure (network issue, 5xx, ...) keeps the app-wide generic toast that
         // CATCH_ALL would otherwise have shown for us.
         const reason = error instanceof Response ? error.headers.get(FETCH_ERRORS.X_REASON) : null;
-        message.error({
+        snackbar.error({
             content: i18next.t([`message.error.${reason}`, 'message.error.default']) as string,
-            duration: 8,
         });
 
         throw error;

@@ -1,6 +1,6 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
+import { snackbar } from '../components/Snackbar';
 import { updateTenantAdminControls } from '../api/tenant/updateTenantAdminControls';
 import { TenantAdminControls } from '../types/TenantAdminControls';
 import { TENANT_ADMIN_CONTROLS_KEY } from './useTenantAdminControls.hook';
@@ -32,7 +32,7 @@ export const useTenantAdminControlsMutation = ({
             // controls drop the fields the UI did not send.
             queryClient.setQueryData([TENANT_ADMIN_CONTROLS_KEY], responseData);
             if (successMessageKey !== false) {
-                notification.success({
+                snackbar.success({
                     message: t(successMessageKey),
                     duration: 3,
                 });
@@ -54,3 +54,6 @@ export const useRecipientScopeControlsMutation = () => {
         onMutate: () => queryClient.cancelQueries({ queryKey: [TENANT_ADMIN_CONTROLS_KEY] }),
     });
 };
+
+/** Saves the platform's calendar preset (ADR-032): same rules as the recipient scope above. */
+export const useCalendarControlsMutation = useRecipientScopeControlsMutation;

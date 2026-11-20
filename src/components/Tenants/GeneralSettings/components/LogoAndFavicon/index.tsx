@@ -54,6 +54,7 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
         <CardEditable
             key={`branding-images-${initialValues.theming.logo}-${initialValues.theming.favicon}-${logoReadOnly}-${faviconReadOnly}-${associationLogoReadOnly}`}
             allowEdit={!logoReadOnly || !faviconReadOnly || !associationLogoReadOnly}
+            readOnlyAccess={readOnly}
             isLoading={isLoading}
             initialValues={initialValues}
             titleKey="settings.images.title"
@@ -64,45 +65,48 @@ export const LogoAndFavicon = ({ tenantId, readOnly = false }: { tenantId: strin
             headerIcon={<ImageOutlinedIcon />}
         >
             <TileSections>
-                <TileSections.Section
-                    id="images-logo"
-                    title={t('organisation.logo')}
-                    note={<span className={styles.assetSize}>512x512px</span>}
-                >
+                <TileSections.Section id="images-logo" title={t('organisation.logo')} note="512 × 512 px">
                     <FormFileUploaderField
-                        className={`${styles.assetUploader} ${styles.logoUploader}`}
-                        labelKey="organisation.logo"
                         name={['theming', 'logo']}
-                        tooltip={t('settings.images.tooltip.logo')}
                         disabled={logoReadOnly}
+                        row={{
+                            inSection: true,
+                            title: t('organisation.logo'),
+                            description: `${t('settings.images.purpose.logo')} · ${t('settings.images.formats.photo')}`,
+                        }}
                     />
                 </TileSections.Section>
-                <TileSections.Section
-                    id="images-favicon"
-                    title={t('organisation.favicon')}
-                    note={<span className={styles.assetSize}>32x32px</span>}
-                >
+                <TileSections.Section id="images-favicon" title={t('organisation.favicon')} note="32 × 32 px">
                     <FormFileUploaderField
-                        className={`${styles.assetUploader} ${styles.faviconUploader}`}
                         allowIcon
-                        labelKey="organisation.favicon"
                         name={['theming', 'favicon']}
-                        tooltip={t('settings.images.tooltip.favicon')}
                         disabled={faviconReadOnly}
+                        row={{
+                            inSection: true,
+                            title: t('organisation.favicon'),
+                            description: `${t('settings.images.purpose.favicon')} · ${t(
+                                'settings.images.formats.icon',
+                            )}`,
+                            previewClassName: styles.faviconPreview,
+                        }}
                     />
                 </TileSections.Section>
                 {!settings.multitenancyWithSingleDomainEnabled && (
                     <TileSections.Section
                         id="images-association-logo"
                         title={t('organisation.associationLogo')}
-                        note={<span className={styles.assetSize}>512x512px</span>}
+                        note="512 × 512 px"
                     >
                         <FormFileUploaderField
-                            className={`${styles.assetUploader} ${styles.associationLogoUploader}`}
-                            labelKey="organisation.associationLogo"
                             name={['theming', 'associationLogo']}
-                            tooltip={t('settings.images.tooltip.associationLogo')}
                             disabled={associationLogoReadOnly}
+                            row={{
+                                inSection: true,
+                                title: t('organisation.associationLogo'),
+                                description: `${t('settings.images.purpose.associationLogo')} · ${t(
+                                    'settings.images.formats.photo',
+                                )}`,
+                            }}
                         />
                     </TileSections.Section>
                 )}

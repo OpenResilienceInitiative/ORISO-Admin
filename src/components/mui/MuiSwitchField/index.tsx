@@ -8,22 +8,25 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
+import { SwitchStateLabel } from '../../M3Switch/SwitchStateLabel';
 import styles from './styles.module.scss';
 
 /**
- * MUI `icon`/`checkedIcon` replace the default thumb, so each icon is wrapped
- * in a white circle that reproduces the thumb geometry. Glyphs are colored
- * (never white) so they stay visible on the white thumb.
+ * MUI `icon`/`checkedIcon` replace the default thumb, so each state brings its
+ * own knob — the same switch as the Frontend Storybook (`Atoms/Switch`, #1374).
+ * Off: an outline-coloured knob with a light ✕ on a tonal track with a 2px
+ * outline (WCAG 1.4.11). On: white knob with a brand-coloured ✓. Glyph colours
+ * live in the stylesheet so the disabled palette can override them.
  */
 const uncheckedThumb = (
-    <span className={styles.thumb}>
-        <CloseIcon sx={{ fontSize: 16, color: 'var(--input-border-color, var(--m3-outline, #747878))' }} />
+    <span className={classNames(styles.thumb, styles.thumbOff)} data-switch-thumb="off">
+        <CloseIcon className={styles.glyph} sx={{ fontSize: 16 }} />
     </span>
 );
 
 const checkedThumb = (
-    <span className={styles.thumb}>
-        <CheckIcon sx={{ fontSize: 16, color: 'var(--admin-control-selected, var(--m3-primary, #a5000a))' }} />
+    <span className={classNames(styles.thumb, styles.thumbOn)} data-switch-thumb="on">
+        <CheckIcon className={styles.glyph} sx={{ fontSize: 16 }} />
     </span>
 );
 
@@ -36,6 +39,11 @@ export interface MuiSwitchProps {
     ariaLabel?: string;
     id?: string;
     className?: string;
+    /**
+     * Shows the state as a word next to the switch („An“/„Aus“, #1374), so the
+     * state does not depend on reading the knob alone. Off by default.
+     */
+    showStateLabel?: boolean;
 }
 
 /**
@@ -47,25 +55,47 @@ export interface MuiSwitchProps {
  * When there IS a Form.Item, use {@link MuiSwitchField} — it adds the binding,
  * validation status and helper text on top of this.
  */
-export const MuiSwitch = ({ checked, onChange, disabled, readOnly, ariaLabel, id, className }: MuiSwitchProps) => (
-    <Switch
-        checked={checked}
-        className={classNames(
-            styles.switch,
-            { [styles.switchDisabled]: disabled, [styles.switchReadOnly]: readOnly },
-            className,
-        )}
-        checkedIcon={checkedThumb}
-        disabled={disabled}
-        disableRipple
-        focusVisibleClassName=".Mui-focusVisible"
-        icon={uncheckedThumb}
-        slotProps={{ input: { 'aria-label': ariaLabel, 'aria-disabled': readOnly || undefined, id } }}
-        onChange={(_event, next) => {
-            if (!readOnly) onChange?.(next);
-        }}
-    />
-);
+export const MuiSwitch = ({
+    checked,
+    onChange,
+    disabled,
+    readOnly,
+    ariaLabel,
+    id,
+    className,
+    showStateLabel = false,
+}: MuiSwitchProps) => {
+    const control = (
+        <Switch
+            checked={checked}
+            className={classNames(
+                styles.switch,
+                { [styles.switchDisabled]: disabled, [styles.switchReadOnly]: readOnly },
+                className,
+            )}
+            checkedIcon={checkedThumb}
+            disabled={disabled}
+            disableRipple
+            focusVisibleClassName=".Mui-focusVisible"
+            icon={uncheckedThumb}
+            slotProps={{ input: { 'aria-label': ariaLabel, 'aria-disabled': readOnly || undefined, id } }}
+            onChange={(_event, next) => {
+                if (!readOnly) onChange?.(next);
+            }}
+        />
+    );
+
+    if (!showStateLabel) {
+        return control;
+    }
+
+    return (
+        <span className={styles.withState}>
+            {control}
+            <SwitchStateLabel checked={checked} disabled={disabled} />
+        </span>
+    );
+};
 
 type FieldName = string | Array<string | number>;
 
@@ -80,6 +110,7 @@ interface MuiSwitchControlProps {
     helpText?: string;
     switchLabel: string;
     confirmEnable?: (proceed: () => void) => void;
+    showStateLabel?: boolean;
 }
 
 /**
@@ -97,6 +128,7 @@ const MuiSwitchControl = ({
     helpText,
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: MuiSwitchControlProps) => {
     const { componentDisabled } = ConfigProvider.useConfig();
     const inReadOnlyTile = React.useContext(ReadOnlyTileContext);
@@ -134,6 +166,7 @@ const MuiSwitchControl = ({
                         readOnly={isReadOnly}
                         ariaLabel={switchLabel}
                         className={classNames({ [styles.switchUnavailable]: unavailable })}
+                        showStateLabel={showStateLabel}
                     />
                 }
             />
@@ -170,6 +203,8 @@ export interface MuiSwitchFieldProps {
      * (e.g. the supervision privacy-policy confirmation). Turning it off never asks.
      */
     confirmEnable?: (proceed: () => void) => void;
+    /** Shows „An“/„Aus“ next to the switch (#1374). Off by default. */
+    showStateLabel?: boolean;
 }
 
 /**
@@ -187,6 +222,7 @@ export const MuiSwitchField = ({
     className,
     switchLabel,
     confirmEnable,
+    showStateLabel,
 }: MuiSwitchFieldProps) => {
     let accessibleSwitchLabel = switchLabel;
     if (!accessibleSwitchLabel) {
@@ -210,6 +246,7 @@ export const MuiSwitchField = ({
                     helpText={helpText}
                     switchLabel={accessibleSwitchLabel}
                     confirmEnable={confirmEnable}
+                    showStateLabel={showStateLabel}
                 />
             </Form.Item>
         </div>

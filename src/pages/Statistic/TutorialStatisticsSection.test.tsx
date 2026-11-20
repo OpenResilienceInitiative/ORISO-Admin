@@ -17,6 +17,7 @@ const translations: Record<string, string> = {
     'statistic.tutorials.subtitle': 'Aggregierte Nutzung der geführten Rundgänge — ohne Einzelverläufe.',
     'statistic.tutorials.loading': 'Tutorial-Statistik wird geladen …',
     'statistic.tutorials.loadError': 'Tutorial-Statistik konnte nicht geladen werden.',
+    'notify.tile.notLoaded': 'Dieser Bereich konnte nicht geladen werden.',
     'statistic.tutorials.forbidden': 'Für die Tutorial-Statistik fehlt Ihnen die Berechtigung.',
     'statistic.tutorials.empty': 'Noch keine Tutorial-Nutzung erfasst.',
     'statistic.tutorials.table.tenant': 'Träger',
@@ -114,7 +115,9 @@ describe('TutorialStatisticsSection', () => {
     it('shows an error state for any other failure', async () => {
         renderSection(() => Promise.reject(new Error('API call error: 500')));
 
-        await waitFor(() => expect(screen.getByText('Tutorial-Statistik konnte nicht geladen werden.')).toBeTruthy());
+        // The pop-up carries the cause; the tile keeps a quiet line after the pop-up is closed.
+        await waitFor(() => expect(screen.getByText(/Tutorial-Statistik konnte nicht geladen werden\./)).toBeTruthy());
+        expect(screen.getByText('Dieser Bereich konnte nicht geladen werden.')).toBeTruthy();
         expect(screen.getByRole('alert')).toBeTruthy();
     });
 

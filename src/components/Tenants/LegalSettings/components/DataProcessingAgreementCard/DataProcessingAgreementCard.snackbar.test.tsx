@@ -29,22 +29,23 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
     ),
 }));
 
-describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
+describe('DataProcessingAgreementCard tip (platform admin)', () => {
     beforeEach(() => {
         window.localStorage.clear();
         window.sessionStorage.clear();
     });
 
-    it('shows the empty-state CTA as a snackbar instead of the inline bold hint', () => {
+    it('shows the empty-state CTA as plain tile text with a hide link, not as a pop-up', () => {
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
         expect(screen.getByText('legal.help.dpa.platform.empty.text')).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('legal.help.dpa.platform.empty.hint');
-        // The hint is not duplicated inline while the snackbar shows it.
-        expect(screen.getAllByText('legal.help.dpa.platform.empty.hint')).toHaveLength(1);
+        expect(screen.getByText(/legal\.help\.dpa\.platform\.empty\.hint/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' })).toBeInTheDocument();
+        // Permanent help is tile text: nothing is raised on the pop-up channel.
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
     });
 
-    it('shows the published-state CTA as a snackbar for platform admins', () => {
+    it('shows the published-state CTA as plain tile text for platform admins', () => {
         render(
             <DataProcessingAgreementCard
                 versions={[{ id: '2026-07-13', label: '13. Jul 2026 – 10:22', content: '<p>AVV</p>' }]}
@@ -54,8 +55,8 @@ describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
         );
 
         expect(screen.getByText('legal.help.dpa.platform.published.text')).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('legal.help.dpa.platform.published.hint');
-        expect(screen.getAllByText('legal.help.dpa.platform.published.hint')).toHaveLength(1);
+        expect(screen.getAllByText(/legal\.help\.dpa\.platform\.published\.hint/)).toHaveLength(1);
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
     });
 
     it('"nicht mehr anzeigen" removes the CTA text completely and persists', async () => {
@@ -64,36 +65,24 @@ describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
 
         await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
+        expect(screen.queryByText(/legal\.help\.dpa\.platform\.empty\.hint/)).not.toBeInTheDocument();
         expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBe('true');
     });
 
-    it('"X" hides the snackbar for the browser session but leaves localStorage untouched', async () => {
-        const user = userEvent.setup();
-        const first = render(
-            <DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />,
-        );
-
-        await user.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
-
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
-        // Unlike "nicht mehr anzeigen", the X does not write the dismissal key.
-        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBeNull();
-        expect(window.sessionStorage.getItem('oriso-admin.legal.dpa.blocker.closed.tenant:user')).toBe('true');
-
-        first.unmount();
+    it('still honours a session-only close from an earlier version without writing localStorage', () => {
+        window.sessionStorage.setItem('oriso-admin.legal.dpa.blocker.closed.tenant:user', 'true');
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+        expect(screen.queryByText(/legal\.help\.dpa\.platform\.empty\.hint/)).not.toBeInTheDocument();
+        expect(window.localStorage.getItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user')).toBeNull();
     });
 
     it('stays completely hidden on the next render once dismissed', () => {
         window.localStorage.setItem('oriso-admin.legal.dpa.blocker.dismissed.tenant:user', 'true');
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant:user" />);
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
-        expect(screen.queryByText('legal.help.dpa.platform.empty.hint')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
+        expect(screen.queryByText(/legal\.help\.dpa\.platform\.empty\.hint/)).not.toBeInTheDocument();
     });
 
     it('keeps dismissal independent between tenant and administrator scopes', async () => {
@@ -105,10 +94,10 @@ describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
         first.unmount();
 
         render(<DataProcessingAgreementCard versions={[]} onPublish={vi.fn()} dismissalScope="tenant-2:user-1" />);
-        expect(screen.getByRole('status')).toBeInTheDocument();
+        expect(screen.getByText(/legal\.help\.dpa\.platform\.empty\.hint/)).toBeInTheDocument();
     });
 
-    it('keeps the hint inline for non-platform roles (no snackbar)', () => {
+    it('keeps the hint inline for non-platform roles (no hide link)', () => {
         render(
             <DataProcessingAgreementCard
                 versions={[{ id: '2026-07-13', label: '13. Jul 2026 – 10:22', content: '<p>AVV</p>' }]}
@@ -117,8 +106,9 @@ describe('DataProcessingAgreementCard snackbar (platform admin)', () => {
             />,
         );
 
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.getByText('legal.help.dpa.agency.published.text')).toBeInTheDocument();
         expect(screen.getByText('legal.help.dpa.agency.published.hint')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'legal.help.snackbar.dismiss' })).not.toBeInTheDocument();
     });
 });

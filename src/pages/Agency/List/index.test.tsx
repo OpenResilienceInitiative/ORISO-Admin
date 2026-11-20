@@ -5,6 +5,8 @@ import { AgencyList } from './index';
 
 const mocks = vi.hoisted(() => ({
     agencies: [] as any[],
+    // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
+    query: '',
     // Optional server pages by page number, with their total, for the phone "load more" flow.
     agencyPages: undefined as Record<number, any[]> | undefined,
     agencyTotal: undefined as number | undefined,
@@ -26,9 +28,10 @@ const translations: Record<string, string> = {
     agency: 'Agency',
     'agency.list.searchPlaceholder': 'Search by name, postcode or city',
     'agency.noTopics': 'No topics assigned',
-    'agency.status.online': 'Visible',
-    'agency.status.offline': 'Hidden',
-    'agency.teamAgency': 'Team centre',
+    'entityStatus.active': 'Active',
+    'entityStatus.inactive': 'Inactive',
+    'entityStatus.unknown': 'Unknown',
+    'teamFunctions.counselling.name': 'Team counselling',
     'agency.list.id': 'ID',
     'agency.list.address': 'Address',
     'agency.list.contact': 'Contact',
@@ -59,6 +62,7 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('react-router-dom', () => ({
     useNavigate: () => mocks.navigate,
+    useSearchParams: () => [new URLSearchParams(mocks.query ? { q: mocks.query } : {}), vi.fn()],
     Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
     Navigate: ({ to, replace }: { to: string; replace?: boolean }) => (
         <div data-testid="navigate" data-to={to} data-replace={String(Boolean(replace))} />
@@ -74,20 +78,6 @@ vi.mock('../../../components/Page', () => {
     Page.Title = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
     return { Page };
 });
-
-vi.mock('../../../components/GlobalSearch', () => ({
-    GlobalSearchBar: ({ children, onSearch }: { children?: React.ReactNode; onSearch?: (query: string) => void }) => (
-        <div data-testid="global-search">
-            <input
-                aria-label="Search agencies"
-                onKeyDown={(event) => {
-                    if (event.key === 'Enter') onSearch?.(event.currentTarget.value);
-                }}
-            />
-            {children}
-        </div>
-    ),
-}));
 
 vi.mock('../../../hooks/useAgencysData', () => ({
     useAgenciesData: (query: { search?: string; current?: number }) => {
@@ -153,6 +143,8 @@ const buildAgency = (topics: Array<{ id: number | null; name: string }>, overrid
         description: 'Description',
         offline: false,
         online: true,
+        // The list shows the effective status (`active`), not the raw visibility flag.
+        active: true,
         postcode: '10115',
         street: 'Musterstraße',
         houseNumber: '12a',
@@ -188,6 +180,7 @@ const withDesktopLayout = () => {
 };
 
 const resetMocks = () => {
+    mocks.query = '';
     mocks.agencies = [];
     mocks.agencyPages = undefined;
     mocks.agencyTotal = undefined;
@@ -219,19 +212,21 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         expect(within(row).getByText('42')).toBeInTheDocument();
         expect(within(row).getByText('Musterstraße 12a')).toBeInTheDocument();
         expect(within(row).getByText('10115 Berlin')).toBeInTheDocument();
-        expect(within(row).getByText('Visible')).toBeInTheDocument();
+        expect(within(row).getByText('Active')).toBeInTheDocument();
         expect(within(row).getByRole('button', { name: 'Edit Beratungsstelle Nord' })).toBeEnabled();
         expect(within(row).getByRole('button', { name: 'Delete Beratungsstelle Nord' })).toBeEnabled();
     });
 
     it('marks team centres and hidden centres', () => {
-        mocks.agencies = [buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true })];
+        mocks.agencies = [
+            buildAgency([], { id: 7, name: 'Team Süd', teamAgency: 'true', offline: true, active: false }),
+        ];
 
         render(<AgencyList />);
 
         const row = rowOf('Team Süd');
-        expect(within(row).getByText('Team centre')).toBeInTheDocument();
-        expect(within(row).getByText('Hidden')).toBeInTheDocument();
+        expect(within(row).getByText('Team counselling')).toBeInTheDocument();
+        expect(within(row).getByText('Inactive')).toBeInTheDocument();
     });
 
     it('shows the first topic and how many more there are', () => {
@@ -386,14 +381,14 @@ describe('AgencyList in the accounts-table design (#1184)', () => {
         setWidth(390);
         mocks.agencies = [
             buildAgency([], { id: 1, name: 'North centre' }),
-            buildAgency([], { id: 2, name: 'South centre', offline: true }),
+            buildAgency([], { id: 2, name: 'South centre', offline: true, active: false }),
         ];
 
         render(<AgencyList />);
 
         expect(screen.queryByRole('table')).not.toBeInTheDocument();
         const south = screen.getByRole('article', { name: 'South centre' });
-        expect(within(south).getByText('Hidden')).toBeInTheDocument();
+        expect(within(south).getByText('Inactive')).toBeInTheDocument();
         expect(within(south).getByRole('button', { name: 'Edit South centre' })).toBeInTheDocument();
         expect(screen.getByRole('article', { name: 'North centre' })).toBeInTheDocument();
     });
@@ -503,15 +498,12 @@ describe('AgencyList landing for a Beratungsstellen-Admin (ORISO-Admin#917)', ()
             buildAgency([], { id: 42, name: 'North centre' }),
             buildAgency([], { id: 43, name: 'South centre' }),
         ];
+        // The search arrives as ?q= from the admin search (⌘K); the list has no field of its own.
+        mocks.query = 'North';
         render(<AgencyList />);
-        expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();
-        expect(screen.getByText('North centre')).toBeInTheDocument();
-        expect(screen.getByText('South centre')).toBeInTheDocument();
 
-        const search = screen.getByRole('textbox', { name: 'Search agencies' });
-        fireEvent.change(search, { target: { value: 'North' } });
-        fireEvent.keyDown(search, { key: 'Enter' });
-
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.getByTestId('list-search-bar')).toHaveTextContent('„North“');
         expect(screen.getByText('North centre')).toBeInTheDocument();
         expect(screen.queryByText('South centre')).not.toBeInTheDocument();
         expect(screen.queryByTestId('navigate')).not.toBeInTheDocument();

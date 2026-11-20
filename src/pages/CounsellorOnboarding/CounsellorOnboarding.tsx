@@ -42,6 +42,8 @@ import {
 } from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 interface CounsellorOnboardingProps {
     inviteToken: string;
@@ -142,9 +144,9 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                     {t('counsellorOnboarding.loadError.title')}
                 </Typography>
-                <Typography role="alert" sx={{ mb: 3 }}>
+                <HintText tone="error" role="alert" style={{ marginBottom: 24 }}>
                     {t('counsellorOnboarding.loadError.description')}
-                </Typography>
+                </HintText>
                 <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>
                     {t('counsellorOnboarding.loadError.retry')}
                 </M3Button>
@@ -534,25 +536,20 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             {needsTopics && (
                 <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
                     {topicLanguageError && (
-                        <div role="alert">
-                            <Typography variant="body2">{t('counsellorOnboarding.topics.languageError')}</Typography>
-                            <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={retryTopicNames}>
-                                {t('counsellorOnboarding.loadError.retry')}
-                            </M3Button>
-                        </div>
+                        <Notify
+                            title={t('notify.title.onboarding')}
+                            severity="error"
+                            quietText={t('counsellorOnboarding.topics.languageError')}
+                            actions={[{ label: t('counsellorOnboarding.loadError.retry'), onClick: retryTopicNames }]}
+                        >
+                            {t('counsellorOnboarding.topics.languageError')}
+                        </Notify>
                     )}
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {renderedTopicCount === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
                         // submit that can never be enabled.
-                        <Typography
-                            role="alert"
-                            variant="body2"
-                            color="text.secondary"
-                            data-testid="wizard-topics-none"
-                        >
-                            {t('counsellorOnboarding.topics.none')}
-                        </Typography>
+                        <HintText data-testid="wizard-topics-none">{t('counsellorOnboarding.topics.none')}</HintText>
                     ) : agencyTopicsOnly ? (
                         <div
                             className={styles.topicChipRow}
@@ -622,14 +619,24 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
             <div className={styles.submitRow}>
                 {submitError === 'topic-policy' && (
-                    <Typography role="alert" color="error" data-testid="wizard-topic-policy-error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-topic-policy-error"
+                        severity="error"
+                        quietText={t('message.error.ONE_TOPIC_PER_AGENCY')}
+                    >
                         {t('message.error.ONE_TOPIC_PER_AGENCY')}
-                    </Typography>
+                    </Notify>
                 )}
                 {submitError === 'registration' && (
-                    <Typography role="alert" color="error" data-testid="wizard-registration-error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-registration-error"
+                        severity="error"
+                        quietText={t('counsellorOnboarding.registrationError')}
+                    >
                         {t('counsellorOnboarding.registrationError')}
-                    </Typography>
+                    </Notify>
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">

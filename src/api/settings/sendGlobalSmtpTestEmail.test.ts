@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { message } from 'antd';
+import { snackbar as message } from '../../components/Snackbar';
 import { sendGlobalSmtpTestEmail } from './sendGlobalSmtpTestEmail';
 import { extractApiErrorMessage } from '../../utils/extractApiErrorMessage';
 

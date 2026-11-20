@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+// The bundled person_search_filled.svg is a 5%-opacity illustration, not a tab glyph.
+import PersonSearchIcon from '@mui/icons-material/PersonSearchOutlined';
 import { Page } from '../../components/Page';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
@@ -9,7 +11,7 @@ import routePathNames from '../../appConfig';
 import { ReactComponent as PowerOffIcon } from '../../resources/img/svg/power_off.svg';
 import { ReactComponent as FaceNodIcon } from '../../resources/img/svg/face_nod.svg';
 import { ReactComponent as DeleteIcon } from '../../resources/img/svg/delete.svg';
-import { ReactComponent as PersonSearchIcon } from '../../resources/img/svg/person_search_filled.svg';
+import { ReactComponent as AddonsIcon } from '../../resources/img/svg/nav-glyphs/addons.svg';
 
 interface LogsTabsLayoutProps {
     /** Supervision audit — every admin with consultant read except the platform admin. */
@@ -20,6 +22,8 @@ interface LogsTabsLayoutProps {
     showInactive: boolean;
     /** Deletion log (who deleted what) is platform-admin only. */
     showDeletion: boolean;
+    /** Add-on audit entries follow the Add-ons section's visibility. */
+    showAddons?: boolean;
 }
 
 /**
@@ -33,6 +37,7 @@ export const LogsTabsLayout = ({
     showCaseHandover,
     showInactive,
     showDeletion,
+    showAddons = false,
 }: LogsTabsLayoutProps) => {
     const { t } = useTranslation();
     const { pathname } = useLocation();
@@ -73,6 +78,15 @@ export const LogsTabsLayout = ({
             label: t('sidebar.deletionAudit', String(t('deletionAudit.title'))),
             icon: <DeleteIcon />,
             to: routePathNames.deletionAuditLogs,
+        });
+    }
+
+    if (showAddons) {
+        tabs.push({
+            id: 'addons',
+            label: t('sidebar.addonAudit', String(t('addonAudit.title'))),
+            icon: <AddonsIcon />,
+            to: routePathNames.addonAuditLogs,
         });
     }
 

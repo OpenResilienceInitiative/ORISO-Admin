@@ -15,6 +15,8 @@ export interface IconButtonProps {
     ariaControls?: string;
     variant?: IconButtonVariant;
     disabled?: boolean;
+    /** Tooltip, e.g. the reason a disabled button is disabled. */
+    title?: string;
     /** Square hit-area in px (icon scales to ~24). Default 40. */
     size?: number;
     className?: string;
@@ -34,12 +36,14 @@ export const IconButton = ({
     ariaControls,
     variant = 'standard',
     disabled = false,
+    title,
     size = 40,
     className,
 }: IconButtonProps) => (
     <button
         type="button"
         aria-label={ariaLabel}
+        title={title}
         aria-haspopup={ariaHasPopup}
         aria-expanded={ariaExpanded}
         aria-controls={ariaControls}

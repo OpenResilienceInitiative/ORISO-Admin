@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from '../profileStory.matrix';
 import { LanguageSettings } from './index';
 
 const meta = {
-    title: 'Pages/Profile/LanguageSettings',
+    title: 'Settings/Mein Account/LanguageSettings',
+    id: 'pages-profile-languagesettings',
     component: LanguageSettings,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin'])],

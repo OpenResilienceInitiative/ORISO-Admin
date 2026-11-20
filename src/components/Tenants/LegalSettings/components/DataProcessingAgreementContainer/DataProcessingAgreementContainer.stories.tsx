@@ -9,7 +9,8 @@ import { DataProcessingAgreementContainer } from './index';
  * by the draft notice. Publishing (PUT .../dpa/v2) is mocked and clears the draft.
  */
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementContainer',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementContainer',
+    id: 'organisms-legal-dataprocessingagreementcontainer',
     component: DataProcessingAgreementContainer,
     parameters: {
         layout: 'padded',

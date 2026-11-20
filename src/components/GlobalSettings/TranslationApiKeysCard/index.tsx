@@ -1,7 +1,8 @@
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
+import { snackbar } from '../../Snackbar';
 import { Card } from '../../Card';
 import { M3Button } from '../../M3Button';
 import { MuiPasswordFormField } from '../../mui/MuiFormField';
@@ -43,7 +44,7 @@ export const TranslationApiKeysCard = ({
     const save = (provider: TranslationProvider) => {
         const apiKey = `${form.getFieldValue(provider) ?? ''}`.trim();
         if (!apiKey) {
-            message.error(t('legal.translation.settings.emptyKey'));
+            snackbar.error(t('legal.translation.settings.emptyKey'));
             return;
         }
         onSave(provider, apiKey);

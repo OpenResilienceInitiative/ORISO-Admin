@@ -18,7 +18,8 @@ import styles from './styles.module.scss';
  * Switch the toolbar viewport to mobile to check both.
  */
 const meta = {
-    title: 'Organisms/Pages/Tenants/AppearanceLayout',
+    title: 'Settings/Einstellungen/Erscheinungsbild/AppearanceLayout',
+    id: 'organisms-pages-tenants-appearancelayout',
     parameters: { layout: 'fullscreen' },
 } satisfies Meta;
 
@@ -35,7 +36,7 @@ const toggleInitialValues = { tenantAdminControls: { allowedPermissionToggles: {
 export const Default: Story = {
     render: () => (
         <Page>
-            <Page.BackWithActions path="/admin/tenants" title="Dreambau" tabs={tabs} />
+            <Page.BackWithActions path="/admin/tenants" parentKey="sidebar.tenants" title="Dreambau" tabs={tabs} />
             <div className={styles.appearancePage}>
                 <CardGrid raster>
                     <CardGrid.Item span={3}>

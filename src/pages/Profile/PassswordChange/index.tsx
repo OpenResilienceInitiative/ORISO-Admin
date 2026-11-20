@@ -1,6 +1,7 @@
-import { Col, notification, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { RuleRender } from 'antd/es/form';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../components/Snackbar';
 import { CardEditable } from '../../../components/CardEditable';
 import { FormInputPasswordField } from '../../../components/FormInputPasswordField';
 import { useUpdateUserPassword } from '../../../hooks/useUpdateUserPassword.hook';
@@ -17,13 +18,13 @@ export const PasswordChange = () => {
     const { isCounsellor } = useUserRoles();
     const { mutate: updateData } = useUpdateUserPassword({
         onSuccess: () => {
-            notification.success({
+            snackbar.success({
                 message: t('profile.passwordChange.success'),
                 description: isCounsellor ? t('profile.passwordChange.success.counsellor') : undefined,
             });
         },
         onError: () => {
-            notification.error({ message: t('profile.passwordChange.error') });
+            snackbar.error({ message: t('profile.passwordChange.error') });
         },
     });
 

@@ -1,17 +1,45 @@
+import { createElement } from 'react';
+import { TilePicture } from '../../../TileFill';
 import type { TileHelpTopic } from '../../../TileHelp';
 import type { ChatTypeCardKey } from './types';
-import { caseHandoverHelp, circleHelp, internalHelp, liveChatHelp, oneOnOneHelp, askerAccountHelp } from './help';
+import {
+    askerAccountHelp,
+    caseHandoverHelp,
+    circleHelp,
+    directInviteHelp,
+    internalHelp,
+    liveChatHelp,
+    oneOnOneHelp,
+} from './help';
+import emailPicture from '../../../../resources/img/tile-help/permissions/email.webp';
+import liveChatLinksPicture from '../../../../resources/img/tile-help/permissions/livechat-links.webp';
+import liveChatNoEmailPicture from '../../../../resources/img/tile-help/permissions/livechat-noemail.webp';
+import switchedOffGroupPicture from '../../../../resources/img/tile-help/permissions/switched-off-group.webp';
+import switchedOffGroupInternalPicture from '../../../../resources/img/tile-help/permissions/switched-off-groupinternal.webp';
+import switchedOffLiveChatPicture from '../../../../resources/img/tile-help/permissions/switched-off-livechat.webp';
+import switchedOffOneOnOnePicture from '../../../../resources/img/tile-help/permissions/switched-off-oneonone.webp';
 
-const switchedOff = (key: string) => ({
+const SWITCHED_OFF_PICTURE: Record<ChatTypeCardKey, string> = {
+    oneOnOne: switchedOffOneOnOnePicture,
+    liveChat: switchedOffLiveChatPicture,
+    group: switchedOffGroupPicture,
+    groupInternal: switchedOffGroupInternalPicture,
+};
+
+const picture = (src: string) => createElement(TilePicture, { src });
+
+const switchedOff = (key: ChatTypeCardKey) => ({
     id: 'switchedOff',
     titleKey: 'tileHelp.permissions.switchedOffTitle',
     bodyKey: `tileHelp.permissions.${key}.switchedOff`,
+    visual: picture(SWITCHED_OFF_PICTURE[key]),
 });
 
 const emailSlide = {
     id: 'email',
     titleKey: 'tileHelp.permissions.emailTitle',
     bodyKey: 'tileHelp.permissions.emailBody',
+    visual: picture(emailPicture),
 };
 
 const conversationTopic = (key: ChatTypeCardKey, extraSlides: TileHelpTopic['slides'] = []): TileHelpTopic => ({
@@ -29,6 +57,7 @@ export const CONVERSATION_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
             id: 'directInvite',
             titleKey: 'tenants.permissions.directInvite.title',
             bodyKey: 'tenants.permissions.directInvite.description',
+            visual: directInviteHelp.slides[0].visual,
         },
         emailSlide,
     ]),
@@ -38,11 +67,13 @@ export const CONVERSATION_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
             id: 'links',
             titleKey: 'liveChatLinks.title',
             bodyKey: 'tileHelp.permissions.liveChat.links',
+            visual: picture(liveChatLinksPicture),
         },
         {
             id: 'noEmail',
             titleKey: 'tileHelp.permissions.emailTitle',
             bodyKey: 'tileHelp.permissions.liveChat.noEmail',
+            visual: picture(liveChatNoEmailPicture),
         },
     ]),
     group: conversationTopic('group', [...circleHelp.slides, emailSlide]),
@@ -65,6 +96,7 @@ export const ASKER_HELP: TileHelpTopic = {
             id: 'email',
             titleKey: 'tenants.permissions.asker.email.label',
             bodyKey: 'tenants.permissions.asker.email.description',
+            visual: askerAccountHelp.slides[1].visual,
         },
     ],
 };

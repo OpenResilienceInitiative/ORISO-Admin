@@ -39,8 +39,8 @@ describe.each<OrisoSchemeName>(['light', 'inverted'])('snackbar tones in the %s 
             const text = resolve(tokens, pair.text);
             const action = resolve(tokens, pair.action);
             expect(contrastRatio(text, container)).toBeGreaterThanOrEqual(4.5);
-            // The focus ring is the text colour (see Snackbar.module.scss): at least 3:1 on the container.
-            expect(contrastRatio(text, container)).toBeGreaterThanOrEqual(3);
+            // The focus rings (action, close and the jump link) are the text colour (see Snackbar.module.scss),
+            // so the 4.5:1 above also covers WCAG 1.4.11 (3:1).
             expect(contrastRatio(action, container)).toBeGreaterThanOrEqual(4.5);
         });
     });

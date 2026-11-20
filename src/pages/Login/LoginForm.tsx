@@ -3,7 +3,6 @@ import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
-import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import InputAdornment from '@mui/material/InputAdornment';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
@@ -27,6 +26,7 @@ import { TwoFactorType } from '../../enums/TwoFactorType';
 import { usePublicTenantData } from '../../hooks/usePublicTenantData.hook';
 import { LoginCredentialsHint } from './LoginCredentialsHint';
 import OtpResendLink, { RESEND_ERROR_ALREADY_SHOWN, RESEND_NOT_ATTEMPTED, ResendError } from './OtpResendLink';
+import { Notify } from '../../components/Notify';
 
 const startIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
@@ -74,6 +74,8 @@ const LoginForm = () => {
     const { mutateAsync: loginAsync } = useLoginMutation(tenantData?.id != null ? `${tenantData.id}` : '');
     const [postLoading, setPostLoading] = useState(false);
     const [showCredentialsHint, setShowCredentialsHint] = useState(false);
+    // The failed attempt already carried a code: "Ansehen" then points at the code field.
+    const [credentialsHintAtOtp, setCredentialsHintAtOtp] = useState(false);
     const [showSetupIncomplete, setShowSetupIncomplete] = useState(false);
     const [otpDisabled, setOtpDisabled] = useState(true);
     const [twoFactorType, setTwoFactorType] = useState(TwoFactorType.None);
@@ -211,6 +213,7 @@ const LoginForm = () => {
                 // Until 2026-09 that 400 silently revealed the OTP field instead of
                 // saying anything, so a plain typo looked like a dead button.
                 setShowCredentialsHint(true);
+                setCredentialsHintAtOtp(otpSubmitted);
                 recordLoginFailure({ outcome: 'credentials', transport: describeTransport(error.message), stage });
             }
         } finally {
@@ -266,11 +269,11 @@ const LoginForm = () => {
                         <OtpResendLink onResend={resendCode} cooldownSeconds={resendCooldownSeconds} />
                     )}
 
-                    {showCredentialsHint && <LoginCredentialsHint />}
+                    {showCredentialsHint && <LoginCredentialsHint otpStage={credentialsHintAtOtp} />}
                     {showSetupIncomplete && (
-                        <Alert severity="error" role="alert" sx={{ mb: 2 }} data-testid="login-setup-incomplete-hint">
+                        <Notify title={t('notify.title.login')} testId="login-setup-incomplete-hint" severity="error">
                             {t('message.error.auth.setupIncomplete')}
-                        </Alert>
+                        </Notify>
                     )}
 
                     <a href={routePathNames.passwordReset} className="forgotPW">

@@ -1,4 +1,4 @@
-import { Alert, Form } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { useFeatureContext } from '../../../../../context/FeatureContext';
@@ -7,9 +7,8 @@ import { Gender } from '../../../../../enums/Gender';
 import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
-import { M3Button } from '../../../../../components/M3Button';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
-import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
+import { TEAM_FUNCTIONS, TeamFunctionSwitch } from '../../../../../components/TeamFunctions';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
@@ -20,6 +19,9 @@ import { searchTenantData } from '../../../../../api/tenant/searchTenantData';
 import { useAppConfigContext } from '../../../../../context/useAppConfig';
 import { normalizeTopicIds } from '../../../../../api/agency/normalizeTopicIds';
 import { TOPIC_PERMISSION_LABEL_KEYS, TOPIC_PERMISSIONS } from '../../../../Links/inviteModel';
+import { Notify } from '../../../../../components/Notify';
+import { HintText } from '../../../../../components/HintText';
+import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 
 interface AgencySettingsProps {
     isEditMode: boolean;
@@ -44,7 +46,9 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
 
     const { isEnabled } = useFeatureContext();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
+    // ORISO-Frontend#2251: a centre-owned switch only Träger and platform admins may change.
+    const canEditLiveChatFurtherCounselling = isEditMode && (isSuperAdmin || isTenantScopedAdmin);
     const { isEnabled: isReleaseToggleEnabled } = useReleasesToggle();
     const [tenantsData, setTenantsData] = useState([]);
     const [tenantsFailed, setTenantsFailed] = useState(false);
@@ -81,17 +85,13 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
 
     const fields = (
         <>
-            <MuiSwitchField
-                name="teamAgency"
-                label={t('agency.form.settings.teamAdviceCenter.title')}
-                helpText={t('agency.form.settings.teamAdviceCenter.description')}
-            />
+            <TeamFunctionSwitch fn="counselling" className={styles.teamFunction} />
             {showTeamToSingleWarning && (
-                <Alert
-                    className={styles.warning}
-                    type="warning"
-                    description={t('agency.form.settings.teamAdviceCenter.changeWarning')}
-                />
+                <HintText className={styles.warning}>
+                    {t('agency.form.settings.teamAdviceCenter.changeWarning', {
+                        name: t(TEAM_FUNCTIONS.counselling.nameKey),
+                    })}
+                </HintText>
             )}
 
             {isSuperAdmin && (
@@ -105,16 +105,14 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                 />
             )}
             {isSuperAdmin && tenantsFailed && (
-                <Alert
-                    className={styles.warning}
-                    type="error"
-                    description={t('agency.edit.general.more_settings.tenant.loadError')}
-                    action={
-                        <M3Button variant="text" onClick={loadTenants}>
-                            {t('agency.edit.general.more_settings.tenant.retry')}
-                        </M3Button>
-                    }
-                />
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.agency')}
+                    severity="error"
+                    actions={[{ label: t('agency.edit.general.more_settings.tenant.retry'), onClick: loadTenants }]}
+                >
+                    {t('agency.edit.general.more_settings.tenant.loadError')}
+                </Notify>
             )}
 
             {topics?.length > 0 && (
@@ -133,13 +131,11 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                         options={topicOptions}
                     />
                     {hasLegacyTopics && (
-                        <Alert
-                            className={styles.warning}
-                            type="warning"
-                            description={t('agency.form.settings.oneTopicPerAgency.legacyNotice', {
+                        <HintText className={styles.warning}>
+                            {t('agency.form.settings.oneTopicPerAgency.legacyNotice', {
                                 count: selectedTopicIds.length,
                             })}
-                        />
+                        </HintText>
                     )}
                 </>
             )}
@@ -154,6 +150,14 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
                         value,
                         label: t(...TOPIC_PERMISSION_LABEL_KEYS[value].title),
                     }))}
+                />
+            )}
+
+            {canEditLiveChatFurtherCounselling && (
+                <MuiSwitchField
+                    label={t('agency.form.settings.liveChatFurtherCounselling.title')}
+                    helpText={t('agency.form.settings.liveChatFurtherCounselling.help')}
+                    name={['settings', 'featureLiveChatFurtherCounsellingEnabled']}
                 />
             )}
 

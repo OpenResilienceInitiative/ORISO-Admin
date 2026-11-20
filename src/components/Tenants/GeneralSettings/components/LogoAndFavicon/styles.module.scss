@@ -1,83 +1,8 @@
-/* Each image sits in its own panel. The preview box is the 128px square of the shared file uploader. */
-.assetUploader {
-    margin-bottom: 0;
+/* Each image sits in its own panel: the section names it and its size, the row shows the rest. The
+   favicon shows at its real size, so a blurry or cut-off icon is noticed; the doubled class wins
+   over the row's own "fill the preview" rule whatever order the CSS loads in. */
 
-    :global {
-        .ant-form-item-label {
-            display: none;
-        }
-
-        .ant-form-item-control-input {
-            min-height: 0;
-        }
-
-        .ant-upload.ant-upload-select-picture-card {
-            display: flex;
-            width: 100%;
-            height: auto;
-            margin: 0;
-            align-items: center;
-            justify-content: center;
-            aspect-ratio: 1;
-            border: 0;
-            background: var(--m3-surface-container, #f0edee);
-        }
-
-        .ant-upload {
-            overflow: hidden;
-            transition: box-shadow 0.2s ease, transform 0.2s ease;
-        }
-
-        .ant-upload:hover {
-            box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
-        }
-
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-    }
-}
-
-.logoUploader {
-    :global {
-        .ant-upload.ant-upload-select-picture-card {
-            border-radius: 28px;
-        }
-
-        img {
-            mix-blend-mode: luminosity;
-        }
-    }
-}
-
-.faviconUploader,
-.associationLogoUploader {
-    :global {
-        .ant-upload.ant-upload-select-picture-card {
-            border-radius: 8px;
-        }
-    }
-}
-
-/* The favicon is shown at its true size, the association logo a little larger (the tests pin these). */
-.faviconUploader {
+.faviconPreview.faviconPreview img {
     width: 32px;
-}
-
-.associationLogoUploader {
-    width: 54px;
-}
-
-@media only screen and (min-height: 1000px) {
-    .associationLogoUploader {
-        width: 64px;
-    }
-}
-
-.assetSize {
-    color: var(--m3-on-surface-variant, #444748);
-    font-size: 14px;
-    line-height: 20px;
+    height: 32px;
 }

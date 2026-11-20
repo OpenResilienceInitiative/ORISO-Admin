@@ -1,9 +1,9 @@
 import { ReactNode } from 'react';
-import { notification } from 'antd';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar as notification } from '../../Snackbar';
 import { GeneralSettings } from './index';
 import { getTenantAdminControls } from '../../../api/tenant/getTenantAdminControls';
 import { getTenantPermissionPolicies } from '../../../api/tenant/tenantPermissionPolicies';
@@ -58,6 +58,10 @@ vi.mock('./components/TypeOfLanguage', () => ({
     TypeOfLanguage: ({ readOnly }: { readOnly?: boolean }) => (
         <output data-testid="language-type" data-readonly={!!readOnly} />
     ),
+}));
+// The Träger default contact person tile (ORISO-Admin#1534) decides its own rights; it is not under test here.
+vi.mock('../../../pages/Tenants/Edit/General/TraegerContactPersonTile', () => ({
+    TraegerContactPersonTile: () => <output data-testid="traeger-contact-person" />,
 }));
 
 const PLATFORM_ADMIN_ROLES = { isSuperAdmin: true } as ReturnType<typeof useUserRoles>;

@@ -34,7 +34,8 @@ const filled: DpiaMasterData = {
 };
 
 const meta = {
-    title: 'Organisms/GlobalSettings/DocumentMasterDataCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/DocumentMasterDataCard',
+    id: 'organisms-globalsettings-documentmasterdatacard',
     component: DocumentMasterDataCard,
     parameters: { layout: 'padded' },
     args: { data: filled, onSave: () => undefined },

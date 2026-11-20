@@ -1,7 +1,6 @@
 import GroupAddOutlinedIcon from '@mui/icons-material/GroupAddOutlined';
 import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
-import Alert from '@mui/material/Alert';
 import { Form } from 'antd';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +20,7 @@ import { useTemporaryAccountSettings } from '../../../hooks/useTemporaryAccountS
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { guestAccountsHelp, temporaryMessagesHelp } from './help';
 import styles from './styles.module.scss';
+import { Notify } from '../../Notify';
 
 type SaveOptions = { onError?: () => void };
 
@@ -149,7 +149,15 @@ export const TemporaryGuestAccountsSettingsCard = ({
                         }}
                     />
                     {Boolean(error) && (
-                        <Alert severity="error">{t('globalSettings.temporaryAccounts.error.load')}</Alert>
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.temporaryAccounts.error.load')}
+                        </Notify>
                     )}
                     <TileSections>
                         <TileSections.Section id="guest-call" title={t('globalSettings.temporaryAccounts.call.title')}>
@@ -225,7 +233,15 @@ export const TemporaryMessagesSettingsCard = ({
                         }}
                     />
                     {Boolean(error) && (
-                        <Alert severity="error">{t('globalSettings.temporaryAccounts.error.load')}</Alert>
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.temporaryAccounts.error.load')}
+                        </Notify>
                     )}
                     <MuiRadioGroupField
                         name="messageRetention"

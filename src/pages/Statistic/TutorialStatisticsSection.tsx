@@ -1,10 +1,12 @@
-import { Alert, Table } from 'antd';
+import { Table } from 'antd';
 import type { ColumnType } from 'antd/lib/table';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TutorialStatisticsResponse } from '../../api/statistic/getTutorialStatistics';
 import { buildTutorialStatisticRows, TutorialStatisticRow } from './tutorialStatisticsData';
 import { useTutorialStatistics } from './useTutorialStatistics.hook';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 export interface TutorialStatisticsSectionProps {
     /** Injectable for tests/Storybook; defaults to the real admin statistics API. */
@@ -108,7 +110,16 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                 align: 'right',
                 width: 140,
                 onCell: hiddenCell(false),
-                render: (unusedValue, row) => (row.completionPercent === null ? null : `${row.completionPercent}%`),
+                // A short bar next to the number reads faster than the number alone (#1374).
+                render: (unusedValue, row) =>
+                    row.completionPercent === null ? null : (
+                        <span className="tutorialStatistics__rate">
+                            <span className="tutorialStatistics__rateBar" aria-hidden="true">
+                                <span style={{ width: `${Math.min(100, Math.max(0, row.completionPercent))}%` }} />
+                            </span>
+                            {`${row.completionPercent}%`}
+                        </span>
+                    ),
             },
         ] as ColumnType<TutorialStatisticRow>[];
     }, [isPlatformScope, smallCellMinimum, t]);
@@ -118,12 +129,18 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
             <h2 className="tutorialStatistics__title">{t('statistic.tutorials.title')}</h2>
             <p className="tutorialStatistics__subtitle">{t('statistic.tutorials.subtitle')}</p>
             {isLoading && <p className="tutorialStatistics__notice">{t('statistic.tutorials.loading')}</p>}
-            {isForbidden && <Alert type="info" showIcon message={t('statistic.tutorials.forbidden')} />}
-            {isError && <Alert type="error" showIcon role="alert" message={t('statistic.tutorials.loadError')} />}
-            {isLoaded && rows.length === 0 && (
-                <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
+            {isForbidden && <HintText>{t('statistic.tutorials.forbidden')}</HintText>}
+            {isError && (
+                <Notify
+                    retry
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.statistics')}
+                    severity="error"
+                >
+                    {t('statistic.tutorials.loadError')}
+                </Notify>
             )}
-            {isLoaded && rows.length > 0 && (
+            {isLoaded && (
                 <>
                     {/* Focusable scroll region: keyboard users must be able to reach and
                         scroll a wide table (axe: scrollable-region-focusable). */}
@@ -137,11 +154,17 @@ export const TutorialStatisticsSection = ({ loadStatistics }: TutorialStatistics
                         {/* Deliberately not ListingTable: its viewport-height scroll
                             container is unreachable by keyboard; the wrapper above is
                             the single scrollable region of this embedded section. */}
+                        {/* Empty: the columns stay, so the admin sees what will be counted (#1374). */}
                         <Table<TutorialStatisticRow>
                             columns={columns}
                             dataSource={rows}
                             rowKey="key"
                             pagination={false}
+                            locale={{
+                                emptyText: (
+                                    <p className="tutorialStatistics__notice">{t('statistic.tutorials.empty')}</p>
+                                ),
+                            }}
                         />
                     </div>
                     {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}

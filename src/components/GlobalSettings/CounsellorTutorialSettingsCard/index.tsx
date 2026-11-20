@@ -1,6 +1,7 @@
 import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { ReadOnlyTileContext } from '../../CardEditable/ReadOnlyTileContext';
 import { Card } from '../../Card';
 import { MuiSwitchField } from '../../mui/MuiSwitchField';
@@ -151,9 +152,8 @@ export const CounsellorTutorialSettingsCardContainer = () => {
                               {
                                   // The settings PATCH rejects silently (`responseHandling: []`); this is the only failure signal.
                                   onError: () =>
-                                      message.error({
+                                      snackbar.error({
                                           content: t('globalSettings.tutorials.error.generic'),
-                                          duration: 5,
                                       }),
                               },
                           )

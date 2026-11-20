@@ -8,7 +8,8 @@ import { FurtherCounsellingPostcodeSettingsCard } from '.';
 
 /** ORISO-Frontend#1876: postcode prefill for further counselling, default Smart. */
 const meta = {
-    title: 'Organisms/GlobalSettings/FurtherCounsellingPostcodeSettingsCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/FurtherCounsellingPostcodeSettingsCard',
+    id: 'organisms-globalsettings-furthercounsellingpostcodesettingscard',
     component: FurtherCounsellingPostcodeSettingsCard,
     decorators: [
         (Story, { parameters }) => (
@@ -27,7 +28,7 @@ type Story = StoryObj<typeof meta>;
 export const Smart: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(canvas.getByText('Postleitzahl bei einer weiteren Beratung')).toBeVisible();
+        await expect(canvas.getByText('Weiterleitung: Postleitzahl')).toBeVisible();
         await expect(canvas.getByRole('radio', { name: /zuletzt eingegebene Postleitzahl/i })).toBeChecked();
     },
 };

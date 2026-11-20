@@ -161,6 +161,10 @@ export interface ListAccountInvitesParams {
     targetRole?: AccountInviteTargetRole;
     status?: AccountInviteStatus;
     tenantId?: number;
+    query?: string;
+    progressPhases?: InviteProgressPhase[];
+    sort?: 'recipient' | 'invitedAt';
+    sortDirection?: 'asc' | 'desc';
 }
 
 export interface InviteEmailTemplateDTO {
@@ -177,6 +181,8 @@ export interface InviteEmailTemplateDTO {
     active: boolean;
     createDate: string;
     updateDate: string | null;
+    /** Built-in defaults retain their kind/language and cannot be deleted. */
+    systemDefault?: boolean;
 }
 
 /**
@@ -274,6 +280,15 @@ export const listAccountInvites = async (
     if (params.targetRole) search.set('target_role', params.targetRole);
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
+    if (params.query?.trim()) search.set('query', params.query.trim());
+    if (params.progressPhases?.length) {
+        search.set(
+            params.progressPhases.length > 1 ? 'progress_phases' : 'progress_phase',
+            params.progressPhases.join(','),
+        );
+    }
+    if (params.sort) search.set('sort', params.sort);
+    if (params.sortDirection) search.set('sort_direction', params.sortDirection);
 
     return withUtcInstants(
         await fetchData({
@@ -389,14 +404,18 @@ export const resendAccountInvite = async (
     return withUtcInstants(await response.json());
 };
 
-export const revokeAccountInvite = async (inviteId: number): Promise<AccountInviteDTO> => {
-    const response = await fetchData({
-        url: `${accountInvitesEndpoint}/${inviteId}/revoke`,
-        method: FETCH_METHODS.POST,
+/**
+ * DELETE /useradmin/account-invites/{id} (ORISO-Admin#1522): an open invite is revoked at once (its
+ * link stops working, its address is free again) and the invite leaves every list; the nightly
+ * purge removes it. Answers 204, also when it was already deleted; 409 once its account exists.
+ */
+export const deleteAccountInvite = async (inviteId: number): Promise<void> => {
+    await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}`,
+        method: FETCH_METHODS.DELETE,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
-    return withUtcInstants(await response.json());
 };
 
 /** Also updates an existing account; 400/403 reject with the raw Response for the table to explain. */
@@ -509,4 +528,14 @@ export const updateInviteEmailTemplate = async (
         bodyData: JSON.stringify(body),
     });
     return withUtcInstants(await response.json());
+};
+
+/** Deletes an allowed custom template; queued references are rejected by the server. */
+export const deleteInviteEmailTemplate = async (id: number): Promise<void> => {
+    await fetchData({
+        url: `${inviteEmailTemplatesEndpoint}/${id}`,
+        method: FETCH_METHODS.DELETE,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+    });
 };

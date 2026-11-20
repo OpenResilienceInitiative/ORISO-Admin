@@ -56,11 +56,9 @@
     margin-bottom: 16px;
 }
 
-.dialogNotice {
-    padding: 12px 16px;
-    border-radius: 12px;
+/* Consequences of the move: plain text in the dialog, no surface and no border. */
+.dialogConsequences {
     margin-bottom: 12px;
-    background: var(--m3-surface-container, #f1f1f1);
     color: var(--m3-on-surface, #1b1b1b);
 
     p {

@@ -3,7 +3,8 @@ import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { DataProcessingAgreementCard } from './index';
 
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementCard',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementCard',
+    id: 'organisms-legal-dataprocessingagreementcard',
     component: DataProcessingAgreementCard,
     parameters: { layout: 'padded' },
     // Storybook has no JWT, so the role for the help texts is pinned explicitly.

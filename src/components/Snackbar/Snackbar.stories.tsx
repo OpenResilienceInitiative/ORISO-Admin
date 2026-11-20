@@ -14,13 +14,15 @@ const meta = {
     title: 'Molecules/Snackbar',
     component: Snackbar,
     parameters: {
+        // These stories bring their own (contained) host.
+        ownSnackbarHost: true,
         layout: 'padded',
         design: { type: 'figma', url: FIGMA },
         docs: {
             description: {
                 component:
                     'M3 snackbar from the ORISO Figma (Design-System-M3_ORISO, node 53977:33575): ten variants plus the action and close building blocks. ' +
-                    'Application code never renders it directly. It raises messages through `snackbar.notify()` / `useSnackbar()`, and `<SnackbarHost>` shows them one at a time.',
+                    'Application code never renders it directly. It raises messages through `snackbar.notify()` / `useSnackbar()`, and `<SnackbarHost>` shows up to four at once and queues the rest.',
             },
         },
     },
@@ -416,6 +418,14 @@ const ChannelButtons = ({ frameRef }: { frameRef: (element: HTMLDivElement | nul
     );
 };
 
+// The Storybook preview mounts its own host, whose assertive region is always in the DOM and empty.
+// Pick the region that holds a pop-up of this story instead of the first alert in the page.
+const snackbarAlert = (body: ReturnType<typeof within>): HTMLElement => {
+    const region = body.getAllByRole('alert').find((el) => el.querySelector('[data-testid="snackbar"]'));
+    if (!region) throw new Error('No assertive region holds a snackbar yet');
+    return region;
+};
+
 const ChannelDemo = () => {
     const store = useMemo(() => createSnackbarStore(), []);
     const [frame, setFrame] = useState<HTMLDivElement | null>(null);
@@ -435,7 +445,7 @@ export const ChannelQueueAndDedupe: Story = {
         await waitFor(() => expect(body.getAllByTestId('snackbar')).toHaveLength(1));
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Burst of 5 identical errors' }));
         await expect(body.getAllByTestId('snackbar')).toHaveLength(1);
-        await expect(body.getByRole('alert')).toHaveTextContent('Es ist ein Fehler aufgetreten.');
+        await expect(snackbarAlert(body)).toHaveTextContent('Es ist ein Fehler aufgetreten.');
     },
 };
 
@@ -445,7 +455,7 @@ export const ErrorIsAnAlert: Story = {
     play: async ({ canvasElement, userEvent }) => {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Error (stays until closed)' }));
-        const alert = await body.findByRole('alert');
+        const alert = await waitFor(() => snackbarAlert(body));
         // The pop-up fades in over 150 ms; an element at opacity 0 is not visible yet.
         await waitFor(() => expect(within(alert).getByRole('button', { name: 'Meldung schließen' })).toBeVisible());
         await userEvent.click(within(alert).getByRole('button', { name: 'Meldung schließen' }));
@@ -561,7 +571,7 @@ export const StackOfThree: Story = {
 
 /**
  * "Ansehen": the pop-up belongs to a card. The jump scrolls to it and focuses it (here the card;
- * with an editor `onJump` opens or enlarges it first), then the pop-up goes away.
+ * with an editor `onJump` opens or enlarges it first), the pop-up stays.
  */
 export const JumpAction: Story = {
     render: () => <TilesDemo />,
@@ -570,8 +580,9 @@ export const JumpAction: Story = {
         await userEvent.click(within(card).getByRole('button', { name: 'Entry missing' }));
         const popup = await within(canvasElement).findByTestId('snackbar');
         await userEvent.click(within(popup).getByRole('button', { name: /Ansehen|View/ }));
-        await waitFor(() => expect(within(card).getByRole('button', { name: 'Load fails' })).toHaveFocus());
-        await waitFor(() => expect(canvasElement.querySelector('[data-testid="snackbar"]')).toBeNull());
+        // The card's heading takes the focus. The pop-up stays.
+        await waitFor(() => expect(within(card).getByRole('heading')).toHaveFocus());
+        await expect(canvasElement.querySelector('[data-testid="snackbar"]')).not.toBeNull();
     },
 };
 
@@ -581,7 +592,7 @@ export const ErrorThatStays: Story = {
     play: async ({ canvasElement, userEvent }) => {
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(within(canvasElement).getByRole('button', { name: 'Error (stays until closed)' }));
-        const alert = await body.findByRole('alert');
+        const alert = await waitFor(() => snackbarAlert(body));
         // The pop-up fades in over 150 ms; an element at opacity 0 is not visible yet.
         await waitFor(() => expect(within(alert).getByRole('button', { name: 'Meldung schließen' })).toBeVisible());
     },

@@ -34,3 +34,12 @@ describe('old live-chat links address (ORISO-Admin#1321)', () => {
         expect(source).not.toMatch(/LazyExternalInboundsTab/);
     });
 });
+
+describe('unknown Admin addresses (ORISO-Admin#1513)', () => {
+    it('ends the protected route table with a catch-all not-found page', () => {
+        const protectedRoutes = source.slice(source.indexOf('<Suspense fallback={<PageLoader />}>'));
+        const lastRoute = protectedRoutes.slice(protectedRoutes.lastIndexOf('<Route '));
+
+        expect(lastRoute).toMatch(/^<Route path="\*" element=\{<AdminNotFound \/>\} \/>/);
+    });
+});

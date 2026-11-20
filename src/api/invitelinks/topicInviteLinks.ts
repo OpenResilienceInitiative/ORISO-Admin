@@ -63,6 +63,23 @@ export const buildTopicInviteLinkUrl = (token: string, topicName?: string | null
     return `${base}/invite/${token}/${encodeURIComponent(name)}`;
 };
 
+export interface LiveChatLinkTopic {
+    id: number;
+    name: string;
+}
+
+export const listLiveChatLinkTopics = async (tenantId: number, signal?: AbortSignal): Promise<LiveChatLinkTopic[]> => {
+    const topics = await fetchData({
+        url: `${invitelinksEndpoint}/topics`,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        headersData: inviteLinkHeaders(tenantId),
+        responseHandling: [FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL_SILENT],
+        signal,
+    });
+    return Array.isArray(topics) ? topics : [];
+};
+
 /** invite-link-apis.json #5 — GET ?page=0&size=20 + Authorization + X-Tenant-Id */
 export const listTopicInviteLinks = async (
     params: ListTopicInviteLinksParams = {},

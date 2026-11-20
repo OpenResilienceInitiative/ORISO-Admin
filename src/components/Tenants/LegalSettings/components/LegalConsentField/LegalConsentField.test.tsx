@@ -113,6 +113,19 @@ describe('LegalConsentField — dialog (#862)', () => {
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         expect(screen.getByTestId('consent-missing-token-error')).toBeInTheDocument();
     });
+
+    it('announces both blocking errors, which stop Apply and Publish', async () => {
+        render(<LegalConsentField language="de" value="Ich stimme zu {{legal_links}}." onChange={() => undefined} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        expect(screen.queryByTestId('consent-empty-error')).not.toBeInTheDocument();
+        await userEvent.clear(screen.getByRole('textbox'));
+
+        expect(screen.getByTestId('consent-empty-error')).toHaveAttribute('role', 'alert');
+        await userEvent.click(screen.getByRole('textbox'));
+        await userEvent.paste('Ich stimme zu.');
+        expect(screen.getByTestId('consent-missing-token-error')).toHaveAttribute('role', 'alert');
+    });
 });
 
 describe('LegalConsentField — placeholders that run together (#1255)', () => {
@@ -130,6 +143,8 @@ describe('LegalConsentField — placeholders that run together (#1255)', () => {
         const warning = screen.getByTestId('consent-run-together-warning');
         expect(warning).toHaveTextContent('legal.consent.warning.runTogether.title');
         expect(warning).toHaveTextContent('legal.consent.warning.runTogether.item:{{legal_links}}:{{Thema}}');
+        // A warning, not a blocker: it stays silent for screen readers.
+        expect(warning).not.toHaveAttribute('role');
     });
 
     it('drops the warning once a space separates them', async () => {

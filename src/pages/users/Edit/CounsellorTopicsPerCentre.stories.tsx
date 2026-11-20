@@ -30,7 +30,11 @@ const centre = (id: number, name: string, postcode: string, city: string, topics
 const NORD = centre(1, 'Beratungsstelle Nord', '20095', 'Hamburg', [SUCHT, SCHULDEN]);
 const SUED = centre(2, 'Beratungsstelle Süd', '80331', 'München', [SUCHT, FAMILIE]);
 const OST = centre(3, 'Beratungsstelle Ost', '10115', 'Berlin', [FAMILIE]);
-const CENTRES = [NORD, SUED, OST];
+/** A centre whose ID is 0 is a real centre; the page once read it as a list index (#1302). */
+const NULL_CENTRE = centre(0, 'Beratungsstelle Null', '10000', 'Berlin', [
+    { id: 14, name: 'Wohnen', status: 'ACTIVE' },
+]);
+const CENTRES = [NORD, SUED, OST, NULL_CENTRE];
 
 const tr = (key: string, values?: Record<string, unknown>) => String(i18n.t(key, values));
 
@@ -45,7 +49,13 @@ const record = async (request: Request) => {
 };
 const sentTo = (method: string, suffix: string) => sent.filter((r) => r.method === method && r.path.endsWith(suffix));
 
-const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>, searchDelayMs = 0) => {
+const handlers = (
+    agencies: (typeof NORD)[],
+    stored: Record<string, unknown>,
+    searchDelayMs = 0,
+    /** The live search endpoint also returns the stored topics, as the server's list. */
+    searchCarriesStored = false,
+) => {
     const consultant = {
         id: CONSULTANT_ID,
         firstname: 'Ada',
@@ -63,7 +73,8 @@ const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>, se
         http.get('*/service/topic/', () => HttpResponse.json([SUCHT, SCHULDEN, FAMILIE])),
         http.get('*/service/users/consultants/search', async () => {
             await delay(searchDelayMs);
-            return HttpResponse.json({ _embedded: [{ _embedded: consultant }], total: 1 });
+            const row = searchCarriesStored ? { ...consultant, ...stored } : consultant;
+            return HttpResponse.json({ _embedded: [{ _embedded: row }], total: 1 });
         }),
         http.get('*/service/agencyadmin/agencies', () =>
             HttpResponse.json({ _embedded: CENTRES.map((c) => ({ _embedded: c })), total: CENTRES.length }),
@@ -75,6 +86,22 @@ const handlers = (agencies: (typeof NORD)[], stored: Record<string, unknown>, se
             await record(request);
             return HttpResponse.json({ _embedded: CENTRES.find((c) => String(c.id) === params.id) });
         }),
+        http.get(`*/service/useradmin/accounts/${CONSULTANT_ID}/status`, () =>
+            HttpResponse.json({
+                accountId: CONSULTANT_ID,
+                username: 'ada',
+                createDate: '2026-09-01T10:00:00',
+                updateDate: null,
+                active: true,
+                paused: false,
+                loginEnabled: true,
+                absent: false,
+                lifecycleRestricted: false,
+                tenantActive: true,
+                restrictions: [],
+                twoFactor: { required: true, configured: true, active: false },
+            }),
+        ),
         http.get(`*/service/useradmin/consultants/${CONSULTANT_ID}`, () =>
             HttpResponse.json({ _embedded: { ...consultant, ...stored } }),
         ),
@@ -141,6 +168,25 @@ export const TwoCentresTwoPickers: Story = {
         await unlock();
         await expect(await openOptions(pickerLabel(NORD))).toEqual(['Schulden', 'Sucht']);
         await expect(await openOptions(pickerLabel(SUED))).toEqual(['Familie', 'Sucht']);
+    },
+};
+
+/** Centre ID 0: the editor opens and the centre's picker lists its topics (#1302). */
+export const CentreIdZeroOpens: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers([NULL_CENTRE], { topicsByAgency: [{ agencyId: 0, topicIds: [14] }] }, 0, true),
+        },
+    },
+    play: async () => {
+        await unlock();
+        await expect(await openOptions(pickerLabel(NULL_CENTRE))).toEqual(['Wohnen']);
+        await expect(screen.queryByText(tr('errorBoundary.title'))).not.toBeInTheDocument();
+        await save();
+        await waitFor(() => expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)).toHaveLength(1));
+        await expect(sentTo('PUT', `/consultants/${CONSULTANT_ID}`)[0].body.topicsByAgency).toEqual([
+            { agencyId: 0, topicIds: [14] },
+        ]);
     },
 };
 

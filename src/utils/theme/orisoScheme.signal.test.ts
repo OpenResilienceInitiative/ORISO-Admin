@@ -25,6 +25,18 @@ describe('computeOrisoPalette signal seed', () => {
         expect(computeOrisoPalette({ accentDark: '#a5000a', signal: '#00aa55' }).signalTooClose).toBe(false);
     });
 
+    it('does not warn for the shipped default pair (Caritas-Rot + system error, #1374)', () => {
+        expect(signalTooCloseToBrand({ accentDark: '#a5000a', signal: '#b1005e' })).toBe(false);
+    });
+
+    it('warns when the brand takes the error colour itself (preset „Beere“ + system error)', () => {
+        expect(signalTooCloseToBrand({ accentDark: '#b1005e', signal: '#b1005e' })).toBe(true);
+    });
+
+    it('does not call a grey error colour close to a red brand (#1374)', () => {
+        expect(signalTooCloseToBrand({ accentDark: '#a5000a', signal: '#808080' })).toBe(false);
+    });
+
     it('does not warn when signal is absent (default system error)', () => {
         expect(signalTooCloseToBrand({ accentDark: '#a5000a' })).toBe(false);
         expect(computeOrisoPalette({ accentDark: '#a5000a' }).signalTooClose).toBe(false);

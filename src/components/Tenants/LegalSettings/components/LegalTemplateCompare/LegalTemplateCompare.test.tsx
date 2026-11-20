@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar, SnackbarHost } from '../../../../Snackbar';
 import type { M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalTemplateCompare, LegalTemplateCompareProps } from './index';
 import type { LegalTemplateProposal } from '../../hooks/useLegalProposalInbox';
@@ -28,7 +30,9 @@ const pending: LegalTemplateProposal = {
 
 const MockEditor = ({ comparison, snackbarSlot }: Pick<M3RichTextEditorProps, 'comparison' | 'snackbarSlot'>) => (
     <div>
-        <div data-testid="own-draft-editor">Eigener Entwurf</div>
+        <div id="test-proposal-editor" data-testid="own-draft-editor">
+            Eigener Entwurf
+        </div>
         {comparison && (
             <button type="button" onClick={() => comparison.onOpenChange?.(!comparison.open)}>
                 {comparison.open ? 'Vergleich schließen' : 'Vorlage vergleichen'}
@@ -66,7 +70,7 @@ const renderCompare = (props: Partial<LegalTemplateCompareProps> = {}) => {
 };
 
 describe('LegalTemplateCompare', () => {
-    it('keeps the new-template notice inside the editor and opens one read-only reference', async () => {
+    it('raises the new-template notice as a pop-up and opens one read-only reference', async () => {
         renderCompare();
         expect(screen.getByTestId('own-draft-editor')).toBeInTheDocument();
         expect(screen.getByText(/25\.09\.2026, 16:31/)).toBeInTheDocument();
@@ -97,12 +101,12 @@ describe('LegalTemplateCompare', () => {
 
     it('X hides only this visit; dismiss calls the publication-specific handler', async () => {
         const { onDismiss, unmount } = renderCompare();
-        await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'snackbar.close' }));
         expect(screen.queryByRole('button', { name: 'legal.proposal.preview' })).toBeNull();
         expect(onDismiss).not.toHaveBeenCalled();
         unmount();
         const second = renderCompare();
-        expect(screen.getByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
         await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.dismiss' }));
         expect(second.onDismiss).toHaveBeenCalledTimes(1);
     });
@@ -180,7 +184,7 @@ describe('LegalTemplateCompare', () => {
 
     it('announces a new publication after the current one was temporarily closed', async () => {
         const { rerender } = renderCompare();
-        await userEvent.click(screen.getByRole('button', { name: 'legal.help.snackbar.close' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'snackbar.close' }));
         rerender(
             <LegalTemplateCompare
                 proposal={{ ...pending, id: 32, revision: '32:0' }}
@@ -194,11 +198,63 @@ describe('LegalTemplateCompare', () => {
                 <MockEditor />
             </LegalTemplateCompare>,
         );
-        expect(screen.getByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'legal.proposal.preview' })).toBeInTheDocument();
     });
     it('names the fallback language when the requested language has no template', async () => {
         renderCompare({ language: 'en' });
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByText(/legal.proposal.otherLanguage/)).toHaveTextContent('"language":"de"');
+    });
+});
+
+describe('received template while the document tile is closed', () => {
+    afterEach(() => snackbar.clear());
+
+    const ClosedTile = ({ readOnly = false }: { readOnly?: boolean }) => {
+        const [open, setOpen] = useState(false);
+        return (
+            <>
+                <SnackbarHost />
+                <button type="button" onClick={() => setOpen(!open)}>
+                    toggle tile
+                </button>
+                <LegalTemplateCompare
+                    proposal={pending}
+                    source="traeger"
+                    documentType="imprint"
+                    language="de"
+                    hasDraft={false}
+                    readOnly={readOnly}
+                    tileOpen={open}
+                    tileTarget="test-proposal-editor"
+                    onOpenTile={() => setOpen(true)}
+                    onAdopt={() => undefined}
+                    onDismiss={() => undefined}
+                >
+                    <MockEditor />
+                </LegalTemplateCompare>
+                <span data-testid="tile-open">{String(open)}</span>
+            </>
+        );
+    };
+
+    it('announces the template once, opens its comparison and retains it after folding', async () => {
+        render(<ClosedTile />);
+        expect(await screen.findAllByRole('button', { name: 'legal.proposal.preview' })).toHaveLength(1);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
+        expect(screen.getByTestId('tile-open')).toHaveTextContent('true');
+        await waitFor(() => expect(document.activeElement?.id).toBe('test-proposal-editor'));
+        expect(screen.getByTestId('legal-template-reader')).toHaveTextContent('Muster-Impressum der Plattform');
+        await userEvent.click(screen.getByRole('button', { name: 'toggle tile' }));
+        expect(screen.getByTestId('tile-open')).toHaveTextContent('false');
+        expect(screen.queryByRole('button', { name: 'legal.proposal.preview' })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'toggle tile' }));
+        expect(screen.getByTestId('legal-template-reader')).toBeInTheDocument();
+    });
+
+    it('does not offer to dismiss the template to a read-only user', async () => {
+        render(<ClosedTile readOnly />);
+        await screen.findByRole('button', { name: 'legal.proposal.preview' });
+        expect(screen.queryByRole('button', { name: 'legal.help.snackbar.dismiss' })).not.toBeInTheDocument();
     });
 });

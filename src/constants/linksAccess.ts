@@ -7,11 +7,11 @@ import type { InviteViewerScope } from '../pages/Links/inviteModel';
  * Which "Links" tabs an admin may see. The section hands out invite links, and each
  * tab creates something a level BELOW the admin who uses it:
  *
- * - "Träger-Invites" found whole tenants for the platform admin; a tenant admin
+ * - „Träger-Einladungen“ found whole tenants for the platform admin; a tenant admin
  *   sees the tab too but only invites further admins into their OWN Träger
  *   (the server refuses anything else). An agency admin sees it, the server
  *   lets them invite counsellors only, so the tab is read-only for them.
- * - "Berater-Invites" create counsellors inside the admin's own unit → platform
+ * - „Beratende-Einladungen“ create counsellors inside the admin's own unit → platform
  *   admin, tenant admin and agency admin (counsellors into own agencies only).
  */
 // Live-chat links ("Externe Inbounds") moved to Funktionszugriff (ORISO-Admin#1321).

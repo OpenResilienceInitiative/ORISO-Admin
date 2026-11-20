@@ -122,9 +122,9 @@ const reuseOneTimePassword: NonNullable<Story['play']> = async (context) => {
     await userEvent.type(password, ONE_TIME_PASSWORD);
     await userEvent.type(repeat, ONE_TIME_PASSWORD);
     await userEvent.click(canvas.getByRole('button', { name: /Passwort speichern|Save password/ }));
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
-        /vom Einmalpasswort unterscheidet|differs from the one-time password/,
-    );
+    await expect(
+        await canvas.findByText(/vom Einmalpasswort unterscheidet|differs from the one-time password/),
+    ).toBeVisible();
     await expect(canvas.queryByText(/kein erfolgreicher Abschluss|Successful completion/)).not.toBeInTheDocument();
     await userEvent.clear(password);
     await userEvent.clear(repeat);

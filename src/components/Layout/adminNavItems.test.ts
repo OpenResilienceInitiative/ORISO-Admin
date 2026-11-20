@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { buildAdminNavItems, resolveLogsPage, type AdminNavLabels } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
+import type { CanFn } from '../../constants/caseHandoverAccess';
 import routePathNames from '../../appConfig';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
@@ -8,6 +9,7 @@ import { UserRole } from '../../enums/UserRole';
 
 const labels: AdminNavLabels = {
     account: 'Account',
+    addons: 'Add-ons',
     agency: 'Agencies',
     home: 'Home',
     links: 'Links',
@@ -35,12 +37,51 @@ describe('resolveLogsPage', () => {
         expect(resolveLogsPage(false, false, true, true)).toBe(routePathNames.inactiveAccountAuditLogs);
     });
 
+    it('lands on the add-on log last', () => {
+        expect(resolveLogsPage(false, false, false, false, true)).toBe(routePathNames.addonAuditLogs);
+        expect(resolveLogsPage(false, true, false, false, true)).toBe(routePathNames.caseHandoverLogs);
+    });
+
     it('returns null when the admin may read no log view', () => {
         expect(resolveLogsPage(false, false, false)).toBeNull();
     });
 });
 
 describe('buildAdminNavItems', () => {
+    // ORISO-UserService#1666: a Statistik-Leser·in has exactly one destination.
+    it('shows a Statistik-Leser·in only the statistics entry, without Home', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(Resource.Statistic),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([
+            {
+                key: 'statistics',
+                to: routePathNames.statistic,
+                label: 'Statistics',
+                iconPath: routePathNames.statistic,
+            },
+        ]);
+    });
+
+    it('shows a Statistik-Leser·in no statistics entry either when the permission is missing', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([]);
+    });
+
     // ORISO-Admin#1323: every admin starts at Home, whatever else they may open.
     it.each([
         ['platform admin', true, hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin), canFor(Resource.Tenant)],
@@ -106,6 +147,21 @@ describe('buildAdminNavItems', () => {
         expect(logEntries(items)).toHaveLength(1);
         expect(logEntries(items)[0].label).toBe(labels.logs);
         expect(logEntries(items)[0].to).toBe(expectedLanding);
+    });
+
+    it('shows the Add-ons entry to platform admins and admins who may change the Träger', () => {
+        const addonsEntry = (isSuperAdmin: boolean, can: CanFn) =>
+            build({
+                isSuperAdmin,
+                hasRole: hasRoleFor(),
+                can,
+                labels,
+                settingsPath: '/admin/theme-settings/general',
+            }).find((item) => item.key === 'addons');
+
+        expect(addonsEntry(true, canFor())?.to).toBe(routePathNames.addons);
+        expect(addonsEntry(false, canFor(Resource.Tenant))?.label).toBe(labels.addons);
+        expect(addonsEntry(false, canFor(Resource.Agency, Resource.Consultant))).toBeUndefined();
     });
 
     it('keeps the "Logs" entry highlighted across every log sub-route', () => {

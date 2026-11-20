@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse, delay } from 'msw';
-import { getWorker } from 'msw-storybook-addon';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
 import { within, userEvent, screen, expect, waitFor } from 'storybook/test';
 import { GrantConsultantIdentityModal } from './index';
@@ -107,10 +106,9 @@ export const EmptyAgencies: Story = {
     parameters: {
         msw: { handlers: [http.get(AGENCY_ENDPOINT, () => agenciesResponse([]))] },
     },
-    beforeEach: () => {
+    beforeEach: ({ msw: worker }) => {
         const observation: NonNullable<typeof emptyResponseObservation> = { active: true };
         emptyResponseObservation = observation;
-        const worker = getWorker();
         const observeResponse: Parameters<typeof worker.events.on<'response:mocked'>>[1] = async ({
             request,
             response,
@@ -194,6 +192,11 @@ export const NoTopicAtAgency: Story = {
     },
     play: async (context) => {
         await pickAgency('Familienhilfe West')(context);
-        await expect(await screen.findByRole('alert')).toBeInTheDocument();
+        // The preview's snackbar host keeps an empty alert region in the DOM: match the one with the text.
+        await expect(
+            await screen.findByText(
+                /Die gewählte Beratungsstelle hat noch kein Thema|The selected advice centre has no topic yet/,
+            ),
+        ).toBeInTheDocument();
     },
 };

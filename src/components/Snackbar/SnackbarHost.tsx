@@ -79,15 +79,16 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
         }
     };
 
-    // The jump takes the place of the primary action when there is none, else of the second one.
-    // Three actions do not fit a snackbar: the explicit ones win.
+    // "Ansehen" is its own link under the message, not an action slot: it fits next to two real actions.
     const { jump } = item;
-    const jumpAction: SnackbarAction | undefined = jump && {
+    const jumpLink: SnackbarAction | undefined = jump && {
         label: jump.label ?? t('snackbar.jump'),
         onClick: () => jumpTo(jump),
     };
-    const action = item.action ?? jumpAction;
-    const secondaryAction = item.action ? item.secondaryAction ?? jumpAction : item.secondaryAction;
+    // Every pop-up has a title. One that came with only a sentence (a plain toast) gets one by severity.
+    const lone = !item.description;
+    const title = lone ? t(`snackbar.title.${item.severity}`) : item.title;
+    const description = lone ? item.title : item.description;
 
     return (
         // eslint-disable-next-line jsx-a11y/no-static-element-interactions -- only forwards the pointer, focus and key events of the buttons inside
@@ -102,11 +103,12 @@ const SnackbarSlot = ({ store, item, order }: SlotProps) => {
             onKeyDown={onKeyDown}
         >
             <Snackbar
-                message={item.title}
-                description={item.description}
+                message={title}
+                description={description}
                 severity={item.severity}
-                action={action}
-                secondaryAction={secondaryAction}
+                action={item.action}
+                secondaryAction={item.secondaryAction}
+                jump={jumpLink}
                 testId={item.testId}
                 dismissible
                 onClose={() => store.close('dismiss', item.key)}
@@ -181,6 +183,31 @@ export const SnackbarHost = ({ store = snackbarStore, container, contained = fal
         const back = lastOutside.current;
         if (back?.isConnected) back.focus();
     }, [visible]);
+
+    // On phones the stack spans the bottom and would cover the last buttons of a page. The page leaves
+    // room for it: a spacer after the app, as high as the stack, lets the person scroll the last buttons
+    // above the pop-ups. A spacer (not padding) because a body with a fixed height cannot grow.
+    useEffect(() => {
+        const element = hostRef.current;
+        if (!element || contained || typeof ResizeObserver === 'undefined') return undefined;
+        const phone = window.matchMedia?.('(max-width: 599px)');
+        const spacer = document.createElement('div');
+        spacer.setAttribute('aria-hidden', 'true');
+        spacer.setAttribute('data-snackbar-spacer', '');
+        document.body.appendChild(spacer);
+        const apply = () => {
+            const inset = phone?.matches ? Math.ceil(element.getBoundingClientRect().height) : 0;
+            spacer.style.height = `${inset}px`;
+        };
+        const observer = new ResizeObserver(apply);
+        observer.observe(element);
+        phone?.addEventListener?.('change', apply);
+        return () => {
+            observer.disconnect();
+            phone?.removeEventListener?.('change', apply);
+            spacer.remove();
+        };
+    }, [contained]);
 
     let target = container;
     if (target === undefined) target = typeof document === 'undefined' ? null : document.body;

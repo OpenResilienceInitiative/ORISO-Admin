@@ -6,7 +6,7 @@ import path from 'node:path';
 const controls = [
     {
         name: 'image accessible name',
-        filename: 'src/test/antdNoticeCleanup.test.tsx',
+        filename: 'src/test/storyRenderCleanup.test.tsx',
         source: 'export const MissingAlt = () => <img src="/mark.svg" />;\n',
         rule: 'jsx-a11y/alt-text',
     },
@@ -18,7 +18,7 @@ const controls = [
     },
     {
         name: 'awaited asynchronous query',
-        filename: 'src/test/antdNoticeCleanup.test.tsx',
+        filename: 'src/test/storyRenderCleanup.test.tsx',
         source: "import { screen } from '@testing-library/react';\nscreen.findByRole('button');\n",
         rule: 'testing-library/await-async-queries',
     },

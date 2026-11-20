@@ -1,4 +1,6 @@
 import type { SupportedLanguageCode } from '../../../constants/supportedLanguages';
+import translationDe from '../../../locales/de/translation.json';
+import translationEn from '../../../locales/en/translation.json';
 
 interface ProposalCopy {
     preview: string;
@@ -31,7 +33,7 @@ interface ProposalCopy {
     count: string;
 }
 
-export const resources = {
+const baseResources = {
     de: {
         proposal: {
             preview: 'Designvorschlag · Beispieldaten, keine Konto- oder Themenänderung',
@@ -260,3 +262,28 @@ export const resources = {
         },
     },
 } satisfies Record<SupportedLanguageCode, { proposal: ProposalCopy }>;
+
+/**
+ * The proposal page runs its own i18n instance (default namespace `proposal`), and `initReactI18next`
+ * makes it the one the app-level pop-up host reads too. The shared channel's texts (Ansehen, close,
+ * retry, the area title) must therefore exist in it, or the pop-up shows raw keys. German and English
+ * come from the global translation; the other story languages fall back to English.
+ */
+const channelTexts = (source: typeof translationDe) => ({
+    snackbar: { jump: source['snackbar.jump'], close: source['snackbar.close'] },
+    notify: { retry: source['notify.retry'], title: { onboarding: source['notify.title.onboarding'] } },
+});
+
+const withChannelTexts = <Copy extends object>(source: typeof translationDe, copy: { proposal: Copy }) => ({
+    proposal: { ...copy.proposal, ...channelTexts(source) },
+});
+
+export const resources = {
+    de: withChannelTexts(translationDe, baseResources.de),
+    en: withChannelTexts(translationEn, baseResources.en),
+    fr: withChannelTexts(translationEn, baseResources.fr),
+    ru: withChannelTexts(translationEn, baseResources.ru),
+    tr: withChannelTexts(translationEn, baseResources.tr),
+    uk: withChannelTexts(translationEn, baseResources.uk),
+    ti: withChannelTexts(translationEn, baseResources.ti),
+};

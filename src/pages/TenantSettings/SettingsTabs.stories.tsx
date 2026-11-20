@@ -23,7 +23,7 @@ type Story = StoryObj<typeof meta>;
 
 const allowAll = () => true;
 
-/** Level 1 — platform admin: Globale Konfigurationen · Stammdaten · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff. */
+/** Level 1 — platform admin: Konfiguration · Stammdaten · Erscheinungsbild · Rechtliches · E-Mail-Server · Funktionszugriff. */
 export const PlatformAdminLevel: Story = {
     render: () => (
         <Page>
@@ -42,7 +42,7 @@ export const PlatformAdminLevel: Story = {
     ),
 };
 
-/** Level 2 — Träger admin: Stammdaten & Mehr · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff (+ Funktionalitäten). */
+/** Level 2 — Träger admin: Stammdaten · Erscheinungsbild · Rechtliches · E-Mail-Server · Funktionszugriff (+ Funktionalitäten). */
 export const TenantAdminLevel: Story = {
     render: () => (
         <Page>

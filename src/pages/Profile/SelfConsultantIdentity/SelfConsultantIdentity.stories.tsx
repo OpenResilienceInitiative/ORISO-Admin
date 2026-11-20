@@ -5,7 +5,8 @@ import { withRoles } from '../profileStory.matrix';
 import { SelfConsultantIdentity } from './index';
 
 const meta = {
-    title: 'Pages/Profile/SelfConsultantIdentity',
+    title: 'Settings/Mein Account/SelfConsultantIdentity',
+    id: 'pages-profile-selfconsultantidentity',
     component: SelfConsultantIdentity,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin', 'user-admin'])],

@@ -1,11 +1,16 @@
 // Aggregate tutorial-completion dashboard section (epic TOUR-07).
 // Design tokens only — the --m3-* custom properties are the canonical source.
+// Full width of the dashboard, same gap and corner radius as the statistic cards above.
 .tutorialStatistics {
-    margin-top: 48px;
+    width: 100%;
+    box-sizing: border-box;
     padding: 24px;
-    border: 1px solid var(--m3-outline-variant, #c4c7c8);
-    border-radius: 12px;
-    background-color: var(--m3-surface, #fcf9f9);
+    margin-top: 24px;
+    border: 0;
+    border-radius: 28px;
+    // A white card like the figures above it (ORISO-Admin#1374).
+    background-color: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%));
 
     &__title {
         margin: 0 0 4px;
@@ -28,8 +33,62 @@
         overflow-x: auto;
 
         &:focus-visible {
-            outline: 2px solid var(--m3-primary, #a5000a);
+            outline: 2px solid var(--admin-focus-ring-color);
             outline-offset: 2px;
         }
+    }
+}
+
+// A calm table like the figures above (ORISO-Admin#1374): no header fill, no column
+// separators, thin row lines.
+.tutorialStatistics .ant-table {
+    background: transparent;
+}
+
+.tutorialStatistics .ant-table-thead > tr > th {
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+    background: transparent;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    font-weight: 500;
+
+    &:before {
+        display: none;
+    }
+}
+
+.tutorialStatistics .ant-table-tbody > tr > td {
+    border-bottom: 1px solid var(--m3-surface-container-high, #eae7e8);
+}
+
+.tutorialStatistics .ant-table-tbody > tr.ant-table-placeholder > td,
+.tutorialStatistics .ant-table-tbody > tr.ant-table-placeholder:hover > td,
+.tutorialStatistics .ant-table-placeholder .ant-table-cell,
+.tutorialStatistics .ant-table-placeholder .ant-empty {
+    background: transparent;
+}
+
+.tutorialStatistics__rate {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tutorialStatistics__rateBar {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    width: 72px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--m3-surface-container-high, #eae7e8);
+
+    > span {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        border-radius: 3px;
+        background: var(--m3-primary, #a5000a);
     }
 }

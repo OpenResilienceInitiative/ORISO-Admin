@@ -49,9 +49,16 @@ describe('verification integrity', () => {
         (path) => expect(isProductRequest(`https://example.test${path}`)).toBe(true),
     );
 
-    it.each(['/mockServiceWorker.js', '/admin/env.js', '/src/component.tsx', '/asset.svg'])(
-        'does not classify static loading %s as a product API',
-        (path) => expect(isProductRequest(`https://example.test${path}`)).toBe(false),
+    it.each([
+        '/mockServiceWorker.js',
+        '/admin/env.js',
+        '/src/component.tsx',
+        '/src/api/fetchData.ts',
+        '/node_modules/.vite/deps/api.js',
+        '/@fs/app/src/api/auth/login.ts',
+        '/asset.svg',
+    ])('does not classify static loading %s as a product API', (path) =>
+        expect(isProductRequest(`https://example.test${path}`)).toBe(false),
     );
 });
 

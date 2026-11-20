@@ -4,7 +4,8 @@ import { inTheRaster, withRoles } from './profileStory.matrix';
 import { TwoFactorCard } from './TwoFactorCard';
 
 const meta = {
-    title: 'Pages/Profile/TwoFactorCard',
+    title: 'Settings/Mein Account/TwoFactorCard',
+    id: 'pages-profile-twofactorcard',
     component: TwoFactorCard,
     parameters: { layout: 'padded', msw: { handlers: profileUserDataHandlers } },
     decorators: [withRoles(['agency-admin'])],

@@ -1,4 +1,9 @@
-import { Alert, Button, Skeleton } from 'antd';
+import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import PhoneInTalkOutlinedIcon from '@mui/icons-material/PhoneInTalkOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import { Skeleton } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Select } from '../../../../../components/M3Select';
@@ -7,12 +12,16 @@ import { Card } from '../../../../../components/Card';
 import { M3Button } from '../../../../../components/M3Button';
 import { CardEditable } from '../../../../../components/CardEditable';
 import { FieldGrid } from '../../../../../components/FieldGrid';
-import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
+import { fieldIcon } from '../../../../../components/AddressFields';
+import { MuiFormField } from '../../../../../components/mui/MuiFormField';
+import { OpeningHoursFormField } from '../../../../../components/OpeningHoursInput';
+import { formatOpeningHours, parseOpeningHours } from '../../../../../utils/openingHours';
 import { useDepartmentDetails } from '../../../../../hooks/useDepartmentDetails.hook';
 import { useUpdateDepartmentDetails } from '../../../../../hooks/useUpdateDepartmentDetails.hook';
 import { AgencyData } from '../../../../../types/agency';
 import { DepartmentDetails } from '../../../../../types/departmentDetails';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../../components/Notify';
 
 export interface DepartmentOption {
     id: number;
@@ -68,15 +77,21 @@ export const DepartmentDetailsCard = ({
     const { t } = useTranslation();
 
     const departmentSelect = (
-        <M3Select
-            aria-label={t('agency.legal.department.choose', 'Fachbereich wählen')}
-            options={departments.map(({ id, name }) => ({ value: id, label: name }))}
-            value={selected}
-            onChange={onSelect}
-            placeholder={t('agency.legal.department.choose', 'Fachbereich wählen')}
-            style={{ minWidth: 220 }}
-            disabled={departments.length === 0}
-        />
+        <div className={styles.departmentPicker}>
+            <span className={styles.departmentLabel}>
+                <CategoryOutlinedIcon fontSize="small" aria-hidden />
+                {t(`${TITLE_KEY}.department_label`)}
+            </span>
+            <M3Select
+                aria-label={t('agency.legal.department.choose', 'Fachbereich wählen')}
+                options={departments.map(({ id, name }) => ({ value: id, label: name }))}
+                value={selected}
+                onChange={onSelect}
+                placeholder={t('agency.legal.department.choose', 'Fachbereich wählen')}
+                style={{ width: '100%' }}
+                disabled={departments.length === 0}
+            />
+        </div>
     );
 
     // Disable-not-hide: an agency without Fachbereiche keeps the card, with a hint instead
@@ -84,7 +99,14 @@ export const DepartmentDetailsCard = ({
     // "cannot be added later" and created a new Beratungsstelle instead (#1069).
     if (departments.length === 0) {
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
                 <p>
                     {t('agency.edit.general.department_details.no_departments', {
                         card: t('agency.edit.settings.title'),
@@ -104,7 +126,14 @@ export const DepartmentDetailsCard = ({
 
     if (isLoading) {
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
                 <Skeleton active title={false} paragraph={{ rows: 4 }} />
             </Card>
         );
@@ -115,23 +144,35 @@ export const DepartmentDetailsCard = ({
     if (isError) {
         const selectedName = departments.find(({ id }) => id === selected)?.name ?? '';
         return (
-            <Card autoHeight dialogContentPadding titleKey={TITLE_KEY} variant="dialog" subTitle={departmentSelect}>
-                <Alert
-                    type="error"
-                    showIcon
-                    message={t('agency.edit.general.department_details.loadError.title')}
-                    description={t('agency.legal.department.loadError.text', { name: selectedName })}
-                    action={
-                        onRetry && (
-                            <Button size="small" onClick={onRetry}>
-                                {t('agency.legal.department.loadError.retry')}
-                            </Button>
-                        )
+            <Card
+                autoHeight
+                dialogContentPadding
+                titleKey={TITLE_KEY}
+                headerIcon={<CategoryOutlinedIcon />}
+                variant="dialog"
+                subTitle={departmentSelect}
+            >
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    severity="error"
+                    title={t('agency.edit.general.department_details.loadError.title')}
+                    actions={
+                        onRetry
+                            ? [{ label: t('agency.legal.department.loadError.retry'), onClick: onRetry }]
+                            : undefined
                     }
-                />
+                >
+                    {t('agency.legal.department.loadError.text', { name: selectedName })}
+                </Notify>
             </Card>
         );
     }
+
+    // The inherited agency value may be the structured JSON payload: show it the way askers see it.
+    const readableInheritedHours = (() => {
+        const { slots, legacyText } = parseOpeningHours(inherited.openingHours);
+        return slots.length > 0 ? formatOpeningHours(slots, (key) => t(key)) : legacyText;
+    })();
 
     const inheritHint = (inheritedValue?: string) =>
         inheritedValue
@@ -148,35 +189,50 @@ export const DepartmentDetailsCard = ({
             }}
             titleKey={TITLE_KEY}
             subTitle={departmentSelect}
+            headerIcon={<CategoryOutlinedIcon />}
             variant="dialog"
             editButtonPlacement="footer"
             onSave={onSave}
         >
-            <FieldGrid>
-                <FieldGrid.Wide>
-                    <MuiMultilineFormField
-                        name="openingHours"
-                        label={t('agency.edit.general.address.opening_hours')}
-                        placeholder={inherited.openingHours || t('agency.edit.general.address.opening_hours')}
-                        helpText={inheritHint(inherited.openingHours)}
-                        inputProps={{ maxLength: 1000 }}
-                    />
-                </FieldGrid.Wide>
-                <MuiFormField
-                    name="phoneExtension"
-                    label={t('agency.edit.general.department_details.phone_extension')}
-                    placeholder={t('agency.edit.general.department_details.phone_extension')}
-                    helpText={t('agency.edit.general.department_details.phone_extension_hint')}
-                    inputProps={{ maxLength: 50 }}
-                />
-                <MuiFormField
-                    name="floorLocation"
-                    label={t('agency.edit.general.department_details.floor_location')}
-                    placeholder={inherited.floorLocation || t('agency.edit.general.department_details.floor_location')}
-                    helpText={inheritHint(inherited.floorLocation)}
-                    inputProps={{ maxLength: 100 }}
-                />
-            </FieldGrid>
+            <div className={styles.sections}>
+                <section className={styles.section} aria-labelledby="department-hours-title">
+                    <h3 id="department-hours-title" className={styles.sectionTitle}>
+                        <ScheduleOutlinedIcon fontSize="small" aria-hidden />
+                        {t(`${TITLE_KEY}.opening_hours_section`)}
+                    </h3>
+                    <OpeningHoursFormField name="openingHours" />
+                    <p className={styles.hint}>
+                        <InfoOutlinedIcon fontSize="inherit" aria-hidden />
+                        {inheritHint(readableInheritedHours)}
+                    </p>
+                </section>
+                <section className={styles.section} aria-labelledby="department-contact-title">
+                    <h3 id="department-contact-title" className={styles.sectionTitle}>
+                        <ApartmentOutlinedIcon fontSize="small" aria-hidden />
+                        {t(`${TITLE_KEY}.contact_section`)}
+                    </h3>
+                    <FieldGrid minColumnWidth={220}>
+                        <MuiFormField
+                            name="phoneExtension"
+                            label={t('agency.edit.general.department_details.phone_extension')}
+                            placeholder={t('agency.edit.general.department_details.phone_extension')}
+                            helpText={t('agency.edit.general.department_details.phone_extension_hint')}
+                            startAdornment={fieldIcon(<PhoneInTalkOutlinedIcon fontSize="small" />)}
+                            inputProps={{ maxLength: 50 }}
+                        />
+                        <MuiFormField
+                            name="floorLocation"
+                            label={t('agency.edit.general.department_details.floor_location')}
+                            placeholder={
+                                inherited.floorLocation || t('agency.edit.general.department_details.floor_location')
+                            }
+                            helpText={inheritHint(inherited.floorLocation)}
+                            startAdornment={fieldIcon(<ApartmentOutlinedIcon fontSize="small" />)}
+                            inputProps={{ maxLength: 100 }}
+                        />
+                    </FieldGrid>
+                </section>
+            </div>
         </CardEditable>
     );
 };

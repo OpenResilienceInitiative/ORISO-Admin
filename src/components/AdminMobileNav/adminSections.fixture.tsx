@@ -108,11 +108,11 @@ export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
         description: 'Erscheinungsbild, Rechtliches, Email Server',
         icon: <NavGlyph name="displaySettings" />,
         subsections: [
-            { key: 'globalConfig', label: 'Globale Konfigurationen' },
-            { key: 'masterData', label: 'Stammdaten & Mehr' },
+            { key: 'globalConfig', label: 'Konfiguration' },
+            { key: 'masterData', label: 'Stammdaten' },
             { key: 'view', label: 'Erscheinungsbild' },
             { key: 'legal', label: 'Rechtliches' },
-            { key: 'smtp', label: 'Email Server' },
+            { key: 'smtp', label: 'E-Mail-Server' },
             { key: 'functionAccess', label: 'Funktionszugriff' },
         ],
     },
@@ -153,8 +153,8 @@ export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
         description: 'Personen per E-Mail einladen, Fortschritt sehen',
         icon: <NavGlyph name="links" />,
         subsections: [
-            { key: 'tenants', label: 'Träger-Invites' },
-            { key: 'counsellor', label: 'Berater-Invites' },
+            { key: 'tenants', label: 'Träger-Einladungen' },
+            { key: 'counsellor', label: 'Beratende-Einladungen' },
         ],
     },
     {

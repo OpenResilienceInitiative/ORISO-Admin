@@ -193,7 +193,7 @@ describe('AgencyPageEdit — inaccessible agency (404/403)', () => {
 
         renderWithClient(<AgencyPageEdit />);
 
-        expect(await screen.findByText('Caritas Augsburg')).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { level: 1, name: 'Caritas Augsburg' })).toBeInTheDocument();
         expect(screen.queryByText('Nicht verfügbar')).not.toBeInTheDocument();
     });
 
@@ -258,7 +258,7 @@ describe('AgencyPageEdit — inaccessible agency (404/403)', () => {
             error: undefined,
         });
         const { rerender } = renderWithClient(<AgencyPageEdit />);
-        expect(await screen.findByText('Alte Beratungsstelle')).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { level: 1, name: 'Alte Beratungsstelle' })).toBeInTheDocument();
 
         // Simulate the route change to a different, inaccessible agency id: react-query
         // keys on [AGENCY, id], so a genuinely new id starts a fresh (loading -> error)
