@@ -115,15 +115,16 @@ describe('compact status settings presentation', () => {
     };
 
     it.each([
-        { ownActive: true, expectedStatus: 'Freigegeben' },
-        { ownActive: false, expectedStatus: 'Eingeschränkt' },
+        { active: true, ownActive: true, expectedStatus: 'Freigegeben' },
+        { active: false, ownActive: false, expectedStatus: 'Eingeschränkt' },
+        // Not paused, but blocked by another restriction: effective access and
+        // the pause switch must be shown independently.
+        { active: false, ownActive: true, expectedStatus: 'Eingeschränkt' },
     ])(
-        'describes access and saves the inverse of the pause switch ($ownActive)',
-        async ({ ownActive, expectedStatus }) => {
+        'describes access and saves the inverse of the pause switch (active $active, ownActive $ownActive)',
+        async ({ active, ownActive, expectedStatus }) => {
             const save = vi.fn(async () => {});
-            render(
-                <EntityStatusCard {...props} data={{ ...accountData, active: ownActive, ownActive }} onSave={save} />,
-            );
+            render(<EntityStatusCard {...props} data={{ ...accountData, active, ownActive }} onSave={save} />);
 
             expect(screen.getByText('Kontozugriff')).toBeVisible();
             expect(screen.getByTestId('entity-status-confirmed')).toHaveTextContent(expectedStatus);

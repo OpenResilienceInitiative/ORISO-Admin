@@ -341,7 +341,7 @@ describe('TenantAdminEditOrAdd', () => {
 
         it.each(['tenant-admins', 'platform-admins'])(
             'shows the %s account access after the profile form',
-            (section) => {
+            async (section) => {
                 asSuperAdmin();
                 mocks.params.id = '42';
                 mocks.location.pathname = `/admin/users/${section}/42`;
@@ -354,8 +354,28 @@ describe('TenantAdminEditOrAdd', () => {
                 const form = container.querySelector('form');
                 const accountAccess = screen.getByTestId('entity-status-card');
                 expect(form?.nextElementSibling).toBe(accountAccess);
+                const pause = await within(accountAccess).findByRole('switch', {
+                    name: 'entityStatus.account.pause',
+                });
+                expect(pause).toBeDisabled();
+                expect(within(accountAccess).getByTestId('entity-status-edit')).toBeInTheDocument();
             },
         );
+
+        it('keeps the relocated account pause control read-only without the update permission', async () => {
+            denyUpdatePermission();
+            asSuperAdmin();
+            mocks.params.id = '42';
+            mocks.location.pathname = '/admin/users/tenant-admins/42';
+            mocks.useTenantUserAdminData.mockReturnValue({ data: { tenantId: '2' }, isLoading: false });
+            renderPage();
+
+            const accountAccess = screen.getByTestId('entity-status-card');
+            const pause = await within(accountAccess).findByRole('switch', { name: 'entityStatus.account.pause' });
+            expect(pause).toBeDisabled();
+            expect(within(accountAccess).queryByTestId('entity-status-edit')).not.toBeInTheDocument();
+            expect(within(accountAccess).getByText('entityStatus.readOnly')).toBeInTheDocument();
+        });
 
         it('submits an authorized own-tenant update', async () => {
             mocks.params.id = '42';
