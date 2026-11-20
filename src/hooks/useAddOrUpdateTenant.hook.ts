@@ -24,6 +24,9 @@ const SENDER_FIELDS = ['legalName', 'contactEmail', 'contactPhone', 'dataProtect
  * must not blank what is stored — "absent" is not "empty" (the Admin#715 trap). An emptied field
  * arrives as `''`, which TenantService stores as "not entered".
  *
+ * The licence follows the same rule: only the create dialog carries it; on an existing Träger it has its
+ * own tile in "Weitere" and the Stammdaten save keeps the stored value.
+ *
  * The settings are laid over the stored ones for the same reason: TenantService replaces all of them
  * when any block arrives, and the Träger card has no settings fields.
  */
@@ -47,9 +50,9 @@ export const buildTenantRequestBody = (
         address: formData.address,
         description: formData.description,
         ...senderFields,
-        licensing: {
-            ...formData.licensing,
-        },
+        // The licence is edited in the Träger tab "Weitere" (Frank, 2026-11-20); the Stammdaten form does
+        // not carry it, and its save must keep the stored number instead of sending an empty licence.
+        licensing: formData.licensing ? { ...formData.licensing } : { ...stored?.licensing },
         settings: { ...stored?.settings, ...formData.settings },
     };
 };

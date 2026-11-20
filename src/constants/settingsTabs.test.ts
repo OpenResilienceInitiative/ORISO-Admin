@@ -15,7 +15,6 @@ const baseContext = {
     shouldShowThemeSettings: true,
     can: vi.fn(() => true),
     isTenantSettingsEditEnabled: true,
-    multitenancyWithSingleDomainEnabled: false,
 };
 
 describe('settings tabs', () => {
@@ -79,8 +78,7 @@ describe('settings tabs', () => {
             { to: '/settings/erstantwort', titleKey: 'settings.subhead.erstantwort' },
             { to: '/settings/smtp', titleKey: 'settings.subhead.smtp' },
             { to: '/settings/permissions', titleKey: 'settings.subhead.functionAccess' },
-            // Not part of the design; kept because it is the only entry point for the
-            // tenant feature toggles. Tracked in #58.
+            // Not part of the design: "Weitere" (topics, counsellor statistics). Tracked in #58.
             { to: '/settings/app-settings', titleKey: 'tenants.edit.tabs.appSettings' },
         ]);
     });
@@ -126,16 +124,12 @@ describe('settings tabs', () => {
         expect(getSettingsTabs({ ...baseContext, can }).some((tab) => tab.to.endsWith('/erstantwort'))).toBe(false);
     });
 
-    it('uses the global settings label and icon for single-domain multitenancy', () => {
-        const tabs = getSettingsTabs({
-            ...baseContext,
-            multitenancyWithSingleDomainEnabled: true,
-        });
-
-        expect(tabs).toContainEqual({
+    // ORISO-Admin#1577 (Frank, 2026-11-19): the tab is called "Weitere" on every domain; the route stays.
+    it('names the app-settings tab "Weitere" with one key and icon', () => {
+        expect(getSettingsTabs(baseContext)).toContainEqual({
             to: '/settings/app-settings',
-            titleKey: 'tenants.edit.tabs.globalSettings',
-            iconName: 'global_settings',
+            titleKey: 'tenants.edit.tabs.appSettings',
+            iconName: 'functionalities',
         });
     });
 

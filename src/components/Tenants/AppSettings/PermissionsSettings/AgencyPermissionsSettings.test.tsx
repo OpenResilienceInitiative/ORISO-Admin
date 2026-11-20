@@ -217,6 +217,35 @@ describe('AgencyPermissionsSettings notification channels', () => {
             vi.unstubAllGlobals();
         }
     });
+
+    // The public tenant read turns a failure into an empty tenant; that is no "off" of the Träger.
+    it('says Team-Chat is unavailable when the Träger read fails, instead of "off, set by the provider"', async () => {
+        const fetchStub = vi.fn(async (request: Request) => {
+            const { pathname } = new URL(request.url);
+            if (pathname.endsWith('/tenant/public/id/2')) return new Response(null, { status: 500 });
+            if (pathname.endsWith('/tenantadmin/2/permission-policies'))
+                return Response.json({ tenantId: 2, policies: {} });
+            return Response.json([]);
+        });
+        vi.stubGlobal('fetch', fetchStub);
+        try {
+            mocks.useAgencyData.mockReturnValue(agency({}));
+            render(<AgencyPermissionsSettings agencyId="55" />);
+
+            await waitFor(() =>
+                expect(fetchStub.mock.calls.some(([request]) => request.url.includes('/tenant/public/id/2'))).toBe(
+                    true,
+                ),
+            );
+            const section = await screen.findByTestId('chat-type-card-oneOnOne');
+            await waitFor(() =>
+                expect(section.querySelector('[data-traeger-unavailable] strong')?.textContent).toMatch(/Team/),
+            );
+            expect(policy('featureTeamDiscussionEnabled')).toBeNull();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
 });
 
 // ORISO-Admin#1242: a Träger "off" for direct invitations locks the centre's row; an unset centre value follows it.

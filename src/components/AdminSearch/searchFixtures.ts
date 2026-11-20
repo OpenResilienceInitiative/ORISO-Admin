@@ -131,7 +131,6 @@ export const buildFixtureContext = ({
         shouldShowThemeSettings: spec.shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled: true,
-        multitenancyWithSingleDomainEnabled: singleDomain,
     };
     const items = buildAdminNavItems({
         isSuperAdmin: spec.isSuperAdmin,
@@ -158,7 +157,6 @@ export const buildFixtureContext = ({
         canManageServiceNotices: spec.canManageServiceNotices,
         shouldShowThemeSettings: spec.shouldShowThemeSettings,
         isTenantSettingsEditEnabled: true,
-        multitenancyWithSingleDomainEnabled: singleDomain,
     });
     const context: SearchContext = {
         isSuperAdmin: spec.isSuperAdmin,

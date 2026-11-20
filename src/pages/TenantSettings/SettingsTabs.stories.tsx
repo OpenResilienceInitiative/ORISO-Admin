@@ -35,7 +35,6 @@ export const PlatformAdminLevel: Story = {
                     shouldShowThemeSettings: true,
                     can: allowAll,
                     isTenantSettingsEditEnabled: true,
-                    multitenancyWithSingleDomainEnabled: false,
                 })}
             />
         </Page>
@@ -54,7 +53,6 @@ export const TenantAdminLevel: Story = {
                     shouldShowThemeSettings: true,
                     can: allowAll,
                     isTenantSettingsEditEnabled: true,
-                    multitenancyWithSingleDomainEnabled: false,
                 })}
             />
         </Page>
@@ -74,7 +72,6 @@ export const TenantAdminLevelWithoutFeatureToggles: Story = {
                     can: (action: PermissionAction | PermissionAction[], resource: Resource) =>
                         resource === Resource.Tenant || resource === Resource.LegalText || Boolean(action),
                     isTenantSettingsEditEnabled: false,
-                    multitenancyWithSingleDomainEnabled: false,
                 })}
             />
         </Page>

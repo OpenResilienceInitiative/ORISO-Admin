@@ -201,6 +201,8 @@ export const SuperAdminPermissionsSettings = ({
         [allowedPermissionToggles, persistPlatformControls],
     );
 
+    // No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
+    // that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value.
     return (
         <PermissionsSettingsView
             tenantId={tenantId}

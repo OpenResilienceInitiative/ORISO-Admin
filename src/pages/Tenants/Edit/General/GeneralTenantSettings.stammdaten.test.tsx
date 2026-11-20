@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('react-router-dom', () => ({ useParams: () => ({ id: '7' }), useNavigate: () => vi.fn() }));
@@ -15,11 +15,25 @@ vi.mock('../../../../hooks/useAddOrUpdateTenant.hook', () => ({ useAddOrUpdateTe
 vi.mock('../../../../hooks/useAddOrUpdateTenantAdmin.hook', () => ({
     useAddOrUpdateTenantAdmin: () => ({ mutate: vi.fn() }),
 }));
-vi.mock('../../../../components/CardEditable', () => ({
-    CardEditable: ({ titleKey, headerIcon }: { titleKey: string; headerIcon?: ReactNode }) => (
-        <section data-testid="traeger-card" data-title={titleKey} data-has-icon={String(!!headerIcon)} />
-    ),
-}));
+vi.mock('../../../../components/CardEditable', async () => {
+    const { Form } = await import('antd');
+    return {
+        CardEditable: ({
+            titleKey,
+            headerIcon,
+            children,
+        }: {
+            titleKey: string;
+            headerIcon?: ReactNode;
+            children?: ReactNode;
+        }) => (
+            <section data-testid="traeger-card" data-title={titleKey} data-has-icon={String(!!headerIcon)}>
+                <Form>{children}</Form>
+            </section>
+        ),
+    };
+});
+vi.mock('../../../../components/EntityStatusCard', () => ({ ManagedEntityStatus: () => null }));
 // The contact-person tile (#1534) loads its own data and has its own tests.
 vi.mock('./TraegerContactPersonTile', () => ({ TraegerContactPersonTile: () => null }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
@@ -56,5 +70,20 @@ describe('platform admin editing a Träger: Stammdaten tab', () => {
         render(<GeneralTenantSettings />);
 
         expect(screen.getByTestId('traeger-card')).toHaveAttribute('data-has-icon', 'true');
+    });
+
+    // Frank, 2026-11-20: licence and sender moved to the Träger tab "Weitere", with their own save.
+    it('holds master data only: no licence and no sender block', () => {
+        render(<GeneralTenantSettings />);
+
+        const card = within(screen.getByTestId('traeger-card'));
+        expect(card.getByLabelText(/tenants.add.form.name.placeholder/)).toBeInTheDocument();
+        expect(card.queryByLabelText(/tenants.add.form.allowedConsultantsLicense.placeholder/)).toBeNull();
+        expect(card.queryByRole('group', { name: 'tenants.form.section.sender' })).toBeNull();
+        [
+            'tenants.form.sender.legalName',
+            'tenants.form.sender.contactEmail',
+            'tenants.form.sender.contactPhone',
+        ].forEach((label) => expect(card.queryByLabelText(new RegExp(label))).toBeNull());
     });
 });

@@ -31,7 +31,11 @@ import { TraegerFieldSections } from './TraegerFieldSections';
 import { TenantInformationCard } from './TenantInformationCard';
 import { TraegerContactPersonTile } from './TraegerContactPersonTile';
 
-/** Which parts the create dialog shows (the edit tile lives in `TenantInformationCard`): with the topic. */
+/**
+ * Which parts the create dialog shows (the edit tile lives in `TenantInformationCard`): with the topic, and
+ * with licence and sender. A new Träger needs a licence before counsellors can be created, and the
+ * operator fills in what they have in one step; afterwards both are edited in the tab "Weitere".
+ */
 const CREATE_SECTIONS = ['general', 'sender', 'description', 'topic'] as const;
 
 export const GeneralTenantSettings = () => {
@@ -139,11 +143,8 @@ export const GeneralTenantSettings = () => {
                 return;
             }
 
-            if (data?.licensing?.allowedNumberOfUsers !== rData?.licensing?.allowedNumberOfUsers) {
-                snackbar.success({ message: t('tenants.message.consultantsChangedSuccess') });
-            } else {
-                snackbar.success({ message: t('tenants.message.update') });
-            }
+            // The licence is no longer edited here (see `TraegerLicenceSenderSettings` in "Weitere").
+            snackbar.success({ message: t('tenants.message.update') });
             navigate(routePathNames.tenants);
         },
         onError: (error) => {
@@ -242,6 +243,7 @@ export const GeneralTenantSettings = () => {
                                 }}
                                 requiredRule={requiredRule}
                                 sections={CREATE_SECTIONS}
+                                withLicence
                             >
                                 <TileSections.Section id="traeger-first-admin" title={t('tenants.add.adminCardTitle')}>
                                     <div className={styles.fields}>

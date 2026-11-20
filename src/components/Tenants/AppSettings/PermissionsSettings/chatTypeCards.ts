@@ -211,10 +211,10 @@ export const CHAT_TYPE_CARDS: ChatTypeCardDef[] = [
         masterField: ['settings', 'featureInternalGroupChatEnabled'],
         // No feature sub-toggles yet: internal group chats have no own feature-field family (no
         // featureXInternalGroupChatEnabled fields exist in the backend today), so there is nothing
-        // to render here. In particular this card must NOT carry a supervision toggle — supervision
-        // is a feature inside conversation types, not a conversation type of its own; its master
-        // and feature toggles now live in OtherFunctionsSettings (see chatTypeCards.ts history /
-        // ORISO-Admin#991 for the previous, incorrect wiring to featureSupervisionEnabled).
+        // to render here. This card carries no supervision toggle: supervision applies to Mail
+        // Beratung and Live Chat only (Frank, 2026-11-19). The supervision master and what the
+        // supervision chat itself offers live on the Supervision tile after the conversation types
+        // (SupervisionTile, ORISO-Admin#1577; ORISO-Admin#991 for the earlier wrong wiring here).
         toggles: [],
         // FE#1725 stories 39/40: counsellor-side channels for internal group chats (ADR-024
         // addendum 2026-10-07). TenantService PermissionFeature + Settings, default true.
