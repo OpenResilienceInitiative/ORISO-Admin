@@ -546,7 +546,15 @@ const Toolbar = ({
                 mobile fullscreen) — only the rest of the bar scrolls sideways. */}
             {leading}
             {leading && <span className={styles.vDivider} />}
-            <div className={styles.toolbarScroll}>
+            {/* The disabled toolbar has no focusable descendants; its named scroll region must remain
+                keyboard reachable. This is the documented scroll-region exception to the lint rule. */}
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- scrollable region with disabled controls */}
+            <div
+                className={styles.toolbarScroll}
+                tabIndex={disabled ? 0 : undefined}
+                role="region"
+                aria-label={t('editor.toolbar.label', 'Formatting toolbar')}
+            >
                 {/* A disabled fieldset natively disables every formatting control inside
                 (read mode / version look-back) without touching each button. */}
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
@@ -850,6 +858,7 @@ const Toolbar = ({
                     )}
                 </fieldset>
             </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
         </div>
     );
 };

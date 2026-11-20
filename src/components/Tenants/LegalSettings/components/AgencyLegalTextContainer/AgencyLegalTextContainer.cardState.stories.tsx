@@ -76,7 +76,7 @@ const LockedPlatform = ({ children }: { children: ReactNode }): ReactNode => {
 const expectFunctionBarFits = async (canvasElement: HTMLElement, scrollable = false) => {
     const canvas = within(canvasElement);
     const bar = await canvas.findByTestId('m3-editor-function-bar', {}, { timeout: 8000 });
-    await waitFor(() => expect(canvas.getByRole('button', { name: 'Versionsverlauf' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('button', { name: /Versionsverlauf/ })).toBeVisible());
     const barRight = bar.getBoundingClientRect().right;
     if (scrollable) {
         await waitFor(() => expect(bar.scrollWidth).toBeGreaterThan(bar.clientWidth));

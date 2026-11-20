@@ -5,6 +5,7 @@ import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
 import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
 import { M3RichTextEditor, M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { TileHelpButton } from '../../../../TileHelp';
+import { LegalDocumentTile } from '../LegalDocumentTile';
 import { legalTextHelp, privacyHelp } from '../LegalText/help';
 import { isSameDraftContent } from '../../utils/draftComparison';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
@@ -138,6 +139,11 @@ interface DepartmentDataProtectionCardProps {
     readOnly?: boolean;
     /** Replaces the description when the card is read-only, saying who maintains the text instead. */
     readOnlyReason?: string;
+    /** Use the shared legal-document shell on pages with collapsible tiles. */
+    collapsible?: boolean;
+    defaultOpen?: boolean;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -171,6 +177,10 @@ export const DepartmentDataProtectionCard = ({
     consentUnavailableReason,
     readOnly = false,
     readOnlyReason,
+    collapsible = false,
+    defaultOpen,
+    open,
+    onOpenChange,
     anchorId,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
@@ -368,13 +378,35 @@ export const DepartmentDataProtectionCard = ({
         );
     }
 
-    return (
+    const intro = (
+        <>
+            <div className={styles.header}>
+                {departmentName && <span className={styles.department}>{departmentName}</span>}
+                {/* Owner call 2026-09-23: the agency-wide text is live as soon as it is
+                                saved, so it carries "Veröffentlicht" too. Without a tag there, a
+                                published text read as a bug next to a tagged Fachbereich. */}
+                {publicationStatus && (
+                    <Tag color={published ? 'green' : 'default'} data-testid="legal-publication-status">
+                        {t(STATUS_LABEL_KEYS[publicationStatus])}
+                    </Tag>
+                )}
+            </div>
+            <p className={styles.description}>
+                {readOnly && readOnlyReason
+                    ? readOnlyReason
+                    : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
+            </p>
+            {statusSlot}
+        </>
+    );
+    const editor = (
         <div id={rootId} className={styles.card}>
             <M3RichTextEditor
                 snackbarSlot={editorNotices.some(Boolean) ? <EditorSnackbarQueue items={editorNotices} /> : undefined}
                 comparison={comparison}
                 fullscreenLabel={t(readOnly ? 'legal.m3Editor.readFullscreen' : 'legal.m3Editor.openFullscreen')}
                 title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                hideHeader={collapsible}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
                 headerAction={
                     <TileHelpButton
@@ -440,27 +472,7 @@ export const DepartmentDataProtectionCard = ({
                         </>
                     ) : undefined
                 }
-                helpSlot={
-                    <>
-                        <div className={styles.header}>
-                            {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            {/* Owner call 2026-09-23: the agency-wide text is live as soon as it is
-                                saved, so it carries "Veröffentlicht" too. Without a tag there, a
-                                published text read as a bug next to a tagged Fachbereich. */}
-                            {publicationStatus && (
-                                <Tag color={published ? 'green' : 'default'} data-testid="legal-publication-status">
-                                    {t(STATUS_LABEL_KEYS[publicationStatus])}
-                                </Tag>
-                            )}
-                        </div>
-                        <p className={styles.description}>
-                            {readOnly && readOnlyReason
-                                ? readOnlyReason
-                                : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
-                        </p>
-                        {statusSlot}
-                    </>
-                }
+                helpSlot={collapsible ? undefined : intro}
                 aboveEditorSlot={
                     showFieldTranslate && (
                         <div id={translateFieldId} className={styles.translateField}>
@@ -525,6 +537,29 @@ export const DepartmentDataProtectionCard = ({
                 stored sentence can be blocking on open, in a language that is not the
                 one on screen. Waiting for the Publish click would hide that. */}
         </div>
+    );
+    if (!collapsible) return editor;
+    const Icon = documentType === 'imprint' ? ImprintIcon : GdprIcon;
+    return (
+        <LegalDocumentTile
+            icon={Icon}
+            title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+            status={
+                publicationStatus
+                    ? {
+                          label: t(STATUS_LABEL_KEYS[publicationStatus]),
+                          tone: publicationStatus === 'DRAFT' ? 'attention' : 'neutral',
+                      }
+                    : undefined
+            }
+            help={documentType === 'imprint' ? legalTextHelp : privacyHelp}
+            intro={intro}
+            defaultOpen={defaultOpen}
+            open={open}
+            onOpenChange={onOpenChange}
+        >
+            {editor}
+        </LegalDocumentTile>
     );
 };
 

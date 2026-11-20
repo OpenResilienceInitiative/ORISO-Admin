@@ -885,13 +885,16 @@ export const AgencyFooterWithConsentTemplate: Story = {
         const bar = await waitFor(() => canvas.getByTestId('m3-editor-function-bar'));
 
         // Left to right: language, consent template, topic, version.
-        const positions = ['Sprache wählen', 'Vorlagenmenü öffnen', 'Fachbereich wählen', 'Versionsverlauf'].map(
-            (name) => {
-                const control = canvas.getByRole('button', { name });
-                expect(bar).toContainElement(control);
-                return Array.from(bar.children).findIndex((child) => child.contains(control));
-            },
-        );
+        const positions = [
+            'DE Sprache wählen',
+            'Vorlagenmenü öffnen',
+            'Sucht Fachbereich wählen',
+            'Variante #3 Versionsverlauf',
+        ].map((name) => {
+            const control = canvas.getByRole('button', { name });
+            expect(bar).toContainElement(control);
+            return Array.from(bar.children).findIndex((child) => child.contains(control));
+        });
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
         // A narrow card inside a wide Storybook viewport still acts like mobile.

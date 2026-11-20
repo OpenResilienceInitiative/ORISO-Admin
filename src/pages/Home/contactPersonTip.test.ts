@@ -18,7 +18,7 @@ describe('buildContactPersonTip (ORISO-Admin#1534)', () => {
     it('lists the BST admin’s own uncovered centre with its edit link', () => {
         expect(buildContactPersonTip('agency', [row(1, 'Nord', false), row(2, 'Süd', true)])).toEqual({
             kind: 'agency',
-            agencies: [{ agencyId: 1, agencyName: 'Nord', to: '/admin/agency/edit/1' }],
+            agencies: [{ agencyId: 1, agencyName: 'Nord', to: '/admin/agency/1/general' }],
         });
     });
 

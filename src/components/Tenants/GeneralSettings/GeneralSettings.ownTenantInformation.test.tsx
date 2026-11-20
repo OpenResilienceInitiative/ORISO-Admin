@@ -11,6 +11,11 @@ vi.mock('../../../hooks/useAppearanceEditingRights.hook', () => ({
     useAppearanceEditingRights: () => ({ editable: true, isLoading: false, save: vi.fn() }),
 }));
 vi.mock('../OwnTenantInformation', () => ({ OwnTenantInformation: () => <i data-testid="own-tenant-information" /> }));
+vi.mock('../../../pages/Tenants/Edit/General/TraegerContactPersonTile', () => ({
+    TraegerContactPersonTile: ({ tenantId }: { tenantId: number }) => (
+        <i data-testid="traeger-contact-person" data-tenant-id={tenantId} />
+    ),
+}));
 vi.mock('./components/LogoAndFavicon', () => ({ LogoAndFavicon: () => <i data-testid="logo" /> }));
 vi.mock('./components/AssistantIdentity', () => ({ AssistantIdentity: () => <i data-testid="assistant" /> }));
 vi.mock('./components/Languages', () => ({ Languages: () => <i data-testid="languages" /> }));
@@ -30,7 +35,13 @@ describe('GeneralSettings: the Träger admin sees their own Träger information 
         const order = Array.from(container.querySelectorAll('[data-admin-card-grid-item] > [data-testid]')).map(
             (tile) => tile.getAttribute('data-testid'),
         );
-        expect(order).toEqual(['own-tenant-information', 'name', 'language-type', 'rights']);
+        expect(order).toEqual(['own-tenant-information', 'traeger-contact-person', 'name', 'language-type', 'rights']);
+    });
+
+    it('lets the Träger admin set the default contact person of their own Träger (ORISO-Admin#1534)', () => {
+        render(<GeneralSettings section="masterData" />);
+
+        expect(screen.getByTestId('traeger-contact-person')).toHaveAttribute('data-tenant-id', '7');
     });
 
     it('leaves the platform admin alone: the Träger page brings its own editable card', () => {
@@ -38,6 +49,7 @@ describe('GeneralSettings: the Träger admin sees their own Träger information 
         render(<GeneralSettings section="masterData" />);
 
         expect(screen.queryByTestId('own-tenant-information')).toBeNull();
+        expect(screen.queryByTestId('traeger-contact-person')).toBeNull();
     });
 
     it('shows the tiles the embedding page brings instead of its own card', () => {
@@ -45,11 +57,13 @@ describe('GeneralSettings: the Träger admin sees their own Träger information 
 
         expect(screen.getByTestId('page-tile')).toBeInTheDocument();
         expect(screen.queryByTestId('own-tenant-information')).toBeNull();
+        expect(screen.queryByTestId('traeger-contact-person')).toBeNull();
     });
 
     it('keeps the appearance tab free of it', () => {
         render(<GeneralSettings section="appearance" />);
 
         expect(screen.queryByTestId('own-tenant-information')).toBeNull();
+        expect(screen.queryByTestId('traeger-contact-person')).toBeNull();
     });
 });

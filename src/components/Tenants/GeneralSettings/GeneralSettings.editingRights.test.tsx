@@ -59,6 +59,10 @@ vi.mock('./components/TypeOfLanguage', () => ({
         <output data-testid="language-type" data-readonly={!!readOnly} />
     ),
 }));
+// The Träger default contact person tile (ORISO-Admin#1534) decides its own rights; it is not under test here.
+vi.mock('../../../pages/Tenants/Edit/General/TraegerContactPersonTile', () => ({
+    TraegerContactPersonTile: () => <output data-testid="traeger-contact-person" />,
+}));
 
 const PLATFORM_ADMIN_ROLES = { isSuperAdmin: true } as ReturnType<typeof useUserRoles>;
 const ORGANISATION_ADMIN_ROLES = { isSuperAdmin: false } as ReturnType<typeof useUserRoles>;
