@@ -30,7 +30,7 @@ const meta = {
         isRowSelectable: () => false,
         onResend: () => {},
         onCopyLink: () => {},
-        onRevoke: () => {},
+        onDelete: () => {},
     },
 } satisfies Meta<typeof InviteProgressBoard>;
 
@@ -214,7 +214,7 @@ const Wired = ({ invites, targetRole }: { invites: AccountInviteDTO[]; targetRol
             isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onInviteCta={() => {}}
         />
     );
@@ -299,7 +299,7 @@ export const Loading: Story = {
             isRowSelectable={() => false}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
         />
     ),
 };
@@ -316,7 +316,7 @@ export const Empty: Story = {
             isRowSelectable={() => false}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onInviteCta={() => {}}
         />
     ),
@@ -409,7 +409,7 @@ const QueueBoard = ({
             isRowSelectable={(invite) => invite.inviteStatus === 'DRAFT' || invite.inviteStatus === 'EMAIL_SENT'}
             onResend={() => {}}
             onCopyLink={() => {}}
-            onRevoke={() => {}}
+            onDelete={() => {}}
             onTopicPermissionChange={
                 locked
                     ? undefined
@@ -437,7 +437,7 @@ export const QueueWaitingStep: Story = {
             lena.getAllByText(/Beratungsstelle noch nicht angelegt|Beratungsstelle not created yet/).length,
         ).toBeGreaterThan(0);
         await expect(lena.getByRole('button', { name: /Erinnerung erneut senden|resend/i })).toBeDisabled();
-        await expect(lena.getByRole('button', { name: /Einladung widerrufen|revoke/i })).toBeEnabled();
+        await expect(lena.getByRole('button', { name: /Einladung löschen|Delete invite/i })).toBeEnabled();
     },
 };
 
@@ -447,9 +447,11 @@ export const QueueProblemBadge: Story = {
     render: (args) => <QueueBoard onTopicPermissionChange={args.onTopicPermissionChange} />,
     play: async ({ canvasElement }) => {
         const rita = rowOf(canvasElement, 'rita.sommer@example.org');
-        await expect(rita.getByText(/^(Keine BST-Admin|No agency admin)$/)).toBeInTheDocument();
+        await expect(rita.getByText(/^(Keine BST-Admin|No counselling centre admin)$/)).toBeInTheDocument();
         await expect(
-            rowOf(canvasElement, 'tom.keller@example.org').queryByText(/^(Keine BST-Admin|No agency admin)$/),
+            rowOf(canvasElement, 'tom.keller@example.org').queryByText(
+                /^(Keine BST-Admin|No counselling centre admin)$/,
+            ),
         ).toBeNull();
     },
 };
@@ -574,7 +576,7 @@ const RoleBoard = ({
         isRowSelectable={() => false}
         onResend={() => {}}
         onCopyLink={() => {}}
-        onRevoke={() => {}}
+        onDelete={() => {}}
         onTopicPermissionChange={() => {}}
         onRoleChange={onRoleChange}
         onRoleAdd={onRoleAdd}
@@ -608,7 +610,7 @@ export const RoleChipMenu: Story = {
         const items = within(menu).getAllByRole('menuitem');
         // Träger-Admin invites live on the Träger tab: two entries here.
         await expect(items).toHaveLength(2);
-        await userEvent.click(within(menu).getByText(/^(BST-Admin|Agency admin)$/));
+        await userEvent.click(within(menu).getByText(/^(BST-Admin|Counselling centre admin)$/));
         await expect(args.onRoleChange).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'lena.vogt@example.org' }),
             'AGENCY_ADMIN',
@@ -617,7 +619,7 @@ export const RoleChipMenu: Story = {
         await userEvent.click(roleChipOf(canvasElement, 'Anke Roth'));
         const accountMenu = await body.findByRole('menu');
         await expect(within(accountMenu).getByRole('link')).toHaveAttribute('href', '/admin/users/consultants');
-        await userEvent.click(within(accountMenu).getByText(/^(\+ auch BST-Admin|\+ also Agency admin)$/));
+        await userEvent.click(within(accountMenu).getByText(/^(\+ auch BST-Admin|\+ also Counselling centre admin)$/));
         await expect(args.onRoleAdd).toHaveBeenCalledWith(
             expect.objectContaining({ recipientEmail: 'anke.roth@example.org' }),
             'AGENCY_ADMIN',
@@ -824,10 +826,12 @@ export const CounsellorCompact: Story = {
         );
         await userEvent.unhover(steps[3]);
         // Actions sit under the status chip in the same cell.
-        const revoke = anke.getByRole('button', { name: /Einladung widerrufen|revoke/i });
+        const deleteAction = anke.getByRole('button', { name: /Einladung löschen|Delete invite/i });
         const status = anke.getByText(/^(Angenommen|Accepted)$/);
-        await expect(revoke.closest('td')).toBe(status.closest('td'));
-        await expect(revoke.getBoundingClientRect().top).toBeGreaterThan(status.getBoundingClientRect().bottom - 1);
+        await expect(deleteAction.closest('td')).toBe(status.closest('td'));
+        await expect(deleteAction.getBoundingClientRect().top).toBeGreaterThan(
+            status.getBoundingClientRect().bottom - 1,
+        );
     },
 };
 

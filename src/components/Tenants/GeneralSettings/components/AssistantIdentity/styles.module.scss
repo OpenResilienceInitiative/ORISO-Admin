@@ -1,20 +1,86 @@
 @use '../../../../../styles/muiSpacing' as mui;
 
+/* The icon choices as tiles (#1374): one radio each, the circle hidden, the tile is the target. */
 .presets {
+    display: grid;
+    width: 100%;
+    gap: mui.$mui-unit;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+}
+
+.presetTile {
+    position: relative;
     display: flex;
-    flex-wrap: wrap;
-    gap: mui.$mui-unit * 2;
+    min-height: 88px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    padding: mui.$mui-unit;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 14px;
+    background: var(--m3-surface, #fcf9f9);
+    color: var(--m3-on-surface-variant, #444748);
+
+    :global(.ant-radio) {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        opacity: 0;
+    }
+
+    > span:last-child {
+        padding: 0;
+    }
+
+    /* The input is hidden, so the tile carries the shared ring; keyboard focus only, a click shows the frame. */
+    &:has(input:focus-visible) {
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+        outline-offset: var(--admin-focus-ring-offset, 2px);
+    }
+
+    &:global(.ant-radio-wrapper-checked) {
+        border: 2px solid var(--m3-on-surface, #1b1b1c);
+        background: var(--m3-surface-container-lowest, #ffffff);
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+
+    &:global(.ant-radio-wrapper-disabled) {
+        cursor: default;
+    }
+
+    &:not(:global(.ant-radio-wrapper-disabled)):hover {
+        border-color: var(--m3-on-surface, #1b1b1c);
+    }
 }
 
 .preset {
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: mui.$mui-unit;
+    gap: 6px;
+    font: 500 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
+    text-align: center;
 }
 
 .preset img,
 .preset svg {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
     object-fit: contain;
+}
+
+/* In a panel the picker and the texts use the panel's own rhythm. */
+.iconPicker {
+    margin-bottom: 0;
+}
+
+/* Says what an empty name means, and what it currently resolves to. */
+.sectionText {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font: 400 12px/16px var(--m3-body-font-family);
+    letter-spacing: 0.4px;
 }

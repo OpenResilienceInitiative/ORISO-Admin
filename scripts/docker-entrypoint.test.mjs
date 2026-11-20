@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // ORISO-Helm#368: the Admin container refuses to start without an API URL and names the variable,
 // instead of shipping an env.js that makes the browser guess its own origin.
@@ -41,5 +41,13 @@ describe('Admin docker-entrypoint runtime config', () => {
         const result = runEntrypoint({ VITE_API_URL: 'https://admin.example.org' });
         expect(result.stderr).not.toMatch(/VITE_API_URL/);
         expect(result.envJs).toContain('"API_URL": "https://admin.example.org"');
+    });
+
+    it('writes the add-on service origin when it is set', () => {
+        const result = runEntrypoint({
+            VITE_API_URL: 'https://admin.example.org',
+            VITE_ADDON_SERVICE_ORIGIN: 'https://addons.example.org',
+        });
+        expect(result.envJs).toContain('"ADDON_SERVICE_ORIGIN": "https://addons.example.org"');
     });
 });

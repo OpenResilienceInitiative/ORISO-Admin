@@ -1,12 +1,14 @@
 import KeyOutlinedIcon from '@mui/icons-material/KeyOutlined';
-import { Alert } from '@mui/material';
+
 import { Form } from 'antd';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ChatRecoverySettings } from '../../../types/ChatRecoverySettings';
 import { CardEditable } from '../../CardEditable';
 import { MuiSelectField } from '../../mui/MuiSelectField';
+import { chatRecoveryHelp } from './help';
 import styles from './styles.module.scss';
+import { Notify } from '../../Notify';
 
 interface Props {
     data?: ChatRecoverySettings;
@@ -47,6 +49,7 @@ export const ChatRecoverySettingsCard = ({ data, isLoading, isSaving, error, onS
             className={styles.card}
             variant="dialog"
             headerIcon={<KeyOutlinedIcon />}
+            help={chatRecoveryHelp}
             titleKey="globalSettings.chatRecovery.title"
             subTitleKey="globalSettings.chatRecovery.description"
             initialValues={data ? { ...data } : undefined}
@@ -59,7 +62,17 @@ export const ChatRecoverySettingsCard = ({ data, isLoading, isSaving, error, onS
             {({ editing }) => (
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
-                    {error && <Alert severity="error">{t('globalSettings.chatRecovery.error.load')}</Alert>}
+                    {error && (
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.chatRecovery.error.load')}
+                        </Notify>
+                    )}
                     <div className={styles.fields}>
                         <MuiSelectField
                             name="asker"

@@ -16,6 +16,7 @@ type FetchUserSearchParams = {
     pageSize?: number;
     normalizeSortField?: (field?: string) => string;
     rethrowOnFailure?: boolean;
+    signal?: AbortSignal;
 };
 
 /** `rejectedSort` is set when the server refused the requested order and the rows use the safe sort. */
@@ -32,18 +33,22 @@ export const fetchUserSearchWithSortFallback = async ({
     order,
     normalizeSortField,
     rethrowOnFailure = false,
+    signal,
 }: FetchUserSearchParams): Promise<UserSearchResult> => {
     const resolveField = normalizeSortField ?? ((field?: string) => field || USER_TABLE_API_SAFE_SORT);
     const field = resolveField(sortBy);
     const sortOrder = order || USER_TABLE_DEFAULT_ORDER;
 
-    const request = (sortField: string, sortDirection: string) =>
-        fetchData({
+    const request = (sortField: string, sortDirection: string) => {
+        if (signal?.aborted) return Promise.reject(new Error(FETCH_ERRORS.ABORT));
+        return fetchData({
             url: `${url}&order=${sortDirection}&field=${sortField}`,
             method: FETCH_METHODS.GET,
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.BAD_REQUEST],
+            signal,
         }).then((result: HalResponseList<CounselorData>) => removeEmbedded(result) as ResponseList<CounselorData>);
+    };
 
     try {
         return await request(field, sortOrder);

@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LockOpenRightFilledIcon } from '../../resources/img/svg/oriso/lock_open_right_filled_20px.svg';
@@ -12,7 +10,6 @@ import type {
     PermissionPolicyMode,
 } from '../../types/permissionPolicy';
 import { M3FabMenu, type M3FabMenuItem } from '../M3FabMenu';
-import { Modal } from '../Modal';
 import styles from '../PermissionPolicyControl/styles.module.scss';
 
 type CaseHandoverConsentPolicyControlProps = {
@@ -30,6 +27,7 @@ const policyKey = (policy: CaseHandoverConsentPolicy) => `${policy.value}-${poli
 
 const labelKey = (value: CaseHandoverConsentValue, mode: PermissionPolicyMode) => {
     if (mode === 'ENFORCED') {
+        if (value === 'NONE') return 'tenants.permissions.consent.noneEnforced';
         return value === 'OPT_IN'
             ? 'tenants.permissions.consent.optInEnforced'
             : 'tenants.permissions.consent.optOutEnforced';
@@ -57,7 +55,6 @@ export const CaseHandoverConsentPolicyControl = ({
     disabled = false,
 }: CaseHandoverConsentPolicyControlProps) => {
     const { t } = useTranslation();
-    const [showInfo, setShowInfo] = useState(false);
     const readOnly = level !== 'platform' && policy.mode === 'ENFORCED' && policy.inherited === true;
     let statusLabel = 'tenants.permissions.policy.suggestion';
     if (readOnly) {
@@ -69,6 +66,8 @@ export const CaseHandoverConsentPolicyControl = ({
     const option = (value: CaseHandoverConsentValue, mode: PermissionPolicyMode): M3FabMenuItem => ({
         key: policyKey({ value, mode }),
         label: t(labelKey(value, mode)),
+        // What the client experiences, right in the menu (FE#1725 story 32).
+        description: t(`tenants.permissions.consent.effect.${value}`),
         icon:
             mode === 'ENFORCED' ? (
                 <LockIcon />
@@ -87,13 +86,8 @@ export const CaseHandoverConsentPolicyControl = ({
                   option('OPT_IN', 'SUGGESTED'),
                   option('OPT_OUT', 'SUGGESTED'),
               ];
-    items.push({ key: 'info', label: t('tenants.permissions.policy.moreInformation'), icon: <InfoIcon /> });
 
     const select = (key: string) => {
-        if (key === 'info') {
-            setShowInfo(true);
-            return;
-        }
         const [value, mode] = key.split('-') as [CaseHandoverConsentValue, PermissionPolicyMode];
         onChange({ value, mode });
     };
@@ -116,8 +110,8 @@ export const CaseHandoverConsentPolicyControl = ({
                 <button
                     type="button"
                     className={`${styles.readOnlyButton} ${policy.value === 'NONE' ? styles.inactive : styles.active}`}
-                    aria-label={`${label}: ${t('tenants.permissions.policy.moreInformation')}`}
-                    onClick={() => setShowInfo(true)}
+                    aria-label={`${label}: ${t(labelKey(policy.value, policy.mode))}`}
+                    disabled
                 >
                     {triggerIcon(policy.value)}
                 </button>
@@ -137,24 +131,6 @@ export const CaseHandoverConsentPolicyControl = ({
                     )}`}
                     closeLabel={t('tenants.permissions.policy.closeMenu')}
                 />
-            )}
-
-            {showInfo && (
-                <Modal
-                    title={label}
-                    description={t('tenants.permissions.consent.infoPurpose')}
-                    icon={<InfoIcon />}
-                    okLabelKey="tenants.permissions.policy.gotIt"
-                    onConfirm={() => setShowInfo(false)}
-                    onClose={() => setShowInfo(false)}
-                    width={520}
-                >
-                    <div className={styles.infoText}>
-                        <p>{t('tenants.permissions.consent.infoEffect')}</p>
-                        <p>{t('tenants.permissions.policy.infoInheritance')}</p>
-                        {readOnly && <p>{t('tenants.permissions.policy.infoReadOnly')}</p>}
-                    </div>
-                </Modal>
             )}
         </div>
     );

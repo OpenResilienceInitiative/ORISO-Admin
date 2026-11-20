@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
-import { notification } from 'antd';
+
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../hooks/useAdminFeedback';
 import {
     clearLegalDraft,
     LegalDraft,
@@ -58,6 +59,7 @@ export const useLegalDraft = (
     baseVersionId?: string,
     onError?: (message: string) => void,
 ): UseLegalDraftResult => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const key = legalDraftKey(document, scope);
     // Key, draft and save markers live in ONE state object so they can never
@@ -85,7 +87,7 @@ export const useLegalDraft = (
                 // instead of confirming a save the admin would rely on.
                 const message = t('legal.draft.saveError');
                 if (onError) onError(message);
-                else notification.error({ message, duration: 8 });
+                else notification.error({ message });
                 return false;
             }
             setState((previous) => ({
@@ -109,7 +111,7 @@ export const useLegalDraft = (
             // is gone and resurrecting it on the next load.
             const message = t('legal.draft.discardError');
             if (onError) onError(message);
-            else notification.error({ message, duration: 8 });
+            else notification.error({ message });
             return false;
         }
         setState({ key, draft: undefined, savedAt: undefined, savedBaseVersionId: undefined });

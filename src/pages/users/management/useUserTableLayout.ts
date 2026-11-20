@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useState, type RefObject } from 'react';
 
 /**
  * wide ≥1280 · compact 1024–1279 · tablet 768–1023 · phone <768 (same split as the bottom bar).
@@ -29,6 +29,14 @@ const containerLayout = (width: number): UserTableLayout => {
 export const useUserTableLayout = (container?: RefObject<HTMLElement | null>): UserTableLayout => {
     const [layout, setLayout] = useState(read);
     const [width, setWidth] = useState<number>();
+
+    // Measure before the first paint so a narrow container never flashes the
+    // viewport layout while the asynchronous ResizeObserver entry is pending.
+    // A zero width (detached or hidden) keeps the viewport fallback.
+    useLayoutEffect(() => {
+        const measured = container?.current?.getBoundingClientRect().width ?? 0;
+        if (measured > 0) setWidth(measured);
+    }, [container]);
 
     useEffect(() => {
         const element = container?.current;

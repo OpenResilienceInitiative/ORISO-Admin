@@ -1,5 +1,5 @@
-// @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+// @vitest-environment oriso-jsdom
+import { describe, expect, it, vi } from 'vite-plus/test';
 import {
     DEFAULT_ADMIN_SEED,
     applyAdminInvertedTheme,
@@ -23,6 +23,24 @@ describe('applyAdminTheme', () => {
             .forEach(([name, value]) => {
                 expect(root.style.getPropertyValue(name), name).toBe(value);
             });
+    });
+
+    // #1168: the dialog card draws its focus ring in the scheme colour (--m3-primary); a pale Träger seed
+    // must not take the ring below 3:1 on the card surface.
+    it.each(['#b4ddee', '#f2d16b', '#1e88e5'])('keeps the card focus ring at 3:1 for the seed %s', (seed) => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: seed }, root);
+        const ring = root.style.getPropertyValue('--admin-focus-ring-on-surface');
+        const surface = root.style.getPropertyValue('--admin-form-card-surface');
+
+        expect(contrastRatio(ring, surface)).toBeGreaterThanOrEqual(3);
+    });
+
+    it('keeps the tenant colour as card focus ring when it reads, so the default look is unchanged', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        expect(root.style.getPropertyValue('--admin-focus-ring-on-surface')).toBe(BENCHMARK_SEED);
     });
 
     it('renders a light surface with a light on-primary switch thumb', () => {
@@ -61,16 +79,28 @@ describe('applyAdminTheme', () => {
         );
     });
 
-    it('renders field surfaces one step lighter than the workspace background', () => {
+    it('renders field surfaces one step lighter than the card surface they sit on', () => {
+        const root = document.createElement('div');
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const card = root.style.getPropertyValue('--admin-form-card-surface');
+        const field = root.style.getPropertyValue('--admin-field-surface');
+        const hover = root.style.getPropertyValue('--admin-field-surface-hover');
+
+        expect(relativeLuminance(field)).toBeGreaterThan(relativeLuminance(card));
+        expect(relativeLuminance(hover)).toBeGreaterThan(relativeLuminance(card));
+    });
+
+    it('sets tiles and dialogs darker than the workspace, like the M3 dialog on its light scrim', () => {
         const root = document.createElement('div');
         applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
 
         const workspace = root.style.getPropertyValue('--admin-workspace-background');
-        const field = root.style.getPropertyValue('--admin-field-surface');
-        const hover = root.style.getPropertyValue('--admin-field-surface-hover');
+        const card = root.style.getPropertyValue('--admin-form-card-surface');
 
-        expect(relativeLuminance(field)).toBeGreaterThan(relativeLuminance(workspace));
-        expect(relativeLuminance(hover)).toBeGreaterThan(relativeLuminance(workspace));
+        expect(workspace).toBe('#fcf9f9');
+        expect(card).toBe('#eae7e8');
+        expect(relativeLuminance(card)).toBeLessThan(relativeLuminance(workspace));
     });
 
     it('derives the tonal selection tokens from the tenant seed', () => {
@@ -110,6 +140,17 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-surface')).not.toBe('#fcf9f9');
     });
 
+    it('keeps tile pictures as drawn in both schemes, because tiles and dialogs stay light', () => {
+        const root = document.createElement('div');
+
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+        expect(root.style.getPropertyValue('--admin-form-card-surface')).toBe('#eae7e8');
+
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+        expect(root.style.getPropertyValue('--admin-picture-filter')).toBe('none');
+    });
+
     it('uses the same stored seeds without writing a separate admin palette', () => {
         const root = document.createElement('div');
         applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED, accent: '#646d78' }, root);
@@ -135,7 +176,7 @@ describe('applyAdminInvertedTheme', () => {
 
         expect(applied).toBe(true);
         expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
-        expect(root.style.getPropertyValue('--admin-workspace-background')).toBe('#e4e2e2');
+        expect(root.style.getPropertyValue('--admin-workspace-background')).toBe('#fcf9f9');
         expect(root.style.getPropertyValue('--admin-search-surface')).toBe('#eae7e8');
         expect(root.style.getPropertyValue('--admin-search-text')).toBe('#444748');
         expect(root.style.getPropertyValue('--admin-table-surface')).toBe('#f6f3f3');
@@ -238,5 +279,21 @@ describe('applyAdminInvertedTheme', () => {
             ratio,
             `${onRole} (${tokens[onRole]}) on ${surface} (${tokens[surface]}) = ${ratio.toFixed(2)}:1`,
         ).toBeGreaterThanOrEqual(4.5);
+    });
+});
+
+describe('switching scheme on the same root', () => {
+    it('leaves no inverted-only token behind when the light scheme is applied afterwards', () => {
+        const root = document.createElement('div');
+        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
+        applyAdminTheme({ primaryColor: BENCHMARK_SEED }, root);
+
+        const light = computeOrisoPalette({ accentDark: BENCHMARK_SEED }, 'light').tokens;
+        const onRoot = Array.from(root.style).filter((name) => name.startsWith('--m3-') || name.startsWith('--admin-'));
+        // The light shell also derives the contrast-checked card ring (#1168); it is not a palette token.
+        expect(onRoot.filter((name) => !(name in light) && name !== '--admin-focus-ring-on-surface')).toEqual([]);
+        Object.entries(light)
+            .filter(([name]) => name.startsWith('--m3-'))
+            .forEach(([name, value]) => expect(root.style.getPropertyValue(name), name).toBe(value));
     });
 });

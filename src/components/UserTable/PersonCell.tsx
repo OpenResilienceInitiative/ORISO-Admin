@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import EditorHintSnackbar from '../FormPluginEditor/EditorHintSnackbar';
@@ -81,21 +80,20 @@ export const PersonCell = ({ name, email, username, alsoLabel }: PersonCellProps
                     )}
                 </div>
             )}
-            {copied &&
-                createPortal(
-                    <div className={styles.snackbarSlot} data-testid="person-copy-snackbar">
-                        <EditorHintSnackbar
-                            tone={copied === 'ok' ? 'success' : 'error'}
-                            text={
-                                copied === 'ok'
-                                    ? t('userTable.person.emailCopied', 'E-Mail kopiert')
-                                    : t('links.copyFailed', 'Kopieren fehlgeschlagen')
-                            }
-                            onClose={() => setCopied(null)}
-                        />
-                    </div>,
-                    document.body,
-                )}
+            {copied && (
+                <EditorHintSnackbar
+                    title={t('notify.title.users')}
+                    jump={false}
+                    testId="person-copy-snackbar"
+                    tone={copied === 'ok' ? 'success' : 'error'}
+                    text={
+                        copied === 'ok'
+                            ? t('userTable.person.emailCopied', 'E-Mail kopiert')
+                            : t('links.copyFailed', 'Kopieren fehlgeschlagen')
+                    }
+                    onClose={() => setCopied(null)}
+                />
+            )}
         </div>
     );
 };

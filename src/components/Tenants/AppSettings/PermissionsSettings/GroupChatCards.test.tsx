@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render as rtlRender, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../../../i18n';
 
 /**
@@ -53,7 +53,7 @@ vi.mock('../../../../api/fetchData', async (importOriginal) => {
     };
 });
 vi.mock('../../../../hooks/useAgencyUpdate', () => ({
-    useAgencyUpdate: () => ({ mutate: mocks.agencyMutate }),
+    useAgencyUpdate: () => ({ mutateAsync: mocks.agencyMutate }),
 }));
 
 // eslint-disable-next-line import/first
@@ -80,8 +80,7 @@ const findRow = async (field: string) => {
 const switchOff = async (field: string) => {
     const user = userEvent.setup();
     const control = await findRow(field);
-    await user.click(within(control).getByRole('button', { name: /Open policy choices/i }));
-    await user.click(within(control).getByRole('button', { name: /Deactivation \(adjustable\)/i }));
+    await user.click(within(control).getByRole('button', { name: /: Active – Deactivate$/ }));
 };
 
 const lastBody = (method: string, suffix: string) => {
@@ -97,8 +96,12 @@ const expectNoSupervisionFieldRendered = () => {
 const expectReadOnly = (field: string) => {
     const control = row(field) as HTMLElement;
     expect(control).not.toBeNull();
-    expect(within(control).queryByRole('button', { name: /Open policy choices/i })).toBeNull();
-    expect(within(control).getByRole('button', { name: /More information/i })).toBeInTheDocument();
+    // Locked from above: one disabled round button that only states the value, and no lock to change it.
+    const buttons = within(control).getAllByRole('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]).toBeDisabled();
+    expect(buttons[0]).toHaveAccessibleName(/: Inactive$/);
+    expect(within(control).queryByRole('button', { name: /Make it/i })).toBeNull();
     expect(within(control).getByTestId('BlockIcon')).toBeInTheDocument();
 };
 
@@ -207,7 +210,8 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await waitFor(() => expect(lastBody('PUT', '/7/permission-policies')).toBeDefined());
         const body = lastBody('PUT', '/7/permission-policies');
         expect(body.policies[INTERNAL]).toEqual({ value: false, mode: 'SUGGESTED' });
-        expect(body.policies[CIRCLES]).toEqual({ value: true, mode: 'SUGGESTED' });
+        // Only the changed policy is sent; the sibling card is left alone on the server.
+        expect(body.policies[CIRCLES]).toBeUndefined();
     });
 
     it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
@@ -218,7 +222,7 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await waitFor(() => expect(lastBody('PUT', '/7/permission-policies')).toBeDefined());
         const body = lastBody('PUT', '/7/permission-policies');
         expect(body.policies[CIRCLES]).toEqual({ value: false, mode: 'SUGGESTED' });
-        expect(body.policies[INTERNAL]).toEqual({ value: true, mode: 'SUGGESTED' });
+        expect(body.policies[INTERNAL]).toBeUndefined();
     });
 
     it('shows a card the platform forced off as disabled, not hidden', async () => {
@@ -231,13 +235,18 @@ describe('Group chat cards — Träger level (ORISO-Admin#988)', () => {
         await findRow(CIRCLES);
         expectReadOnly(CIRCLES);
         expect(
-            within(row(INTERNAL) as HTMLElement).getByRole('button', { name: /Open policy choices/i }),
+            within(row(INTERNAL) as HTMLElement).getByRole('button', { name: /: Active – Deactivate$/ }),
         ).toBeEnabled();
     });
 });
 
 describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
     const serve = (settings: Record<string, unknown>) => {
+        mocks.agencyMutate.mockImplementation(async (patch) => ({
+            id: '55',
+            tenantId: 2,
+            settings: { ...settings, ...patch.settings },
+        }));
         mocks.routes.set('GET /agencies/55', () => ({
             _embedded: { id: '55', name: 'Beratungsstelle Nord', tenantId: 2, settings },
         }));
@@ -256,10 +265,10 @@ describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
         await switchOff(INTERNAL);
 
-        expect(mocks.agencyMutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.agencyMutate).toHaveBeenCalledTimes(1));
         const payload = mocks.agencyMutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings[INTERNAL]).toBe(false);
-        expect(payload.settings[CIRCLES]).toBe(true);
+        expect(payload.settings[CIRCLES]).toBeUndefined();
     });
 
     it('saves the conversation-circle card master without touching the internal-group-chat card', async () => {
@@ -267,11 +276,11 @@ describe('Group chat cards — Beratungsstelle level (ORISO-Admin#988)', () => {
         render(<AgencyPermissionsSettings agencyId="55" />);
         await switchOff(CIRCLES);
 
-        expect(mocks.agencyMutate).toHaveBeenCalledTimes(1);
+        await waitFor(() => expect(mocks.agencyMutate).toHaveBeenCalledTimes(1));
         const payload = mocks.agencyMutate.mock.calls[0][0] as { settings: Record<string, unknown> };
         expect(payload.settings[CIRCLES]).toBe(false);
-        expect(payload.settings[INTERNAL]).toBe(true);
-        expect(payload.settings.featureGroupChatV2Enabled).toBe(true);
+        expect(payload.settings[INTERNAL]).toBeUndefined();
+        expect(payload.settings.featureGroupChatV2Enabled).toBeUndefined();
     });
 
     it('shows both cards disabled when the Träger forced group chats off', async () => {

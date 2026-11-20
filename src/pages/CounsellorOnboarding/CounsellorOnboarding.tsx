@@ -6,7 +6,8 @@ import Refresh from '@mui/icons-material/Refresh';
 import { Input } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import routePathNames from '../../appConfig';
+import routePathNames, { appURL } from '../../appConfig';
+import { agencySetupLoginForInvite } from '../../constants/agencySetupContinuation';
 import {
     CounsellorOnboardingClient,
     CounsellorTopicOption,
@@ -20,6 +21,9 @@ import { InputChipPicker } from '../../components/InputChipPicker';
 import { FilterChip } from '../../components/FilterChip';
 import { M3Switch } from '../../components/M3Switch';
 import { CounsellorAvatarField } from '../../components/CounsellorAvatarField';
+import { AvatarPickerDialog } from '../../components/OnboardingDesign/AvatarPickerDialog';
+import { CounsellorAvatarBlock } from '../../components/OnboardingDesign/CounsellorAvatarBlock';
+import { LocalizedPasswordRuleChips } from '../../components/OnboardingDesign/LocalizedPasswordRuleChips';
 import { TwoFactorSetup, TwoFactorSetupInlineError } from '../../components/TwoFactorSetup/TwoFactorSetup';
 import { toBase32Secret } from '../../utils/totpSecret';
 import { SALUTATION_KEYS } from '../../utils/salutationKeys';
@@ -33,10 +37,13 @@ import {
     effectiveTopicPermission,
     isAgencyAdminInvite,
     MIN_PASSWORD_LENGTH,
+    suggestionFromInvite,
     useCounsellorOnboardingFlow,
 } from './useCounsellorOnboardingFlow';
 import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 interface CounsellorOnboardingProps {
     inviteToken: string;
@@ -93,6 +100,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         invite,
         data,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         topicLanguageError,
@@ -112,7 +120,11 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     } = useCounsellorOnboardingFlow(inviteToken, resolvedClient, i18n.resolvedLanguage ?? i18n.language);
     // Switching "Berät auch" off while founding an agency asks first.
     const [confirmNoCounselling, setConfirmNoCounselling] = useState(false);
+    // The icon popup behind "Ändern" (#1274) and whether the invitee has replaced the suggested icon.
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+    const [avatarChanged, setAvatarChanged] = useState(false);
     const existingAccountSetup = invite?.onboardingPurpose === 'EXISTING_ACCOUNT_SETUP';
+    const agencySetupDestination = agencySetupLoginForInvite(invite);
 
     if (state.phase === 'loading') {
         return (
@@ -132,9 +144,9 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                 <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
                     {t('counsellorOnboarding.loadError.title')}
                 </Typography>
-                <Typography role="alert" sx={{ mb: 3 }}>
+                <HintText tone="error" role="alert" style={{ marginBottom: 24 }}>
                     {t('counsellorOnboarding.loadError.description')}
-                </Typography>
+                </HintText>
                 <M3Button variant="filled" icon={<Refresh fontSize="small" />} onClick={retryLoad}>
                     {t('counsellorOnboarding.loadError.retry')}
                 </M3Button>
@@ -151,18 +163,24 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     }
 
     if (state.phase === 'done') {
-        // After registration, a resumed invite already reports its newly created agency as existing.
+        // The persisted allocation origin survives registration and pending-2FA resume.
+        // Joining an existing centre and unknown legacy origins retain normal completion.
         const agencyAdminRegistration = isAgencyAdminInvite(invite);
+        const signIn = () => {
+            if (agencyAdminRegistration) navigate(agencySetupDestination ?? routePathNames.login);
+            else window.location.assign(`${appURL.replace(/\/$/, '')}/login`);
+        };
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
                 {existingAccountSetup ? (
-                    <DoneStep existingAccountSetup />
+                    <DoneStep existingAccountSetup onLogin={signIn} />
                 ) : (
                     <SuccessCard
-                        titleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.title' : undefined}
-                        subtitleKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
-                        finishKey={agencyAdminRegistration ? 'counsellorOnboarding.agencySetup.finish' : undefined}
-                        onFinish={() => navigate(routePathNames.login)}
+                        audience={agencyAdminRegistration ? 'agencyAdmin' : 'counsellor'}
+                        titleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.title' : undefined}
+                        subtitleKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.subtitle' : undefined}
+                        finishKey={agencySetupDestination ? 'counsellorOnboarding.agencySetup.finish' : undefined}
+                        onFinish={signIn}
                     />
                 )}
             </div>
@@ -215,16 +233,13 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     if (existingAccountSetup) {
         return (
             <div className={styles.wizard}>
-                <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                    {t('accountSetup.title')}
-                </Typography>
                 <AccountStep
                     invite={invite}
                     busy={busy}
                     showRegistrationError={submitError === 'registration'}
+                    passwordRejection={passwordRejection}
                     existingAccountSetup
                     passwordRules={passwordFormRules(t)}
-                    passwordHintKey="cards.advisorAccount.passwordHint"
                     onSubmit={submitAccountSetup}
                 />
             </div>
@@ -278,6 +293,16 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
     // Shared consultant credential policy — identical to the normal admin
     // consultant form (utils/consultantCredentialRules): the form must never
     // accept a credential that form would reject.
+    // The inviting admin suggested an icon (#1274): show it large with "Ändern" instead of the open picker.
+    const hasSuggestedAvatar = suggestionFromInvite(invite).avatar.avatarKind != null;
+    const iconName =
+        data.avatar.avatarKind === 'ICON' && data.avatar.avatarId
+            ? data.avatar.avatarId.charAt(0).toUpperCase() + data.avatar.avatarId.slice(1)
+            : t('counsellorOnboarding.avatar.initials');
+    const avatarBlockLabel = t(
+        avatarChanged ? 'counsellorOnboarding.avatar.chosen' : 'counsellorOnboarding.avatar.suggested',
+        { icon: iconName },
+    );
     const usernameErrKey = usernameErrorKey(data.account.username);
     const passwordErrKey = passwordErrorKey(data.account.password);
     // An agency admin who does not counsel needs no counsellor profile,
@@ -381,6 +406,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                     autoComplete="new-password"
                     onChange={(e) => updateAccount({ password: e.target.value })}
                 />
+                <LocalizedPasswordRuleChips password={data.account.password} />
             </Section>
 
             <Section titleKey="cards.personalInfo.title" hintKey="cards.personalInfo.subtitle">
@@ -433,13 +459,45 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             */}
             {counselling && (
                 <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
-                    <CounsellorAvatarField
-                        value={data.avatar}
-                        onChange={updateAvatar}
-                        displayName={data.names.publicName}
-                        firstname={invite.firstName}
-                        lastname={invite.lastName}
-                    />
+                    {hasSuggestedAvatar ? (
+                        <>
+                            <CounsellorAvatarBlock
+                                {...data.avatar}
+                                displayName={data.names.publicName}
+                                firstname={invite.firstName}
+                                lastname={invite.lastName}
+                                label={avatarBlockLabel}
+                                changeLabel={t('counsellorOnboarding.avatar.change')}
+                                onChange={() => setAvatarPickerOpen(true)}
+                            />
+                            {avatarPickerOpen && (
+                                <AvatarPickerDialog
+                                    value={data.avatar}
+                                    displayName={data.names.publicName}
+                                    firstname={invite.firstName}
+                                    lastname={invite.lastName}
+                                    title={t('counsellorOnboarding.avatar.pickerTitle')}
+                                    description={t('counsellorOnboarding.avatar.pickerDescription')}
+                                    cancelLabel={t('counsellorOnboarding.avatar.cancel')}
+                                    confirmLabel={t('counsellorOnboarding.avatar.confirm')}
+                                    onCancel={() => setAvatarPickerOpen(false)}
+                                    onConfirm={(next) => {
+                                        updateAvatar(next);
+                                        setAvatarChanged(true);
+                                        setAvatarPickerOpen(false);
+                                    }}
+                                />
+                            )}
+                        </>
+                    ) : (
+                        <CounsellorAvatarField
+                            value={data.avatar}
+                            onChange={updateAvatar}
+                            displayName={data.names.publicName}
+                            firstname={invite.firstName}
+                            lastname={invite.lastName}
+                        />
+                    )}
                     <FloatingLabelInput
                         label={t('cards.avatarName.publicName')}
                         supportingText={t('cards.avatarName.publicNameHint')}
@@ -456,7 +514,14 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             )}
 
             {createsAgency && (
-                <Section titleKey="counsellorOnboarding.agency.title" hintKey="counsellorOnboarding.agency.subtitle">
+                <Section
+                    titleKey="counsellorOnboarding.agency.title"
+                    hintKey={
+                        agencySetupDestination
+                            ? 'counsellorOnboarding.agency.adminSetupSubtitle'
+                            : 'counsellorOnboarding.agency.subtitle'
+                    }
+                >
                     <FloatingLabelInput
                         label={t('counsellorOnboarding.agency.name')}
                         supportingText={t('counsellorOnboarding.agency.nameHint')}
@@ -471,25 +536,20 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             {needsTopics && (
                 <Section titleKey="cards.focusTopics.title" hintKey={topicHintKey}>
                     {topicLanguageError && (
-                        <div role="alert">
-                            <Typography variant="body2">{t('counsellorOnboarding.topics.languageError')}</Typography>
-                            <M3Button variant="text" icon={<Refresh fontSize="small" />} onClick={retryTopicNames}>
-                                {t('counsellorOnboarding.loadError.retry')}
-                            </M3Button>
-                        </div>
+                        <Notify
+                            title={t('notify.title.onboarding')}
+                            severity="error"
+                            quietText={t('counsellorOnboarding.topics.languageError')}
+                            actions={[{ label: t('counsellorOnboarding.loadError.retry'), onClick: retryTopicNames }]}
+                        >
+                            {t('counsellorOnboarding.topics.languageError')}
+                        </Notify>
                     )}
                     {/* eslint-disable-next-line no-nested-ternary -- three exclusive states, read top-down */}
                     {renderedTopicCount === 0 ? (
                         // Neither coverage nor tenant topics: say so instead of leaving a
                         // submit that can never be enabled.
-                        <Typography
-                            role="alert"
-                            variant="body2"
-                            color="text.secondary"
-                            data-testid="wizard-topics-none"
-                        >
-                            {t('counsellorOnboarding.topics.none')}
-                        </Typography>
+                        <HintText data-testid="wizard-topics-none">{t('counsellorOnboarding.topics.none')}</HintText>
                     ) : agencyTopicsOnly ? (
                         <div
                             className={styles.topicChipRow}
@@ -559,14 +619,24 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
 
             <div className={styles.submitRow}>
                 {submitError === 'topic-policy' && (
-                    <Typography role="alert" color="error" data-testid="wizard-topic-policy-error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-topic-policy-error"
+                        severity="error"
+                        quietText={t('message.error.ONE_TOPIC_PER_AGENCY')}
+                    >
                         {t('message.error.ONE_TOPIC_PER_AGENCY')}
-                    </Typography>
+                    </Notify>
                 )}
                 {submitError === 'registration' && (
-                    <Typography role="alert" color="error" data-testid="wizard-registration-error">
+                    <Notify
+                        title={t('notify.title.onboarding')}
+                        testId="wizard-registration-error"
+                        severity="error"
+                        quietText={t('counsellorOnboarding.registrationError')}
+                    >
                         {t('counsellorOnboarding.registrationError')}
-                    </Typography>
+                    </Notify>
                 )}
                 {!canSubmit && !busy && (
                     <Typography color="text.secondary" variant="body2" data-testid="wizard-submit-hint">

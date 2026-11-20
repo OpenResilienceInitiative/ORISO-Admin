@@ -29,3 +29,14 @@ export const clearAdminLocalStorage = (): void => {
         // storage unavailable — nothing to clear
     }
 };
+
+export const clearAdminSessionStorage = (): void => {
+    try {
+        const keys = Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index));
+        keys.forEach((key) => {
+            if (key && /^oriso-admin[.:]/.test(key)) sessionStorage.removeItem(key);
+        });
+    } catch {
+        // Browser storage may be unavailable.
+    }
+};

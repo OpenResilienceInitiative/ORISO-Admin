@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
 const initialInnerHeight = window.innerHeight;
@@ -388,5 +388,41 @@ describe('M3FabMenu', () => {
         const entries = screen.getAllByRole('listitem').map((item) => item.textContent);
 
         expect(entries).toEqual(['Einstellungen', 'Träger', 'Abmelden']);
+    });
+});
+
+// FE#1725: an optional supporting sentence under a pill's label.
+describe('M3FabMenu item description', () => {
+    const described = [
+        { key: 'opt-in', label: 'Opt-in', description: 'The client is asked first.' },
+        { key: 'none', label: 'No consent' },
+    ];
+
+    it('shows the sentence in the M3 body-medium style and reads it as the description, not the name', async () => {
+        const user = userEvent.setup();
+        render(<Harness items={described} activeKey="none" />);
+        await user.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        const optIn = screen.getByRole('button', { name: 'Opt-in' });
+        expect(optIn).toHaveAccessibleDescription('The client is asked first.');
+        expect(screen.getByText('The client is asked first.')).toHaveClass('m3-body-medium');
+        expect(screen.getByRole('button', { name: 'No consent' })).not.toHaveAttribute('aria-describedby');
+    });
+
+    it('keeps the description linked when an item key contains whitespace', async () => {
+        const user = userEvent.setup();
+        render(
+            <Harness
+                items={[{ key: 'opt in', label: 'Opt-in', description: 'The client is asked first.' }]}
+                footerItems={[{ key: 'opt in', label: 'Footer', description: 'Footer sentence.' }]}
+                activeKey="none"
+            />,
+        );
+        await user.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        expect(screen.getByRole('button', { name: 'Opt-in' })).toHaveAccessibleDescription(
+            'The client is asked first.',
+        );
+        expect(screen.getByRole('button', { name: 'Footer' })).toHaveAccessibleDescription('Footer sentence.');
     });
 });

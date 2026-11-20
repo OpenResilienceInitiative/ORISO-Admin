@@ -144,7 +144,7 @@
 .segment:focus-visible {
     /* Lift the focused segment above its siblings so the ring is never clipped. */
     z-index: 1;
-    outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+    outline: 2px solid var(--admin-focus-ring-color);
     outline-offset: 2px;
 }
 
@@ -160,8 +160,8 @@
 }
 
 .main.invalid {
-    border-color: var(--m3-error, #ba1a1a);
-    color: var(--m3-error, #ba1a1a);
+    border-color: var(--m3-error, #b1005e);
+    color: var(--m3-error, #b1005e);
 }
 
 /* No chevron: a single-action pill (e.g. template opener) stays fully rounded. */

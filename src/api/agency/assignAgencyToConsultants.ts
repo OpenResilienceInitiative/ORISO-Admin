@@ -1,5 +1,7 @@
-import getCounselorById from '../counselor/getCounselorById';
-import { putAgenciesForCounselor } from './putAgenciesForCounselor';
+/* eslint-disable no-underscore-dangle -- HAL payload */
+import { counselorEndpoint } from '../../appConfig';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { DEFAULT_ROLE } from './putAgenciesForCounselor';
 
 type ConsultantSelection = string | number | { value?: string | number; id?: string | number };
 
@@ -19,8 +21,34 @@ const normalizeSelectionId = (selection: ConsultantSelection) => {
     return '';
 };
 
-const extractAgencyId = (agency: { id?: string | number | null }) => {
-    return agency?.id !== undefined && agency.id !== null ? String(agency.id) : '';
+type ConsultantAgenciesResponse = {
+    _embedded: { _embedded?: { id?: number | string } }[];
+};
+
+const addAgencyIfMissing = async (consultantId: string, agencyId: string) => {
+    const url = `${counselorEndpoint}/${encodeURIComponent(consultantId)}/agencies`;
+    const scopeErrors = [FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL_SILENT];
+    const relations: ConsultantAgenciesResponse = await fetchData({
+        url,
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: scopeErrors,
+    });
+
+    // The profile's HAL projection does not contain the current relations.
+    // Read the dedicated collection to skip already assigned counsellors.
+    const { _embedded: agencies } = relations;
+    if (!Array.isArray(agencies)) throw new Error('Could not read the counsellor’s centre assignments.');
+    if (agencies.some(({ _embedded: agency }) => String(agency?.id) === agencyId)) return;
+
+    // POST adds just this relation. It cannot replace or delete another centre.
+    await fetchData({
+        url,
+        method: FETCH_METHODS.POST,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, ...scopeErrors],
+        bodyData: JSON.stringify({ agencyId, roleSetKey: DEFAULT_ROLE }),
+    });
 };
 
 export const assignAgencyToConsultants = async (
@@ -34,17 +62,9 @@ export const assignAgencyToConsultants = async (
         return;
     }
 
-    await Promise.all(
-        consultantIds.map(async (consultantId) => {
-            const consultant = await getCounselorById(consultantId);
-            const agencyIds = new Set([
-                ...(consultant.agencyIds || []).map(String),
-                ...(consultant.agencies || []).map(extractAgencyId).filter(Boolean),
-            ]);
-
-            agencyIds.add(finalAgencyId);
-
-            await putAgenciesForCounselor(consultantId, Array.from(agencyIds));
-        }),
+    const results = await Promise.allSettled(
+        consultantIds.map((consultantId) => addAgencyIfMissing(consultantId, finalAgencyId)),
     );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') throw failure.reason;
 };

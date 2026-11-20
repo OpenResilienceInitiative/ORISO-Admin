@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { PublishSourceWarningModal } from './index';
 
 const meta = {
-    title: 'Organisms/Legal/PublishSourceWarningModal',
+    title: 'Settings/Einstellungen/Rechtliches/PublishSourceWarningModal',
+    id: 'organisms-legal-publishsourcewarningmodal',
     component: PublishSourceWarningModal,
     parameters: { layout: 'fullscreen' },
     args: {

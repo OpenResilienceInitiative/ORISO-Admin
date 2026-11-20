@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { Form } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -145,7 +145,10 @@ describe('DpaFormSection — no text, no consent (#596 review)', () => {
     it('offers no consent act at all while the agreement is unavailable', async () => {
         render(<Host dpaHtml="" />);
 
-        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveAttribute('role', 'alert');
+        // Plain error-toned text inside the tile: no alert box, no pop-up.
+        const hint = await screen.findByTestId('dpa-content-unavailable');
+        expect(hint).not.toHaveAttribute('role');
+        expect(hint).toHaveTextContent('tenantOnboarding.dpa.unavailable');
         expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
         expect(screen.queryByTestId('dpa-consent')).not.toBeInTheDocument();
         // The signature fields go with it — there is nothing to sign.

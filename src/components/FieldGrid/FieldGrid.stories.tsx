@@ -51,7 +51,7 @@ const Stage = ({ width, label, children }: { width: number | string; label: stri
 export const ResponsiveColumns: StoryObj = {
     render: () => (
         <ConfigProvider theme={buildAdminAntdTheme()}>
-            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #fcf9f9)' }}>
                 <Stage width={380} label="380px container → 1 column (mobile stacking)">
                     <Card
                         titleKey="General information"
@@ -108,7 +108,7 @@ export const ResponsiveColumns: StoryObj = {
 export const WithWideContent: StoryObj = {
     render: () => (
         <ConfigProvider theme={buildAdminAntdTheme()}>
-            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #e4e2e2)' }}>
+            <div style={{ minHeight: '100vh', padding: 32, background: 'var(--admin-workspace-background, #fcf9f9)' }}>
                 <Stage width={1080} label="Columns + full-width editor row">
                     <Card
                         titleKey="General information"

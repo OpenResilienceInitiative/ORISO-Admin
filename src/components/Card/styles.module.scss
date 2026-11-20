@@ -2,19 +2,29 @@
     height: 100%;
 }
 
-/* Default card surface. Matches the M3 gray card used consistently across the
-   admin (dialog cards, functionality cards) so there are no more white cards:
-   gray surface + subtle border + M3 elevation-1 shadow + rounded corners. The
-   border+shadow give the card separation from the workspace background
-   (--admin-workspace-background #e4e2e2), which sits only one tonal step below
-   the card surface and would otherwise let the card fade into the page. This
-   mirrors the still-shadowed .chatTypeCard so both card systems read the same. */
+/* Default card surface = the M3 dialog surface. Every tile, container and dialog
+   uses --admin-form-card-surface (surface-container-high #eae7e8) with the dialog's
+   elevation, on the light workspace (--m3-surface #fcf9f9). One token, one look;
+   a later light mode remaps the token centrally. */
 
 .card {
+    position: relative;
     background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
-    border: 1px solid color-mix(in srgb, var(--m3-outline, #747878) 22%, transparent);
+    border: 1px solid var(--admin-card-outline, transparent);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+    box-shadow: var(
+        --admin-card-elevation,
+        0 6px 16px rgb(0 0 0 / 8%),
+        0 3px 6px -4px rgb(0 0 0 / 12%),
+        0 9px 28px 8px rgb(0 0 0 / 5%)
+    );
+}
+
+.fillContainer {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
 }
 
 .contentClassName {
@@ -34,6 +44,13 @@
 }
 
 .dialogCard {
+    /* The surface follows the colour scheme, so the focus ring and the (i) icon follow it too (>= 3:1 in light and dark).
+       applyAdminTheme checks the Träger colour against the card and falls back when it is too pale (#1168). */
+    --admin-focus-ring-color: var(--admin-focus-ring-on-surface, var(--m3-primary, #a5000a));
+    --tile-help-color: var(--m3-on-surface-variant, #444748);
+
+    /* A card that is not being edited shows its values at full strength (ORISO-Admin#1313). */
+    --admin-field-disabled-opacity: 1;
     --admin-form-field-surface: var(--admin-form-card-surface, #eae7e8);
     --input-label-bg: var(--admin-form-field-surface);
 
@@ -45,7 +62,12 @@
     padding: 0;
     background: var(--m3-surface-container-high);
     border-radius: 28px;
-    box-shadow: var(--admin-card-elevation, 0 6px 20px rgb(0 0 0 / 8%), 0 2px 6px rgb(0 0 0 / 6%));
+    box-shadow: var(
+        --admin-card-elevation,
+        0 6px 16px rgb(0 0 0 / 8%),
+        0 3px 6px -4px rgb(0 0 0 / 12%),
+        0 9px 28px 8px rgb(0 0 0 / 5%)
+    );
     font-family: var(--m3-body-font-family);
     -moz-osx-font-smoothing: auto;
     -webkit-font-smoothing: subpixel-antialiased;
@@ -91,6 +113,10 @@
         font-weight: 400;
         line-height: 32px;
         text-align: center;
+
+        /* Long German compounds break at a syllable instead of mid-word on a phone-width card. */
+        hyphens: auto;
+        overflow-wrap: break-word;
     }
 }
 
@@ -108,6 +134,10 @@
         font-weight: 400;
         line-height: 32px;
         text-align: center;
+
+        /* Long German compounds break at a syllable instead of mid-word on a phone-width card. */
+        hyphens: auto;
+        overflow-wrap: break-word;
     }
 }
 

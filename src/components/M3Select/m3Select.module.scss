@@ -1,0 +1,63 @@
+.select:global(.ant-select) {
+    --m3-select-resolved-icon-size: var(--m3-select-icon-size, 24px);
+    --m3-select-resolved-icon-inset: var(--m3-select-icon-inset, 8px);
+    --m3-select-clear-size: 18px;
+
+    &:global(.ant-select-sm) {
+        --m3-select-resolved-icon-size: var(--m3-select-icon-size, 18px);
+        --m3-select-resolved-icon-inset: var(--m3-select-icon-inset, 6px);
+    }
+
+    :global(.ant-select-arrow),
+    :global(.ant-select-clear) {
+        color: var(--m3-on-surface-variant, #444748);
+    }
+
+    :global(.ant-select-arrow) {
+        width: var(--m3-select-resolved-icon-size);
+        height: var(--m3-select-resolved-icon-size);
+        justify-content: center;
+        margin-top: calc(var(--m3-select-resolved-icon-size) / -2);
+        font-size: var(--m3-select-resolved-icon-size);
+        inset-inline-end: var(--m3-select-resolved-icon-inset);
+    }
+
+    :global(.ant-select-arrow-loading) {
+        font-size: var(--m3-select-clear-size);
+    }
+
+    :global(.ant-select-clear) {
+        width: var(--m3-select-clear-size);
+        height: var(--m3-select-clear-size);
+        margin-top: calc(var(--m3-select-clear-size) / -2);
+        background: transparent;
+        font-size: var(--m3-select-clear-size);
+        inset-inline-end: calc(
+            var(--m3-select-resolved-icon-inset) + (var(--m3-select-resolved-icon-size) - var(--m3-select-clear-size)) /
+                2
+        );
+    }
+
+    &:hover:has(:global(.ant-select-clear)) :global(.ant-select-arrow) {
+        opacity: 0;
+    }
+
+    &:global(.ant-select-show-arrow) :global(.ant-select-selection-item),
+    &:global(.ant-select-show-arrow) :global(.ant-select-selection-placeholder) {
+        padding-inline-end: var(--m3-select-resolved-icon-size);
+    }
+
+    .chevron {
+        transition: transform 160ms ease;
+    }
+
+    &:global(.ant-select-open) .chevron {
+        transform: rotate(180deg);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .chevron {
+            transition: none;
+        }
+    }
+}

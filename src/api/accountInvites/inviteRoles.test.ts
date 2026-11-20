@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { counselorEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import { accountInvitesEndpoint } from './accountInvites';

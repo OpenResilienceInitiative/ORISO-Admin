@@ -1,4 +1,4 @@
-import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../../../../../i18n';
@@ -24,9 +24,11 @@ describe('AVV publication deadline dialog', () => {
         const input = within(dialog).getByLabelText('Unterschriftsfrist (Europe/Berlin)');
         expect(input).toHaveValue('');
         await user.click(within(dialog).getByRole('button', { name: 'Veröffentlichen' }));
-        expect(
-            await screen.findByText('Bitte wählen Sie ein gültiges Datum und eine Uhrzeit in der Zukunft.'),
-        ).toBeVisible();
+        await waitFor(() =>
+            expect(
+                screen.getByText('Bitte wählen Sie ein gültiges Datum und eine Uhrzeit in der Zukunft.'),
+            ).toBeVisible(),
+        );
         expect(onConfirm).not.toHaveBeenCalled();
         fireEvent.change(input, { target: { value: '2026-09-30T12:00' } });
         await user.click(within(dialog).getByRole('button', { name: 'Veröffentlichen' }));

@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, fireEvent, userEvent, waitFor, within } from 'storybook/test';
 import i18n from 'i18next';
+import type { TenantDpaStatusInfo } from '../../../../../types/dpa';
 import { UserRole } from '../../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
 import { legalDraftKey } from '../../utils/legalDraftStorage';
@@ -25,6 +26,7 @@ let published = false;
 let publishedContent: Record<string, string> = content;
 let requests: Array<{ content: unknown; deadline: string | null }> = [];
 let gateReads = 0;
+let recipientStatusReads = 0;
 let graceActive = false;
 
 const handlers = [
@@ -32,7 +34,7 @@ const handlers = [
     http.get('*/service/tenant/public/*', () =>
         HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } }),
     ),
-    http.get('*/service/tenant', () => HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } })),
+    http.get('*/service/tenant/7', () => HttpResponse.json({ id: 7, settings: { activeLanguages: ['de', 'en'] } })),
     http.get('*/service/tenantadmin/7/dpa/versions', () =>
         HttpResponse.json(published ? [{ ...initialVersion, content: JSON.stringify(publishedContent) }] : []),
     ),
@@ -66,7 +68,8 @@ const handlers = [
 ];
 
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementContainer/Signing deadline',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementContainer/Signing deadline',
+    id: 'organisms-legal-dataprocessingagreementcontainer-signing-deadline',
     component: DataProcessingAgreementContainer,
     decorators: [(Story) => withAdminProviders(Story)],
     parameters: { layout: 'padded', msw: { handlers } },
@@ -76,6 +79,7 @@ const meta = {
         publishedContent = content;
         requests = [];
         gateReads = 0;
+        recipientStatusReads = 0;
         graceActive = !!context.parameters.grace;
         const roles = context.args.readOnly
             ? [UserRole.RestrictedAgencyAdmin]
@@ -98,6 +102,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/** Room for an antd dialog's open animation on a slow runner (Admin#1506). */
+const DIALOG_OPEN_ANIMATION = { timeout: 5000 };
+
 const openDeadline = async (canvasElement: HTMLElement, translate = false) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: 'Veröffentlichen' }));
@@ -109,7 +116,13 @@ const openDeadline = async (canvasElement: HTMLElement, translate = false) => {
         }),
     );
     const deadline = await body.findByRole('dialog', { name: /AVV veröffentlichen/ });
-    await waitFor(() => expect(deadline.contains(canvasElement.ownerDocument.activeElement)).toBe(true));
+    // rc-dialog moves focus into the dialog only when its zoom-in animation has ended (the input's
+    // autoFocus runs while the portal is still detached). That alone takes ~400 ms on an idle machine,
+    // so waitFor's 1 s default gives up on a busy CI runner while the dialog is still animating in.
+    await waitFor(
+        () => expect(deadline.contains(canvasElement.ownerDocument.activeElement)).toBe(true),
+        DIALOG_OPEN_ANIMATION,
+    );
     return deadline;
 };
 
@@ -154,7 +167,7 @@ const publishPlay: NonNullable<Story['play']> = async ({ canvasElement, paramete
         await expect(JSON.parse(publishedContent.en__meta)).toMatchObject({ mt: true, src: 'de' });
     }
     await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
-    await expect(await canvas.findByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+    await waitFor(() => expect(canvas.getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible());
 };
 
 export const FirstPublication: Story = { play: publishPlay };
@@ -184,11 +197,20 @@ export const FailedPublicationKeepsDraft: Story = {
             target: { value: '2099-10-30T15:30' },
         });
         await userEvent.click(within(dialog).getByRole('button', { name: 'Veröffentlichen' }));
-        await expect(await canvas.findByText(String(i18n.t('tenants.legal.version.publishError')))).toBeVisible();
+        await waitFor(async () =>
+            expect(
+                await within(canvasElement.ownerDocument.body).findByText(
+                    String(i18n.t('tenants.legal.version.publishError')),
+                ),
+            ).toBeVisible(),
+        );
         await expect(localStorage.getItem(DRAFT_KEY)).toBe(draftBefore);
         await expect(requests).toHaveLength(1);
         await expect(publishedContent).toEqual(content);
-        await expect(canvasElement.ownerDocument.querySelector('.ant-notification-notice-error')).toBeNull();
+        // The failure is reported once, as the one pop-up: not twice (no second toast next to it).
+        await expect(
+            canvasElement.ownerDocument.querySelectorAll('[data-testid="snackbar"][data-severity="error"]'),
+        ).toHaveLength(1);
     },
 };
 export const AgencyRecipientAfterExpiry: Story = {
@@ -196,7 +218,7 @@ export const AgencyRecipientAfterExpiry: Story = {
     parameters: { renewal: true },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible();
+        await waitFor(() => expect(canvas.getByText(/Unterschriftsfrist:.*Europe\/Berlin/)).toBeVisible());
         await expect(await canvas.findByText('Die neue AVV-Fassung muss erneut unterschrieben werden.')).toBeVisible();
         await expect(canvas.getByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
         await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
@@ -225,6 +247,17 @@ export const SingleTenantRecipientAfterExpiry: Story = {
         singleTenantRecipient: true,
         msw: {
             handlers: [
+                http.get('*/service/tenantadmin/7/dpa/status', () => {
+                    recipientStatusReads += 1;
+                    return HttpResponse.json({
+                        tenantId: 7,
+                        status: 'OUTDATED',
+                        currentDpaVersion: initialVersion.activationDate,
+                        signingDeadlineAt: '2020-01-01T12:00:00Z',
+                        renewalGraceActive: false,
+                        newCounsellingAllowed: false,
+                    } satisfies TenantDpaStatusInfo);
+                }),
                 http.post('*/service/tenantadmin/7/dpa/invite', () =>
                     HttpResponse.json({
                         signLink: 'https://example.org/dpa?token=renewed-contract',
@@ -242,6 +275,7 @@ export const SingleTenantRecipientAfterExpiry: Story = {
         const canvas = within(canvasElement);
         await canvas.findByText('Deutscher Vertragsentwurf');
         await expect(await canvas.findByText(/Neue Beratungen sind gesperrt/)).toBeVisible();
+        await expect(recipientStatusReads).toBeGreaterThan(0);
         await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
         await expect(
             canvas.queryByRole('button', { name: /^(Bearbeiten|Entwurf bearbeiten)$/ }),

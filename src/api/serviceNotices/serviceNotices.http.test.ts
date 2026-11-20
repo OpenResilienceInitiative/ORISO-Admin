@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('../auth/auth', () => ({
     getAccessTokenForRequests: () => 'operator-token-fixture',
@@ -13,7 +13,6 @@ vi.mock('../../appConfig', () => ({
     CSRF_WHITELIST_HEADER: '',
     serviceNoticeDraftsEndpoint: 'https://api.example.org/service/users/admin/service-notices/drafts',
 }));
-vi.mock('antd', () => ({ message: { error: vi.fn() } }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'en', language: 'en', t: (key: string) => key } }));
 
 import {

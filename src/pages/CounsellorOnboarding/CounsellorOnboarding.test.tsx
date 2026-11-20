@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -29,7 +29,15 @@ vi.mock('../../api/fetchData', async () => {
     };
 });
 
+vi.mock('../../appConfig', async (original) => ({
+    ...(await original<typeof import('../../appConfig')>()),
+    appURL: 'https://counselling.example.test/',
+}));
+afterEach(() => vi.unstubAllGlobals());
+
 const INVITE: CounsellorOnboardingInviteDTO = {
+    onboardingPurpose: 'INVITE',
+    agencyIdAllocationMode: 'EXISTING',
     recipientEmail: 'lena@tenant.example',
     firstName: 'Lena',
     lastName: 'Beispiel',
@@ -70,6 +78,8 @@ const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): Coun
     activateTwoFactor: vi.fn().mockResolvedValue(undefined),
     ...overrides,
 });
+
+const LoginDestination = () => <h1>Sign in{useLocation().search}</h1>;
 
 const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
     render(
@@ -118,8 +128,8 @@ describe('CounsellorOnboarding', () => {
             renderFlow(client);
 
             // Preserve the existing consultant policy: an eight-character valid password works.
-            await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-            await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+            await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+            await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
             expect(screen.queryByLabelText('cards.advisorAccount.username')).not.toBeInTheDocument();
             expect(screen.queryByRole('heading', { name: 'cards.personalInfo.title' })).not.toBeInTheDocument();
             expect(screen.queryByRole('heading', { name: 'cards.focusTopics.title' })).not.toBeInTheDocument();
@@ -130,13 +140,63 @@ describe('CounsellorOnboarding', () => {
                 expect.objectContaining({
                     url: expect.stringContaining('/raw-token/setup'),
                     skipAuth: true,
-                    bodyData: JSON.stringify({ password: 'Aa1!bbbb' }),
+                    bodyData: JSON.stringify({ password: 'Aa1!bbbbbbbbbbbb' }),
                 }),
             );
             expect(client.registerCounsellor).not.toHaveBeenCalled();
             expect(client.activateTwoFactor).not.toHaveBeenCalled();
         },
     );
+
+    it('keeps normal completion for an existing agency-admin identity joining an existing centre', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                targetRole: 'AGENCY_ADMIN',
+                // Existing-account purpose must never inherit a founding continuation.
+                agencyIdAllocationMode: 'AUTO',
+                agencyExists: true,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/invite']}>
+                <Routes>
+                    <Route path="/invite" element={<CounsellorOnboarding inviteToken="raw-token" client={client} />} />
+                    <Route path="/admin/login" element={<LoginDestination />} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        await user.click(await screen.findByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+        expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    });
+
+    it('shows the one-time-password hint instead of the generic error on a 400 (Admin#1207)', async () => {
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, onboardingPurpose: 'EXISTING_ACCOUNT_SETUP' }),
+        });
+        mocks.fetchData.mockRejectedValue(
+            new Response(JSON.stringify({ message: 'Choose a password different from the initial password' }), {
+                status: 400,
+            }),
+        );
+        const user = userEvent.setup();
+        renderFlow(client);
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        // A rejected password is field-level hint text under the password, not a pop-up.
+        expect(await screen.findByText('accountSetup.passwordUnchanged')).toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
+        expect(screen.queryByText('accountSetup.serviceError')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'accountSetup.submit' })).toBeEnabled();
+    });
 
     it('never enters public TOTP from an incomplete setup response', async () => {
         const client = createClient({
@@ -146,10 +206,10 @@ describe('CounsellorOnboarding', () => {
         const before = mocks.fetchData.mock.calls.length;
         const user = userEvent.setup();
         renderFlow(client);
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        expect(await screen.findByRole('alert')).toHaveTextContent('accountSetup.serviceError');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('accountSetup.serviceError');
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
         expect(mocks.fetchData.mock.calls.length - before).toBe(1);
         expect(client.activateTwoFactor).not.toHaveBeenCalled();
@@ -177,8 +237,8 @@ describe('CounsellorOnboarding', () => {
                 <CounsellorOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
         view.rerender(
             <MemoryRouter>
@@ -209,10 +269,10 @@ describe('CounsellorOnboarding', () => {
                 <CounsellorOnboarding inviteToken="first" client={client} />
             </MemoryRouter>,
         );
-        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbb');
-        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbb');
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
         await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
-        await screen.findByRole('alert');
+        await screen.findByTestId('snackbar');
         view.rerender(
             <MemoryRouter>
                 <CounsellorOnboarding inviteToken="second" client={client} />
@@ -221,7 +281,7 @@ describe('CounsellorOnboarding', () => {
         await screen.findByText('second@example.org');
         expect(screen.getByLabelText('tenantOnboarding.account.password')).toHaveValue('');
         expect(screen.getByLabelText('tenantOnboarding.account.repeatPassword')).toHaveValue('');
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument();
         expect(screen.queryByTestId('onboarding-done')).not.toBeInTheDocument();
     });
 
@@ -247,7 +307,7 @@ describe('CounsellorOnboarding', () => {
         expect(await screen.findByLabelText('cards.advisorAccount.email')).toHaveValue('lena@tenant.example');
         expect(screen.getByLabelText('cards.advisorAccount.email')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
 
         // Person: names come from the invite, read-only.
         expect(screen.getByLabelText('cards.personalInfo.firstName')).toHaveValue('Lena');
@@ -271,7 +331,7 @@ describe('CounsellorOnboarding', () => {
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-                account: { username: 'lena_b', password: 'SecurePass1!' },
+                account: { username: 'lena_b', password: 'SecurePassword1!' },
                 person: { salutation: undefined, position: 'Leitung', title: undefined },
                 names: { publicName: 'Lena', internalDisplayName: 'Lena B.' },
                 avatar: { kind: 'INITIALS' },
@@ -289,7 +349,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         // t is mocked to the raw key, so every motif tile shares one label — take the first.
         await user.click(screen.getAllByRole('radio', { name: 'counselor.avatar.motif' })[0]);
         await user.click(submit());
@@ -302,13 +362,78 @@ describe('CounsellorOnboarding', () => {
         );
     });
 
+    describe('icon and name suggested by the inviting admin (#1274)', () => {
+        const suggested = { avatarKind: 'ICON', avatarId: 'owl', displayName: 'Maria B.' };
+
+        it('opens with the suggested icon and name filled in, and registers them unchanged', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...suggested }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'maria_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
+            expect(screen.getByLabelText('cards.avatarName.publicName')).toHaveValue('Maria B.');
+            expect(screen.getByRole('button', { name: 'counsellorOnboarding.avatar.change' })).toBeInTheDocument();
+            await user.click(submit());
+
+            await waitFor(() =>
+                expect(client.registerCounsellor).toHaveBeenCalledWith(
+                    'raw-token',
+                    expect.objectContaining({
+                        avatar: { kind: 'ICON', id: 'owl' },
+                        names: expect.objectContaining({ publicName: 'Maria B.' }),
+                    }),
+                ),
+            );
+        });
+
+        it('"Ändern" opens the popup; "Abbrechen" keeps the suggestion, "Übernehmen" replaces it', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...suggested }),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await user.click(await screen.findByRole('button', { name: 'counsellorOnboarding.avatar.change' }));
+            await user.click((await screen.findAllByRole('radio', { name: 'counselor.avatar.motif' }))[1]);
+            await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.avatar.cancel' }));
+            await waitFor(() =>
+                expect(
+                    screen.queryByRole('button', { name: 'counsellorOnboarding.avatar.cancel' }),
+                ).not.toBeInTheDocument(),
+            );
+
+            await user.type(screen.getByLabelText('cards.advisorAccount.username'), 'maria_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
+            await user.click(submit());
+            await waitFor(() =>
+                expect(client.registerCounsellor).toHaveBeenCalledWith(
+                    'raw-token',
+                    expect.objectContaining({ avatar: { kind: 'ICON', id: 'owl' } }),
+                ),
+            );
+        });
+
+        it('shows the open picker and empty name as before when nothing was suggested', async () => {
+            renderFlow(createClient());
+
+            expect(await screen.findByLabelText('cards.avatarName.publicName')).toHaveValue('');
+            expect(
+                screen.queryByRole('button', { name: 'counsellorOnboarding.avatar.change' }),
+            ).not.toBeInTheDocument();
+            expect(screen.getAllByRole('radio', { name: 'counselor.avatar.motif' }).length).toBeGreaterThan(0);
+        });
+    });
+
     it('omits the avatar entirely when the invitee picks nothing', async () => {
         const client = createClient();
         const user = userEvent.setup();
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         await user.click(submit());
 
         await waitFor(() => expect(client.registerCounsellor).toHaveBeenCalled());
@@ -340,8 +465,16 @@ describe('CounsellorOnboarding', () => {
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'Lena.B');
         expect(screen.getByText('message.error.username.format')).toBeInTheDocument();
 
+        // One character short of the 16-character rule, otherwise complete.
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'Abcdefghij1234!');
+        expect(screen.getByText('message.error.password.minLength')).toBeInTheDocument();
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), '5');
+        expect(screen.queryByText('message.error.password.minLength')).not.toBeInTheDocument();
+        expect(screen.queryByText('message.error.password.policy')).not.toBeInTheDocument();
+
         // Long enough but missing upper case, digit and special character.
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'password');
+        await user.clear(screen.getByLabelText('cards.advisorAccount.password'));
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'passwordpassword');
         expect(screen.getByText('message.error.password.policy')).toBeInTheDocument();
 
         expect(submit()).toBeDisabled();
@@ -372,7 +505,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         expect(screen.getByRole('heading', { name: 'counsellorOnboarding.agency.title' })).toBeInTheDocument();
         expect(screen.getByText('counsellorOnboarding.topics.chooseHint')).toBeInTheDocument();
 
@@ -387,7 +520,7 @@ describe('CounsellorOnboarding', () => {
 
         await waitFor(() =>
             expect(client.registerCounsellor).toHaveBeenCalledWith('raw-token', {
-                account: { username: 'lena_b', password: 'SecurePass1!' },
+                account: { username: 'lena_b', password: 'SecurePassword1!' },
                 person: { salutation: undefined, position: undefined, title: undefined },
                 names: { publicName: undefined, internalDisplayName: undefined },
                 topicIds: [22],
@@ -411,7 +544,14 @@ describe('CounsellorOnboarding', () => {
         await screen.findByLabelText('cards.advisorAccount.username');
         await addTopic(user, 'Familienberatung');
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeDisabled();
-        await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+        // antd keeps a closed dropdown mounted and marks it `ant-dropdown-hidden`. The unit setup
+        // injects no antd CSS, so that class, not computed style, is what says the menu is closed.
+        await waitFor(() => {
+            const menu = screen.queryByRole('menu');
+            if (menu) {
+                expect(menu.closest('.ant-dropdown')).toHaveClass('ant-dropdown-hidden');
+            }
+        });
         await user.click(within(screen.getAllByTestId('input-chip')[0]).getByRole('button'));
         expect(screen.getByRole('button', { name: 'counsellorOnboarding.topics.add' })).toBeEnabled();
         await addTopic(user, 'Schuldnerberatung');
@@ -430,7 +570,7 @@ describe('CounsellorOnboarding', () => {
         const user = userEvent.setup();
         renderFlow(client);
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         await user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'New centre');
         await user.click(submit());
         expect(await screen.findByTestId('wizard-topic-policy-error')).toHaveTextContent(
@@ -463,7 +603,7 @@ describe('CounsellorOnboarding', () => {
     describe('topic permission', () => {
         const fillAccount = async (user: ReturnType<typeof userEvent.setup>) => {
             await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         };
         const topicChip = (name: string) => screen.getByRole('checkbox', { name });
         const registeredTopics = (client: CounsellorOnboardingClient) =>
@@ -603,7 +743,7 @@ describe('CounsellorOnboarding', () => {
         });
         renderFlow(client);
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('counsellorOnboarding.topics.none');
+        expect(await screen.findByTestId('wizard-topics-none')).toHaveTextContent('counsellorOnboarding.topics.none');
         expect(screen.queryByRole('button', { name: 'counsellorOnboarding.topics.add' })).not.toBeInTheDocument();
         expect(screen.queryByRole('heading', { name: 'counsellorOnboarding.agency.title' })).not.toBeInTheDocument();
         expect(submit()).toBeDisabled();
@@ -639,6 +779,10 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         expect(await screen.findByTestId('onboarding-load-error')).toBeInTheDocument();
+        // This view blocks the invitee after an async failure: it is announced, as in the tenant flow.
+        expect(within(screen.getByTestId('onboarding-load-error')).getByRole('alert')).toHaveTextContent(
+            'counsellorOnboarding.loadError.description',
+        );
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.loadError.retry' }));
 
         expect(await screen.findByTestId('counsellor-onboarding-form')).toBeInTheDocument();
@@ -654,7 +798,7 @@ describe('CounsellorOnboarding', () => {
         renderFlow(client);
 
         await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
         // Coverage is preselected — nothing else to pick.
         await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.submit' }));
 
@@ -676,8 +820,11 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
     const alsoCounsellorSwitch = () =>
         screen.getByRole('switch', { name: 'counsellorOnboarding.alsoCounsellor.label' });
     const fillAccount = async (user: ReturnType<typeof userEvent.setup>) => {
-        await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'oskar_b');
-        await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePass1!');
+        // The trace checks the collected credentials, not per-keystroke rendering.
+        await user.click(await screen.findByLabelText('cards.advisorAccount.username'));
+        await user.paste('oskar_b');
+        await user.click(screen.getByLabelText('cards.advisorAccount.password'));
+        await user.paste('SecurePassword1!');
     };
 
     it("shows the inviter's preset as a switch and sends it on register (on: topics like a counsellor)", async () => {
@@ -769,25 +916,164 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 
+    it.each(['COMPLETED', 'PENDING_2FA_ACTIVATION'] as const)(
+        'keeps normal completion when a new BST-admin account joins an existing centre after %s',
+        async (phase) => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...AGENCY_ADMIN_INVITE,
+                    agencyExists: true,
+                    alsoCounsellor: false,
+                }),
+                registerCounsellor: vi.fn().mockResolvedValue({
+                    consultantId: 'joined-admin',
+                    phase,
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<LoginDestination />} />
+                    </Routes>
+                </MemoryRouter>,
+            );
+            await fillAccount(user);
+            expect(screen.queryByLabelText('counsellorOnboarding.agency.name')).not.toBeInTheDocument();
+            await user.click(submit());
+            if (phase === 'PENDING_2FA_ACTIVATION') {
+                await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+                await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            }
+            expect(await screen.findByText('cards.success.subtitle')).toBeInTheDocument();
+            expect(screen.queryByText('counsellorOnboarding.agencySetup.subtitle')).not.toBeInTheDocument();
+            await user.click(screen.getByRole('button', { name: 'cards.success.finish' }));
+            expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+            expect(client.registerCounsellor).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ account: { username: 'oskar_b', password: 'SecurePassword1!' } }),
+            );
+            expect(vi.mocked(client.registerCounsellor).mock.calls[0][1].agency).toBeUndefined();
+        },
+    );
+
+    it.each([
+        ['COUNSELLOR', 'AUTO'],
+        ['AGENCY_ADMIN', 'EXISTING'],
+        ['AGENCY_ADMIN', null],
+        ['AGENCY_ADMIN', undefined],
+    ] as const)(
+        'keeps normal completion for a resumed %s with allocation origin %s',
+        async (targetRole, allocationMode) => {
+            const assign = vi.fn();
+            vi.stubGlobal('location', { assign });
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    targetRole,
+                    agencyIdAllocationMode: allocationMode,
+                    agencyExists: true,
+                    phase: 'PENDING_2FA_ACTIVATION',
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<LoginDestination />} />
+                    </Routes>
+                </MemoryRouter>,
+            );
+            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            await user.click(await screen.findByRole('button', { name: 'cards.success.finish' }));
+            if (targetRole === 'COUNSELLOR') {
+                expect(assign).toHaveBeenCalledExactlyOnceWith('https://counselling.example.test/login');
+                expect(screen.queryByRole('heading', { name: 'Sign in' })).not.toBeInTheDocument();
+            } else {
+                expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+                expect(assign).not.toHaveBeenCalled();
+            }
+            expect(client.registerCounsellor).not.toHaveBeenCalled();
+        },
+    );
+
     // A founding admin must give the new agency a topic, or its queued counsellors have nothing to pick.
     describe('founding a new agency', () => {
         const FOUNDING_INVITE: CounsellorOnboardingInviteDTO = {
             ...AGENCY_ADMIN_INVITE,
+            agencyIdAllocationMode: 'MANUAL',
             agencyExists: false,
             topics: [],
             availableTopics: [{ id: 14, name: 'Suchtberatung' }],
         };
-        const nameAgency = async (user: ReturnType<typeof userEvent.setup>) =>
-            user.type(screen.getByLabelText('counsellorOnboarding.agency.name'), 'Suchtberatung Nord');
+        const nameAgency = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.click(screen.getByLabelText('counsellorOnboarding.agency.name'));
+            await user.paste('Suchtberatung Nord');
+        };
 
-        it.each(['COMPLETED', 'PENDING_2FA_ACTIVATION'] as const)(
-            'guides the founding admin to the agency profile after %s',
-            async (phase) => {
+        it.each([
+            ['AUTO', 'COMPLETED'],
+            ['AUTO', 'PENDING_2FA_ACTIVATION'],
+            ['MANUAL', 'COMPLETED'],
+            ['MANUAL', 'PENDING_2FA_ACTIVATION'],
+        ] as const)('guides the %s founding admin to the agency profile after %s', async (allocationMode, phase) => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...FOUNDING_INVITE,
+                    alsoCounsellor: false,
+                    agencyIdAllocationMode: allocationMode,
+                }),
+                registerCounsellor: vi.fn().mockResolvedValue({
+                    consultantId: 'founder',
+                    phase,
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<LoginDestination />} />
+                    </Routes>
+                </MemoryRouter>,
+            );
+            await fillAccount(user);
+            await nameAgency(user);
+            await addTopic(user, 'Suchtberatung');
+            await user.click(submit());
+            if (phase === 'PENDING_2FA_ACTIVATION') {
+                await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+                await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            }
+            expect(await screen.findByText('counsellorOnboarding.agencySetup.subtitle')).toBeInTheDocument();
+            await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.agencySetup.finish' }));
+            expect(await screen.findByRole('heading', { name: 'Sign in?agencySetupId=5' })).toBeInTheDocument();
+        });
+
+        it.each(['AUTO', 'MANUAL'] as const)(
+            'retains the %s agency next step when OTP resumes after the agency was created',
+            async (allocationMode) => {
                 const client = createClient({
-                    getOnboardingInvite: vi.fn().mockResolvedValue({ ...FOUNDING_INVITE, alsoCounsellor: false }),
-                    registerCounsellor: vi.fn().mockResolvedValue({
-                        consultantId: 'founder',
-                        phase,
+                    getOnboardingInvite: vi.fn().mockResolvedValue({
+                        ...FOUNDING_INVITE,
+                        agencyIdAllocationMode: allocationMode,
+                        agencyExists: true,
+                        phase: 'PENDING_2FA_ACTIVATION',
                         twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
                     }),
                 });
@@ -799,44 +1085,22 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
                                 path="/invite"
                                 element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
                             />
-                            <Route path="/admin/login" element={<h1>Sign in</h1>} />
+                            <Route path="/admin/login" element={<LoginDestination />} />
                         </Routes>
                     </MemoryRouter>,
                 );
-                await fillAccount(user);
-                await nameAgency(user);
-                await addTopic(user, 'Suchtberatung');
-                await user.click(submit());
-                if (phase === 'PENDING_2FA_ACTIVATION') {
-                    await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
-                    await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
-                }
-                expect(await screen.findByText('counsellorOnboarding.agencySetup.subtitle')).toBeInTheDocument();
+                await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+                await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+                expect(
+                    await screen.findByRole('button', {
+                        name: 'counsellorOnboarding.agencySetup.finish',
+                    }),
+                ).toBeInTheDocument();
                 await user.click(screen.getByRole('button', { name: 'counsellorOnboarding.agencySetup.finish' }));
-                expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeInTheDocument();
+                expect(await screen.findByRole('heading', { name: 'Sign in?agencySetupId=5' })).toBeInTheDocument();
+                expect(client.registerCounsellor).not.toHaveBeenCalled();
             },
         );
-
-        it('retains the agency next step when OTP resumes after the agency was created', async () => {
-            const client = createClient({
-                getOnboardingInvite: vi.fn().mockResolvedValue({
-                    ...FOUNDING_INVITE,
-                    agencyExists: true,
-                    phase: 'PENDING_2FA_ACTIVATION',
-                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
-                }),
-            });
-            const user = userEvent.setup();
-            renderFlow(client);
-            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
-            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
-            expect(
-                await screen.findByRole('button', {
-                    name: 'counsellorOnboarding.agencySetup.finish',
-                }),
-            ).toBeInTheDocument();
-            expect(client.registerCounsellor).not.toHaveBeenCalled();
-        });
 
         it('without counselling still requires one topic for the agency and sends it', async () => {
             const client = createClient({
@@ -944,6 +1208,97 @@ describe('CounsellorOnboarding — agency admin, "Berät auch"', () => {
         );
     });
 });
+
+describe('registration completion login destinations', () => {
+    it.each([
+        { targetRole: 'COUNSELLOR' as const, alsoCounsellor: true },
+        { targetRole: 'AGENCY_ADMIN' as const, alsoCounsellor: false },
+        { targetRole: 'AGENCY_ADMIN' as const, alsoCounsellor: true },
+    ])(
+        'keeps $targetRole (alsoCounsellor=$alsoCounsellor) on the correct login and guide',
+        async ({ targetRole, alsoCounsellor }) => {
+            const assign = vi.fn();
+            vi.stubGlobal('location', { assign });
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    targetRole,
+                    alsoCounsellor,
+                    phase: 'PENDING_2FA_ACTIVATION',
+                    twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
+                }),
+            });
+            const user = userEvent.setup();
+            render(
+                <MemoryRouter initialEntries={['/invite']}>
+                    <Routes>
+                        <Route
+                            path="/invite"
+                            element={<CounsellorOnboarding inviteToken="raw-token" client={client} />}
+                        />
+                        <Route path="/admin/login" element={<h1>Admin sign in</h1>} />
+                    </Routes>
+                </MemoryRouter>,
+            );
+            await user.type(await screen.findByLabelText('twoFactorSetup.otp.label'), '123456');
+            await user.click(screen.getByRole('button', { name: 'twoFactorSetup.submit' }));
+            const agencyAdmin = targetRole === 'AGENCY_ADMIN';
+            expect(
+                await screen.findByText(`registrationGuide.${agencyAdmin ? 'agencyAdmin' : 'counsellor'}.features.1`),
+            ).toBeInTheDocument();
+            await user.click(
+                screen.getByRole('button', {
+                    name: 'cards.success.finish',
+                }),
+            );
+            if (agencyAdmin) {
+                expect(await screen.findByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
+                expect(assign).not.toHaveBeenCalled();
+            } else {
+                expect(assign).toHaveBeenCalledExactlyOnceWith('https://counselling.example.test/login');
+                expect(screen.queryByRole('heading', { name: 'Admin sign in' })).not.toBeInTheDocument();
+            }
+        },
+    );
+});
+
+it.each(['COUNSELLOR', 'AGENCY_ADMIN'] as const)(
+    'keeps an existing %s account on its own login after password setup',
+    async (targetRole) => {
+        const assign = vi.fn();
+        vi.stubGlobal('location', { assign });
+        mocks.fetchData.mockResolvedValue({ phase: 'COMPLETED' });
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                targetRole,
+                onboardingPurpose: 'EXISTING_ACCOUNT_SETUP',
+            }),
+        });
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/invite']}>
+                <Routes>
+                    <Route path="/invite" element={<CounsellorOnboarding inviteToken="raw-token" client={client} />} />
+                    <Route path="/admin/login" element={<h1>Admin sign in</h1>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await user.type(await screen.findByLabelText('tenantOnboarding.account.password'), 'Aa1!bbbbbbbbbbbb');
+        await user.type(screen.getByLabelText('tenantOnboarding.account.repeatPassword'), 'Aa1!bbbbbbbbbbbb');
+        await user.click(screen.getByRole('button', { name: 'accountSetup.submit' }));
+        expect(await screen.findByText('accountSetup.success')).toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'tenantOnboarding.done.toLogin' }));
+        if (targetRole === 'COUNSELLOR') {
+            expect(assign).toHaveBeenCalledExactlyOnceWith('https://counselling.example.test/login');
+            expect(screen.queryByRole('heading', { name: 'Admin sign in' })).not.toBeInTheDocument();
+        } else {
+            expect(await screen.findByRole('heading', { name: 'Admin sign in' })).toBeInTheDocument();
+            expect(assign).not.toHaveBeenCalled();
+        }
+        expect(client.registerCounsellor).not.toHaveBeenCalled();
+    },
+);
 
 describe('CounsellorOnboarding server default', () => {
     it('passes the supported server APP default to the shared setup', async () => {

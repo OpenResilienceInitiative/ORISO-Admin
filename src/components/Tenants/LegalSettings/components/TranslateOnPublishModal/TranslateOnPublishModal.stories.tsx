@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { TranslateOnPublishModal } from './index';
 
 const meta = {
-    title: 'Organisms/Legal/TranslateOnPublishModal',
+    title: 'Settings/Einstellungen/Rechtliches/TranslateOnPublishModal',
+    id: 'organisms-legal-translateonpublishmodal',
     component: TranslateOnPublishModal,
     parameters: { layout: 'fullscreen' },
     args: {

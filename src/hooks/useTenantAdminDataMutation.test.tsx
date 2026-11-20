@@ -1,7 +1,8 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { snackbar } from '../components/Snackbar';
 import { fetchData } from '../api/fetchData';
 import { TENANT_QUERY_KEY } from './useSingleTenantData';
 
@@ -12,10 +13,6 @@ vi.mock('react-i18next', () => ({
 vi.mock('../api/fetchData', () => ({ fetchData: vi.fn(), FETCH_METHODS: { PUT: 'PUT' } }));
 
 const notifySuccess = vi.hoisted(() => vi.fn());
-vi.mock('antd', async () => {
-    const antd = await vi.importActual<typeof import('antd')>('antd');
-    return { ...antd, notification: { ...antd.notification, success: notifySuccess } };
-});
 
 vi.mock('../api/tenant/getSingleTenantData', () => ({
     getSingleTenantData: vi.fn(),
@@ -58,6 +55,7 @@ const createWrapper = () => {
 };
 
 beforeEach(() => {
+    vi.spyOn(snackbar, 'success').mockImplementation(notifySuccess);
     getSingleTenantDataMock.mockReset();
     vi.mocked(fetchData).mockReset();
     notifySuccess.mockReset();

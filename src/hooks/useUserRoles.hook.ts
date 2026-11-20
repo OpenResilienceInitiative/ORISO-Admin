@@ -1,13 +1,21 @@
 import { getAccessTokenForRequests } from '../api/auth/auth';
 import { UserRole } from '../enums/UserRole';
 import parseJwt from '../utils/parseJWT';
+import { isStatisticsReaderOnly } from '../utils/statisticsReader';
 
 export const useUserRoles = (): {
     roles: UserRole[];
     hasRole: (role: UserRole | UserRole[]) => boolean;
     isSuperAdmin: boolean;
     isTechnicalAccount: boolean;
+    /** The account also holds the counsellor realm role (one login for admin and counselling app). */
+    isCounsellor: boolean;
     isTenantScopedAdmin: boolean;
+    /**
+     * A Statistik-Leser·in without another admin role (ORISO-UserService#1666): confined to the
+     * statistics page, where it reads the platform scope. Never implies `isSuperAdmin`.
+     */
+    isStatisticsReader: boolean;
     tenantId: number | null;
     /**
      * An access token exists but could not be decoded (malformed JWT). Roles
@@ -37,6 +45,7 @@ export const useUserRoles = (): {
         tenantId = Number(payload.tenantId);
     }
     const isTechnicalAccount = tokenRoles.includes(UserRole.Technical);
+    const isCounsellor = tokenRoles.includes(UserRole.Consultant);
 
     // Keep all token roles so mixed-role admin accounts retain expected UI capabilities.
     const roles = tokenRoles;
@@ -48,13 +57,16 @@ export const useUserRoles = (): {
 
     const isSuperAdmin = hasRole(UserRole.AgencyAdmin) && hasRole(UserRole.TenantAdmin) && tenantId === 0;
     const isTenantScopedAdmin = hasRole(UserRole.TenantAdmin) && tenantId !== null && tenantId > 0;
+    const isStatisticsReader = isStatisticsReaderOnly(roles);
 
     return {
         roles,
         hasRole,
         isSuperAdmin,
         isTechnicalAccount,
+        isCounsellor,
         isTenantScopedAdmin,
+        isStatisticsReader,
         tenantId,
         tokenUnreadable,
     };

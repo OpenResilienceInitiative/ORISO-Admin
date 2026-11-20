@@ -1,10 +1,9 @@
 import { useRef, type ChangeEvent, type ReactNode } from 'react';
 import { DeleteOutlined, DownloadOutlined, MoreOutlined, UploadOutlined } from '@ant-design/icons';
-import { message, type MenuProps } from 'antd';
+import { type MenuProps } from 'antd';
 import { useTranslation } from 'react-i18next';
-import SearchIcon from '@mui/icons-material/Search';
-import CloseIcon from '@mui/icons-material/Close';
 import SelectAllIcon from '@mui/icons-material/SelectAll';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { GlobalSearchMenu } from '../../components/GlobalSearch';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
@@ -57,6 +56,7 @@ interface InviteMoreMenuOptions {
 
 /** The ⋮ menu (CSV import, CSV template, delete selected) and the hidden file picker it opens. */
 export const useInviteMoreMenu = ({ tab, csv, bulk, sendMode, selectedTemplate }: InviteMoreMenuOptions) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +67,7 @@ export const useInviteMoreMenu = ({ tab, csv, bulk, sendMode, selectedTemplate }
             return;
         }
         try {
-            const result = parseInviteCsv(await readFileText(file));
+            const result = parseInviteCsv(await readFileText(file), tab === 'tenant' ? 'tenant' : 'agency');
             if (result.rows.length === 0 && result.rejected.length === 0) {
                 message.info(t('links.csvImport.emptyFile', 'Die CSV-Datei enthält keine Empfänger.'));
             } else {
@@ -237,39 +237,4 @@ export const useInviteBulkSend = ({ tab, bulk, selectedTemplate, submitting, ful
             />
         ) : null;
     return { active, button, hint };
-};
-
-interface InviteSearchFieldProps {
-    query: string;
-    onChange: (query: string) => void;
-    placeholder?: string;
-}
-
-/** The table card's search: a pill that filters as you type (the list is client-side). */
-export const InviteSearchField = ({ query, onChange, placeholder }: InviteSearchFieldProps) => {
-    const { t } = useTranslation();
-    const label = placeholder ?? t('links.inviteProgress.searchPlaceholder', 'Einladungen durchsuchen');
-    return (
-        <div className={styles.searchField}>
-            <SearchIcon aria-hidden className={styles.searchIcon} />
-            <input
-                aria-label={label}
-                className={styles.searchInput}
-                placeholder={label}
-                type="search"
-                value={query}
-                onChange={(event) => onChange(event.target.value)}
-            />
-            {query && (
-                <button
-                    aria-label={t('links.inviteProgress.searchClear', 'Suche leeren')}
-                    className={styles.searchClear}
-                    type="button"
-                    onClick={() => onChange('')}
-                >
-                    <CloseIcon aria-hidden />
-                </button>
-            )}
-        </div>
-    );
 };

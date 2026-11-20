@@ -1,5 +1,9 @@
-.warning:global(.ant-alert.ant-alert-warning) {
-    padding: 14px 16px;
+.warning {
+    margin-bottom: 16px;
+}
+
+/* The shared team row's description can wrap to two lines; keep it clear of the next field's floating label. */
+.teamFunction {
     margin-bottom: 16px;
 }
 

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { hasAdminPortalAccess, hasAdminPortalRole } from './adminPortalAccess';
 import { UserRole } from '../enums/UserRole';
 
@@ -10,6 +10,10 @@ describe('hasAdminPortalRole', () => {
     it('returns true when any admin-portal role is present', () => {
         expect(hasAdminPortalRole([UserRole.RestrictedAgencyAdmin])).toBe(true);
         expect(hasAdminPortalRole(['some-other', UserRole.TenantAdmin])).toBe(true);
+    });
+
+    it('lets a Statistik-Leser·in into the admin portal (ORISO-UserService#1666)', () => {
+        expect(hasAdminPortalRole([UserRole.StatisticsReader])).toBe(true);
     });
 
     it('returns false for non-admin roles, empty, or default', () => {

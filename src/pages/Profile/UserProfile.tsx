@@ -1,16 +1,17 @@
-import { Col, Row } from 'antd';
 import { Page } from '../../components/Page';
+import { CardGrid } from '../../components/CardGrid';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { UserRole } from '../../enums/UserRole';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { Documentation } from './Documentation';
 import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
+import { Absence } from './Absence';
 import { LanguageSettings } from './LanguageSettings';
 import { PasswordChange } from './PassswordChange';
 import { PrivateData } from './PrivateData';
+import { RolesAndAssignment } from './RolesAndAssignment';
 import { SelfConsultantIdentity } from './SelfConsultantIdentity';
-import { Card } from '../../components/Card';
-import { TwoFactorSetup } from '../../components/TwoFactorSetup/TwoFactorSetup';
+import { TwoFactorCard } from './TwoFactorCard';
 
 export const UserProfile = () => {
     const { settings } = useAppConfigContext();
@@ -20,25 +21,38 @@ export const UserProfile = () => {
         <Page>
             <Page.Title titleKey="profile.title" subTitleKey="profile.title.text" />
 
-            <Row gutter={[24, 24]}>
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-                    {!hasRole(UserRole.TenantAdmin) && <PrivateData />}
-                    <LanguageSettings />
+            {/* The settings raster: tiles share the rows, nothing scrolls sideways. */}
+            <CardGrid raster>
+                {!hasRole(UserRole.TenantAdmin) && (
+                    <CardGrid.Item>
+                        <PrivateData />
+                    </CardGrid.Item>
+                )}
+                <CardGrid.Item>
+                    <RolesAndAssignment />
+                </CardGrid.Item>
+                <SelfConsultantIdentity />
+                <CardGrid.Item>
                     <PasswordChange />
-                    {settings.documentationEnabled && <Documentation />}
-                </Col>
-
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <TwoFactorCard />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <LanguageSettings />
+                </CardGrid.Item>
+                <CardGrid.Item>
+                    <Absence />
+                </CardGrid.Item>
+                <CardGrid.Item>
                     <TourOverviewSection />
-                    <SelfConsultantIdentity />
-                </Col>
-
-                <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-                    <Card titleKey="twoFactorAuth.title" subTitleKey="twoFactorAuth.subtitle">
-                        <TwoFactorSetup context="profile" />
-                    </Card>
-                </Col>
-            </Row>
+                </CardGrid.Item>
+                {settings.documentationEnabled && (
+                    <CardGrid.Item>
+                        <Documentation />
+                    </CardGrid.Item>
+                )}
+            </CardGrid>
         </Page>
     );
 };

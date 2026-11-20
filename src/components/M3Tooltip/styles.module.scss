@@ -1,5 +1,5 @@
-/* M3 plain tooltip: inverse-surface bubble, body/small type, one line height of
-   offset from the trigger. Colours are M3 CSS variables only. */
+/* M3 plain tooltip: solid black bubble, body/small type, one line height of
+   offset from the trigger. Black stays black in every tenant theme (#1299). */
 
 .wrapper {
     position: relative;
@@ -15,9 +15,9 @@
     width: max-content;
     max-width: 260px;
     padding: 4px 8px;
-    background: var(--m3-inverse-surface, #303031);
+    background: #000000;
     border-radius: 4px;
-    color: var(--m3-inverse-on-surface, #f3f0f0);
+    color: #ffffff;
     font: 400 12px/16px var(--m3-body-font-family);
     letter-spacing: 0.4px;
     pointer-events: none;

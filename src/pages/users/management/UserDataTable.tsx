@@ -5,6 +5,8 @@ import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
+import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
 import { Link } from 'react-router-dom';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
@@ -58,14 +60,14 @@ export interface UserDataTableProps {
     onSortChange: (sortBy: string, order: 'ASC' | 'DESC') => void;
     onEdit: (row: CounselorData) => void;
     onDelete: (row: CounselorData) => void;
+    /** Only passed where the caller may end a running deletion (consultants); shown on IN_DELETION rows. */
+    onCancelDeletion?: (row: CounselorData) => void;
+    onPauseDeletion?: (row: CounselorData) => void;
     page: number;
     pageSize: number;
     total: number;
     onPageChange: (page: number) => void;
     onPageSizeChange: (pageSize: number) => void;
-    /** Set when the Träger or BST filter is available: a chip click narrows the list to it. */
-    onTenantClick?: (tenantId: string) => void;
-    onAgencyClick?: (agencyId: string) => void;
     ariaLabel?: string;
 }
 
@@ -85,13 +87,13 @@ export const UserDataTable = ({
     onSortChange,
     onEdit,
     onDelete,
+    onCancelDeletion,
+    onPauseDeletion,
     page,
     pageSize,
     total,
     onPageChange,
     onPageSizeChange,
-    onTenantClick,
-    onAgencyClick,
     ariaLabel,
 }: UserDataTableProps) => {
     const { t } = useTranslation();
@@ -167,6 +169,7 @@ export const UserDataTable = ({
                         }
                         compact={narrow}
                         withDate={dateInPill}
+                        dateDirection={sort?.direction}
                     />
                 </span>
             ),
@@ -213,14 +216,7 @@ export const UserDataTable = ({
                     />
                 );
             case 'tenant':
-                return row.tenantId ? (
-                    <ScopeChip
-                        kind="tenant"
-                        id={row.tenantId}
-                        name={row.tenantName}
-                        onClick={onTenantClick && (() => onTenantClick(String(row.tenantId)))}
-                    />
-                ) : null;
+                return row.tenantId ? <ScopeChip kind="tenant" id={row.tenantId} name={row.tenantName} /> : null;
             case 'subdomain':
                 return row.tenantSubdomain ? (
                     <Link target="_blank" to={`//${getDomain(row.tenantSubdomain)}`}>
@@ -238,16 +234,13 @@ export const UserDataTable = ({
                             name={first.name ?? ''}
                             postcode={first.postcode}
                             city={first.city}
-                            onClick={
-                                onAgencyClick && first.id != null ? () => onAgencyClick(String(first.id)) : undefined
-                            }
                         />
                         {row.agencies.length > 1 && <span className={styles.more}>+{row.agencies.length - 1}</span>}
                     </span>
                 );
             }
             case 'status':
-                return <StatusBadge status={resolveDisplayStatus(row)} />;
+                return <StatusBadge status={resolveDisplayStatus(row)} accountStatus={row} />;
             case 'lastUpdated': {
                 const date = getLastUpdatedAt(row);
                 return date ? <RelativeTime value={date.toISOString()} /> : '—';
@@ -285,6 +278,26 @@ export const UserDataTable = ({
                                       icon: <EditOutlinedIcon />,
                                       disabled: pending,
                                       onSelect: () => onEdit(row),
+                                  },
+                              ]
+                            : []),
+                        ...(pending && onCancelDeletion
+                            ? [
+                                  {
+                                      key: 'cancelDeletion',
+                                      label: t('deletionWindow.cancel.action'),
+                                      icon: <RestoreFromTrashOutlinedIcon />,
+                                      onSelect: () => onCancelDeletion(row),
+                                  },
+                              ]
+                            : []),
+                        ...(pending && onPauseDeletion
+                            ? [
+                                  {
+                                      key: 'pauseDeletion',
+                                      label: t('deletionWindow.pause.action'),
+                                      icon: <PauseCircleOutlineOutlinedIcon />,
+                                      onSelect: () => onPauseDeletion(row),
                                   },
                               ]
                             : []),
@@ -333,6 +346,20 @@ export const UserDataTable = ({
                                 ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name })}
                                 disabled={pending}
                                 onClick={() => onEdit(row)}
+                            />
+                        )}
+                        {pending && onCancelDeletion && (
+                            <IconButton
+                                icon={<RestoreFromTrashOutlinedIcon />}
+                                ariaLabel={t('deletionWindow.cancel.action')}
+                                onClick={() => onCancelDeletion(row)}
+                            />
+                        )}
+                        {pending && onPauseDeletion && (
+                            <IconButton
+                                icon={<PauseCircleOutlineOutlinedIcon />}
+                                ariaLabel={t('deletionWindow.pause.action')}
+                                onClick={() => onPauseDeletion(row)}
                             />
                         )}
                         {canDelete && (
@@ -384,6 +411,8 @@ export const UserDataTable = ({
                     onLoadMore={() => onPageChange(page + 1)}
                     onEdit={canEdit ? onEdit : undefined}
                     onDelete={canDelete ? onDelete : undefined}
+                    onCancelDeletion={onCancelDeletion}
+                    onPauseDeletion={onPauseDeletion}
                     details={cardFacts}
                     ariaLabel={ariaLabel}
                 />

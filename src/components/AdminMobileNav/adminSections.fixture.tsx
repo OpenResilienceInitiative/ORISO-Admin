@@ -83,13 +83,6 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
         source: 'pages/Links/AccountInvitesTab.tsx + InviteComposer.tsx:382',
         note: 'The complex one: template picker, bulk actions, CSV import, composer with e-mail field.',
     },
-    'links/external-inbounds': {
-        search: false,
-        add: true,
-        filters: false,
-        source: 'pages/Links/ExternalInboundsTab.tsx:215',
-        note: '"Create link" only.',
-    },
 };
 
 /**
@@ -103,79 +96,89 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
  */
 export const ADMIN_SECTIONS: AdminMobileNavSection[] = [
     {
+        key: 'home',
+        label: 'Home',
+        description: 'Überblick und nächste Schritte',
+        icon: <NavGlyph name="home" />,
+    },
+    {
         key: 'settings',
         label: 'Einstellungen',
+        tabLabel: 'Einstellen',
+        description: 'Erscheinungsbild, Rechtliches, Email Server',
         icon: <NavGlyph name="displaySettings" />,
         subsections: [
-            { key: 'globalConfig', label: 'Globale Konfigurationen' },
-            { key: 'masterData', label: 'Stammdaten & Mehr' },
+            { key: 'globalConfig', label: 'Konfiguration' },
+            { key: 'masterData', label: 'Stammdaten' },
             { key: 'view', label: 'Erscheinungsbild' },
             { key: 'legal', label: 'Rechtliches' },
-            { key: 'smtp', label: 'Email Server' },
-            { key: 'permissions', label: 'Berechtigungen' },
+            { key: 'smtp', label: 'E-Mail-Server' },
             { key: 'functionAccess', label: 'Funktionszugriff' },
         ],
     },
     {
         key: 'tenants',
         label: 'Träger',
+        description: 'Träger anlegen und verwalten',
         icon: <NavGlyph name="tenants" />,
-        subsections: [
-            { key: 'general', label: 'Allgemein' },
-            { key: 'theme-settings', label: 'Erscheinungsbild' },
-            { key: 'legal-settings', label: 'Rechtliches' },
-            { key: 'app-settings', label: 'App-Einstellungen' },
-            { key: 'global-settings', label: 'Globale Einstellungen' },
-        ],
     },
     {
         key: 'agencies',
-        label: 'Beratungstellen',
+        label: 'Beratungsstellen',
+        tabLabel: 'Stellen',
+        description: 'Beratungsstellen und ihre Themen',
         icon: <NavGlyph name="counseling" />,
-        subsections: [
-            { key: 'general', label: 'Allgemein' },
-            { key: 'legal-settings', label: 'Rechtliches' },
-            { key: 'functionalities', label: 'Funktionen' },
-        ],
     },
     {
         key: 'users',
-        label: 'Nutzende',
+        label: 'Konten',
+        description: 'Admins und Beratende verwalten',
         icon: <NavGlyph name="users" />,
         subsections: [
-            { key: 'platform-admins', label: 'Platform Admin' },
-            { key: 'tenant-admins', label: 'Träger Admin' },
-            { key: 'agency-admins', label: 'Berater*innen Admins' },
-            { key: 'consultants', label: 'Berater*innen' },
+            { key: 'platform-admins', label: 'Plattform Admins' },
+            { key: 'tenant-admins', label: 'Träger Admins' },
+            { key: 'agency-admins', label: 'Beratungsstellen Admins' },
+            { key: 'consultants', label: 'Beratende' },
         ],
     },
-    { key: 'topics', label: 'Themen', icon: <NavGlyph name="topics" /> },
-    { key: 'statistics', label: 'Statistik', icon: <NavGlyph name="statistics" /> },
+    {
+        key: 'statistics',
+        label: 'Statistiken',
+        description: 'Zahlen und Auswertungen',
+        icon: <NavGlyph name="statistics" />,
+    },
     {
         key: 'links',
-        label: 'Links',
+        label: 'Einladen',
+        description: 'Personen per E-Mail einladen, Fortschritt sehen',
         icon: <NavGlyph name="links" />,
         subsections: [
-            { key: 'tenants', label: 'Träger-Invites' },
-            { key: 'counsellor', label: 'Berater-Invites' },
-            { key: 'external-inbounds', label: 'Externe Inbounds' },
+            { key: 'tenants', label: 'Träger-Einladungen' },
+            { key: 'counsellor', label: 'Beratende-Einladungen' },
         ],
     },
     {
         key: 'logs',
         label: 'Logs',
+        description: 'Wer hat wann was getan',
         icon: <NavGlyph name="logs" />,
         subsections: [
-            { key: 'supervisor', label: 'Supervisor-Protokoll' },
-            { key: 'inactive-accounts', label: 'Inaktive Konten' },
+            { key: 'supervisor', label: 'Supervision' },
             { key: 'case-handover', label: 'Fallübergaben' },
+            { key: 'inactive-accounts', label: 'Inaktivitäts-Logs' },
+            { key: 'deletions', label: 'Löschprotokoll' },
         ],
     },
 ];
 
 export const ADMIN_ACCOUNT_ITEMS = [
-    { key: 'profile', label: 'Konto', icon: <NavGlyph name="profile" /> },
-    { key: 'logout', label: 'Abmelden', icon: <NavGlyph name="logout" /> },
+    {
+        key: 'profile',
+        label: 'Mein Account',
+        description: 'Profil, Passwort, Zwei-Faktor',
+        icon: <NavGlyph name="profile" />,
+    },
+    { key: 'logout', label: 'Verlassen', icon: <NavGlyph name="logout" /> },
 ];
 
 /** Maps the bar's (section, subsection) pair onto the audit table above. */
@@ -187,7 +190,7 @@ export const capabilitiesFor = (sectionKey: string, subsectionKey?: string): Sec
     }
 
     if (sectionKey === 'links') {
-        return SECOND_ROW_BY_PAGE[subsectionKey === 'external-inbounds' ? 'links/external-inbounds' : 'links/invites'];
+        return SECOND_ROW_BY_PAGE['links/invites'];
     }
 
     if (sectionKey === 'settings') {

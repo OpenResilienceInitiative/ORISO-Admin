@@ -3,9 +3,11 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
+import { expectPanelsFitAtEveryWidth, PanelLayoutFrame } from '../../../../test/panelLayoutGuard';
 import { SmtpSettings } from './index';
 
 const storedTenant = {
@@ -46,7 +48,8 @@ const handlers = (mode: 'OWN' | 'PLATFORM' = 'OWN') => [
 ];
 
 const meta = {
-    title: 'Organisms/Tenants/Settings/Smtp',
+    title: 'Settings/Einstellungen/Email Server/Smtp',
+    id: 'organisms-tenants-settings-smtp',
     component: SmtpSettings,
     args: { tenantId: '42' },
     render: () => <StoredSettingsExample />,
@@ -83,6 +86,11 @@ export const SavedOwnServer: Story = {
     },
 };
 
+export const HelpSlideshow: Story = {
+    ...SavedOwnServer,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
 export const PlatformHasNoOwnServerTest: Story = {
     parameters: { msw: { handlers: handlers('PLATFORM') } },
     play: async ({ canvasElement }) => {
@@ -116,5 +124,19 @@ export const UnusualTransportConfirmation: Story = {
         await waitFor(() =>
             expect(within(dialog).getByRole('button', { name: /Trotzdem speichern|Save anyway/i })).toBeVisible(),
         );
+    },
+};
+
+/** At every laptop and desktop width the switches stay in their panel and keep room for their label. */
+export const PanelsFitAtLaptopWidths: Story = {
+    parameters: { msw: { handlers: handlers() } },
+    render: () => (
+        <PanelLayoutFrame>
+            <StoredSettingsExample />
+        </PanelLayoutFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        await within(canvasElement).findByRole('button', { name: /Testmail an mich senden|Send a test email to me/i });
+        await expectPanelsFitAtEveryWidth(canvasElement);
     },
 };

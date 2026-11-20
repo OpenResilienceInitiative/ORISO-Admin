@@ -1,0 +1,25 @@
+import React from 'react';
+
+// Callsite witness only. This custom rule is NOT a compliance/WCAG audit.
+export default {
+    title: 'VerificationWitness/Temporary',
+    parameters: {
+        a11y: {
+            test: 'error',
+            config: {
+                checks: [{ id: 'oriso-callsite-witness-check', evaluate: () => true }],
+                rules: [
+                    {
+                        id: 'oriso-callsite-witness',
+                        selector: '[data-oriso-axe-witness]',
+                        impact: 'minor',
+                        any: ['oriso-callsite-witness-check'],
+                        enabled: true,
+                    },
+                ],
+            },
+            options: { runOnly: { type: 'rule', values: ['oriso-callsite-witness'] } },
+        },
+    },
+};
+export const CallsiteWitness = { render: () => <p data-oriso-axe-witness="">Callsite witness only</p> };

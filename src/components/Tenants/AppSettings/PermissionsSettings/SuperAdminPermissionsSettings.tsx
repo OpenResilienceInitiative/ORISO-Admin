@@ -1,8 +1,12 @@
-import { notification } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../Snackbar';
 import { useTenantAdminControls } from '../../../../hooks/useTenantAdminControls.hook';
-import { useTenantAdminControlsMutation } from '../../../../hooks/useTenantAdminControlsMutation.hook';
+import {
+    useCalendarControlsMutation,
+    useRecipientScopeControlsMutation,
+    useTenantAdminControlsMutation,
+} from '../../../../hooks/useTenantAdminControlsMutation.hook';
 import { buildTogglePayload } from './permissionsToggleLogic';
 import {
     applyVisibleTogglesAsValues,
@@ -10,11 +14,21 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import {
+    toRecipientScopeWrite,
+    withStoredScopeOnly,
+    withoutInternalGroupChat,
+} from './RecipientScope/recipientScopePolicy';
+import { type CalendarPolicyChange, toCalendarWrite, withoutCalendar } from './Calendar/calendarPolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
-import type { PolicyValue } from '../../../../types/permissionPolicy';
+import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
 
-export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: PermissionsSettingsCommonArgs) => {
+export const SuperAdminPermissionsSettings = ({
+    tenantId,
+    excludeCardKeys,
+    liveChatLinks,
+}: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
@@ -27,8 +41,11 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const updateTenantAdminControls = useTenantAdminControlsMutation({
         successMessageKey: false,
-        onError: () => notification.error({ message: t('tenants.permissions.policy.saveError') }),
+        onError: () => snackbar.error({ message: t('tenants.permissions.policy.saveError') }),
     });
+    // The scope control reports its own failure beside the edit, so no second, generic notification.
+    const updateRecipientScope = useRecipientScopeControlsMutation();
+    const updateCalendar = useCalendarControlsMutation();
 
     useEffect(() => {
         if (platformControls && pendingPolicyOperations.current.length === 0) {
@@ -81,10 +98,13 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             const run = async () => {
                 const confirmed = confirmedPlatformControls.current;
                 if (!confirmed) return;
-                const next = {
-                    ...confirmed,
-                    permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
-                };
+                // The backend keeps the stored calendar preset when the block is left out.
+                const next = withoutCalendar(
+                    withStoredScopeOnly({
+                        ...confirmed,
+                        permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
+                    }),
+                );
                 try {
                     confirmedPlatformControls.current = await updateTenantAdminControls.mutateAsync(next);
                 } catch {
@@ -99,6 +119,58 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
         [rebuildEffectivePlatformControls, updateTenantAdminControls],
+    );
+
+    // Same queue as the switches, so a scope save and a switch save never overtake each other.
+    const handleRecipientScopeSave = useCallback(
+        (next: Pick<RecipientScopePolicy, 'value' | 'mode'>) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) throw new Error('Platform controls are not loaded');
+                confirmedPlatformControls.current = await updateRecipientScope.mutateAsync(
+                    withoutCalendar({
+                        ...confirmed,
+                        ...toRecipientScopeWrite({ ...next, inherited: false }),
+                    }),
+                );
+                rebuildEffectivePlatformControls();
+                snackbar.success({
+                    message: t('tenants.permissions.card.groupInternal.recipientScope.saved'),
+                    duration: 3,
+                });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            return save;
+        },
+        [rebuildEffectivePlatformControls, t, updateRecipientScope],
+    );
+
+    // Same queue again. Only the calendar preset changes: the group-chat scope is left out, and the
+    // backend keeps it as stored (TenantService#321).
+    const handleCalendarSave = useCallback(
+        (change: CalendarPolicyChange) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) throw new Error('Platform controls are not loaded');
+                confirmedPlatformControls.current = await updateCalendar.mutateAsync(
+                    withoutInternalGroupChat({
+                        ...confirmed,
+                        ...toCalendarWrite(confirmed.calendar, change),
+                    }),
+                );
+                rebuildEffectivePlatformControls();
+                snackbar.success({ message: t('tenants.permissions.calendar.saved'), duration: 3 });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            return save;
+        },
+        [rebuildEffectivePlatformControls, t, updateCalendar],
     );
 
     // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
@@ -128,6 +200,7 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
         <PermissionsSettingsView
             tenantId={tenantId}
             excludeCardKeys={excludeCardKeys}
+            liveChatLinks={liveChatLinks}
             isLoading={isLoading}
             initialValues={initialValues}
             formStateKey="platform"
@@ -137,6 +210,14 @@ export const SuperAdminPermissionsSettings = ({ tenantId, excludeCardKeys }: Per
             permissionPolicies={effectivePlatformControls?.permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
+            recipientScope={{
+                policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
+                onSave: handleRecipientScopeSave,
+            }}
+            calendar={{
+                policies: (effectivePlatformControls ?? platformControls)?.calendar,
+                onSave: handleCalendarSave,
+            }}
         />
     );
 };

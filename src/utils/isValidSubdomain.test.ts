@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { isValidSubdomain, SUBDOMAIN_PATTERN } from './isValidSubdomain';
 
 describe('isValidSubdomain', () => {

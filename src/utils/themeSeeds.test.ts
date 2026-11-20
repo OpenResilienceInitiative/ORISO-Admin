@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildSeedUpdate, getAccentDark, getAccentLight, getSignal, readSeeds } from './themeSeeds';
 
 describe('theme seed helpers', () => {

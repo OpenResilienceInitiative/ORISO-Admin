@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+import { walkThroughTileHelp } from '../../../TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { OtherFunctionsSettings } from './index';
@@ -19,6 +20,13 @@ const TENANT_PUBLIC_BY_ID = '*/service/tenant/:id';
 const handlers = (settings: Record<string, unknown> = {}) => {
     const tenant = { id: 7, name: 'Träger Süd', settings };
     return [
+        // OtherFunctionsSettings reads the Träger's policies (ORISO-TenantService#363).
+        http.get('*/service/tenantadmin/:id/permission-policies', () =>
+            HttpResponse.json({ tenantId: 7, policies: {} }),
+        ),
+        http.put('*/service/tenantadmin/:id/permission-policies', () =>
+            HttpResponse.json({ tenantId: 7, policies: {} }),
+        ),
         http.get(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.put(TENANT_BY_ID, () => HttpResponse.json(tenant)),
         http.get(TENANT_PUBLIC, () => HttpResponse.json({ id: 7, settings: {} })),
@@ -27,7 +35,8 @@ const handlers = (settings: Record<string, unknown> = {}) => {
 };
 
 const meta = {
-    title: 'Organisms/AppSettings/OtherFunctionsSettings',
+    title: 'Settings/Einstellungen/Funktionalitäten/OtherFunctionsSettings',
+    id: 'organisms-appsettings-otherfunctionssettings',
     component: OtherFunctionsSettings,
     parameters: { layout: 'fullscreen' },
     args: { tenantId: '7' },
@@ -45,4 +54,9 @@ type Story = StoryObj<typeof meta>;
 /** Träger admin view: "Allow group chat" followed by the Supervision block (master + seven feature switches). */
 export const TenantView: Story = {
     parameters: { msw: { handlers: handlers({ featureGroupChatV2Enabled: true, featureSupervisionEnabled: true }) } },
+};
+
+export const HelpSlideshow: Story = {
+    ...TenantView,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

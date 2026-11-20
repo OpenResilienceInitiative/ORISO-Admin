@@ -182,7 +182,7 @@
     overflow-wrap: anywhere;
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 
@@ -218,8 +218,14 @@
     justify-content: flex-end;
     padding: 0 24px 0 8px;
     border-top: 1px solid color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 14%, transparent);
-    margin: auto -32px 0;
+    margin: auto -16px 0;
     gap: 8px;
+
+    /* Reaches the card's edge: the Box padding is 16px on a phone, 24px from 600px. */
+    @media only screen and (min-width: 600px) {
+        margin-right: -24px;
+        margin-left: -24px;
+    }
 }
 
 .footerTextButton {
@@ -254,4 +260,20 @@
 
 .footerTextButtonPrimary {
     color: var(--m3-secondary, #4c555f);
+}
+
+// Save failure: shown above the controls so the unsaved edit below stays in view.
+.saveError {
+    margin-bottom: 12px;
+}
+
+// Read-only reason: plain text on a tonal surface, not colour alone.
+.readOnlyNote {
+    padding: 8px 12px;
+    margin: 0 0 12px;
+    border-radius: 8px;
+    background: var(--m3-surface-container, #f0edee);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+    line-height: 20px;
 }

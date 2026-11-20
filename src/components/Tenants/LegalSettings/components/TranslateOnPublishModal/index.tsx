@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Checkbox, Typography } from 'antd';
+import { Checkbox, Typography } from 'antd';
 import TranslateOutlinedIcon from '@mui/icons-material/TranslateOutlined';
 import { useTranslation } from 'react-i18next';
 import { Modal, DialogButton } from '../../../../Modal';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 interface TranslateOnPublishModalProps {
     open: boolean;
@@ -83,7 +84,11 @@ export const TranslateOnPublishModal = ({
             <Typography.Text className={styles.providerHint}>
                 {t('legal.translation.modal.providerHint')}
             </Typography.Text>
-            {errorKey && <Alert className={styles.error} type="error" showIcon message={t(errorKey)} />}
+            {errorKey && (
+                <Notify title={t('notify.title.legal')} severity="error">
+                    {t(errorKey)}
+                </Notify>
+            )}
         </Modal>
     );
 };

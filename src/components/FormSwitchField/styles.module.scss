@@ -50,13 +50,23 @@
         }
     }
 
-    :global(.ant-col.ant-form-item-control) {
-        width: auto;
-        display: flex;
-        align-items: flex-end;
-    }
-
     :global(.ant-form-item-control-input) {
         min-height: 22px;
     }
+}
+
+/* antd sizes label and control with `flex: 0 0 100%` at specificity (0,5,0). Without these, the control
+   column keeps that basis and pushes the switch past a narrow card. The extra classes win over it. */
+
+.item.inline:global(.ant-form-item) :global(.ant-form-item-row.ant-row) > :global(.ant-form-item-label) {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.item.inline:global(.ant-form-item) :global(.ant-form-item-row.ant-row) > :global(.ant-col.ant-form-item-control) {
+    display: flex;
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+    align-items: flex-end;
 }

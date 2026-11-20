@@ -1,11 +1,15 @@
 import routePathNames from '../../appConfig';
+import { canOpenTenantLegalSettings } from '../../constants/agencyAdminLanding';
 import {
     canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
+    canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
     type CanFn,
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
 import { canSeeLinksSection } from '../../constants/linksAccess';
+import { canSeeAddonsSection } from '../../constants/addonsAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { AdminSidebarNavItem } from './AdminSidebar';
@@ -13,7 +17,9 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
     account: string;
+    addons: string;
     agency: string;
+    home: string;
     links: string;
     logs: string;
     settings: string;
@@ -24,6 +30,8 @@ export interface AdminNavLabels {
 
 export interface AdminNavContext {
     isSuperAdmin: boolean;
+    /** A pure Statistik-Leser·in (ORISO-UserService#1666): statistics is the only destination. */
+    isStatisticsReader?: boolean;
     hasRole: HasRoleFn;
     can: CanFn;
     labels: AdminNavLabels;
@@ -55,6 +63,8 @@ export const resolveLogsPage = (
     canReadSupervisorLogs: boolean,
     canReadCaseHandoverLogs: boolean,
     canReadInactiveAuditLogs: boolean,
+    canReadDeletionAuditLogs = false,
+    canReadAddonAuditLogs = false,
 ): string | null => {
     if (canReadSupervisorLogs) {
         return routePathNames.logs;
@@ -64,6 +74,12 @@ export const resolveLogsPage = (
     }
     if (canReadInactiveAuditLogs) {
         return routePathNames.inactiveAccountAuditLogs;
+    }
+    if (canReadDeletionAuditLogs) {
+        return routePathNames.deletionAuditLogs;
+    }
+    if (canReadAddonAuditLogs) {
+        return routePathNames.addonAuditLogs;
     }
     return null;
 };
@@ -79,19 +95,44 @@ export const resolveLogsPage = (
  */
 export const buildAdminNavItems = ({
     isSuperAdmin,
+    isStatisticsReader = false,
     hasRole,
     can,
     labels,
     settingsPath,
 }: AdminNavContext): AdminSidebarNavItem[] => {
-    const items: AdminSidebarNavItem[] = [];
+    const statisticsItem: AdminSidebarNavItem = {
+        key: 'statistics',
+        to: routePathNames.statistic,
+        label: labels.statistics,
+        iconPath: routePathNames.statistic,
+    };
+
+    // A Statistik-Leser·in has no Home: every other route sends them to statistics
+    // (ORISO-UserService#1666), so a Home tile would only bounce.
+    if (isStatisticsReader) {
+        return can(PermissionAction.Read, Resource.Statistic) ? [statisticsItem] : [];
+    }
+
+    // Home is the start page for every admin (ORISO-Admin#1323): an overview of
+    // the areas below, so it needs no permission of its own.
+    const items: AdminSidebarNavItem[] = [
+        { key: 'home', to: routePathNames.home, label: labels.home, iconPath: routePathNames.home },
+    ];
 
     const canSeeSettingsMenu =
-        can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText);
+        can(PermissionAction.Read, Resource.Tenant) ||
+        canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canSeeCounsellorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
-    const canSeeInactiveAuditLogs = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
+    const canSeeInactiveAuditLogs = canSeeInactiveAuditLogsFor(isSuperAdmin, can);
     const canSeeCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
-    const logsPage = resolveLogsPage(canSeeCounsellorLogs, canSeeCaseHandoverLogs, canSeeInactiveAuditLogs);
+    const logsPage = resolveLogsPage(
+        canSeeCounsellorLogs,
+        canSeeCaseHandoverLogs,
+        canSeeInactiveAuditLogs,
+        canSeeDeletionAuditLogsFor(isSuperAdmin, can),
+        canSeeAddonsSection({ isSuperAdmin, can }),
+    );
 
     if (canSeeSettingsMenu) {
         items.push({
@@ -138,12 +179,7 @@ export const buildAdminNavItems = ({
         });
     }
     if (can(PermissionAction.Read, Resource.Statistic)) {
-        items.push({
-            key: 'statistics',
-            to: routePathNames.statistic,
-            label: labels.statistics,
-            iconPath: routePathNames.statistic,
-        });
+        items.push(statisticsItem);
     }
     if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({
@@ -152,6 +188,15 @@ export const buildAdminNavItems = ({
             label: labels.links,
             iconPath: routePathNames.links,
             activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
+        });
+    }
+    if (canSeeAddonsSection({ isSuperAdmin, can })) {
+        items.push({
+            key: 'addons',
+            to: routePathNames.addons,
+            label: labels.addons,
+            iconPath: routePathNames.addons,
+            activeMatch: { paths: [routePathNames.addons], mode: 'startsWith' },
         });
     }
     // Every log view lives behind ONE "Logs" entry that opens a tabbed page (ORISO-Admin#84). The

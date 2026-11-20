@@ -4,10 +4,11 @@ import 'antd/dist/reset.css';
 import './styles/App.less';
 import './app.css';
 import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { AdminNotFound } from './pages/ErrorPages/AdminNotFound';
 import ProtectedPageLayoutWrapper from './components/Layout/ProtectedPageLayoutWrapper';
 import { PageLoader } from './components/Layout/PageLoader';
 import routePathNames from './appConfig';
-import { isAgencyScopedAdmin } from './constants/agencyAdminLanding';
+import { canOpenTenantLegalSettings } from './constants/agencyAdminLanding';
 import { Initialization } from './components/Layout/Initialization';
 import { useTenantData } from './hooks/useTenantData.hook';
 import { FeatureProvider } from './context/FeatureContext';
@@ -21,22 +22,34 @@ import { useReleasesToggle } from './hooks/useReleasesToggle.hook';
 import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
 import { useUserRoles } from './hooks/useUserRoles.hook';
 import { resolveVisibleLinksTabs } from './constants/linksAccess';
+import { canSeeAddonsSection } from './constants/addonsAccess';
 import { UserRole } from './enums/UserRole';
-import { canReadCaseHandoverAdmin, canSeeSupervisorLogs } from './constants/caseHandoverAccess';
+import {
+    canReadCaseHandoverAdmin,
+    canSeeDeletionAuditLogsFor,
+    canSeeSupervisorLogs,
+} from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
 import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
+import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
 import {
+    LazyAddonAdminPage,
+    LazyAddonAuditLogsPage,
+    LazyAddonsLayout,
+    LazyAddonsOverview,
     LazyAgencyList,
+    LazyAgencySetupPage,
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
-    LazyExternalInboundsTab,
+    LazyErstantwortSettingsPage,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
+    LazyDeletionAuditLogsPage,
     LazyInactiveAccountAuditLogsPage,
     LazyLegalSettingsPage,
     LazyLinksIndexRedirect,
@@ -44,10 +57,14 @@ import {
     LazyPermissionsSettingsPage,
     LazySingleLegalSettings,
     LazyStatistic,
+    LazyStatisticsReaderEditOrAdd,
+    LazyHomePage,
     LazySupervisorLogsPage,
     LazyServiceNoticesPage,
     LazyTenantAdminEditOrAdd,
     LazyTenantAppSettings,
+    LazyTenantSmtpSettings,
+    LazyTenantErstantwortSettings,
     LazyTenantEditOrAdd,
     LazyTenantGlobalSettings,
     LazyTenantSettingsLayout,
@@ -56,6 +73,7 @@ import {
     LazyTenantsList,
     LazyTopicEditOrAdd,
     LazyTopicList,
+    LazyTopicSettingsPage,
     LazyUnifiedSmtpSettingsPage,
     LazyUserEditOrAdd,
     LazyUserProfile,
@@ -67,6 +85,9 @@ import { useAccountInactivityActivity } from './hooks/useAccountInactivityActivi
 import { DpaBlockerGate } from './components/DpaBlocker/DpaBlockerGate';
 import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/adminTwoFactorGate';
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
+import { StatisticsReaderRoutes } from './router/StatisticsReaderRoutes';
+
+const tenantLegalSettingsPath = `${routePathNames.themeSettings}/legal`;
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -87,7 +108,7 @@ export const App = () => {
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();
-    const { hasRole, isSuperAdmin, roles, isTechnicalAccount, tokenUnreadable } = useUserRoles();
+    const { hasRole, isSuperAdmin, isStatisticsReader, roles, isTechnicalAccount, tokenUnreadable } = useUserRoles();
 
     /**
      * Accounts that have to prove a second factor before any admin screen
@@ -115,40 +136,23 @@ export const App = () => {
     });
 
     useEffect(() => {
+        // Every role starts at Home (ORISO-Admin#1323). It only links to areas the
+        // admin may open, so the per-role landing chain that lived here is gone.
+        // A Statistik-Leser·in has no Home and starts at statistics (ORISO-UserService#1666).
         if (location.pathname === routePathNames.root || location.pathname === `${routePathNames.root}/`) {
-            if (can(PermissionAction.Create, Resource.Tenant)) {
-                navigate(routePathNames.tenants);
-                return;
-            }
-            if (can(PermissionAction.Read, Resource.Tenant) || can(PermissionAction.Read, Resource.LegalText)) {
-                navigate(defaultSettingsPath);
-                return;
-            }
-
-            if (isAgencyScopedAdmin(hasRole) && can(PermissionAction.Read, Resource.Agency)) {
-                // Beratungsstellen-Admin: own agency first (ORISO-Admin#917).
-                navigate(routePathNames.agency);
-                return;
-            }
-
-            let redirectPath = routePathNames.userProfile;
-            if (can(PermissionAction.Read, Resource.TenantAdminUser)) {
-                redirectPath = routePathNames.tenantAdmins;
-            } else if (can(PermissionAction.Read, Resource.AgencyAdminUser)) {
-                redirectPath = routePathNames.agencyAdmins;
-            } else if (can(PermissionAction.Read, Resource.Consultant)) {
-                redirectPath = routePathNames.consultants;
-            }
-            navigate(redirectPath);
+            navigate(isStatisticsReader ? routePathNames.statistic : routePathNames.home);
         }
     }, []);
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
-    const canReadLegalText = can(PermissionAction.Read, Resource.LegalText);
+    const canReadLegalText = canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
+    // Platform admins only — the backend answers 403 to every other role.
+    const canSeeDeletionAuditLogs = canSeeDeletionAuditLogsFor(isSuperAdmin, can);
+    const showAddons = canSeeAddonsSection({ isSuperAdmin, can });
     const requiresTwoFactorSetup = requiresMandatoryTwoFactor({
         roles,
         isTechnicalAccount,
@@ -191,6 +195,33 @@ export const App = () => {
         );
     }
 
+    if (isStatisticsReader) {
+        // ORISO-UserService#1666: a Statistik-Leser·in gets statistics and the own profile only;
+        // every other admin address redirects to statistics.
+        return (
+            <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
+                <DpaBlockerGate>
+                    <ProtectedPageLayoutWrapper>
+                        <ErrorBoundary scope="page" resetKeys={[location.pathname]}>
+                            <Suspense fallback={<PageLoader />}>
+                                <StatisticsReaderRoutes
+                                    statistic={
+                                        canReadStatistic ? (
+                                            <LazyStatistic />
+                                        ) : (
+                                            <Navigate to="/admin/access-denied" replace />
+                                        )
+                                    }
+                                    profile={<LazyUserProfile />}
+                                />
+                            </Suspense>
+                        </ErrorBoundary>
+                    </ProtectedPageLayoutWrapper>
+                </DpaBlockerGate>
+            </FeatureProvider>
+        );
+    }
+
     return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
             {/* The signed-in admin's OWN tenant icon overrides the platform default that
@@ -226,10 +257,19 @@ export const App = () => {
                                                 element={<LazyGeneralSettingsPage section="appearance" />}
                                             />
                                         )}
-                                        {can(PermissionAction.Read, Resource.LegalText) && (
+                                        {canReadLegalText && (
+                                            <Route path={tenantLegalSettingsPath} element={<LazyLegalSettingsPage />} />
+                                        )}
+                                        {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
                                             <Route
-                                                path={`${routePathNames.themeSettings}/legal`}
-                                                element={<LazyLegalSettingsPage />}
+                                                path={`${routePathNames.themeSettings}/erstantwort`}
+                                                element={<LazyErstantwortSettingsPage />}
+                                            />
+                                        )}
+                                        {isSuperAdmin && can(PermissionAction.Update, Resource.Topic) && (
+                                            <Route
+                                                path={`${routePathNames.themeSettings}/topics`}
+                                                element={<LazyTopicSettingsPage />}
                                             />
                                         )}
                                         {can(PermissionAction.Read, Resource.Tenant) && (
@@ -263,7 +303,14 @@ export const App = () => {
                                         <Route index element={<Navigate to={defaultSettingsPath} replace />} />
                                     </Route>
                                 )}
+                                {!canReadLegalText && (
+                                    <Route
+                                        path={tenantLegalSettingsPath}
+                                        element={<Navigate to="/admin/access-denied" replace />}
+                                    />
+                                )}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
+                                <Route path={`${routePathNames.agency}/:id/setup`} element={<LazyAgencySetupPage />} />
                                 <Route
                                     path={`${routePathNames.agency}/:id`}
                                     element={<AgencyDefaultSectionRedirect />}
@@ -282,11 +329,28 @@ export const App = () => {
                                     element={<AgencyInitialMeetingRedirect />}
                                 />
                                 {can(PermissionAction.Read, Resource.Topic) && (
-                                    <Route path={routePathNames.topics} element={<LazyTopicList />} />
+                                    <Route
+                                        path={routePathNames.topics}
+                                        element={
+                                            isSuperAdmin ? (
+                                                // The platform admin keeps the catalogue under Settings → Themen.
+                                                <Navigate to={`${routePathNames.themeSettings}/topics`} replace />
+                                            ) : (
+                                                <LazyTopicList />
+                                            )
+                                        }
+                                    />
                                 )}
                                 {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
                                     <Route path={`${routePathNames.topics}/:id`} element={<LazyTopicEditOrAdd />} />
                                 )}
+                                {/* Start page for every role (ORISO-Admin#1323). */}
+                                <Route path={routePathNames.home} element={<LazyHomePage />} />
+                                {/* Bare /admin goes to Home; without this the catch-all below would flash "not found". */}
+                                <Route
+                                    path={routePathNames.root}
+                                    element={<Navigate to={routePathNames.home} replace />}
+                                />
                                 <Route
                                     path={routePathNames.statisticPreview}
                                     element={<Navigate to={routePathNames.statistic} replace />}
@@ -310,6 +374,8 @@ export const App = () => {
                                             showSupervisor={showSupervisorLogs}
                                             showCaseHandover={showCaseHandoverLogs}
                                             showInactive={isSuperAdmin}
+                                            showDeletion={canSeeDeletionAuditLogs}
+                                            showAddons={showAddons}
                                         />
                                     }
                                 >
@@ -329,10 +395,22 @@ export const App = () => {
                                             element={<LazyInactiveAccountAuditLogsPage />}
                                         />
                                     )}
+                                    {canSeeDeletionAuditLogs && (
+                                        <Route
+                                            path={routePathNames.deletionAuditLogs}
+                                            element={<LazyDeletionAuditLogsPage />}
+                                        />
+                                    )}
                                     {showCaseHandoverLogs && (
                                         <Route
                                             path={routePathNames.caseHandoverLogs}
                                             element={<LazyCaseHandoverLogsPage />}
+                                        />
+                                    )}
+                                    {showAddons && (
+                                        <Route
+                                            path={routePathNames.addonAuditLogs}
+                                            element={<LazyAddonAuditLogsPage />}
                                         />
                                     )}
                                 </Route>
@@ -385,8 +463,20 @@ export const App = () => {
                                                 element={<LazySingleLegalSettings />}
                                             />
                                             <Route
-                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                path={`${routePathNames.tenants}/:id/erstantwort`}
+                                                element={<LazyTenantErstantwortSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/smtp`}
+                                                element={<LazyTenantSmtpSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/functionalities`}
                                                 element={<LazyTenantAppSettings />}
+                                            />
+                                            <Route
+                                                path={`${routePathNames.tenants}/:id/app-settings`}
+                                                element={<LegacyAppSettingsRedirect />}
                                             />
                                             <Route
                                                 path={`${routePathNames.tenants}/:id/global-settings`}
@@ -399,7 +489,18 @@ export const App = () => {
                                 <Route path="/admin/users/:typeOfUsers" element={<LazyUsersList />} />
                                 <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
                                 <Route path="/admin/users/platform-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
+                                <Route
+                                    path={`${routePathNames.statisticsReaders}/:id`}
+                                    element={<LazyStatisticsReaderEditOrAdd />}
+                                />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
+                                {showAddons && (
+                                    <Route path={routePathNames.addons} element={<LazyAddonsLayout />}>
+                                        <Route index element={<LazyAddonsOverview />} />
+                                        <Route path="apps/:addonName/:appId" element={<LazyAddonAdminPage />} />
+                                        <Route path="*" element={<Navigate to={routePathNames.addons} replace />} />
+                                    </Route>
+                                )}
                                 {visibleLinksTabs.length > 0 && (
                                     <Route path="/admin/links" element={<LazyLinksPage />}>
                                         <Route index element={<LazyLinksIndexRedirect />} />
@@ -409,12 +510,20 @@ export const App = () => {
                                         {visibleLinksTabs.includes('counsellor') && (
                                             <Route path="counsellor" element={<LazyCounsellorInvitesTab />} />
                                         )}
-                                        {visibleLinksTabs.includes('external-inbounds') && (
-                                            <Route path="external-inbounds" element={<LazyExternalInboundsTab />} />
-                                        )}
+                                        {/* Live-chat links moved to Funktionszugriff (ORISO-Admin#1321);
+                                            the old address keeps working for bookmarks. */}
+                                        <Route
+                                            path="external-inbounds"
+                                            element={
+                                                <Navigate to={`${routePathNames.themeSettings}/permissions`} replace />
+                                            }
+                                        />
                                         <Route path="*" element={<LazyLinksIndexRedirect />} />
                                     </Route>
                                 )}
+                                {/* Last on purpose: an address no route above answers gets a clear
+                                    "page not found" inside the shell, not a blank content area (#1513). */}
+                                <Route path="*" element={<AdminNotFound />} />
                             </Routes>
                         </Suspense>
                     </ErrorBoundary>

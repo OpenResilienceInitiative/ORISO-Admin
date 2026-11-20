@@ -1,5 +1,6 @@
-import { renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, renderHook } from '@testing-library/react';
+import { createElement, useEffect } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { useUserTableLayout } from './useUserTableLayout';
 
 const atWidth = (width: number) =>
@@ -11,6 +12,26 @@ const atWidth = (width: number) =>
                 addEventListener: vi.fn(),
                 removeEventListener: vi.fn(),
             } as unknown as MediaQueryList),
+    );
+
+/** Reports `width` on observe, or never fires when `width` is omitted (a slow runner). */
+const stubResizeObserver = (width?: number) =>
+    vi.stubGlobal(
+        'ResizeObserver',
+        class {
+            constructor(private callback: ResizeObserverCallback) {}
+
+            observe(target: Element) {
+                if (width == null) return;
+                this.callback(
+                    [{ target, contentRect: { width } } as ResizeObserverEntry],
+                    this as unknown as ResizeObserver,
+                );
+            }
+
+            // eslint-disable-next-line class-methods-use-this
+            disconnect() {}
+        },
     );
 
 describe('useUserTableLayout', () => {
@@ -46,22 +67,57 @@ describe('available Accounts container width', () => {
     ])('%ipx of content selects %s even in a wide desktop viewport', (width, layout) => {
         atWidth(1920);
         const container = { current: document.createElement('div') };
-        vi.stubGlobal(
-            'ResizeObserver',
-            class {
-                constructor(private callback: ResizeObserverCallback) {}
-
-                observe(target: Element) {
-                    this.callback(
-                        [{ target, contentRect: { width } } as ResizeObserverEntry],
-                        this as unknown as ResizeObserver,
-                    );
-                }
-
-                // eslint-disable-next-line class-methods-use-this
-                disconnect() {}
-            },
-        );
+        stubResizeObserver(width);
         expect(renderHook(() => useUserTableLayout(container)).result.current).toBe(layout);
+    });
+});
+
+describe('first committed layout', () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+    });
+
+    it('uses the measured container before ResizeObserver reports', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({ width: 600 } as DOMRect);
+        // A slow runner: the observer has not delivered its first entry yet.
+        stubResizeObserver();
+        expect(renderHook(() => useUserTableLayout({ current: element })).result.current).toBe('tablet');
+    });
+
+    it('measures before any passive effect runs, so the first paint already fits', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        let passiveEffectRan = false;
+        const measuredAfterPassiveEffect: boolean[] = [];
+        vi.spyOn(element, 'getBoundingClientRect').mockImplementation(() => {
+            measuredAfterPassiveEffect.push(passiveEffectRan);
+            return { width: 600 } as DOMRect;
+        });
+        stubResizeObserver();
+        const container = { current: element };
+        // A child's passive effect runs before its parent's, so a measurement
+        // in useEffect would happen after this one and fail the assertion.
+        const Child = () => {
+            useEffect(() => {
+                passiveEffectRan = true;
+            }, []);
+            return null;
+        };
+        const Probe = () => {
+            useUserTableLayout(container);
+            return createElement(Child);
+        };
+        render(createElement(Probe));
+        expect(measuredAfterPassiveEffect).toEqual([false]);
+    });
+
+    it('keeps the viewport layout while the container has no width yet', () => {
+        atWidth(1920);
+        const element = document.createElement('div');
+        stubResizeObserver();
+        expect(renderHook(() => useUserTableLayout({ current: element })).result.current).toBe('wide');
     });
 });

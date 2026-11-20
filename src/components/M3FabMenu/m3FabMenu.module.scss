@@ -93,6 +93,32 @@
     }
 }
 
+// Pill with a supporting sentence: grows to two or three lines instead of one.
+.itemWithDescription {
+    height: auto;
+    // Fixed width: the absolute stack would otherwise shrink-wrap the pill to a word column.
+    width: min(320px, calc(100vw - 12px));
+    min-height: 56px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    // No shape token exists in this repo; 20px keeps a multi-line pill visibly a pill.
+    border-radius: 20px;
+    text-align: left;
+    white-space: normal;
+}
+
+.itemText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+// Type comes from the global M3 scale class `m3-body-medium` (app.css); nothing to set here.
+.itemDescription {
+    display: block;
+}
+
 .itemActive {
     background: var(--admin-nav-indicator-surface, #410001);
     color: var(--m3-primary-container, #ffe2de);
@@ -162,12 +188,12 @@
     // names. Keep the Figma roles local to this component so the policy menu
     // can match M3 without changing unrelated sidebar and field surfaces.
     //
-    // Only `--m3-*` tokens: applyAdminTheme.ts writes nothing else to the root,
-    // so the previous app-layer binding silently fell back to a fixed red on every
-    // Träger theme (#992). `--m3-primary` is the seeded brand colour the action
-    // FAB and the read-only value button already use; `--m3-primary-container`
-    // is the rose that reads on it (see src/app.css for the inverted naming).
-    --m3-fab-menu-primary-container: var(--m3-primary, #a5000a);
+    // Only tokens applyAdminTheme.ts writes to the root (`--m3-*`, `--admin-*`);
+    // an app-layer binding once silently fell back to a fixed red on every
+    // Träger theme (#992). The fill is the seeded brand colour, guarded so the
+    // rose `--m3-primary-container` on top of it stays readable for light
+    // Träger colours (#1322; see src/app.css for the inverted naming).
+    --m3-fab-menu-primary-container: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
     --m3-fab-menu-on-primary-container: var(--m3-primary-container, #ffe2de);
     --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
     --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);

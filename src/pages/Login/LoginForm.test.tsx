@@ -2,9 +2,10 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
 import { FETCH_ERRORS } from '../../api/fetchData';
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
     loginAsync: vi.fn(),
     messageError: vi.fn(),
     navigate: vi.fn(),
+    search: '',
     recordLoginFailure: vi.fn(),
 }));
 
@@ -37,6 +39,8 @@ const translations: Record<string, string> = {
     'message.error.auth.credentialsOrInvite':
         'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
     'message.error.auth.tooManyCodes': 'Too many attempts. Please wait a moment before trying again.',
+    'message.error.auth.setupIncomplete':
+        'Your account is not fully set up yet. Please use the link in your invitation email, or reset your password via "Forgot password?" to finish the setup.',
     'login.otp.resend.action': 'Send a new code',
     'login.otp.resend.requested': 'Request sent. Please use the newest code from your inbox.',
     'login.otp.resend.onlyNewest': 'Only the most recently sent code is valid.',
@@ -59,6 +63,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
     return translations[key] || key;
 };
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let snackbarErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
 
@@ -97,17 +102,7 @@ vi.mock('react-router-dom', async () => {
     return {
         ...actual,
         useNavigate: () => mocks.navigate,
-    };
-});
-
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        message: {
-            ...actual.message,
-            error: mocks.messageError,
-        },
+        useLocation: () => ({ search: mocks.search }),
     };
 });
 
@@ -155,14 +150,46 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
+        // Records the call and still raises the pop-up, so a test can see what the person sees.
+        const raise = snackbar.error.bind(snackbar);
+        snackbarErrorSpy = vi.spyOn(snackbar, 'error').mockImplementation(((...args: Parameters<typeof raise>) => {
+            mocks.messageError(...args);
+            return raise(...args);
+        }) as never);
         mocks.navigate.mockReset();
+        mocks.search = '';
         mocks.recordLoginFailure.mockReset();
         consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     });
 
     afterEach(() => {
         consoleWarnSpy.mockRestore();
+        snackbarErrorSpy.mockRestore();
     });
+
+    it('keeps the first-centre continuation through the password and OTP challenge', async () => {
+        mocks.search = '?agencySetupId=5';
+        mocks.loginAsync.mockRejectedValueOnce(emailOtpChallenge()).mockResolvedValueOnce(undefined);
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        expect(mocks.navigate).not.toHaveBeenCalled();
+        await user.type(await screen.findByPlaceholderText('One-time password'), '123456');
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+        await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin/agency/5/setup'));
+    });
+
+    it.each(['https://evil.example', 'add', '0', '5&agencySetupId=6', '1e2', '9007199254740992'])(
+        'does not follow a malformed or ambiguous setup hint %s',
+        async (hint) => {
+            mocks.search = `?agencySetupId=${hint}`;
+            mocks.loginAsync.mockResolvedValue(undefined);
+            render(<LoginForm />);
+            const user = await fillRequiredFields();
+            await user.click(screen.getByRole('button', { name: 'Sign in' }));
+            await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith('/admin'));
+        },
+    );
 
     it('links password recovery to the admin-owned reset flow', () => {
         render(<LoginForm />);
@@ -293,7 +320,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -306,7 +333,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -381,6 +408,33 @@ describe('LoginForm', () => {
         expect(mocks.messageError).not.toHaveBeenCalled();
     });
 
+    // ORISO-Frontend#1670: an admin-chosen password leaves Keycloak's UPDATE_PASSWORD
+    // required action on the account. The password grant then answers 400
+    // "Account is not fully set up" - the password was right, so the form must not
+    // say it was wrong. Keycloak only says this after the password matched, so it
+    // reveals nothing about whether an account exists.
+    it('explains the unfinished setup instead of the credentials hint (#1670)', async () => {
+        mocks.loginAsync.mockRejectedValueOnce({
+            message: FETCH_ERRORS.BAD_REQUEST,
+            options: { data: { error: 'invalid_grant', error_description: 'Account is not fully set up' } },
+        });
+        render(<LoginForm />);
+        const user = await fillRequiredFields();
+
+        await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+        expect(await screen.findByTestId('login-setup-incomplete-hint')).toHaveTextContent(
+            'Your account is not fully set up yet.',
+        );
+        expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
+        expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
+        expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
+            outcome: 'setup_incomplete',
+            transport: 'bad_request',
+            stage: 'password',
+        });
+    });
+
     it('shows the credentials hint when the code was submitted and Keycloak still answers 400', async () => {
         mocks.loginAsync
             .mockRejectedValueOnce({
@@ -399,9 +453,12 @@ describe('LoginForm', () => {
         await user.type(otpField, '123456');
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        const hint = await screen.findByTestId('login-credentials-hint');
         // The OTP field stays so the person can correct the code, not start over.
         expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+        // The jump button points at the code, not at the user name.
+        await user.click(within(hint).getByRole('button', { name: 'snackbar.jump' }));
+        await waitFor(() => expect(screen.getByPlaceholderText('One-time password')).toHaveFocus());
     });
 
     /*
@@ -472,6 +529,8 @@ describe('LoginForm', () => {
                 'Too many attempts. Please wait about 7 minutes before trying again.',
             );
         });
+        // The pop-up reaches the host: an error, with the sign-in lead line.
+        expect(await screen.findByTestId('snackbar')).toHaveAttribute('data-severity', 'error');
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
             outcome: 'rate_limited',
             transport: 'too_many_requests',
@@ -588,8 +647,9 @@ describe('LoginForm', () => {
         mocks.loginAsync.mockRejectedValueOnce({ message: FETCH_ERRORS.TIMEOUT });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-        expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(await screen.findByText(/The code could not be requested\. Please try again\./)).toBeInTheDocument();
+        // The failure is an error pop-up; the "request sent" confirmation must not appear next to it.
+        expect(screen.queryByText(/Request sent\./)).not.toBeInTheDocument();
     });
 
     /*

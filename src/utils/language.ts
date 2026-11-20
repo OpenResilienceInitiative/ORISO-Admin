@@ -34,6 +34,14 @@ export const LANGUAGE_OPTIONS = [
     { value: 'ti', shortLabelKey: 'language.short.ti', labelKey: 'language.options.ti' },
 ] as const;
 
+/**
+ * The Intl APIs reject the "de@informal" tag with a RangeError ("Invalid language tag"), which
+ * crashed every page that formats a date or number in informal German (Admin#1503). Informal
+ * German formats exactly like German, so it maps to "de"; every other language passes through.
+ */
+export const toIntlLocale = (language?: string | null): string | undefined =>
+    language === 'de@informal' ? 'de' : language || undefined;
+
 export const isSupportedLanguage = (value: unknown): value is SupportedLanguage => {
     return typeof value === 'string' && SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);
 };
@@ -144,5 +152,5 @@ export const updateDocumentLanguage = (language: SupportedLanguage): void => {
         return;
     }
 
-    document.documentElement.lang = language === 'de@informal' ? 'de' : language;
+    document.documentElement.lang = toIntlLocale(language) ?? DEFAULT_LANGUAGE;
 };

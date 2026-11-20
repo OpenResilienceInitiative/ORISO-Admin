@@ -4,6 +4,7 @@ import { useWatch } from 'antd/lib/form/Form';
 import { useTranslation } from 'react-i18next';
 import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../mui/MuiFormField';
 import { MuiSelectField } from '../mui/MuiSelectField';
+import { useSupervisionPrivacyConfirm } from '../SupervisionPrivacyConfirm';
 import { MuiSwitchField } from '../mui/MuiSwitchField';
 import { CounsellorAvatarField } from '../CounsellorAvatarField';
 import { passwordFormRules, usernameFormRules } from '../../utils/consultantCredentialRules';
@@ -65,6 +66,8 @@ export interface ConsultantPersonalFieldsProps extends ConsultantFieldsBaseProps
     usernameLocked?: boolean;
     /** Focus the first field on mount — for dialogs, not for a whole page. */
     autoFocusFirstField?: boolean;
+    /** Creating a counsellor: no password is asked, so say how the person gets in (#1144). */
+    setupEmailHint?: boolean;
 }
 
 export interface ConsultantSettingsFieldsProps extends ConsultantFieldsBaseProps {
@@ -83,6 +86,7 @@ export const ConsultantPersonalFields = ({
     disabled,
     usernameLocked,
     autoFocusFirstField,
+    setupEmailHint,
 }: ConsultantPersonalFieldsProps) => {
     const { t } = useTranslation();
     const requiredRule = { required: true, message: t('form.errors.required') };
@@ -217,6 +221,7 @@ export const ConsultantPersonalFields = ({
                     name="email"
                     label={t('email')}
                     placeholder={t('placeholder.email')}
+                    helpText={!has('password') && setupEmailHint ? t('counselor.password.setupEmailHint') : undefined}
                     rules={[
                         {
                             required: true,
@@ -270,6 +275,8 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
     // `useWatch` reports a value one render late, so read the store as the fallback. A `false`
     // from the watch still wins, or unticking could not hide the note again.
     const isAbsent = watchedAbsent ?? form?.getFieldValue('absent');
+    // OBP 2.1 #107: a supervisor reads along — ask about the privacy policy first.
+    const confirmSupervision = useSupervisionPrivacyConfirm();
 
     return (
         <>
@@ -277,12 +284,19 @@ export const ConsultantSettingsFields = ({ exclude, children }: ConsultantSettin
                 {has('formalLanguage') && (
                     <MuiSwitchField label={t('counselor.formalLanguage.title')} name="formalLanguage" />
                 )}
-                {has('isSupervisor') && <MuiSwitchField label={t('counselor.isSupervisor')} name="isSupervisor" />}
+                {has('isSupervisor') && (
+                    <MuiSwitchField
+                        label={t('counselor.isSupervisor')}
+                        name="isSupervisor"
+                        confirmEnable={confirmSupervision.confirmEnable}
+                    />
+                )}
                 {has('isGroupchatConsultant') && (
                     <MuiSwitchField label={t('counselor.isGroupChatConsultant')} name="isGroupchatConsultant" />
                 )}
                 {has('absent') && <MuiSwitchField label={t('counselor.absent')} name="absent" />}
             </div>
+            {confirmSupervision.dialog}
             {!has('absent') && (
                 /*
                  * Value carrier where the toggle is hidden. antd resolves only REGISTERED

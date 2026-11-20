@@ -15,6 +15,8 @@ export interface UserCardListProps {
     onLoadMore: () => void;
     onEdit?: (row: CounselorData) => void;
     onDelete?: (row: CounselorData) => void;
+    onCancelDeletion?: (row: CounselorData) => void;
+    onPauseDeletion?: (row: CounselorData) => void;
     details: (row: CounselorData) => ReactNode;
     ariaLabel?: string;
 }
@@ -33,6 +35,8 @@ export const UserCardList = ({
     onLoadMore,
     onEdit,
     onDelete,
+    onCancelDeletion,
+    onPauseDeletion,
     details,
     ariaLabel,
 }: UserCardListProps) => {
@@ -68,9 +72,12 @@ export const UserCardList = ({
                         email={row.email}
                         username={row.username && displayUsername(row.username)}
                         status={resolveDisplayStatus(row)}
+                        accountStatus={row}
                         actionsDisabled={pending}
                         onEdit={onEdit && (() => onEdit(row))}
                         onDelete={onDelete && (() => onDelete(row))}
+                        onCancelDeletion={pending && onCancelDeletion ? () => onCancelDeletion(row) : undefined}
+                        onPauseDeletion={pending && onPauseDeletion ? () => onPauseDeletion(row) : undefined}
                     >
                         {details(row)}
                     </UserCard>

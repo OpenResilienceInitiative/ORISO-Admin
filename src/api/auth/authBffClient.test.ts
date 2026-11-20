@@ -1,6 +1,6 @@
 // @vitest-environment node
 // Node env: fetch/AbortController from one realm, no DOM needed (same as fetchData.test.ts).
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('../../appConfig', () => ({ default: { root: '/admin' } }));
 

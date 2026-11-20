@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
@@ -110,7 +110,7 @@ describe('DepartmentDataProtectionCard', () => {
         );
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-has-language-slot', 'true');
-        expect(screen.getByRole('button', { name: /^languages:/ })).toBeDisabled();
+        expect(screen.getByRole('button', { name: /languages:/ })).toBeDisabled();
     });
 
     it('offers the switcher for real when the Träger has more than one active language', () => {
@@ -124,7 +124,7 @@ describe('DepartmentDataProtectionCard', () => {
 
         // Switching itself is covered where the menu really opens:
         // M3RichTextEditor.language.test.tsx.
-        expect(screen.getByRole('button', { name: /^languages:/ })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /languages:/ })).toBeEnabled();
     });
 
     it('publishes the complete content map (publish=true)', async () => {
@@ -198,7 +198,7 @@ describe('DepartmentDataProtectionCard', () => {
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>DE</p>');
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
 
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
@@ -274,7 +274,7 @@ describe('DepartmentDataProtectionCard', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
         expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN</p>');
 
@@ -325,7 +325,7 @@ describe('DepartmentDataProtectionCard', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
 
         expect(await screen.findByText('legal.translation.label.empty:en')).toBeInTheDocument();
         // The source language carries content and keeps its "original" label.
@@ -419,7 +419,7 @@ describe('DepartmentDataProtectionCard — publish source warning (#720)', () =>
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: publishButtonName }));
@@ -442,7 +442,7 @@ describe('DepartmentDataProtectionCard — publish source warning (#720)', () =>
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('en'));
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('button', { name: publishButtonName }));
@@ -488,7 +488,7 @@ describe('DepartmentDataProtectionCard — publish source warning (#720)', () =>
         );
 
         // Translate EN from the source via the per-field button, then publish.
-        await user.click(screen.getByRole('button', { name: /^languages:/ }));
+        await user.click(screen.getByRole('button', { name: /languages:/ }));
         await user.click(await screen.findByText('legal.translation.label.empty:en'));
         await user.click(screen.getByRole('button', { name: 'legal.translation.field.button' }));
         await waitFor(() => expect(screen.getByTestId('editor')).toHaveAttribute('data-value', '<p>EN-MT</p>'));

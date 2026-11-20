@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { Form, Input } from 'antd';
 import { FloatingLabelInput } from './index';
 import styles from './floatingLabelInput.module.scss';
@@ -25,6 +25,17 @@ beforeAll(() => {
 const getField = (container: HTMLElement): HTMLElement => container.firstElementChild as HTMLElement;
 
 describe('FloatingLabelInput', () => {
+    it('supports a standalone field without emitting a Form.Item context warning', () => {
+        const error = vi.spyOn(console, 'error');
+        try {
+            render(<FloatingLabelInput label="Standalone control" />);
+            expect(screen.getByLabelText('Standalone control')).toBeInTheDocument();
+            expect(error).not.toHaveBeenCalled();
+        } finally {
+            error.mockRestore();
+        }
+    });
+
     it('floats the label on focus and rests it again on blur while empty', async () => {
         const user = userEvent.setup();
         const { container } = render(<FloatingLabelInput label="Vorname" />);

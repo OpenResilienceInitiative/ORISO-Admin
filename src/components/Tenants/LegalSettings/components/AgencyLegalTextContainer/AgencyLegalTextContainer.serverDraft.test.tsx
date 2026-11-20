@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const h = vi.hoisted(() => ({
     cardMounts: 0,
@@ -565,5 +565,31 @@ describe('AgencyLegalTextContainer server drafts', () => {
             consentText: {},
             revision: 'draft-id:13',
         });
+    });
+});
+
+describe('draft notice opens a collapsed document', () => {
+    beforeEach(() => {
+        h.card.mockReset();
+        h.notice.mockReset();
+        h.canEdit.mockReset().mockReturnValue(true);
+        h.server = { ...defaultServer(), isError: true };
+        h.localDraft = undefined;
+        h.localSavedAt = undefined;
+        h.departmentDpp = { data: undefined, isLoading: false, isError: false, isSuccess: true };
+    });
+
+    it('opens the initial tile and reopens it after the person closes it', () => {
+        renderContainer({ collapsible: true });
+        expect(cardProps().open).toBe(false);
+        const jump = noticeProps().jumpTarget;
+        expect(typeof jump.target).toBe('string');
+        act(() => jump.onJump());
+        expect(cardProps().open).toBe(true);
+        act(() => cardProps().onOpenChange(false));
+        expect(cardProps().open).toBe(false);
+        act(() => noticeProps().jumpTarget.onJump());
+        expect(cardProps().open).toBe(true);
+        expect(noticeProps().jumpTarget.target).toBe(jump.target);
     });
 });

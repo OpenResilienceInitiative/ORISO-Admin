@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import type { ReactNode } from 'react';
 import translationDe from '../../../../locales/de/translation.json';
 import translationEn from '../../../../locales/en/translation.json';

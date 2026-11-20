@@ -1,6 +1,6 @@
 import classNames from 'classnames';
-import { Select } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../M3Select';
 import { ReactComponent as LanguageIcon } from '../../resources/img/svg/navbar/languages_active.svg';
 import { useLanguage } from '../../hooks/useLanguage';
 import { DEFAULT_LANGUAGE, isSupportedLanguage, normalizeLanguage } from '../../utils/language';
@@ -30,7 +30,7 @@ export const LanguageSelector = ({
     return (
         <div className={classNames(styles.wrapper, styles[variant], className)}>
             {showIcon && <LanguageIcon className={styles.icon} aria-hidden />}
-            <Select
+            <M3Select
                 className={classNames(styles.select, {
                     loginLanguageSelector__select: isLoginVariant,
                 })}

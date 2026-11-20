@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import ConversationsIcon from '@mui/icons-material/QuestionAnswerOutlined';
+import RequestsIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import TopicIcon from '@mui/icons-material/CategoryOutlined';
+import VideoCallsIcon from '@mui/icons-material/VideocamOutlined';
 import { StatisticCard } from './StatisticCard';
-import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
-import { ReactComponent as RequestsIcon } from '../../resources/img/svg/statistics-dashboard/requests.svg';
-import { ReactComponent as TopicIcon } from '../../resources/img/svg/statistics-dashboard/topic.svg';
-import { ReactComponent as VideoCallsIcon } from '../../resources/img/svg/statistics-dashboard/video-calls.svg';
 import type { StatisticCardDefinition } from '../../pages/Statistic/types';
 
 // The dashboard translates German seed labels via i18n; in isolation we just echo
@@ -148,10 +148,10 @@ export const WithMetricMenu: Story = {
     },
 };
 
-// ---- Empty states ("Keine Daten" redesign) ----
-// When `emptyHint` is set the card renders a calm muted dash + one-line hint instead
-// of a shouty "Keine Daten" value. The raw value stays in place for screen readers
-// and the CSV export.
+// ---- Empty states ("Keine Daten" redesign, Admin#1374) ----
+// When `emptyHint` is set the card shows no raw "Keine Daten" value. `emptyKind` picks
+// the look: `notTracked` = lighter dashed card that says so, `protected` = lock + reason,
+// `pending` (default) = muted dash + hint. The raw value stays for the CSV export.
 
 // Metric that has no application-layer data source yet (messages, calls, ...).
 export const EmptyNotTracked: Story = {
@@ -160,11 +160,18 @@ export const EmptyNotTracked: Story = {
             key: 'video-calls-empty',
             title: 'Videoanrufe',
             value: 'Keine Daten',
-            emptyHint: 'wird noch nicht erfasst',
+            emptyHint: 'Wird noch nicht erfasst',
+            emptyKind: 'notTracked',
             icon: VideoCallsIcon,
             iconTone: 'danger',
             size: 'small',
         },
+    },
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByText('Wird noch nicht erfasst')).toBeVisible();
+        const card = canvasElement.querySelector('.statisticDashboard__metricCard') as HTMLElement;
+        await expect(getComputedStyle(card).borderTopStyle).toBe('dashed');
+        await expect(card.textContent).not.toContain('–');
     },
 };
 
@@ -175,10 +182,17 @@ export const EmptySuppressed: Story = {
             key: 'requests-suppressed',
             title: 'Anfragen',
             value: 'Keine Daten',
-            emptyHint: 'Statistik unterdrückt',
+            emptyHint: 'Geschützt – zu wenige aktive Beratende',
+            emptyKind: 'protected',
             icon: RequestsIcon,
             size: 'large',
         },
+    },
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByText('Geschützt – zu wenige aktive Beratende')).toBeVisible();
+        await expect(canvasElement.querySelector('[data-testid="statistic-card-protected-icon"]')).not.toBeNull();
+        // No standalone "–" value placeholder (the hint itself may contain a dash).
+        await expect(within(canvasElement).queryByText('–')).toBeNull();
     },
 };
 

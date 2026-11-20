@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import LoginForm from './LoginForm';
 import i18n from '../../i18n';
 
@@ -142,5 +142,35 @@ export const TooManyCodesRequested: Story = {
                 ),
             ).toBeInTheDocument(),
         );
+    },
+};
+
+/**
+ * ORISO-Frontend#1670: an account created with an admin-chosen password still
+ * carries Keycloak's `UPDATE_PASSWORD` required action. The password grant
+ * answers 400 "Account is not fully set up" — the password was right, so the
+ * form points to the invitation link or a password reset instead of the
+ * credentials hint.
+ */
+export const SetupIncomplete: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.post(TOKEN_ENDPOINT, () =>
+                    HttpResponse.json(
+                        { error: 'invalid_grant', error_description: 'Account is not fully set up' },
+                        { status: 400 },
+                    ),
+                ),
+            ],
+        },
+    },
+    play: async (context) => {
+        const canvas = await reachTheCodeStep(context);
+
+        const popup = await screen.findByTestId('login-setup-incomplete-hint');
+        await expect(popup).toHaveTextContent('Ihr Konto ist noch nicht vollständig eingerichtet.');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(canvas.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
     },
 };

@@ -1,3 +1,4 @@
+import type { FormInstance } from 'antd';
 import type { NamePath } from 'antd/es/form/interface';
 
 interface AgencyValidationErrorBody {
@@ -40,4 +41,22 @@ export const parseAgencyFieldValidationError = async (error: unknown): Promise<A
     } catch {
         return null;
     }
+};
+
+/**
+ * Whether `fieldName` is rendered by `form`. A card form only mounts its own fields: the
+ * registration card has no data protection inputs, so an error set there is invisible and the
+ * failed save looks like nothing happened (ORISO-Admin#1243). antd passes a `null` meta for a
+ * name that is not mounted, so the filter keeps only mounted ones.
+ */
+export const isFieldMounted = (form: Pick<FormInstance, 'getFieldsValue'>, fieldName: NamePath): boolean => {
+    const path = Array.isArray(fieldName) ? fieldName : [fieldName];
+    let node: unknown = form.getFieldsValue([path], (meta) => meta !== null);
+    return path.every((key) => {
+        if (node === null || typeof node !== 'object' || !(key in node)) {
+            return false;
+        }
+        node = (node as Record<string | number, unknown>)[key];
+        return true;
+    });
 };

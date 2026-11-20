@@ -1,13 +1,8 @@
-.toolbar {
-    width: 100%;
-    max-width: 760px;
-    margin-bottom: 16px;
-}
-
-.featureToggle {
-    display: inline-flex;
-    flex: 0 0 auto;
+.switchRow {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    white-space: nowrap;
+    gap: 12px;
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 16px;
+    line-height: 24px;
 }

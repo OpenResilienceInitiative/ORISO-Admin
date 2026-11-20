@@ -19,10 +19,20 @@ export const useAgencyUpdate = (id: string) => {
             if (id === 'add') {
                 return addAgencyData(data);
             }
+            await queryClient.cancelQueries({ queryKey: ['AGENCY', id] });
             const latestAgencyData = queryClient.getQueryData<AgencyData>(['AGENCY', id]) ?? agencyData;
             const mergedAgencyData = mergeWith({}, latestAgencyData, data, (objValue, srcValue) => {
                 return objValue instanceof Array ? srcValue : undefined;
             }) as AgencyData;
+
+            // Geographic coverage belongs to this card submission, not the merged agency
+            // snapshot. Do not replay a previous registration save during a delayed refetch.
+            // Existing centres change availability only through the narrow status command.
+            // Drop a legacy cached registration flag before any unrelated metadata save.
+            delete mergedAgencyData.online;
+            delete mergedAgencyData.offline;
+            mergedAgencyData.postCodes = data.postCodes;
+            mergedAgencyData.postCodeRangesActive = data.postCodeRangesActive;
 
             // These language maps are complete legal-document snapshots. Deep-merging them would
             // resurrect a removed language (and turn an explicit empty consent map back into the
@@ -42,19 +52,28 @@ export const useAgencyUpdate = (id: string) => {
                 mergedAgencyData.content = mergedContent;
             }
 
-            // Cache the accepted main write at once: if a follow-up request (postcode ranges) fails and
-            // the recovery refetch fails too, a queued save still merges into what the server holds.
-            const response = await updateAgencyData(latestAgencyData, mergedAgencyData, () =>
-                queryClient.setQueryData(['AGENCY', id], mergedAgencyData),
-            );
+            // Switching the centre offline must not echo the stored data protection contact:
+            // AgencyService validates any contact it receives and rejected an incomplete stored one,
+            // so the centre could not be paused (#1243). Omitted, the service keeps the stored
+            // contact. Going online still sends it, so the service keeps checking it there.
+            const requestData =
+                data.online === false && data.dataProtection === undefined
+                    ? { ...mergedAgencyData, dataProtection: undefined }
+                    : mergedAgencyData;
+
+            // Cache the accepted main write at once so a queued save uses what the server holds.
+            const response = await updateAgencyData(latestAgencyData, requestData, (saved) => {
+                if (saved) queryClient.setQueryData(['AGENCY', id], saved);
+            });
 
             // Cache only a confirmed write. A rejected legal publication must not enter the base
             // of a later unrelated card update and get published by that second request.
-            queryClient.setQueryData(['AGENCY', id], mergedAgencyData);
+            await queryClient.cancelQueries({ queryKey: ['AGENCY', id] });
+            queryClient.setQueryData(['AGENCY', id], response);
             return response;
         },
-        // A write can fail after the main PUT went through (e.g. the postcode-range request). Reload
-        // the agency so the next card save merges into what the server accepted, not an old snapshot.
+        // Preparation writes (coverage or counsellor assignment) may succeed before the main PUT
+        // fails. Reload so the next card save uses the server's confirmed state.
         // Returned so the mutation settles only after the refetch: a queued save must not merge into
         // the old snapshot in between.
         onError: () =>

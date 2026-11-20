@@ -1,29 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
-import getPublicTenantData, { getPublicTenantDataById } from '../api/tenant/getPublicTenantData';
+import { getPublicTenantDataById } from '../api/tenant/getPublicTenantData';
 import { useAppConfigContext } from '../context/useAppConfig';
-import { TenantData } from '../types/tenant';
-import getLocationVariables from '../utils/getLocationVariables';
+import type { TenantData } from '../types/tenant';
+import { PUBLIC_TENANT_DATA_KEY, publicTenantQueryOptions } from './publicTenantQuery';
 
-export const PUBLIC_TENANT_DATA_KEY = 'public-tenant-data';
+export { PUBLIC_TENANT_DATA_KEY } from './publicTenantQuery';
+
+const emptyTenant = { settings: {}, licensing: {} } as TenantData;
 
 export const usePublicTenantData = (tenantId?: string) => {
     const { settings } = useAppConfigContext();
-    const { subdomain } = getLocationVariables();
-    const slug = settings.multitenancyWithSingleDomainEnabled
-        ? settings.mainTenantSubdomainForSingleDomainMultitenancy
-        : subdomain;
 
-    return useQuery<TenantData>({
-        queryKey:
-            tenantId == null ? [PUBLIC_TENANT_DATA_KEY, slug ?? 'no-slug'] : [PUBLIC_TENANT_DATA_KEY, 'id', tenantId],
-        queryFn: async () => {
-            try {
-                return tenantId == null ? await getPublicTenantData(settings) : await getPublicTenantDataById(tenantId);
-            } catch {
-                return { settings: {}, licensing: {} } as TenantData;
-            }
-        },
-        enabled: tenantId == null ? !!slug : /^\d+$/.test(tenantId) && Number(tenantId) > 0,
-        staleTime: 60_000,
-    });
+    return useQuery<TenantData | null, Error, TenantData, readonly string[]>(
+        tenantId == null
+            ? {
+                  ...publicTenantQueryOptions(settings),
+                  select: (tenant) => tenant ?? emptyTenant,
+              }
+            : {
+                  queryKey: [PUBLIC_TENANT_DATA_KEY, 'id', tenantId],
+                  queryFn: () => getPublicTenantDataById(tenantId).catch(() => emptyTenant),
+                  enabled: /^\d+$/.test(tenantId) && Number(tenantId) > 0,
+                  staleTime: 60_000,
+              },
+    );
 };

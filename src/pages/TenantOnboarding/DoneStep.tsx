@@ -6,7 +6,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import routePathNames from '../../appConfig';
 import { M3Button } from '../../components/M3Button';
-import VerifiedIcon from '../../components/CustomIcons/Verified';
+import { OnboardingLeadArt } from '../../components/OnboardingDesign/OnboardingLeadArt';
+import { OnboardingPageHeader } from '../../components/OnboardingDesign/OnboardingPageHeader';
 import styles from './styles.module.scss';
 
 interface DoneStepProps {
@@ -20,6 +21,8 @@ interface DoneStepProps {
     /** The admin joined an existing Träger: nothing was created, nothing awaits activation. */
     joinedExisting?: boolean;
     existingAccountSetup?: boolean;
+    /** A public flow can choose its role-specific portal without changing this default Admin action. */
+    onLogin?: () => void;
 }
 
 /**
@@ -30,15 +33,15 @@ interface DoneStepProps {
  * actually matter separately, shows the assigned ID as a labelled detail, and
  * its single primary action is the shared M3 button.
  *
- * The confirmation glyph is the `Verified` icon from the admin's own icon
- * gallery (Atoms/CustomIcons) in the product's secondary colour (#594.11) —
- * the green MUI check it replaced was a colour from outside the palette.
+ * The confirmation is the shared lead graphic (#1273): a check in the ORISO
+ * red, never green — the same header every invited-account page uses.
  */
 export const DoneStep = ({
     tenantId,
     forwarded = false,
     joinedExisting = false,
     existingAccountSetup = false,
+    onLogin,
 }: DoneStepProps) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -49,10 +52,14 @@ export const DoneStep = ({
 
     return (
         <div className={styles.done} data-testid="onboarding-done">
-            <VerifiedIcon className={styles.doneIcon} data-testid="onboarding-done-success-icon" aria-hidden />
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700 }}>
-                {t(existingAccountSetup ? 'accountSetup.completedTitle' : 'tenantOnboarding.done.title')}
-            </Typography>
+            <OnboardingPageHeader
+                lead={
+                    <span className={styles.doneIcon} data-testid="onboarding-done-success-icon">
+                        <OnboardingLeadArt variant="check" />
+                    </span>
+                }
+                title={t(existingAccountSetup ? 'accountSetup.completedTitle' : 'tenantOnboarding.done.title')}
+            />
             <Typography color="text.secondary" data-testid="onboarding-done-description">
                 {t(descriptionKey)}
             </Typography>
@@ -88,7 +95,7 @@ export const DoneStep = ({
             <M3Button
                 variant="filled"
                 icon={<LoginRounded fontSize="small" />}
-                onClick={() => navigate(routePathNames.login)}
+                onClick={onLogin ?? (() => navigate(routePathNames.login))}
             >
                 {t('tenantOnboarding.done.toLogin')}
             </M3Button>

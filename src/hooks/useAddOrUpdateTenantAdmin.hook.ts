@@ -5,6 +5,7 @@ import { CounselorData } from '../types/counselor';
 import { TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_QUERY_KEY, TENANT_ADMINS_QUERY_KEY, useTenantUserAdminData } from './useTenantUserAdminData';
 import { parseHalResponse } from '../utils/parseHalResponse';
+import { contactEmailForSave } from '../utils/contactEmailForSave';
 
 interface UseAddOrUpdateTenantAdminOptions
     extends UseMutationOptions<CounselorData, Error, CounselorData, Error | Response> {
@@ -27,6 +28,13 @@ export const useAddOrUpdateTenantAdmin = ({ id, ...options }: UseAddOrUpdateTena
             if (password?.trim()) {
                 body.password = password.trim();
             }
+            // ORISO-Admin#1534: absent keeps the stored contact e-mail, "" clears it.
+            body.contactEmail = contactEmailForSave(
+                body.contactEmail,
+                (data as { contactEmail?: string | null } | undefined)?.contactEmail,
+                !!id,
+            );
+            if (body.contactEmail === undefined) delete body.contactEmail;
             const bodyData = JSON.stringify(body);
 
             const response = await fetchData({

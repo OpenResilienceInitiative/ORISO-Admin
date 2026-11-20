@@ -1,0 +1,20 @@
+.card {
+    width: 100%;
+}
+
+/* The names stand above the fields: in a narrow panel they would be cut off in the border. */
+.field {
+    display: grid;
+    gap: 4px;
+
+    label {
+        color: var(--m3-on-surface, #1b1b1b);
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+    }
+}
+
+.requiredMark {
+    color: var(--m3-on-surface-variant, inherit);
+}
