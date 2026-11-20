@@ -63,7 +63,10 @@ describe('useTenantTopics', () => {
         const { client } = renderTopics(true, true, { failClosed: true });
 
         await waitFor(() => expect(client.getQueryCache().getAll()).toHaveLength(1));
-        const keys = client.getQueryCache().getAll().map((query) => query.queryKey);
+        const keys = client
+            .getQueryCache()
+            .getAll()
+            .map((query) => query.queryKey);
         expect(keys[0]).toEqual(['ALL_TOPICS', true, 'de', 'fail-closed']);
         expect(client.getQueryCache().find({ queryKey: ['ALL_TOPICS', true, 'de'], exact: true })).toBeUndefined();
     });

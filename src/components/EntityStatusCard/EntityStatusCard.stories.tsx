@@ -659,7 +659,9 @@ export const CentreDetailsMobile: Story = {
             (client) => {
                 client.setQueryData(['AGENCY', '7'], centreFixture);
                 client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-                SUPPORTED_LANGUAGES.forEach((language) => client.setQueryData(['ALL_TOPICS', true, language, 'fail-closed'], []));
+                SUPPORTED_LANGUAGES.forEach((language) =>
+                    client.setQueryData(['ALL_TOPICS', true, language, 'fail-closed'], []),
+                );
                 client.setQueryData(['TRAEGER_DPO', 1], null);
             },
         ),
