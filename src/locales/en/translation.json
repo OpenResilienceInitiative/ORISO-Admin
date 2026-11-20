@@ -4267,12 +4267,12 @@
     "tenants.appSettings.licenceSender.licenceReadOnly": "The licence is set by the platform operator.",
     "tenants.appSettings.licenceSender.senderNote": "Appears in the footer of this provider's e-mails.",
     "tenants.permissions.teamChat.configure": "Configure",
-    "tenants.permissions.teamChat.configureNeedsMaster": "Available once the team chat is activated.",
-    "tenants.permissions.teamChat.dialogTitle": "What the team chat offers",
-    "tenants.permissions.teamChat.dialogDescription": "The team chat is the side chat on an open enquiry: counsellors coordinate in it until a counsellor accepts the enquiry. Changes apply only when you select \"Save\".",
+    "tenants.permissions.teamChat.configureNeedsMaster": "Available once the switch above is on.",
+    "tenants.permissions.teamChat.dialogTitle": "What the side chat on an enquiry offers",
+    "tenants.permissions.teamChat.dialogDescription": "The side chat on an open enquiry: counsellors coordinate in it until a counsellor accepts the enquiry. Changes apply only when you select \"Save\".",
     "tenants.permissions.teamChat.save": "Save",
     "tenants.permissions.teamChat.cancel": "Cancel",
-    "tenants.permissions.teamChat.notStoredNote": "Prepared: these functions become adjustable once the server stores them. Until then the team chat stays as it is.",
+    "tenants.permissions.teamChat.notStoredNote": "Prepared: these functions become adjustable once the server stores them. Until then the side chat stays as it is.",
     "tenants.permissions.feature.planned": "Prepared",
     "tenants.permissions.feature.notStoredYet": "Not adjustable yet: the server does not store this choice yet."
 }
