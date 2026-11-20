@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { ArrowDropDown } from '@mui/icons-material';
@@ -35,6 +35,10 @@ export const SplitDropdown = ({
     className,
     disabled = false,
 }: SplitDropdownProps) => {
+    const labelId = useId();
+    const titleId = useId();
+    // The visible value already names the action when both strings match.
+    const needsTitle = Boolean(title) && !(typeof label === 'string' && label === title);
     const [open, setOpen] = useState(false);
     const [placement, setPlacement] = useState<'topRight' | 'bottomRight'>('bottomRight');
     const triggerRef = useRef<HTMLButtonElement>(null);
@@ -65,13 +69,18 @@ export const SplitDropdown = ({
                 className={`${styles.versionSplit} ${open && !disabled ? styles.splitOpen : ''} ${className ?? ''}`}
                 title={tooltip ?? title}
                 disabled={disabled}
-                aria-label={typeof title === 'string' ? title : undefined}
+                aria-labelledby={needsTitle ? `${labelId} ${titleId}` : undefined}
                 aria-expanded={open && !disabled}
                 aria-haspopup="menu"
             >
                 <span className={styles.versionLeading}>
                     {icon}
-                    <span>{label}</span>
+                    <span id={labelId}>{label}</span>
+                    {needsTitle && (
+                        <span id={titleId} className={styles.visuallyHidden}>
+                            {title}
+                        </span>
+                    )}
                 </span>
                 <span className={styles.versionTrailing}>
                     <ArrowDropDown />
