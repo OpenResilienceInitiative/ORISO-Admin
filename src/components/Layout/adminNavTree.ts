@@ -7,6 +7,7 @@ import {
     type CanFn,
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
+import { canSeeAddonsSection } from '../../constants/addonsAccess';
 import { resolveVisibleLinksTabs, type LinksTabKey } from '../../constants/linksAccess';
 import { getSettingsTabs } from '../../constants/settingsTabs';
 import { getUserSections } from '../../constants/userSections';
@@ -105,6 +106,14 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
             to: routePathNames.deletionAuditLogs,
             labelKey: 'sidebar.deletionAudit',
             fallbackKey: 'deletionAudit.title',
+        });
+    }
+    if (canSeeAddonsSection({ isSuperAdmin, can })) {
+        logs.push({
+            id: 'logs:addons',
+            to: routePathNames.addonAuditLogs,
+            labelKey: 'sidebar.addonAudit',
+            fallbackKey: 'addonAudit.title',
         });
     }
 

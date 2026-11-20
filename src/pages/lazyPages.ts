@@ -58,8 +58,12 @@ export const LazyInactiveAccountAuditLogsPage = lazyNamed(
     'InactiveAccountAuditLogsPage',
 );
 export const LazyDeletionAuditLogsPage = lazyNamed(() => import('./Logs/DeletionAuditLogs'), 'DeletionAuditLogsPage');
+export const LazyAddonAuditLogsPage = lazyNamed(() => import('./Logs/AddonAuditLogs'), 'AddonAuditLogsPage');
 export const LazyLinksPage = lazyNamed(() => import('./Links'), 'LinksPage');
 export const LazyLinksIndexRedirect = lazyNamed(() => import('./Links'), 'LinksIndexRedirect');
 export const LazyTenantInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'TenantInvitesTab');
 export const LazyCounsellorInvitesTab = lazyNamed(() => import('./Links/AccountInvitesTab'), 'CounsellorInvitesTab');
 export const LazyGlobalLoginSettingsPage = lazyNamed(() => import('./GlobalSettings'), 'GlobalLoginSettingsPage');
+export const LazyAddonsLayout = lazyNamed(() => import('./Addons'), 'AddonsLayout');
+export const LazyAddonsOverview = lazyNamed(() => import('./Addons'), 'AddonsOverview');
+export const LazyAddonAdminPage = lazyNamed(() => import('./Addons'), 'AddonAdminPage');

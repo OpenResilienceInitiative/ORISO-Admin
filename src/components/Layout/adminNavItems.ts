@@ -9,6 +9,7 @@ import {
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
 import { canSeeLinksSection } from '../../constants/linksAccess';
+import { canSeeAddonsSection } from '../../constants/addonsAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { AdminSidebarNavItem } from './AdminSidebar';
@@ -16,6 +17,7 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
     account: string;
+    addons: string;
     agency: string;
     home: string;
     links: string;
@@ -62,6 +64,7 @@ export const resolveLogsPage = (
     canReadCaseHandoverLogs: boolean,
     canReadInactiveAuditLogs: boolean,
     canReadDeletionAuditLogs = false,
+    canReadAddonAuditLogs = false,
 ): string | null => {
     if (canReadSupervisorLogs) {
         return routePathNames.logs;
@@ -74,6 +77,9 @@ export const resolveLogsPage = (
     }
     if (canReadDeletionAuditLogs) {
         return routePathNames.deletionAuditLogs;
+    }
+    if (canReadAddonAuditLogs) {
+        return routePathNames.addonAuditLogs;
     }
     return null;
 };
@@ -125,6 +131,7 @@ export const buildAdminNavItems = ({
         canSeeCaseHandoverLogs,
         canSeeInactiveAuditLogs,
         canSeeDeletionAuditLogsFor(isSuperAdmin, can),
+        canSeeAddonsSection({ isSuperAdmin, can }),
     );
 
     if (canSeeSettingsMenu) {
@@ -181,6 +188,15 @@ export const buildAdminNavItems = ({
             label: labels.links,
             iconPath: routePathNames.links,
             activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
+        });
+    }
+    if (canSeeAddonsSection({ isSuperAdmin, can })) {
+        items.push({
+            key: 'addons',
+            to: routePathNames.addons,
+            label: labels.addons,
+            iconPath: routePathNames.addons,
+            activeMatch: { paths: [routePathNames.addons], mode: 'startsWith' },
         });
     }
     // Every log view lives behind ONE "Logs" entry that opens a tabbed page (ORISO-Admin#84). The

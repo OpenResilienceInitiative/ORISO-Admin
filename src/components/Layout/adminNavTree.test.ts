@@ -44,6 +44,21 @@ describe('buildAdminNavTree', () => {
         ]);
         expect(ids(tree, 'links')).toEqual(['links:tenants', 'links:counsellor']);
         expect(ids(tree, 'logs')).toContain('logs:inactive');
+        expect(ids(tree, 'logs')).toContain('logs:addons');
+    });
+
+    it('lists the add-on log only for admins who may change the Träger', () => {
+        const withTenantUpdate = (allowed: boolean) =>
+            buildAdminNavTree({
+                ...base,
+                isSuperAdmin: false,
+                hasRole: () => false,
+                can: (action, resource) =>
+                    allowed && action === PermissionAction.Update && resource === Resource.Tenant,
+            });
+
+        expect(ids(withTenantUpdate(true), 'logs')).toEqual(['logs:addons']);
+        expect(ids(withTenantUpdate(false), 'logs')).not.toContain('logs:addons');
     });
 
     it('offers an agency admin only what the pages would let them open', () => {
