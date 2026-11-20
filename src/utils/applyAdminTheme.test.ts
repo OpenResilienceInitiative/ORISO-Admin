@@ -53,6 +53,48 @@ describe('applyAdminTheme', () => {
         expect(root.style.getPropertyValue('--m3-on-primary')).toBe('#ffffff');
     });
 
+    it.each(['#a5000a', '#b4ddee', '#f2c200'])('applies a personal dark shell for %s and restores light', (seed) => {
+        const root = document.createElement('div');
+        const text = (name: string) => root.style.getPropertyValue(name);
+        const theming = { primaryColor: seed };
+        const inverted = computeOrisoPalette({ primary: seed }, 'inverted').tokens;
+        expect(applyAdminTheme(theming, root, 'dark')).toBe(true);
+        expect(text('--admin-workspace-background')).toBe('#131314');
+        expect(text('--admin-form-card-surface')).not.toBe(inverted['--admin-form-card-surface']);
+        expect(text('--m3-on-background')).toBe(inverted['--m3-on-background']);
+        expect(contrastRatio(text('--m3-on-surface'), text('--admin-form-card-surface'))).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(text('--admin-form-field-text'), text('--admin-field-surface'))).toBeGreaterThanOrEqual(
+            4.5,
+        );
+        expect(
+            contrastRatio(text('--admin-focus-ring-on-surface'), text('--admin-form-card-surface')),
+        ).toBeGreaterThanOrEqual(3);
+        expect(applyAdminTheme(theming, root)).toBe(true);
+        expect(text('--admin-form-card-surface')).toBe('#eae7e8');
+        expect(text('--admin-dialog-scrim')).toBe('');
+        expect(text('--admin-form-field-text')).toBe('');
+    });
+
+    it('only clears palette-owned variables when changing schemes or leaving the profile', () => {
+        const root = document.createElement('div');
+        root.style.setProperty('--admin-personal-text-scale', '2');
+        root.style.setProperty('--m3-external-preview', '#ddd');
+
+        applyAdminTheme({}, root, 'dark');
+        expect(root.style.getPropertyValue('--admin-dialog-scrim')).not.toBe('');
+        expect(root.style.getPropertyValue('--admin-personal-text-scale')).toBe('2');
+        expect(root.style.getPropertyValue('--m3-external-preview')).toBe('#ddd');
+
+        applyAdminInvertedTheme({}, root);
+        expect(root.style.getPropertyValue('--admin-dialog-scrim')).toBe('');
+        expect(root.style.getPropertyValue('--admin-focus-ring-on-surface')).toBe('');
+
+        clearAdminInvertedThemeTokens(root);
+        expect(root.style.getPropertyValue('--m3-surface')).toBe('');
+        expect(root.style.getPropertyValue('--admin-personal-text-scale')).toBe('2');
+        expect(root.style.getPropertyValue('--m3-external-preview')).toBe('#ddd');
+    });
+
     it('keeps the static palette on an invalid stored seed', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const root = document.createElement('div');

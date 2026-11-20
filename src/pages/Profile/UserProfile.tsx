@@ -1,8 +1,10 @@
 import { Page } from '../../components/Page';
 import { CardGrid } from '../../components/CardGrid';
 import { useAppConfigContext } from '../../context/useAppConfig';
+import { useAdminDisplay } from '../../context/AdminDisplayContext';
 import { UserRole } from '../../enums/UserRole';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
+import { DisplaySettings } from './DisplaySettings';
 import { Documentation } from './Documentation';
 import { TourOverviewSection } from '../../components/productTour/TourOverviewSection';
 import { Absence } from './Absence';
@@ -14,6 +16,7 @@ import { SelfConsultantIdentity } from './SelfConsultantIdentity';
 import { TwoFactorCard } from './TwoFactorCard';
 
 export const UserProfile = () => {
+    const display = useAdminDisplay();
     const { settings } = useAppConfigContext();
     const { hasRole } = useUserRoles();
 
@@ -41,6 +44,11 @@ export const UserProfile = () => {
                 <CardGrid.Item>
                     <LanguageSettings />
                 </CardGrid.Item>
+                {display && (
+                    <CardGrid.Item>
+                        <DisplaySettings />
+                    </CardGrid.Item>
+                )}
                 <CardGrid.Item>
                     <Absence />
                 </CardGrid.Item>
