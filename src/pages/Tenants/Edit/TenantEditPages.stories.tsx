@@ -21,7 +21,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const MasterData: Story = { decorators: [tenantEditDecorator('general')] };
+/** Master data only (Frank, 2026-11-20): licence and sender moved to the tab "Weitere". */
+export const MasterData: Story = {
+    decorators: [tenantEditDecorator('general')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('group', { name: String(i18n.t('tenants.form.section.general')) }, { timeout: 8000 });
+        await expect(canvas.queryByRole('group', { name: String(i18n.t('tenants.form.section.sender')) })).toBeNull();
+        await expect(canvas.queryByDisplayValue('40')).toBeNull();
+    },
+};
 
 export const Appearance: Story = { decorators: [tenantEditDecorator('theme-settings')] };
 
@@ -60,7 +69,10 @@ export const FunctionalityAccess: Story = {
     },
 };
 
-/** ORISO-Admin#1577: the tab "Weitere" (formerly Funktionalitäten): topics and counsellor statistics only. */
+/**
+ * ORISO-Admin#1577: the tab "Weitere" (formerly Funktionalitäten): topics and counsellor statistics; since
+ * Frank's decision of 2026-11-20 also licence and sender of the Träger, as a tile with its own save.
+ */
 export const More: Story = {
     decorators: [tenantEditDecorator('functionalities')],
     play: async ({ canvasElement }) => {
@@ -71,6 +83,8 @@ export const More: Story = {
             { timeout: 8000 },
         );
         await expect(within(section).getAllByRole('switch')).toHaveLength(2);
+        await canvas.findByDisplayValue('40', {}, { timeout: 8000 });
+        await expect(canvas.getByRole('group', { name: String(i18n.t('tenants.form.section.sender')) })).toBeVisible();
         await expect(canvas.getAllByText(String(i18n.t('tenants.edit.tabs.appSettings'))).length).toBeGreaterThan(0);
         const page = canvasElement.ownerDocument.documentElement;
         await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);

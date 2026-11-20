@@ -17,8 +17,12 @@ type Props = {
     leading?: ReactNode;
 };
 
-/** Which parts the edit tile shows: with the data protection officer (the create dialog has the topic instead). */
-const EDIT_SECTIONS = ['general', 'sender', 'description', 'dpo'] as const;
+/**
+ * Which parts the edit tile shows: with the data protection officer (the create dialog has the topic instead).
+ * Licence and sender go beyond master data; on an existing Träger they have their own tile in "Weitere"
+ * (Frank, 2026-11-20).
+ */
+const EDIT_SECTIONS = ['general', 'description', 'dpo'] as const;
 
 /** The editable Träger tile of the master-data page; its fields are the shared `TraegerFieldSections`. */
 export const TenantInformationCard = ({

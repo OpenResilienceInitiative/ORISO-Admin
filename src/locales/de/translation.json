@@ -4260,5 +4260,10 @@
     "tenants.permissions.caseSharing.lockedFromAbove": "Nicht verfügbar: von oben ist eine andere Variante vorgegeben.",
     "tileSections.learnMore": "Mehr erfahren",
     "tileSections.newTab": "(öffnet in neuem Tab)",
-    "tenants.permissions.caseSharing.optionsLabel": "Varianten"
+    "tenants.permissions.caseSharing.optionsLabel": "Varianten",
+    "tenants.appSettings.licenceSender.title": "Lizenz und Absender",
+    "tenants.form.section.licence": "Lizenz",
+    "tenants.appSettings.licenceSender.licenceNote": "Wie viele Beratende dieser Träger höchstens anlegen kann.",
+    "tenants.appSettings.licenceSender.licenceReadOnly": "Die Lizenz legt der Plattformbetreiber fest.",
+    "tenants.appSettings.licenceSender.senderNote": "Erscheint in der Fußzeile der E-Mails dieses Trägers."
 }

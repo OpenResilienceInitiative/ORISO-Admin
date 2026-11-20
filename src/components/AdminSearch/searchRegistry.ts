@@ -491,6 +491,22 @@ export const SEARCH_TILES: RegistryTile[] = [
             ],
         },
     ),
+    // Frank, 2026-11-20: licence and sender of a Träger moved here from Stammdaten (Träger page only).
+    tile(
+        'app:licence-sender',
+        'tenants.appSettings.licenceSender.title',
+        ['tenant:functionalities'],
+        'src/components/Tenants/AppSettings/TraegerLicenceSenderSettings/index.tsx',
+        {
+            fieldKeys: [
+                'tenants.form.section.licence',
+                'tenants.form.section.sender',
+                'tenants.form.sender.legalName',
+                'tenants.form.sender.contactEmail',
+                'tenants.form.sender.contactPhone',
+            ],
+        },
+    ),
 
     // ── Beratungsstelle in context ───────────────────────────────────────────
     // One card: the three former cards "General information", "Visibility in registration" and "Counseling

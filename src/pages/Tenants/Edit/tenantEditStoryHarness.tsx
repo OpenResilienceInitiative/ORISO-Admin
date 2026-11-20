@@ -24,6 +24,9 @@ export const storyTenant = {
     subdomain: 'caritas-sued',
     address: 'Musterstraße 1, 80331 München',
     description: 'Beratung für Familien und Jugendliche im Süden.',
+    legalName: 'Caritasverband für die Erzdiözese Süd e.V.',
+    contactEmail: 'beratung@caritas-sued.de',
+    contactPhone: '+49 89 1234-0',
     adminEmails: [],
     licensing: { allowedNumberOfUsers: 40 },
     settings: {

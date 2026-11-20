@@ -13,6 +13,9 @@ import { FunctionalitiesGrid } from './index';
 const tenant = {
     id: 7,
     name: 'Träger Süd',
+    legalName: 'Caritasverband Süd e.V.',
+    contactEmail: 'beratung@caritas-sued.de',
+    licensing: { allowedNumberOfUsers: 40 },
     settings: { featureTopicsEnabled: true, featureStatisticsEnabled: true },
 };
 
@@ -54,6 +57,25 @@ const noSidewaysScroll: NonNullable<Story['play']> = async ({ canvasElement }) =
 };
 
 export const InTheRaster: Story = { play: noSidewaysScroll };
+
+/**
+ * The Träger page of a platform admin (Frank, 2026-11-20): licence and sender moved here from Stammdaten,
+ * as a second tile with its own save.
+ */
+export const OnTheTraegerPage: Story = {
+    args: { withLicenceAndSender: true },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin], 0);
+            return withAdminProviders(Story);
+        },
+    ],
+    play: async (context) => {
+        const items = () => context.canvasElement.querySelectorAll('[data-admin-card-grid-item]');
+        await waitFor(() => expect(items()).toHaveLength(2), { timeout: 8000 });
+        await noSidewaysScroll(context);
+    },
+};
 
 /**
  * The same page in a phone-wide host (the raster follows the width of its host, not of the window): one column,

@@ -4260,5 +4260,10 @@
     "tenants.permissions.caseSharing.lockedFromAbove": "Not available: another option is required from above.",
     "tileSections.learnMore": "Learn more",
     "tileSections.newTab": "(opens in a new tab)",
-    "tenants.permissions.caseSharing.optionsLabel": "Options"
+    "tenants.permissions.caseSharing.optionsLabel": "Options",
+    "tenants.appSettings.licenceSender.title": "Licence and sender",
+    "tenants.form.section.licence": "Licence",
+    "tenants.appSettings.licenceSender.licenceNote": "The maximum number of counsellors this provider can create.",
+    "tenants.appSettings.licenceSender.licenceReadOnly": "The licence is set by the platform operator.",
+    "tenants.appSettings.licenceSender.senderNote": "Appears in the footer of this provider's e-mails."
 }

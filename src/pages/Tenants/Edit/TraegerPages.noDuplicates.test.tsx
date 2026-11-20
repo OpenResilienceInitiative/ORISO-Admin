@@ -17,7 +17,16 @@ vi.mock('../../../api/fetchData', async (importOriginal) => {
     const actual = await importOriginal<typeof import('../../../api/fetchData')>();
     const routes: Array<[string, () => unknown]> = [
         ['/service/tenantadmin/7/permission-policies', () => ({ tenantId: 7, policies: {} })],
-        ['/service/tenantadmin/7', () => ({ id: 7, name: 'Träger Süd', settings: {} })],
+        [
+            '/service/tenantadmin/7',
+            () => ({
+                id: 7,
+                name: 'Träger Süd',
+                legalName: 'Caritasverband Süd e.V.',
+                licensing: { allowedNumberOfUsers: 40 },
+                settings: {},
+            }),
+        ],
         ['/case-handover/reason-policies', () => []],
         ['/service/useradmin/invitelinks/topics', () => []],
         ['/service/useradmin/invitelinks', () => ({ content: [], totalElements: 0 })],
@@ -37,6 +46,10 @@ vi.mock('../../../api/fetchData', async (importOriginal) => {
 import { TenantGlobalSettings } from './GlobalSettings';
 // eslint-disable-next-line import/first
 import { OtherFunctionsSettings } from '../../../components/Tenants/AppSettings/OtherFunctionsSettings';
+// eslint-disable-next-line import/first
+import { FunctionalitiesGrid } from '../../../components/Tenants/AppSettings/FunctionalitiesGrid';
+// eslint-disable-next-line import/first
+import { TenantInformationCard } from './General/TenantInformationCard';
 
 const renderAt = (path: string, element: JSX.Element) =>
     render(
@@ -80,5 +93,42 @@ describe('Träger tabs Funktionszugriff and Weitere (ORISO-Admin#1577)', () => {
             (setting) => expect(accessSettings).toContain(setting),
         );
         expect(functionalitySettings.filter((setting) => accessSettings.has(setting))).toEqual([]);
+    });
+});
+
+/** The form fields a rendered page offers, by their antd path (`licensing_allowedNumberOfUsers`, `legalName`). */
+const fieldNames = (container: HTMLElement) =>
+    [...container.querySelectorAll<HTMLInputElement>('input[id], textarea[id]')].map((input) => input.id);
+
+describe('Träger tabs Stammdaten and Weitere (Frank, 2026-11-20)', () => {
+    it('offer licence and sender in "Weitere" only', async () => {
+        const masterData = render(
+            <TenantInformationCard
+                form={undefined as never}
+                initialValues={{ name: 'Träger Süd' }}
+                isLoading={false}
+                shouldShowSubdomainField
+                requiredRule={{ required: true }}
+                onSave={vi.fn()}
+            />,
+        );
+        const masterDataFields = fieldNames(masterData.container);
+        masterData.unmount();
+
+        const more = renderAt(
+            '/admin/tenants/7/functionalities',
+            <FunctionalitiesGrid tenantId="7" withLicenceAndSender />,
+        );
+        await waitFor(() => expect(more.container.querySelector('#legalName')).not.toBeNull());
+        const moreFields = fieldNames(more.container);
+
+        expect(masterDataFields).toContain('name');
+        expect(masterDataFields).toContain('address');
+        const moved = ['licensing_allowedNumberOfUsers', 'legalName', 'contactEmail', 'contactPhone'];
+        moved.forEach((field) => {
+            expect(moreFields).toContain(field);
+            expect(masterDataFields).not.toContain(field);
+        });
+        expect(moreFields.filter((field) => masterDataFields.includes(field))).toEqual([]);
     });
 });

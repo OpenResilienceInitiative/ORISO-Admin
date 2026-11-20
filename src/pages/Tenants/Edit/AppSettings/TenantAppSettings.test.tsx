@@ -47,7 +47,14 @@ describe('platform admin editing a Träger: Funktionalitäten page', () => {
         mocks.multitenancyWithSingleDomainEnabled = enabled;
         render(<TenantAppSettings />);
 
-        expect(gridProps()).toEqual({ tenantId: '7' });
+        expect(gridProps()).toEqual({ tenantId: '7', withLicenceAndSender: true });
+    });
+
+    // Frank, 2026-11-20: licence and sender of a Träger moved from Stammdaten into this tab.
+    it('shows the licence and sender tile of the Träger', () => {
+        render(<TenantAppSettings />);
+
+        expect(gridProps().withLicenceAndSender).toBe(true);
     });
 
     it('renders nothing for a user who is neither platform nor Träger admin', () => {

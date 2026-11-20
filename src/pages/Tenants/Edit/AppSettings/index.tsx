@@ -12,5 +12,5 @@ export const TenantAppSettings = () => {
         return null;
     }
 
-    return <FunctionalitiesGrid tenantId={id ?? ''} />;
+    return <FunctionalitiesGrid tenantId={id ?? ''} withLicenceAndSender />;
 };
