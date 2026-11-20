@@ -59,9 +59,10 @@ export const AgencyPermissionsSettings = ({
     const traegerSettings = useMemo<TraegerOnlySettings>(() => {
         let status: TraegerOnlySettings['status'] = traegerDataStatus;
         if (isPending) status = 'pending';
-        else if (!traegerId) status = 'error';
+        // The public read turns a failure into an empty tenant: one without an id is no Träger value.
+        else if (!traegerId || (traegerDataStatus === 'success' && traegerData?.id == null)) status = 'error';
         return { source: 'traeger', values: traegerData?.settings as TraegerOnlySettings['values'], status };
-    }, [isPending, traegerData?.settings, traegerDataStatus, traegerId]);
+    }, [isPending, traegerData?.id, traegerData?.settings, traegerDataStatus, traegerId]);
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = agencyData?.settings?.agencyAdminControls?.enforcedPermissionToggles;
@@ -135,6 +136,8 @@ export const AgencyPermissionsSettings = ({
                     {t('tenants.permissions.traegerUnavailable')}
                 </Notify>
             )}
+            {/* No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
+                that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value. */}
             <PermissionsSettingsView
                 tenantId={`agency-${agencyId}`}
                 caseHandoverTenantId={agencyData?.tenantId}

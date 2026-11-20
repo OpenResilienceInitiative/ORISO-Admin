@@ -5,7 +5,9 @@ import {
     affectsCalls,
     callsAllowed,
     groupChatUmbrellaPolicy,
+    groupChatUmbrellaUpdate,
     isGroupChatMaster,
+    tileOffersCalls,
 } from './derivedLegacySettings';
 
 const on = (fields: string[]) => (field: string) => fields.includes(field);
@@ -62,5 +64,36 @@ describe('derived legacy settings (ORISO-Admin#1577)', () => {
         expect(groupChatUmbrellaPolicy(of(policy(false, 'ENFORCED'), policy(false, 'ENFORCED'))).mode).toBe('ENFORCED');
         // One "off" requirement leaves the other tile adjustable below, so the umbrella stays adjustable.
         expect(groupChatUmbrellaPolicy(of(policy(false, 'ENFORCED'), policy(false))).mode).toBe('SUGGESTED');
+    });
+
+    it('says which tile offers calls', () => {
+        const values = on([
+            'featureCallsEnabled',
+            'featureVideoCallsOneOnOneChatsEnabled',
+            'featureAnonymousChatEnabled',
+        ]);
+        expect(tileOffersCalls('featureCallsEnabled', values)).toBe(true);
+        expect(tileOffersCalls('featureAnonymousChatEnabled', values)).toBe(false);
+    });
+
+    it('asks for an umbrella write only where it differs and is not locked from above', () => {
+        const policies: Record<string, PolicyValue<boolean>> = {
+            featureSelfHelpGroupsEnabled: policy(true),
+            featureInternalGroupChatEnabled: policy(false),
+            featureGroupChatV2Enabled: policy(false),
+        };
+        const policyOf = (field: string) => policies[field];
+        expect(groupChatUmbrellaUpdate(policyOf, { level: 'tenant', restricted: false })).toEqual({
+            value: true,
+            mode: 'SUGGESTED',
+            inherited: false,
+        });
+        expect(groupChatUmbrellaUpdate(policyOf, { level: 'tenant', restricted: true })).toBeNull();
+        policies.featureGroupChatV2Enabled = { value: false, mode: 'ENFORCED', inherited: true };
+        expect(groupChatUmbrellaUpdate(policyOf, { level: 'tenant', restricted: false })).toBeNull();
+        policies.featureGroupChatV2Enabled = policy(true);
+        expect(groupChatUmbrellaUpdate(policyOf, { level: 'tenant', restricted: false })).toBeNull();
+        policies.featureSelfHelpGroupsEnabled = policy(true, 'ENFORCED');
+        expect(groupChatUmbrellaUpdate(policyOf, { level: 'agency', restricted: false })).toBeNull();
     });
 });

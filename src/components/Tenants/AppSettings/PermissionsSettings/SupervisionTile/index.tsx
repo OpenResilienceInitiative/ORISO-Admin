@@ -23,7 +23,8 @@ type SupervisionTileProps = {
     level: 'platform' | 'tenant' | 'agency';
     policyOf: (field: string) => EffectivePolicy;
     pending: (field: string) => boolean;
-    onChange: (field: string, next: PolicyValue<boolean>) => void;
+    /** One call per save: the master alone, or every feature changed in the dialog together. */
+    onChange: (changes: Record<string, PolicyValue<boolean>>) => void;
 };
 
 const LOCKED_OFF: EffectivePolicy = { value: false, mode: 'ENFORCED', inherited: true };
@@ -52,15 +53,20 @@ export const SupervisionTile = ({ level, policyOf, pending, onChange }: Supervis
 
     const changeMaster = (next: PolicyValue<boolean>) => {
         // OBP 2.1 #107: a supervisor reads along, so switching it on asks about the privacy policy first.
-        if (next.value && !master.value) confirmSupervision.confirmEnable(() => onChange(SUPERVISION_MASTER, next));
-        else onChange(SUPERVISION_MASTER, next);
+        if (next.value && !master.value)
+            confirmSupervision.confirmEnable(() => onChange({ [SUPERVISION_MASTER]: next }));
+        else onChange({ [SUPERVISION_MASTER]: next });
     };
 
+    // The dialog's changes are saved as one request where the page can (#1560).
     const save = () => {
-        Object.entries(drafts ?? {}).forEach(([field, next]) => {
-            const current = policyOf(field);
-            if (current.value !== next.value || current.mode !== next.mode) onChange(field, next);
-        });
+        const changed = Object.fromEntries(
+            Object.entries(drafts ?? {}).filter(([field, next]) => {
+                const current = policyOf(field);
+                return current.value !== next.value || current.mode !== next.mode;
+            }),
+        );
+        if (Object.keys(changed).length) onChange(changed);
         setDrafts(null);
     };
 

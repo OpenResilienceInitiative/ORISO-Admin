@@ -332,25 +332,23 @@ describe('Träger call permission follows the call switches', () => {
         featureVideoCallsGroupChatsEnabled: policy(false),
         featureAudioCallsGroupChatsEnabled: policy(false),
     };
+    const callsPermission = (stored: boolean | undefined = true) => ({ stored, follow: vi.fn() });
 
     it('reports "no calls" when the last call switch goes off, and "calls" when one comes back', async () => {
         const user = userEvent.setup();
-        const onCallsAllowedChange = vi.fn();
+        const calls = callsPermission();
         const { rerender } = render(
-            <PermissionsSettingsView {...baseProps({ onCallsAllowedChange, permissionPolicies: allCallsOff })} />,
+            <PermissionsSettingsView {...baseProps({ callsPermission: calls, permissionPolicies: allCallsOff })} />,
         );
         const mail = screen.getByTestId('chat-type-card-oneOnOne');
 
         await user.click(valueButton('featureVideoCallsOneOnOneChatsEnabled', mail));
-        expect(onCallsAllowedChange).toHaveBeenLastCalledWith(false, {
-            field: 'featureVideoCallsOneOnOneChatsEnabled',
-            value: false,
-        });
+        expect(calls.follow).toHaveBeenLastCalledWith(false, 'featureVideoCallsOneOnOneChatsEnabled');
 
         rerender(
             <PermissionsSettingsView
                 {...baseProps({
-                    onCallsAllowedChange,
+                    callsPermission: calls,
                     permissionPolicies: { ...allCallsOff, featureVideoCallsOneOnOneChatsEnabled: policy(false) },
                 })}
             />,
@@ -358,18 +356,112 @@ describe('Träger call permission follows the call switches', () => {
         await user.click(
             valueButton('featureAudioCallsOneOnOneChatsEnabled', screen.getByTestId('chat-type-card-oneOnOne')),
         );
-        expect(onCallsAllowedChange).toHaveBeenLastCalledWith(true, {
-            field: 'featureAudioCallsOneOnOneChatsEnabled',
-            value: true,
-        });
+        expect(calls.follow).toHaveBeenLastCalledWith(true, 'featureAudioCallsOneOnOneChatsEnabled');
     });
 
     it('does not report for switches that do not concern calls', async () => {
         const user = userEvent.setup();
-        const onCallsAllowedChange = vi.fn();
-        render(<PermissionsSettingsView {...baseProps({ onCallsAllowedChange, permissionPolicies: allCallsOff })} />);
+        const calls = callsPermission();
+        render(<PermissionsSettingsView {...baseProps({ callsPermission: calls, permissionPolicies: allCallsOff })} />);
 
         await user.click(valueButton('featureThreadsOneOnOneEnabled', screen.getByTestId('chat-type-card-oneOnOne')));
-        expect(onCallsAllowedChange).not.toHaveBeenCalled();
+        expect(calls.follow).not.toHaveBeenCalled();
+    });
+
+    it('says on the tile that offers calls when the stored permission is off, and aligns it on request', async () => {
+        const user = userEvent.setup();
+        const calls = callsPermission(false);
+        render(<PermissionsSettingsView {...baseProps({ callsPermission: calls, permissionPolicies: allCallsOff })} />);
+
+        const mail = screen.getByTestId('chat-type-card-oneOnOne');
+        expect(mail.querySelector('[data-legacy-notice="calls"]')).not.toBeNull();
+        expect(screen.getByTestId('chat-type-card-group').querySelector('[data-legacy-notice="calls"]')).toBeNull();
+        await user.click(within(mail).getByRole('button', { name: 'tenants.permissions.legacyNotice.calls.action' }));
+        expect(calls.follow).toHaveBeenCalledWith(true);
+    });
+
+    it('says nothing where the page cannot write the permission, or it is on', () => {
+        const { rerender } = render(<PermissionsSettingsView {...baseProps({ permissionPolicies: allCallsOff })} />);
+        expect(document.querySelector('[data-legacy-notice="calls"]')).toBeNull();
+
+        rerender(
+            <PermissionsSettingsView
+                {...baseProps({ callsPermission: callsPermission(true), permissionPolicies: allCallsOff })}
+            />,
+        );
+        expect(document.querySelector('[data-legacy-notice="calls"]')).toBeNull();
+    });
+});
+
+describe('Existing group-chat umbrella that contradicts the tiles', () => {
+    it.each<Level>(['platform', 'tenant', 'agency'])(
+        '%s: says so on the group tile that is on, and aligns it with one write',
+        async (policyLevel) => {
+            const user = userEvent.setup();
+            const onPolicyChange = vi.fn();
+            render(
+                <PermissionsSettingsView
+                    {...baseProps({
+                        onPolicyChange,
+                        policyLevel,
+                        permissionPolicies: {
+                            [CIRCLES]: policy(true),
+                            [INTERNAL]: policy(false),
+                            [UMBRELLA]: policy(false),
+                        },
+                    })}
+                />,
+            );
+
+            expect(onPolicyChange).not.toHaveBeenCalled();
+            expect(
+                screen.getByTestId('chat-type-card-groupInternal').querySelector('[data-legacy-notice="groupChat"]'),
+            ).toBeNull();
+            const group = screen.getByTestId('chat-type-card-group');
+            await user.click(
+                within(group).getByRole('button', { name: 'tenants.permissions.legacyNotice.groupChat.action' }),
+            );
+            expect(onPolicyChange).toHaveBeenCalledTimes(1);
+            expect(onPolicyChange).toHaveBeenCalledWith(UMBRELLA, { value: true, mode: 'SUGGESTED', inherited: false });
+        },
+    );
+
+    it('says nothing while the umbrella is locked from above', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    permissionPolicies: {
+                        [CIRCLES]: policy(true),
+                        [INTERNAL]: policy(false),
+                        [UMBRELLA]: policy(false, 'ENFORCED', true),
+                    },
+                })}
+            />,
+        );
+        expect(document.querySelector('[data-legacy-notice="groupChat"]')).toBeNull();
+    });
+});
+
+describe('Supervision dialog on a page that saves fields together', () => {
+    it('saves the changed features as one request', async () => {
+        const user = userEvent.setup();
+        const onPoliciesChange = vi.fn();
+        const onPolicyChange = vi.fn();
+        render(<PermissionsSettingsView {...baseProps({ onPolicyChange, onPoliciesChange })} />);
+
+        await user.click(
+            within(supervisionTile()).getByRole('button', { name: 'tenants.permissions.supervision.configure' }),
+        );
+        await waitFor(() => expect(dialog()).not.toBeNull());
+        await user.click(valueButton(SUPERVISION_VIDEO, dialog() as HTMLElement));
+        await user.click(valueButton('featureThreadsSupervisionChatsEnabled', dialog() as HTMLElement));
+        await user.click(within(document.body).getByRole('button', { name: 'tenants.permissions.supervision.save' }));
+
+        expect(onPolicyChange).not.toHaveBeenCalled();
+        expect(onPoliciesChange).toHaveBeenCalledTimes(1);
+        expect(Object.keys(onPoliciesChange.mock.calls[0][0]).sort()).toEqual([
+            'featureThreadsSupervisionChatsEnabled',
+            SUPERVISION_VIDEO,
+        ]);
     });
 });

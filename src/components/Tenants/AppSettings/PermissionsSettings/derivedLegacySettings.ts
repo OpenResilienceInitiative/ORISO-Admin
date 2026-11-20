@@ -31,9 +31,29 @@ export const affectsCalls = (field: string) => CALL_FIELDS.has(field);
 
 export const isGroupChatMaster = (field: string) => (GROUP_CHAT_MASTERS as readonly string[]).includes(field);
 
+/** True while the tile with this master is on and offers an audio or video call. */
+export const tileOffersCalls = (master: string, valueOf: (field: string) => boolean) =>
+    CALL_TILES.some((tile) => tile.master === master && valueOf(master) && tile.calls.some((field) => valueOf(field)));
+
 /** True while at least one conversation type offers an audio or video call. */
 export const callsAllowed = (valueOf: (field: string) => boolean) =>
-    CALL_TILES.some(({ master, calls }) => valueOf(master) && calls.some((field) => valueOf(field)));
+    CALL_TILES.some(({ master }) => tileOffersCalls(master, valueOf));
+
+/**
+ * The Träger's `isVideoCallAllowed` as the Funktionszugriff page sees it. Only the Träger page writes
+ * it, and only where the former "Anrufe" switch was offered; platform and Beratungsstelle pages cannot
+ * (ORISO-TenantService#380 retires the value).
+ */
+export type CallsPermission = {
+    /** Stored value; undefined while loading. */
+    stored: boolean | undefined;
+    pending?: boolean;
+    /**
+     * Make the stored value `allowed`. With `afterField`: once the queued save of that tile field went
+     * through, and only then. Without: as one explicit write (aligning existing data).
+     */
+    follow: (allowed: boolean, afterField?: string) => void;
+};
 
 /**
  * The umbrella follows the two group tiles: on while either is on. It is a requirement only where the
@@ -47,4 +67,19 @@ export const groupChatUmbrellaPolicy = (policyOf: (field: string) => PolicyValue
         ? masters.some((policy) => policy.value && policy.mode === 'ENFORCED')
         : masters.every((policy) => policy.mode === 'ENFORCED');
     return { value, mode: forced ? 'ENFORCED' : 'SUGGESTED', inherited: false };
+};
+
+/**
+ * The umbrella write the group tiles call for, or `null` when it already matches or is locked from
+ * above. A Beratungsstelle writes its own value, never a requirement.
+ */
+export const groupChatUmbrellaUpdate = (
+    policyOf: (field: string) => PolicyValue<boolean>,
+    { level, restricted }: { level: 'platform' | 'tenant' | 'agency'; restricted: boolean },
+): PolicyValue<boolean> | null => {
+    const current = policyOf(GROUP_CHAT_UMBRELLA);
+    if (restricted || (current.mode === 'ENFORCED' && current.inherited === true)) return null;
+    const umbrella = groupChatUmbrellaPolicy(policyOf);
+    const target = level === 'agency' ? { ...umbrella, mode: 'SUGGESTED' as const } : umbrella;
+    return current.value === target.value && current.mode === target.mode ? null : target;
 };
