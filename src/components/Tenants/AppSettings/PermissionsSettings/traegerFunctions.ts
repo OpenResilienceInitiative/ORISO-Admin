@@ -1,4 +1,4 @@
-import type { PermissionToggleCapability } from './types';
+import type { ChatFeature } from './ChatFeaturesDialog';
 
 /**
  * ORISO-Admin#1577: functions from the former "Funktionalitäten" tab (now "Weitere") that moved into
@@ -8,12 +8,7 @@ import type { PermissionToggleCapability } from './types';
 /** Supervision chats: the master and what the supervision chat itself offers (ORISO-Admin#988). */
 export const SUPERVISION_MASTER = 'featureSupervisionEnabled';
 
-export const SUPERVISION_FEATURES: Array<{
-    labelKey: string;
-    field: string;
-    requiresCapability?: PermissionToggleCapability;
-    appOnly?: boolean;
-}> = [
+export const SUPERVISION_FEATURES: ChatFeature[] = [
     { labelKey: 'tenants.permissions.feature.videoCalls', field: 'featureVideoCallsSupervisionChatsEnabled' },
     { labelKey: 'tenants.permissions.feature.audioCalls', field: 'featureAudioCallsSupervisionChatsEnabled' },
     {
@@ -35,6 +30,50 @@ export const SUPERVISION_FEATURES: Array<{
         labelKey: 'tenants.permissions.feature.mediaAiScan',
         field: 'featureMediaAiScanSupervisionChatsEnabled',
         requiresCapability: 'mediaAiScan',
+    },
+];
+
+/**
+ * What the Team-Chat (the counsellors' side chat on an open enquiry) offers, configured like the supervision
+ * chat (Frank, 2026-11-20). TenantService has none of these settings yet: only the master
+ * `featureTeamDiscussionEnabled` exists. The names mirror the supervision fields and are the proposal for the
+ * backend follow-up; until a field is stored there it stays `stored: false`, and the dialog names the feature
+ * without offering a switch, so no choice is shown as saved that the server would drop.
+ */
+export const TEAM_CHAT_FEATURES: ChatFeature[] = [
+    {
+        labelKey: 'tenants.permissions.feature.videoCalls',
+        field: 'featureVideoCallsTeamDiscussionsEnabled',
+        stored: false,
+    },
+    {
+        labelKey: 'tenants.permissions.feature.audioCalls',
+        field: 'featureAudioCallsTeamDiscussionsEnabled',
+        stored: false,
+    },
+    {
+        labelKey: 'tenants.permissions.feature.voiceMessages',
+        field: 'featureVoiceMessagesTeamDiscussionsEnabled',
+        appOnly: true,
+        stored: false,
+    },
+    { labelKey: 'tenants.permissions.feature.threads', field: 'featureThreadsTeamDiscussionsEnabled', stored: false },
+    {
+        labelKey: 'tenants.permissions.feature.mediaUpload',
+        field: 'featureMediaUploadTeamDiscussionsEnabled',
+        appOnly: true,
+        stored: false,
+    },
+    {
+        labelKey: 'tenants.permissions.feature.mediaInlineDisplay',
+        field: 'featureMediaInlineDisplayTeamDiscussionsEnabled',
+        stored: false,
+    },
+    {
+        labelKey: 'tenants.permissions.feature.mediaAiScan',
+        field: 'featureMediaAiScanTeamDiscussionsEnabled',
+        requiresCapability: 'mediaAiScan',
+        stored: false,
     },
 ];
 

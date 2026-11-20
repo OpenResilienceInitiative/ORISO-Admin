@@ -13,8 +13,8 @@ import { TileSections } from '../../../TileSections';
 import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
 import { SupervisionTile } from './SupervisionTile';
-import { TraegerSettingCard } from './TraegerSettingCard';
-import { TRAEGER_ONLY_SETTINGS, type TraegerOnlySettings } from './traegerFunctions';
+import { TeamChatSection } from './TeamChatSection';
+import type { TraegerOnlySettings } from './traegerFunctions';
 import {
     GROUP_CHAT_UMBRELLA,
     affectsCalls,
@@ -661,7 +661,8 @@ export const PermissionsSettingsView = ({
                                 />
                             )}
 
-                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here. */}
+                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here; Frank,
+                                2026-11-20: with "Konfigurieren" like supervision. */}
                             {card.key === 'oneOnOne' && (
                                 <TileSections.Section
                                     wide
@@ -671,14 +672,13 @@ export const PermissionsSettingsView = ({
                                     titleAction={<SectionHelp topic={TEAM_CHAT_HELP} />}
                                     collapsible
                                 >
-                                    <div className={styles.togglesList}>
-                                        <TraegerSettingCard
-                                            field={TRAEGER_ONLY_SETTINGS.teamChat}
-                                            labelKey={TEAM_FUNCTIONS.chat.nameKey}
-                                            descriptionKey={TEAM_FUNCTIONS.chat.descriptionKey}
-                                            settings={traegerSettings}
-                                        />
-                                    </div>
+                                    <TeamChatSection
+                                        level={policyLevel}
+                                        settings={traegerSettings}
+                                        policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                        pending={policyPending}
+                                        onChange={(changes) => changePolicies(changes, form)}
+                                    />
                                 </TileSections.Section>
                             )}
 

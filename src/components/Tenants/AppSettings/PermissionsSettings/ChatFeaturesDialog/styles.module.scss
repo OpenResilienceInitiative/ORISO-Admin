@@ -1,0 +1,34 @@
+/* Frank, 2026-11-20 — a side-chat feature the server cannot store yet: the look of PolicyOptionCard, no switch. */
+.plannedCopy {
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.plannedLabel {
+    color: var(--m3-on-surface, #1c1b1b);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+}
+
+.plannedText {
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.plannedChip {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c7);
+    border-radius: 8px;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+}

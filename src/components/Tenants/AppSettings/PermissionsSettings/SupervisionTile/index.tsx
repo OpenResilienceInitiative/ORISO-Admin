@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CollapsibleTile } from '../../../../CollapsibleTile';
 import { M3Button } from '../../../../M3Button';
-import { Modal } from '../../../../Modal';
 import { TileHelpButton } from '../../../../TileHelp';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
 import { useSupervisionPrivacyConfirm } from '../../../../SupervisionPrivacyConfirm';
@@ -12,8 +11,7 @@ import { runtimeConfig } from '../../../../../config/runtimeConfig';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { APP_ONLY_HINT_KEY } from '../chatTypeCards';
 import { SUPERVISION_HELP } from '../help';
-import { OPTION_ICONS } from '../optionIcons';
-import { PolicyOptionCard } from '../PolicyOptionCard';
+import { ChatFeaturesDialog, type ChatFeature } from '../ChatFeaturesDialog';
 import type { EffectivePolicy } from '../permissionsSettingsUtils';
 import { SUPERVISION_FEATURES, SUPERVISION_MASTER } from '../traegerFunctions';
 import permissionStyles from '../styles.module.scss';
@@ -27,9 +25,7 @@ type SupervisionTileProps = {
     onChange: (changes: Record<string, PolicyValue<boolean>>) => void;
 };
 
-const LOCKED_OFF: EffectivePolicy = { value: false, mode: 'ENFORCED', inherited: true };
-
-const unavailable = (feature: (typeof SUPERVISION_FEATURES)[number]) =>
+const unavailable = (feature: ChatFeature) =>
     feature.requiresCapability === 'mediaAiScan' && !runtimeConfig.mediaAiScanAvailable;
 
 /**
@@ -39,13 +35,13 @@ const unavailable = (feature: (typeof SUPERVISION_FEATURES)[number]) =>
  */
 export const SupervisionTile = ({ level, policyOf, pending, onChange }: SupervisionTileProps) => {
     const { t } = useTranslation();
-    const [drafts, setDrafts] = useState<Record<string, PolicyValue<boolean>> | null>(null);
+    // Each "Konfigurieren" starts a new dialog from the saved values, also if the last one is still closing.
+    const [dialogRun, setDialogRun] = useState(0);
+    const [configuring, setConfiguring] = useState(false);
     const confirmSupervision = useSupervisionPrivacyConfirm();
     const title = t('tenants.permissions.supervision.title');
     const master = policyOf(SUPERVISION_MASTER);
     const available = SUPERVISION_FEATURES.filter((feature) => !unavailable(feature));
-    const featurePolicy = (feature: (typeof SUPERVISION_FEATURES)[number]) =>
-        unavailable(feature) ? LOCKED_OFF : drafts?.[feature.field] ?? policyOf(feature.field);
     const onCount = available.filter((feature) => policyOf(feature.field).value).length;
     const status = master.value
         ? t('tenants.permissions.card.summary.on', { count: onCount, total: available.length })
@@ -56,18 +52,6 @@ export const SupervisionTile = ({ level, policyOf, pending, onChange }: Supervis
         if (next.value && !master.value)
             confirmSupervision.confirmEnable(() => onChange({ [SUPERVISION_MASTER]: next }));
         else onChange({ [SUPERVISION_MASTER]: next });
-    };
-
-    // The dialog's changes are saved as one request where the page can (#1560).
-    const save = () => {
-        const changed = Object.fromEntries(
-            Object.entries(drafts ?? {}).filter(([field, next]) => {
-                const current = policyOf(field);
-                return current.value !== next.value || current.mode !== next.mode;
-            }),
-        );
-        if (Object.keys(changed).length) onChange(changed);
-        setDrafts(null);
     };
 
     return (
@@ -100,7 +84,10 @@ export const SupervisionTile = ({ level, policyOf, pending, onChange }: Supervis
                         variant="outlined"
                         icon={<SettingsOutlinedIcon />}
                         disabled={!master.value}
-                        onClick={() => setDrafts({})}
+                        onClick={() => {
+                            setDialogRun((run) => run + 1);
+                            setConfiguring(true);
+                        }}
                     >
                         {t('tenants.permissions.supervision.configure')}
                     </M3Button>
@@ -112,56 +99,36 @@ export const SupervisionTile = ({ level, policyOf, pending, onChange }: Supervis
                 </div>
                 {confirmSupervision.dialog}
             </CollapsibleTile>
-            {drafts && (
-                <Modal
-                    title={t('tenants.permissions.supervision.dialogTitle')}
-                    description={t('tenants.permissions.supervision.dialogDescription')}
+            {configuring && (
+                // The dialog's changes are saved as one request where the page can (#1560).
+                <ChatFeaturesDialog
+                    key={dialogRun}
+                    titleKey="tenants.permissions.supervision.dialogTitle"
+                    descriptionKey="tenants.permissions.supervision.dialogDescription"
+                    saveKey="tenants.permissions.supervision.save"
+                    cancelKey="tenants.permissions.supervision.cancel"
                     icon={<SupervisorAccountOutlinedIcon />}
-                    okLabelKey="tenants.permissions.supervision.save"
-                    cancelLabelKey="tenants.permissions.supervision.cancel"
-                    onConfirm={save}
-                    onClose={() => setDrafts(null)}
-                    width={880}
-                    scrollableBody
-                    descriptionFullWidth
-                    wrapperTestId="supervision-dialog"
-                >
-                    <div className={permissionStyles.togglesList}>
-                        {SUPERVISION_FEATURES.map((feature) => (
-                            <PolicyOptionCard
-                                key={feature.field}
-                                Icon={OPTION_ICONS[feature.labelKey]}
-                                featureKey={feature.field}
-                                label={t(feature.labelKey)}
-                                level={level}
-                                policy={featurePolicy(feature)}
-                                pending={pending(feature.field)}
-                                disabled={unavailable(feature)}
-                                supportingText={
-                                    unavailable(feature)
-                                        ? t('tenants.permissions.feature.notYetAvailable')
-                                        : t(
-                                              `tenants.permissions.featureDescription.${feature.labelKey
-                                                  .split('.')
-                                                  .at(-1)}`,
-                                          )
-                                }
-                                onChange={(next) =>
-                                    setDrafts((current) => ({
-                                        ...current,
-                                        [feature.field]: { ...next, inherited: false },
-                                    }))
-                                }
-                            />
-                        ))}
-                    </div>
-                    <p className={permissionStyles.cardDescriptionSecondary}>{t(APP_ONLY_HINT_KEY)}</p>
-                    {!runtimeConfig.mediaAiScanAvailable && (
-                        <p className={permissionStyles.cardDescriptionSecondary}>
-                            {t('tenants.permissions.feature.mediaAiScanUnavailable')}
-                        </p>
-                    )}
-                </Modal>
+                    testId="supervision-dialog"
+                    features={SUPERVISION_FEATURES}
+                    level={level}
+                    policyOf={policyOf}
+                    pending={pending}
+                    unavailableReason={(feature) =>
+                        unavailable(feature) ? t('tenants.permissions.feature.notYetAvailable') : null
+                    }
+                    notes={
+                        <>
+                            <p className={permissionStyles.cardDescriptionSecondary}>{t(APP_ONLY_HINT_KEY)}</p>
+                            {!runtimeConfig.mediaAiScanAvailable && (
+                                <p className={permissionStyles.cardDescriptionSecondary}>
+                                    {t('tenants.permissions.feature.mediaAiScanUnavailable')}
+                                </p>
+                            )}
+                        </>
+                    }
+                    onSave={onChange}
+                    onClose={() => setConfiguring(false)}
+                />
             )}
         </div>
     );

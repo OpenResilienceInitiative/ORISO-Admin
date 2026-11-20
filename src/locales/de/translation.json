@@ -4265,5 +4265,14 @@
     "tenants.form.section.licence": "Lizenz",
     "tenants.appSettings.licenceSender.licenceNote": "Wie viele Beratende dieser Träger höchstens anlegen kann.",
     "tenants.appSettings.licenceSender.licenceReadOnly": "Die Lizenz legt der Plattformbetreiber fest.",
-    "tenants.appSettings.licenceSender.senderNote": "Erscheint in der Fußzeile der E-Mails dieses Trägers."
+    "tenants.appSettings.licenceSender.senderNote": "Erscheint in der Fußzeile der E-Mails dieses Trägers.",
+    "tenants.permissions.teamChat.configure": "Konfigurieren",
+    "tenants.permissions.teamChat.configureNeedsMaster": "Verfügbar, sobald der Team-Chat aktiviert ist.",
+    "tenants.permissions.teamChat.dialogTitle": "Was der Team-Chat bietet",
+    "tenants.permissions.teamChat.dialogDescription": "Der Team-Chat ist der Sidechat zu einer offenen Anfrage: Beratende stimmen sich darin ab, bis eine Beraterin die Anfrage annimmt. Änderungen werden erst mit „Speichern“ übernommen.",
+    "tenants.permissions.teamChat.save": "Speichern",
+    "tenants.permissions.teamChat.cancel": "Abbrechen",
+    "tenants.permissions.teamChat.notStoredNote": "Vorbereitet: Diese Funktionen lassen sich einstellen, sobald der Server sie speichert. Bis dahin bleibt der Team-Chat, wie er ist.",
+    "tenants.permissions.feature.planned": "Vorbereitet",
+    "tenants.permissions.feature.notStoredYet": "Noch nicht einstellbar: Der Server speichert diese Auswahl noch nicht."
 }

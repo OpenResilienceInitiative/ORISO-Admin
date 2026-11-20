@@ -446,8 +446,13 @@ export const SEARCH_TILES: RegistryTile[] = [
         PERMISSIONS,
         `${CHAT}/chatTypeCards.ts`,
         {
-            // ORISO-Admin#1577: Team-Chat is a section of this tile.
-            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS, 'teamFunctions.chat.name'],
+            // ORISO-Admin#1577: Team-Chat is a section of this tile; its dialog since Frank, 2026-11-20.
+            fieldKeys: [
+                ...FEATURE_LABELS,
+                ...NOTIFICATION_LABELS,
+                'teamFunctions.chat.name',
+                'tenants.permissions.teamChat.dialogTitle',
+            ],
         },
     ),
     tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {

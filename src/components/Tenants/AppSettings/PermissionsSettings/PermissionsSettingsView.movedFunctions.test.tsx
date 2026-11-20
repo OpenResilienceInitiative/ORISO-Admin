@@ -248,6 +248,126 @@ describe('Team-Chat on the Mail Beratung tile', () => {
     });
 });
 
+/**
+ * Frank, 2026-11-20: the Team-Chat gets the configuration of supervision: a master switch plus
+ * "Konfigurieren", a dialog for what the side chat on an open enquiry offers. TenantService stores none
+ * of those features yet, so the dialog names them without a switch and never writes.
+ */
+describe('Team-Chat: "Konfigurieren" dialog', () => {
+    const teamChatSection = () =>
+        within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: 'teamFunctions.chat.name' });
+    const configure = () =>
+        within(teamChatSection()).getByRole('button', { name: 'tenants.permissions.teamChat.configure' });
+    const teamChatDialog = () => document.querySelector<HTMLElement>('[data-testid="team-chat-dialog"]');
+    const PLANNED = [
+        'featureVideoCallsTeamDiscussionsEnabled',
+        'featureAudioCallsTeamDiscussionsEnabled',
+        'featureVoiceMessagesTeamDiscussionsEnabled',
+        'featureThreadsTeamDiscussionsEnabled',
+        'featureMediaUploadTeamDiscussionsEnabled',
+        'featureMediaInlineDisplayTeamDiscussionsEnabled',
+        'featureMediaAiScanTeamDiscussionsEnabled',
+    ];
+
+    it('Träger: opens the dialog, which names each feature of the side chat without a switch yet', async () => {
+        const user = userEvent.setup();
+        render(
+            <PermissionsSettingsView
+                {...baseProps({ traegerSettings: { source: 'own', values: { [TEAM_CHAT]: true }, onChange: vi.fn() } })}
+            />,
+        );
+
+        await user.click(configure());
+
+        await waitFor(() => expect(teamChatDialog()).not.toBeNull());
+        const dialogEl = teamChatDialog() as HTMLElement;
+        expect(within(dialogEl).getByText('tenants.permissions.teamChat.dialogTitle')).toBeVisible();
+        expect(
+            [...dialogEl.querySelectorAll<HTMLElement>('[data-planned-feature]')].map(
+                (card) => card.dataset.plannedFeature,
+            ),
+        ).toEqual(PLANNED);
+        expect(dialogEl.querySelector('[data-feature-policy]')).toBeNull();
+    });
+
+    it('Träger: "Speichern" writes nothing the server would drop, and closes', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        const onPolicyChange = vi.fn();
+        const onPoliciesChange = vi.fn();
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    onPolicyChange,
+                    onPoliciesChange,
+                    traegerSettings: { source: 'own', values: { [TEAM_CHAT]: true }, onChange },
+                })}
+            />,
+        );
+
+        await user.click(configure());
+        await waitFor(() => expect(teamChatDialog()).not.toBeNull());
+        await user.click(within(document.body).getByRole('button', { name: 'tenants.permissions.teamChat.save' }));
+
+        await waitFor(() => expect(teamChatDialog()).toBeNull());
+        expect(onChange).not.toHaveBeenCalled();
+        expect(onPolicyChange).not.toHaveBeenCalled();
+        expect(onPoliciesChange).not.toHaveBeenCalled();
+    });
+
+    it('Träger: "Abbrechen" closes without writing', async () => {
+        const user = userEvent.setup();
+        const onChange = vi.fn();
+        render(
+            <PermissionsSettingsView
+                {...baseProps({ traegerSettings: { source: 'own', values: { [TEAM_CHAT]: true }, onChange } })}
+            />,
+        );
+
+        await user.click(configure());
+        await waitFor(() => expect(teamChatDialog()).not.toBeNull());
+        await user.click(within(document.body).getByRole('button', { name: 'tenants.permissions.teamChat.cancel' }));
+
+        await waitFor(() => expect(teamChatDialog()).toBeNull());
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it('Träger: "Konfigurieren" waits for the master switch, like supervision', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    traegerSettings: { source: 'own', values: { [TEAM_CHAT]: false }, onChange: vi.fn() },
+                })}
+            />,
+        );
+
+        expect(configure()).toBeDisabled();
+        expect(within(teamChatSection()).getByText('tenants.permissions.teamChat.configureNeedsMaster')).toBeVisible();
+    });
+
+    it("centre: follows the Träger's master switch", () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({
+                    policyLevel: 'agency',
+                    traegerSettings: { source: 'traeger', status: 'success', values: { [TEAM_CHAT]: true } },
+                })}
+            />,
+        );
+
+        expect(configure()).toBeEnabled();
+    });
+
+    it('platform: can open the dialog, though the master is set per Träger', async () => {
+        const user = userEvent.setup();
+        render(<PermissionsSettingsView {...baseProps({ policyLevel: 'platform' })} />);
+
+        await user.click(configure());
+
+        await waitFor(() => expect(teamChatDialog()).not.toBeNull());
+    });
+});
+
 describe('Group-chat umbrella follows the group tiles', () => {
     it.each<Level>(['platform', 'tenant'])(
         '%s: switching the last group tile off turns the umbrella off',
