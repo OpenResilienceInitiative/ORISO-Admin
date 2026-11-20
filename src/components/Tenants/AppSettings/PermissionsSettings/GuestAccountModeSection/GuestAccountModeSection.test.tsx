@@ -60,17 +60,42 @@ describe('GuestAccountModeSection', () => {
         expect(names).toHaveLength(6);
     });
 
-    it('saves the chosen type on and the two others off, with one mode', async () => {
+    it('saves the chosen type on and the two others off, with one mode, as one change', async () => {
+        const onPoliciesChange = vi.fn();
         const onPolicyChange = vi.fn();
-        renderSection({ policyLevel: 'tenant', onPolicyChange });
+        renderSection({ policyLevel: 'tenant', onPoliciesChange, onPolicyChange });
         await openMenu('audio');
 
         await userEvent.click(screen.getByRole('button', { name: new RegExp(`^${K}.choice.permanent.ENFORCED`) }));
 
-        expect(onPolicyChange).toHaveBeenCalledWith(F('Permanent', 'Audio'), { value: true, mode: 'ENFORCED' });
-        expect(onPolicyChange).toHaveBeenCalledWith(F('Temporary', 'Audio'), { value: false, mode: 'ENFORCED' });
-        expect(onPolicyChange).toHaveBeenCalledWith(F('GuestChooses', 'Audio'), { value: false, mode: 'ENFORCED' });
-        expect(onPolicyChange).toHaveBeenCalledTimes(3);
+        // Code review: three separate saves could fail half-way and leave two types allowed.
+        expect(onPoliciesChange).toHaveBeenCalledTimes(1);
+        expect(onPoliciesChange).toHaveBeenCalledWith({
+            [F('Temporary', 'Audio')]: { value: false, mode: 'ENFORCED' },
+            [F('GuestChooses', 'Audio')]: { value: false, mode: 'ENFORCED' },
+            [F('Permanent', 'Audio')]: { value: true, mode: 'ENFORCED' },
+        });
+        expect(onPolicyChange).not.toHaveBeenCalled();
+    });
+
+    it('lets the Träger choose among the types the platform did not forbid', async () => {
+        renderSection({
+            policyLevel: 'tenant',
+            permissionPolicies: {
+                [F('Permanent', 'Chat')]: { value: false, mode: 'ENFORCED', inherited: true },
+            },
+        });
+
+        await openMenu('chat');
+
+        expect(screen.queryByRole('button', { name: new RegExp(`^${K}.choice.permanent`) })).toBeNull();
+        expect(screen.getByRole('button', { name: new RegExp(`^${K}.choice.temporary.SUGGESTED`) })).toBeEnabled();
+    });
+
+    it('says why a medium is locked by a restriction', () => {
+        renderSection({ restrictedFields: new Set([F('Temporary', 'Video')]) });
+
+        expect(within(medium('video')).getByText('tenants.permissions.asker.restrictedReason')).toBeInTheDocument();
     });
 
     it('locks the choice on the Träger page when the platform requires it', () => {

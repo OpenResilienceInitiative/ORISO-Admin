@@ -119,7 +119,10 @@ const understandUrl = (() => {
     const configured = readConfigValue('UNDERSTAND_URL') ?? '';
     try {
         const url = new URL(configured);
-        return url.protocol === 'http:' || url.protocol === 'https:' ? configured.replace(/\/+$/, '') : '';
+        // Origin and path only: a query or hash would end up in front of the feature path.
+        return url.protocol === 'http:' || url.protocol === 'https:'
+            ? `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+            : '';
     } catch {
         return '';
     }

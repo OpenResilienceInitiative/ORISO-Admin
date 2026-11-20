@@ -182,3 +182,17 @@ describe('page intro, account settings and conversation type names', () => {
         expect(screen.queryByRole('button', { name: 'tenants.permissions.card.editAppearance' })).toBeNull();
     });
 });
+
+// Code review (#1559): the account settings are found by the admin search inside the Mailberatung tile.
+describe('search anchor of the account settings', () => {
+    beforeEach(() => {
+        vi.resetModules();
+        vi.doUnmock('./AskerPermissionsCard');
+    });
+
+    it('carries the search key of the former tile', async () => {
+        await renderView();
+
+        expect(document.querySelector('[data-search-tile="tenants.permissions.asker.title"]')).not.toBeNull();
+    });
+});

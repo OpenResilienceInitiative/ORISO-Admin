@@ -126,6 +126,14 @@ describe('understandUrl', () => {
         expect(runtimeConfig.understandUrl).toBe('https://understand.example.org');
     });
 
+    it('drops a query or hash, so feature paths are appended to the path', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            UNDERSTAND_URL: 'https://understand.example.org/docs/?lang=de#top',
+        });
+
+        expect(runtimeConfig.understandUrl).toBe('https://understand.example.org/docs');
+    });
+
     it('rejects anything but http(s)', async () => {
         const { runtimeConfig } = await loadRuntimeConfig({ UNDERSTAND_URL: 'ftp://understand.example.org' });
 

@@ -129,7 +129,12 @@ export const AskerPermissionsCard = ({
 
     if (embedded) {
         return (
-            <div className={styles.embedded} data-testid="asker-account-settings">
+            // Admin search jumps to this key; as a section it no longer has a Card that carries it (#1558).
+            <div
+                className={styles.embedded}
+                data-testid="asker-account-settings"
+                data-search-tile="tenants.permissions.asker.title"
+            >
                 {content}
             </div>
         );

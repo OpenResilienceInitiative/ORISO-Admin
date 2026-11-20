@@ -30,6 +30,8 @@ export type RecipientScopeControlProps = {
      */
     i18nKey?: string;
     testId?: string;
+    /** Drawn as a white panel, like the other sections of a conversation-type tile (#1558). */
+    asPanel?: boolean;
 };
 
 /**
@@ -45,6 +47,7 @@ export const RecipientScopeControl = ({
     onSave,
     i18nKey: KEY = RECIPIENT_SCOPE_KEY,
     testId = 'recipient-scope-control',
+    asPanel = false,
 }: RecipientScopeControlProps) => {
     const { t } = useTranslation();
     const idBase = useId();
@@ -115,7 +118,12 @@ export const RecipientScopeControl = ({
 
     const titleId = `${idBase}-title`;
     return (
-        <section ref={rootRef} className={styles.control} data-testid={testId} aria-labelledby={titleId}>
+        <section
+            ref={rootRef}
+            className={asPanel ? `${styles.control} ${styles.panel}` : styles.control}
+            data-testid={testId}
+            aria-labelledby={titleId}
+        >
             <div className={styles.heading}>
                 <h3 id={titleId} className={styles.title}>
                     {t(`${KEY}.title`)}

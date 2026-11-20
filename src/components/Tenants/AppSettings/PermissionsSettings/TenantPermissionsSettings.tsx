@@ -43,7 +43,7 @@ export const TenantPermissionsSettings = ({
     );
     const confirmedPolicyData = useRef<TenantPermissionPolicies | undefined>(permissionPolicyData);
     const pendingPolicyOperations = useRef<
-        { id: number; tenantId: string; fieldKey: string; policy: PolicyValue<boolean> }[]
+        { id: number; tenantId: string; changes: Record<string, PolicyValue<boolean>> }[]
     >([]);
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
@@ -86,11 +86,11 @@ export const TenantPermissionsSettings = ({
         const confirmed = confirmedPolicyData.current;
         if (!confirmed) return;
         const policies = pendingPolicyOperations.current.reduce(
-            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            (current, operation) => ({ ...current, ...operation.changes }),
             { ...confirmed.policies },
         );
         setEffectivePolicyData({ ...confirmed, policies });
-        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.flatMap(({ changes }) => Object.keys(changes))));
     }, []);
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
@@ -149,11 +149,12 @@ export const TenantPermissionsSettings = ({
         [tenantData, updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
-    const handlePolicyChange = useCallback(
-        (fieldKey: string, policy: PolicyValue<boolean>) => {
+    // Several fields in one operation are one request: they are saved, or rolled back, together (#1560).
+    const handlePoliciesChange = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>) => {
             if (!confirmedPolicyData.current) return;
             if (String(confirmedPolicyData.current.tenantId) !== tenantId) return;
-            const operation = { id: nextPolicyOperationId.current, tenantId, fieldKey, policy };
+            const operation = { id: nextPolicyOperationId.current, tenantId, changes };
             const operationGeneration = tenantGeneration.current;
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
@@ -165,7 +166,7 @@ export const TenantPermissionsSettings = ({
                 if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
                 const next = {
                     tenantId: confirmed.tenantId,
-                    policies: { [fieldKey]: policy },
+                    policies: changes,
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
@@ -192,6 +193,10 @@ export const TenantPermissionsSettings = ({
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
         [rebuildEffectivePolicyData, tenantId, updatePermissionPolicies],
+    );
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => handlePoliciesChange({ [fieldKey]: policy }),
+        [handlePoliciesChange],
     );
 
     // Same queue as the switches, so a scope save and a switch save never overtake each other.
@@ -287,6 +292,7 @@ export const TenantPermissionsSettings = ({
             ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
+            onPoliciesChange={handlePoliciesChange}
             recipientScope={{
                 // Until the effect above has copied the loaded data over, read the query result: an
                 // absent field means "backend too old", and must not flash while loading.
