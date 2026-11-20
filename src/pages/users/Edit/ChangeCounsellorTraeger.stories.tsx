@@ -7,6 +7,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../enums/UserRole';
 import { findPopup } from '../../../test/storyPopups';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
+import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
 import { UserEditOrAdd } from '.';
 
 /**
@@ -87,6 +88,9 @@ const handlers = (answer: MoveAnswer) => {
         ),
         http.get('*/service/tenantadmin/:id', () => HttpResponse.json(OLD_TENANT)),
         http.get('*/service/topic/', () => HttpResponse.json([SUCHT, FAMILIE])),
+        http.get('*/service/useradmin/agencyadmins/search', () =>
+            HttpResponse.json({ _embedded: [{ _embedded: consultant }], total: 1 }),
+        ),
         http.get('*/service/users/consultants/search', () =>
             HttpResponse.json({ _embedded: [{ _embedded: consultant }], total: 1 }),
         ),
@@ -148,7 +152,17 @@ const meta = {
             setStoryAuth(context.parameters.roles ?? PLATFORM_ADMIN, context.parameters.tokenTenantId ?? 0);
             return withAdminProviders(() => (
                 <Routes>
-                    <Route path="/" element={<Navigate to={`/admin/users/consultants/${CONSULTANT_ID}`} replace />} />
+                    <Route
+                        path="/"
+                        element={
+                            <Navigate
+                                to={`/admin/users/${
+                                    context.parameters.accountSection ?? 'consultants'
+                                }/${CONSULTANT_ID}`}
+                                replace
+                            />
+                        }
+                    />
                     <Route path="/admin/users/:typeOfUsers/:id" element={<Story />} />
                     <Route path="/admin/users/:typeOfUsers" element={<p data-testid="list-page">Beratende</p>} />
                 </Routes>
@@ -203,6 +217,19 @@ const reviewMove = async (centreName = '30159 Beratungsstelle Mitte Hannover') =
 
 const confirmMove = async (dialog: ReturnType<typeof within>) =>
     userEvent.click(dialog.getByRole('button', { name: wording('Träger wechseln', 'Change provider') }));
+
+export const AgencyAdminAccountAccess: Story = {
+    parameters: {
+        accountSection: 'agency-admins',
+        msw: { handlers: [...handlers(moved(3)), ...contactPersonReadHandlers()] },
+    },
+    play: async () => {
+        const accountAccess = await screen.findByTestId('entity-status-card');
+        const profile = screen.getByLabelText(tr('firstname')).closest('form');
+        await expect(profile?.nextElementSibling).toBe(accountAccess);
+        await expect(await within(accountAccess).findByRole('switch', { name: 'Konto pausieren' })).not.toBeChecked();
+    },
+};
 
 /** The Träger field of a counsellor is greyed out until "Bearbeiten", then a platform admin can pick another. */
 export const PlatformAdminCanChangeTraeger: Story = {
