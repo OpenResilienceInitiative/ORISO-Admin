@@ -16,7 +16,7 @@ describe('caseSharingModeOf', () => {
     });
 
     it('accepts the string shape the agency list uses for teamAgency', () => {
-        expect(caseSharingModeOf({ teamAgency: 'true', caseHandoverEnabled: true })).toBe('teamCounselling');
+        expect(caseSharingModeOf({ teamAgency: 'true', caseHandoverEnabled: false })).toBe('teamCounselling');
         expect(caseSharingModeOf({ teamAgency: 'false', caseHandoverEnabled: true })).toBe('caseHandover');
     });
 
@@ -25,9 +25,10 @@ describe('caseSharingModeOf', () => {
         expect(caseSharingModeOf({ teamAgency: false, caseHandoverEnabled: undefined })).toBeUndefined();
     });
 
-    // Proposed migration, pending Frank: a team centre keeps what its counsellors see today.
-    it('reads team counselling when both are on today', () => {
-        expect(caseSharingModeOf({ teamAgency: true, caseHandoverEnabled: true })).toBe('teamCounselling');
+    // Frank, 2026-11-20: both on today migrates to case handover, the safer choice (release note).
+    it('reads case handover when both are on today', () => {
+        expect(caseSharingModeOf({ teamAgency: true, caseHandoverEnabled: true })).toBe('caseHandover');
+        expect(caseSharingModeOf({ teamAgency: 'true', caseHandoverEnabled: true })).toBe('caseHandover');
     });
 });
 

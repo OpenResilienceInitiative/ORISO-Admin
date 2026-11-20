@@ -198,12 +198,15 @@ export const AfterSwitchToCaseHandover: Story = {
     },
 };
 
-/** A Beratungsstelle that has team counselling and case handover on today is told to pick one. */
+/** A Beratungsstelle that has team counselling and case handover on today moves to case handover (the safer choice) and is told so. */
 export const AfterBothActiveToday: Story = {
-    args: { caseSharing: { policy: { value: 'teamCounselling', mode: 'SUGGESTED' }, bothActive: true } },
+    args: { caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' }, bothActive: true } },
     play: async ({ canvasElement }) => {
         const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
         await expect(mail.getByRole('status')).toHaveTextContent(/beide aktiv|both active/);
+        await expect(
+            mail.getByRole('button', { name: /Fallübergabe|Case handover/, pressed: true }),
+        ).toBeInTheDocument();
     },
 };
 

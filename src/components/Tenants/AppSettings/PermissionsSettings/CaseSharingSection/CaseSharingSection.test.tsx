@@ -105,7 +105,7 @@ describe('CaseSharingSection', () => {
     });
 
     it('says when both are on today', () => {
-        renderSection({ policy: { value: 'teamCounselling', mode: 'SUGGESTED' }, bothActive: true });
+        renderSection({ policy: { value: 'caseHandover', mode: 'SUGGESTED' }, bothActive: true });
 
         expect(screen.getByRole('status')).toHaveTextContent(`${K}.bothActive`);
     });

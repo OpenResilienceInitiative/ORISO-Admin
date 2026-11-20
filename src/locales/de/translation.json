@@ -4189,7 +4189,7 @@
     "tenants.permissions.caseSharing.option.caseHandover.description": "Ein Fall gehört einer Berater:in. Bei Abwesenheit, Ende der Zuständigkeit oder wenn Rat gebraucht wird, wird er übergeben oder zeitlich begrenzt geteilt – je nach Grund mit Zustimmung der ratsuchenden Person.",
     "tenants.permissions.caseSharing.option.none.label": "Keine",
     "tenants.permissions.caseSharing.option.none.description": "Streng und privat: Der Fall bleibt allein bei der Berater:in, die ihn angenommen hat. Niemand sonst liest mit.",
-    "tenants.permissions.caseSharing.bothActive": "Heute sind Teamberatung und Fallübergabe beide aktiv. Wählen Sie eine Variante.",
+    "tenants.permissions.caseSharing.bothActive": "Heute sind Teamberatung und Fallübergabe beide aktiv. Ab jetzt gilt nur die Fallübergabe – sie ist die sicherere Variante. Wählen Sie bei Bedarf eine andere.",
     "tenants.permissions.caseSharing.handoverSettings": "Einstellungen zur Fallübergabe",
     "tenants.permissions.card.summary.off": "Aus",
     "tenants.permissions.card.summary.onPlain": "An",

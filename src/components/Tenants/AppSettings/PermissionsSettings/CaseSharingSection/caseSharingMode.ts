@@ -28,11 +28,11 @@ export const hasBothCaseSharingModes = (stored: StoredCaseSharing) =>
 
 /**
  * The one choice today's two values amount to; undefined while either is unknown. Both on reads as
- * team counselling: the proposed migration keeps what the centre's counsellors see today (pending
- * product decision, #1558).
+ * case handover (Frank, 2026-11-20): the safer choice, since one counsellor keeps the case instead
+ * of every counsellor of the centre seeing it. Release note: such centres move to case handover.
  */
 export const caseSharingModeOf = (stored: StoredCaseSharing): CaseSharingMode | undefined => {
     if (!isKnown(stored)) return undefined;
-    if (normalizeTeamAgency(stored.teamAgency)) return 'teamCounselling';
-    return stored.caseHandoverEnabled ? 'caseHandover' : 'none';
+    if (stored.caseHandoverEnabled) return 'caseHandover';
+    return normalizeTeamAgency(stored.teamAgency) ? 'teamCounselling' : 'none';
 };
