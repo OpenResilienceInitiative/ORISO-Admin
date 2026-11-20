@@ -47,18 +47,14 @@ describe('Languages (#910)', () => {
     it('warns before saving a removal, and does not save until confirmed', async () => {
         await startEditingAndRemoveEnglish();
 
-        expect(
-            await screen.findByText('organisations.languageRemovalModalContent'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('organisations.languageRemovalModalContent')).toBeInTheDocument();
         expect(mutate).not.toHaveBeenCalled();
     });
 
     it('saves the removal once the warning is confirmed', async () => {
         const user = await startEditingAndRemoveEnglish();
 
-        await user.click(
-            screen.getByRole('button', { name: 'organisations.languageRemovalModalConfirm' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'organisations.languageRemovalModalConfirm' }));
 
         await waitFor(() => expect(mutate).toHaveBeenCalledTimes(1));
         expect(mutate.mock.calls[0][0].settings.activeLanguages).toEqual(['de', 'fr']);
@@ -67,34 +63,24 @@ describe('Languages (#910)', () => {
     it('reopens the card unsaved when the removal is cancelled', async () => {
         const user = await startEditingAndRemoveEnglish();
 
-        await user.click(
-            screen.getByRole('button', { name: 'organisations.languageRemovalModalCancel' }),
-        );
+        await user.click(screen.getByRole('button', { name: 'organisations.languageRemovalModalCancel' }));
 
         expect(mutate).not.toHaveBeenCalled();
-        await waitFor(() =>
-            expect(screen.getByRole('checkbox', { name: 'language.en' })).toBeEnabled(),
-        );
+        await waitFor(() => expect(screen.getByRole('checkbox', { name: 'language.en' })).toBeEnabled());
     });
 
     it('shows the Träger wording for a Träger admin', async () => {
         await startEditingAndRemoveEnglish();
 
-        expect(
-            await screen.findByText('organisations.languageRemovalModalContent'),
-        ).toBeInTheDocument();
-        expect(
-            screen.queryByText('organisations.languageRemovalModalContentPlatformAdmin'),
-        ).not.toBeInTheDocument();
+        expect(await screen.findByText('organisations.languageRemovalModalContent')).toBeInTheDocument();
+        expect(screen.queryByText('organisations.languageRemovalModalContentPlatformAdmin')).not.toBeInTheDocument();
     });
 
     it('shows the platform-admin wording, naming the downstream Träger, for a platform admin', async () => {
         isSuperAdmin = true;
         await startEditingAndRemoveEnglish();
 
-        expect(
-            await screen.findByText('organisations.languageRemovalModalContentPlatformAdmin'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('organisations.languageRemovalModalContentPlatformAdmin')).toBeInTheDocument();
     });
 
     it('still only warns after saving when a language is added, not removed', async () => {
@@ -111,11 +97,9 @@ describe('Languages (#910)', () => {
         );
         expect(mutate.mock.calls[0][0].settings.activeLanguages).toHaveLength(4);
 
-        const onSuccess = mutate.mock.calls[0][1].onSuccess;
+        const { onSuccess } = mutate.mock.calls[0][1];
         onSuccess();
 
-        expect(
-            await screen.findByText('organisations.languageModalContent'),
-        ).toBeInTheDocument();
+        expect(await screen.findByText('organisations.languageModalContent')).toBeInTheDocument();
     });
 });
