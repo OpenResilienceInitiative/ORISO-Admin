@@ -145,6 +145,9 @@
 // Type comes from the global M3 scale class `m3-body-medium` (app.css); nothing to set here.
 .itemDescription {
     display: block;
+    min-width: 0;
+    // Long tokens (URLs, compound words) must break inside a narrow pill.
+    overflow-wrap: anywhere;
 }
 
 .itemActive {

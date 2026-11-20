@@ -359,6 +359,21 @@ describe('M3FabMenu', () => {
         expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveFocus();
     });
 
+    it('keeps normal focus scrolling for navigation destinations', async () => {
+        const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+        render(<Harness />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        const first = screen.getByRole('link', { name: 'Einstellungen' });
+        expect(first).toHaveFocus();
+        // Navigation menus are not placed inside a clipped deck, so focus must
+        // be allowed to scroll a clipped first destination into view.
+        const call = focus.mock.contexts.findIndex((context) => context === first);
+        expect(call).toBeGreaterThanOrEqual(0);
+        expect(focus.mock.calls[call][0]).toBeUndefined();
+    });
+
     it('marks the destination you are on', async () => {
         render(<Harness />);
         await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));

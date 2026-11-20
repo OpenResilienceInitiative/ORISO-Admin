@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
 import type { Meta, StoryObj } from '@storybook/react-vite';
@@ -304,10 +304,17 @@ export const ActionInScrollContainer: Story = {
         });
         // Scroll the actual ancestor: placement must follow the trigger without
         // letting the stack escape the independently scrolling settings deck.
+        // The FAB moves 40px up, so the downward cap must grow by those 40px;
+        // a stale placement would keep the old cap and still pass a bounds check.
+        const capBefore = parseFloat(stack.style.maxHeight);
+        expect(capBefore).toBeGreaterThan(0);
         deck.scrollTop = 40;
         deck.dispatchEvent(new Event('scroll'));
         await waitFor(() => {
-            expect(stack.getBoundingClientRect().bottom).toBeLessThanOrEqual(deck.getBoundingClientRect().bottom - 7);
+            expect(parseFloat(stack.style.maxHeight)).toBeCloseTo(capBefore + 40, 0);
+            const deckInset = deck.getBoundingClientRect().bottom - stack.getBoundingClientRect().bottom;
+            expect(deckInset).toBeGreaterThanOrEqual(7);
+            expect(deckInset).toBeLessThanOrEqual(9);
             expect(deck.scrollTop).toBe(40);
         });
         first.focus();
@@ -327,6 +334,144 @@ export const ActionInScrollContainer: Story = {
             expect(last.getBoundingClientRect().right).toBeLessThanOrEqual(stack.getBoundingClientRect().right + 1);
             expect(last.scrollWidth).toBeLessThanOrEqual(last.clientWidth + 1);
             expect(stack.querySelector('[data-admin-fab-scroll-hint]')).toBeNull();
+        });
+    },
+};
+
+const LENGTHEN_EVENT = 'm3-fab-story-lengthen-description';
+const ChangingDescriptionFrame = () => {
+    const [long, setLong] = useState(false);
+    // Out-of-band trigger: a click inside the page would close the menu.
+    useEffect(() => {
+        const lengthen = () => setLong(true);
+        window.addEventListener(LENGTHEN_EVENT, lengthen);
+        return () => window.removeEventListener(LENGTHEN_EVENT, lengthen);
+    }, []);
+    return (
+        <div
+            data-testid="changing-deck"
+            style={{ position: 'fixed', top: 48, height: 420, left: 16, width: 300, overflow: 'auto' }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '24px 16px 0' }}>
+                <M3FabMenu
+                    variant="action"
+                    items={Array.from({ length: 8 }, (_, index) => ({
+                        key: `${index}`,
+                        label: `Option ${index + 1}`,
+                        description:
+                            long && index === 7
+                                ? 'Diese Erklärung ist jetzt deutlich länger und braucht mehrere Zeilen, ' +
+                                  'damit die letzte Auswahl wieder unter den sichtbaren Rand rutscht.'
+                                : 'Kurz.',
+                    }))}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={() => undefined}
+                />
+            </div>
+            <div style={{ height: 800 }} aria-hidden="true" />
+        </div>
+    );
+};
+
+/** A longer description that pushes the last option below the fold brings the scroll cue back. */
+export const ScrollCueFollowsContentChange: Story = {
+    args: { open: true },
+    render: () => <ChangingDescriptionFrame />,
+    play: async ({ canvasElement }) => {
+        const stack = canvasElement.querySelector<HTMLElement>('[data-admin-fab-menu-stack]')!;
+        await waitFor(() => expect(stack.scrollHeight).toBeGreaterThan(stack.clientHeight));
+        // Scroll the capped stack to its end: nothing is hidden, so no cue.
+        stack.scrollTop = stack.scrollHeight;
+        stack.dispatchEvent(new Event('scroll'));
+        await waitFor(() => expect(stack.querySelector('[data-admin-fab-scroll-hint]')).toBeNull());
+        const capped = stack.getBoundingClientRect().height;
+
+        // Same item count, same capped stack size, only the text changes.
+        window.dispatchEvent(new Event(LENGTHEN_EVENT));
+        await waitFor(() => {
+            expect(stack.getBoundingClientRect().height).toBeCloseTo(capped, 0);
+            expect(stack.querySelector('[data-admin-fab-scroll-hint]')).not.toBeNull();
+        });
+    },
+};
+
+const LeavingTriggerFrame = () => {
+    const [open, setOpen] = useState(true);
+    return (
+        <div
+            data-testid="leaving-deck"
+            style={{ position: 'fixed', top: 100, height: 300, left: 16, width: 300, overflow: 'auto' }}
+        >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '200px 16px 0' }}>
+                <M3FabMenu
+                    variant="action"
+                    items={[{ key: 'one', label: 'Option 1' }]}
+                    open={open}
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={setOpen}
+                />
+            </div>
+            <div style={{ height: 800 }} aria-hidden="true" />
+        </div>
+    );
+};
+
+/** Scrolling the trigger out of its deck closes the menu instead of leaving a clipped stack behind. */
+export const ClosesWhenTriggerLeavesDeck: Story = {
+    args: { open: true },
+    render: () => <LeavingTriggerFrame />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const deck = canvas.getByTestId('leaving-deck');
+        await canvas.findByRole('button', { name: 'Option 1' });
+        // The FAB sits 200px into the deck; scroll it above the deck's top edge.
+        deck.scrollTop = 300;
+        deck.dispatchEvent(new Event('scroll'));
+        await waitFor(() => expect(canvas.queryByRole('button', { name: 'Option 1' })).toBeNull());
+        // Closing must not scroll the deck back to the trigger.
+        await expect(deck.scrollTop).toBe(300);
+        await expect(canvas.getByRole('button', { name: 'Menü öffnen' })).not.toHaveFocus();
+    },
+};
+
+/** A description with an unbroken URL wraps inside a 180px deck instead of overflowing its pill. */
+export const LongTokenDescriptionInNarrowDeck: Story = {
+    args: { open: true },
+    render: () => (
+        <div
+            data-testid="token-deck"
+            style={{ position: 'fixed', top: 80, bottom: 80, left: 'min(200px, 4vw)', width: 180, overflow: 'auto' }}
+        >
+            <div style={{ minHeight: 350, display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                <M3FabMenu
+                    variant="action"
+                    items={[
+                        {
+                            key: 'url',
+                            label: 'Datenschutz',
+                            description: 'https://beratung.example.org/datenschutzerklaerung-fuer-ratsuchende-2026',
+                        },
+                    ]}
+                    open
+                    openLabel="Menü öffnen"
+                    closeLabel="Menü schließen"
+                    onOpenChange={() => undefined}
+                />
+            </div>
+        </div>
+    ),
+    play: async ({ canvasElement }) => {
+        const deck = within(canvasElement).getByTestId('token-deck');
+        const item = await within(canvasElement).findByRole('button', { name: 'Datenschutz' });
+        await waitFor(() => {
+            const description = item.querySelector<HTMLElement>('[id$="-description"]')!;
+            expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth + 1);
+            expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth + 1);
+            expect(item.getBoundingClientRect().right).toBeLessThanOrEqual(deck.getBoundingClientRect().right - 5);
+            expect(deck.scrollWidth).toBeLessThanOrEqual(deck.clientWidth);
         });
     },
 };

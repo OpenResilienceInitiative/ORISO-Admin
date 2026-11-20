@@ -185,6 +185,13 @@ export const M3FabMenu = ({
                     visibleBottom = Math.max(visibleTop, rect.top);
                 }
             }
+            // A scrolled ancestor can carry the trigger out of its visible
+            // area. No placement keeps the stack attached to a hidden FAB
+            // inside those bounds, so close without scrolling back to it.
+            if (fabRect.height > 0 && (fabRect.bottom <= visibleTop || fabRect.top >= visibleBottom)) {
+                close(false);
+                return;
+            }
             // CSS adds an 8px gap at the FAB; keep another 8px at the visible edge.
             const edgeAndTriggerGap = 16;
             const spaceAbove = Math.max(0, fabRect.top - visibleTop - edgeAndTriggerGap);
@@ -247,6 +254,26 @@ export const M3FabMenu = ({
             stackResizeObserver?.observe(observedAncestor);
             observedAncestor = observedAncestor.parentElement;
         }
+        // Option content can change while the menu stays open (a longer
+        // description replaces a short one) without resizing the capped stack.
+        // Observe the options themselves and their text, so the scroll cue and
+        // placement are remeasured even on overlay-scrollbar platforms.
+        const observeOptions = () => {
+            stackRef.current
+                ?.querySelectorAll<HTMLElement>(':scope > li')
+                .forEach((option) => stackResizeObserver?.observe(option));
+        };
+        observeOptions();
+        const contentObserver =
+            typeof MutationObserver === 'undefined'
+                ? undefined
+                : new MutationObserver(() => {
+                      observeOptions();
+                      schedulePlacement();
+                  });
+        if (stackRef.current) {
+            contentObserver?.observe(stackRef.current, { characterData: true, childList: true, subtree: true });
+        }
         let active = true;
         document.fonts?.ready
             .then(() => {
@@ -257,18 +284,22 @@ export const M3FabMenu = ({
             active = false;
             if (placementFrame !== undefined) window.cancelAnimationFrame(placementFrame);
             stackResizeObserver?.disconnect();
+            contentObserver?.disconnect();
             window.removeEventListener('resize', schedulePlacement);
             window.removeEventListener('scroll', schedulePlacement, true);
         };
-    }, [items.length, footerItems.length, open, updateScrollHint, variant]);
+    }, [close, items.length, footerItems.length, open, updateScrollHint, variant]);
 
     useEffect(() => {
         if (!open || disabled) return;
 
+        // Action menus are placed inside the visible bounds before focus moves,
+        // so focusing must not scroll the deck. Navigation menus skip placement:
+        // keep normal focus scrolling so a clipped first destination is revealed.
         stackRef.current
             ?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')
-            ?.focus({ preventScroll: true });
-    }, [disabled, footerItems.length, items.length, open]);
+            ?.focus(variant === 'action' ? { preventScroll: true } : undefined);
+    }, [disabled, footerItems.length, items.length, open, variant]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,
     // so a tap that starts outside never also activates what is underneath.
