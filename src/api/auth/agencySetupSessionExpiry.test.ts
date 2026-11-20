@@ -35,8 +35,6 @@ vi.mock('./accessSessionLocalStorage', () => ({
     },
     removeTokenExpiryFromLocalStorage: vi.fn(),
 }));
-// language.ts reads the cookie scope from the runtime config, which needs a browser window at import time.
-vi.mock('../../config/runtimeConfig', () => ({ runtimeConfig: { cookieDomain: undefined, cookieSecure: false } }));
 vi.mock('./apiLogoutKeycloak', () => ({ default: mocks.apiLogout }));
 vi.mock('./invalidateAuthSession', () => ({ invalidateAuthSession: mocks.invalidate }));
 vi.mock('./accessSessionCookie', () => ({ removeAllCookies: vi.fn() }));

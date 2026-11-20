@@ -9,8 +9,6 @@ vi.mock('./auth/auth', () => ({ getAccessTokenForRequests: () => 'test-access', 
 vi.mock('./auth/logout', () => ({ default: logout }));
 vi.mock('../utils/generateCsrfToken', () => ({ default: () => 'test-csrf' }));
 vi.mock('../appConfig', () => ({ CSRF_WHITELIST_HEADER: '' }));
-// language.ts reads the cookie scope from the runtime config, which needs a browser window at import time.
-vi.mock('../config/runtimeConfig', () => ({ runtimeConfig: { cookieDomain: undefined, cookieSecure: false } }));
 vi.mock('i18next', () => ({
     default: { language: 'en', t: (key: unknown) => (Array.isArray(key) ? key.at(-1) : key) },
 }));

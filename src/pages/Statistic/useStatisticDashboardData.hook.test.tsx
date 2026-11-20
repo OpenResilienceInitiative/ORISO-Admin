@@ -11,9 +11,13 @@ import {
     topicEndpoint,
 } from '../../appConfig';
 
+const language = vi.hoisted(() => ({ current: 'de' }));
 const fetchData = vi.hoisted(() => vi.fn());
 const getDashboardStatistics = vi.hoisted(() => vi.fn());
 
+vi.mock('../../hooks/useLanguage', () => ({
+    useLanguage: () => ({ language: language.current, options: [], changeLanguage: vi.fn() }),
+}));
 vi.mock('../../api/fetchData', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/fetchData')>()),
     fetchData,
@@ -31,6 +35,13 @@ const wrapper = ({ children }: { children: ReactNode }) => (
         {children}
     </QueryClientProvider>
 );
+
+const sharedWrapper = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+};
 
 const counts = { today: 0, yesterday: 0, thisWeek: 0, total: 1, thisYear: 1, lastYear: 0 };
 const target = (targetType: 'PLATFORM' | 'TENANT', tenantId: number | null) => ({
@@ -55,6 +66,7 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
     });
 
     beforeEach(() => {
+        language.current = 'de';
         fetchData.mockReset();
         getDashboardStatistics.mockReset();
         getDashboardStatistics.mockResolvedValue({
@@ -101,5 +113,17 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
         await waitFor(() => expect(urls().some((url) => url.startsWith(topicAdminEndpoint))).toBe(true));
         expect(urls()).not.toContain(statisticsTenantNamesEndpoint);
         expect(urls()).not.toContain(statisticsAgencyNamesEndpoint);
+    });
+
+    it('refetches the topic names when the UI language changes (#564)', async () => {
+        const { rerender } = renderHook(() => useStatisticDashboardData({ isStatisticsReader: true }), {
+            wrapper: sharedWrapper(),
+        });
+        await waitFor(() => expect(urls().filter((url) => url === `${topicEndpoint}public`)).toHaveLength(1));
+
+        language.current = 'en';
+        rerender();
+
+        await waitFor(() => expect(urls().filter((url) => url === `${topicEndpoint}public`)).toHaveLength(2));
     });
 });
