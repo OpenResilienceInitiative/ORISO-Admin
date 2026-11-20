@@ -37,6 +37,7 @@ import { JourneyQuestionsEditor } from './JourneyQuestionsEditor';
 import { LanguageTabs } from './LanguageTabs';
 import { blockContext, stepTitle } from './stepText';
 import { OriginalLine, TranslatableField, type TextChange } from './TranslatableField';
+import { TEXT_LIMITS } from './journeyTextLimits';
 import { TranslationPill } from './TranslationPill';
 import {
     applyTranslationFill,
@@ -173,6 +174,7 @@ export const StepDialog = ({
             onTranslate={translateAt(key)}
             onChange={(next, how) => change({ [key]: next }, how)}
             testId={`step-field-${key}`}
+            maxLength={key === 'title' ? TEXT_LIMITS.stepTitle : TEXT_LIMITS.stepDescription}
         />
     );
     const inLanguage = (text: LangMap | undefined, value: string): LangMap => ({ ...text, [language]: value });

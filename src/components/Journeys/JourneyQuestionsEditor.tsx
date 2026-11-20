@@ -25,6 +25,7 @@ import {
 import { moveItem } from './journey';
 import { nextId } from './ids';
 import { TranslatableField, type TextChange } from './TranslatableField';
+import { TEXT_LIMITS } from './journeyTextLimits';
 import styles from './styles.module.scss';
 
 /** What the editor picks: the question type, and for single choice also its look. */
@@ -177,6 +178,7 @@ export const JourneyQuestionsEditor = ({
                             machine={isMachine}
                             onTranslate={translateAt(`question:${question.id}:label`)}
                             onChange={(next, how) => setText('label', next, how)}
+                            maxLength={TEXT_LIMITS.question}
                         />
 
                         {look === 'text' && (
@@ -198,6 +200,7 @@ export const JourneyQuestionsEditor = ({
                                                 number: optionIndex + 1,
                                             })}
                                             value={option.label}
+                                            maxLength={TEXT_LIMITS.option}
                                             language={language}
                                             machine={isMachine}
                                             onTranslate={translateAt(`question:${question.id}:option:${option.id}`)}

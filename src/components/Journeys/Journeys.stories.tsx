@@ -779,3 +779,24 @@ export const TranslationNotConfigured: Story = {
         await expect(await body.findByTestId('journey-translation-error')).toHaveTextContent('kein API-Schlüssel');
     },
 };
+
+/**
+ * Text lengths (Frank, 2026-11-20): near the limit the field says how much is left; over it the
+ * field turns red with "Zu lang – n Zeichen zu viel". Nothing is cut while typing.
+ */
+export const QuestionTooLong: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'debt', phase: 'departure', stepId: 'debt-situation' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const question = await body.findByTestId('question-creditors');
+        const field = within(question).getAllByRole('textbox')[0];
+        await userEvent.clear(field);
+        await userEvent.paste('Wie viele Gläubiger haben Sie ungefähr, also Firmen oder Personen, de');
+        await expect(await within(question).findByText(/^Noch \d+ Zeichen/)).toBeInTheDocument();
+        await userEvent.paste('nen Sie derzeit Geld schulden?');
+        await expect(await within(question).findByText(/^Zu lang – \d+ Zeichen zu viel/)).toBeInTheDocument();
+        await expect(field).toHaveValue(
+            'Wie viele Gläubiger haben Sie ungefähr, also Firmen oder Personen, denen Sie derzeit Geld schulden?',
+        );
+    },
+};

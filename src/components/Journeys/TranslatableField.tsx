@@ -5,6 +5,7 @@ import { FloatingLabelInput } from '../FloatingLabelInput';
 import { IconButton } from '../IconButton';
 import { MODULE_SOURCE_LANGUAGE, type LangMap } from '../ConversationModules/conversationModule';
 import { plain } from './stepText';
+import { lengthState } from './journeyTextLimits';
 import { TranslateIcon } from './TranslateIcon';
 import styles from './styles.module.scss';
 
@@ -92,15 +93,27 @@ export const OriginalLine = ({ value, language, machine, onTranslate, onChange }
 interface TranslatableFieldProps extends OriginalLineProps {
     label: string;
     testId?: string;
+    /**
+     * How many characters fit where the text is shown (`TEXT_LIMITS`). Near it the field says how
+     * many are left; over it the field is marked "zu lang" with how many are too many.
+     */
+    maxLength?: number;
 }
 
 /** A one-line text in the language being edited, with the original under it. */
-export const TranslatableField = ({ label, testId, ...line }: TranslatableFieldProps) => {
+export const TranslatableField = ({ label, testId, maxLength, ...line }: TranslatableFieldProps) => {
+    const { t } = useTranslation();
     const { value, language, onChange } = line;
+    const length = maxLength ? lengthState(value?.[language], maxLength) : ({ kind: 'ok' } as const);
+    let supportingText: string | undefined;
+    if (length.kind === 'warn') supportingText = t('journeys.length.left', { count: length.left });
+    if (length.kind === 'over') supportingText = t('journeys.length.over', { count: length.over });
     return (
-        <div className={styles.translatable} data-testid={testId}>
+        <div className={styles.translatable} data-testid={testId} data-length={length.kind}>
             <FloatingLabelInput
                 label={label}
+                error={length.kind === 'over'}
+                supportingText={supportingText}
                 value={value?.[language] ?? ''}
                 placeholder={language === MODULE_SOURCE_LANGUAGE ? undefined : plain(value?.[MODULE_SOURCE_LANGUAGE])}
                 onChange={(event) => onChange({ ...value, [language]: event.target.value }, 'typed')}
