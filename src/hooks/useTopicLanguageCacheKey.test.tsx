@@ -16,7 +16,12 @@ const mocks = vi.hoisted(() => ({
     // so a stale cache (missing language in the key) is observable as stale data.
     getTopicByTenantData: vi.fn(() => Promise.resolve([{ id: 1, name: `topic-${state.language}`, status: 'ACTIVE' }])),
     getTopicData: vi.fn(() => Promise.resolve({ name: `topic-${state.language}` })),
-    fetchData: vi.fn(() => Promise.resolve({ name: `topic-${state.language}` })),
+    // useTopicData fetches one topic (object); useTopicsAdmin fetches the list (TopicData[]).
+    fetchData: vi.fn((options?: { url?: string }) =>
+        options?.url?.endsWith('/42')
+            ? Promise.resolve({ name: `topic-${state.language}` })
+            : Promise.resolve([{ id: 1, name: `topic-${state.language}`, status: 'ACTIVE' }]),
+    ),
 }));
 
 vi.mock('../api/topic/getTopicByTenantData', () => ({ default: mocks.getTopicByTenantData }));
@@ -65,7 +70,7 @@ const cases: Case[] = [
         name: 'useTopicsAdmin',
         fetchMock: () => mocks.fetchData,
         render: (wrapper) => renderHook(() => useTopicsAdmin(true), { wrapper }),
-        readName: (data) => (data as { name?: string } | undefined)?.name,
+        readName: (data) => (data as Array<{ name: string }> | undefined)?.[0]?.name,
     },
 ];
 
