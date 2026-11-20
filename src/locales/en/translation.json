@@ -1190,6 +1190,7 @@
     "editor.listMenu.bullet": "Bullet list",
     "editor.listMenu.checklist": "Checklist",
     "editor.listMenu.ordered": "Numbered list",
+    "editor.toolbar.label": "Formatting toolbar",
     "editor.toolbar.add": "Add",
     "editor.toolbar.addImage": "Add image",
     "editor.toolbar.alignCenter": "Align center",

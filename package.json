@@ -191,6 +191,9 @@
     "vitest": "5.1.0",
     "wait-on": {
       "axios": "$axios"
+    },
+    "@storybook/react-vite@10.6.7": {
+      "@joshwooding/vite-plugin-react-docgen-typescript": "0.9.1"
     }
   },
   "msw": {
