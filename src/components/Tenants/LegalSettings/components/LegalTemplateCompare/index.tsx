@@ -11,6 +11,8 @@ import type { M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichT
 import { DpaLegalReader } from '../../../../DpaLegalForm/DpaLegalReader';
 import { M3Button } from '../../../../M3Button';
 import { Modal } from '../../../../Modal';
+import { Notify } from '../../../../Notify';
+import { jumpTo } from '../../../../Snackbar';
 import type { LegalProposalAdoptionMode } from '../../../../../api/tenant/legalProposals';
 import type { LegalTemplateArchive, LegalTemplateProposal } from '../../hooks/useLegalProposalInbox';
 import { formatLegalDateTime } from '../../utils/legalDateTime';
@@ -23,6 +25,10 @@ export interface LegalTemplateCompareProps {
     proposal?: LegalTemplateProposal;
     /** Who sent it: the platform (to a Träger) or the Träger (to a Beratungsstelle). */
     source: 'platform' | 'traeger';
+    /** An agency tile may start closed; pending templates must remain discoverable. */
+    tileOpen?: boolean;
+    tileTarget?: string;
+    onOpenTile?: () => void;
     documentType: 'privacy' | 'imprint';
     /** The editor's active language; the template is shown in the same one where it exists. */
     language: string;
@@ -54,6 +60,9 @@ const pickLanguage = (content: Record<string, string>, language: string) => {
 export const LegalTemplateCompare = ({
     proposal,
     source,
+    tileOpen,
+    tileTarget,
+    onOpenTile,
     documentType,
     language,
     hasDraft,
@@ -148,25 +157,29 @@ export const LegalTemplateCompare = ({
         const originalSlot = host.props.snackbarSlot;
         const originalItems = editorSnackbarItems(originalSlot, 'existing-editor-notice');
         const showNotice = isNew && closedId !== proposal.id && openedId !== proposal.id;
-        const notice: EditorSnackbarQueueItem | false = showNotice && {
-            key: `template:${source}:${proposal.id}`,
-            node: (
-                <EditorHintSnackbar
-                    layout="long"
-                    text={
-                        <>
-                            <strong>{t('legal.proposal.new')}</strong> · {sourceLabel}. {t('legal.proposal.sentAt')}{' '}
-                            {formatLegalDateTime(proposal.createdAt, locale)}. {t('legal.proposal.noticeDraftSafe')}
-                        </>
-                    }
-                    onClose={() => setClosedId(proposal.id)}
-                    onDismiss={readOnly ? undefined : () => run('dismiss', onDismiss)}
-                    actionDisabled={!!pending}
-                    actionLabel={readOnly ? undefined : t('legal.help.snackbar.dismiss')}
-                    secondaryAction={{ label: t('legal.proposal.preview'), onClick: () => setOpenedId(proposal.id) }}
-                />
-            ),
-        };
+        const notice: EditorSnackbarQueueItem | false = showNotice &&
+            tileOpen !== false && {
+                key: `template:${source}:${proposal.id}`,
+                node: (
+                    <EditorHintSnackbar
+                        layout="long"
+                        text={
+                            <>
+                                <strong>{t('legal.proposal.new')}</strong> · {sourceLabel}. {t('legal.proposal.sentAt')}{' '}
+                                {formatLegalDateTime(proposal.createdAt, locale)}. {t('legal.proposal.noticeDraftSafe')}
+                            </>
+                        }
+                        onClose={() => setClosedId(proposal.id)}
+                        onDismiss={readOnly ? undefined : () => run('dismiss', onDismiss)}
+                        actionDisabled={!!pending}
+                        actionLabel={readOnly ? undefined : t('legal.help.snackbar.dismiss')}
+                        secondaryAction={{
+                            label: t('legal.proposal.preview'),
+                            onClick: () => setOpenedId(proposal.id),
+                        }}
+                    />
+                ),
+            };
         const injected = cloneElement(host, {
             comparison: {
                 title: `${sourceLabel} · ${t(`legal.proposal.document.${documentType}`)}`,
@@ -219,8 +232,37 @@ export const LegalTemplateCompare = ({
             snackbarSlot:
                 notice || originalItems.length ? <EditorSnackbarQueue items={[notice, ...originalItems]} /> : undefined,
         });
+        const previewAction = {
+            label: t('legal.proposal.preview'),
+            onClick: () => {
+                const openPreview = () => {
+                    onOpenTile?.();
+                    setOpenedId(proposal.id);
+                };
+                if (tileTarget) jumpTo({ target: tileTarget, onJump: openPreview });
+                else openPreview();
+            },
+        };
+        const dismissAction = {
+            label: t('legal.help.snackbar.dismiss'),
+            onClick: () => run('dismiss', onDismiss),
+            disabled: !!pending,
+        };
         return (
             <>
+                {showNotice && tileOpen === false && (
+                    <Notify
+                        severity="info"
+                        title={t('legal.proposal.new')}
+                        causeKey={`legal-template:${source}:${proposal.id}`}
+                        jump={false}
+                        onClose={() => setClosedId(proposal.id)}
+                        actions={readOnly ? [previewAction] : [previewAction, dismissAction]}
+                    >
+                        {sourceLabel}. {t('legal.proposal.sentAt')} {formatLegalDateTime(proposal.createdAt, locale)}.{' '}
+                        {t('legal.proposal.noticeDraftSafe')}
+                    </Notify>
+                )}
                 {injected}
                 {confirming && (
                     <Modal

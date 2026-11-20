@@ -95,7 +95,7 @@ export const DepartmentSelect = ({ departments, value, onChange, disabled = fals
             // Outline, not `TopicFilledIcon` — the filled variant is this set's SELECTED
             // state (see PillSelect's `icon` / `selectedIcon` pair); a resting leading
             // glyph on a closed dropdown is the default state.
-            icon={<TopicIcon />}
+            icon={<TopicIcon aria-hidden="true" />}
             label={selected?.name ?? allLabel}
             title={t('agency.legal.department.choose', 'Fachbereich wählen')}
             menu={{
