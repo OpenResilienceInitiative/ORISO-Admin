@@ -1,10 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import { appURL } from '../../appConfig';
 import { useInviteEmailPreview } from '../../hooks/useInviteEmailPreview.hook';
-import { useSingleTenantData } from '../../hooks/useSingleTenantData';
 import { normalizeLanguage } from '../../utils/language';
 import { BrandedEmailPreviewView } from './BrandedEmailPreviewView';
-import { resolveEmailLogoFallbackReason } from './emailBrandingHint';
 
 export interface BrandedEmailPreviewProps {
     /** Preview this tenant's branding; omit for platform branding (super-admin view). */
@@ -22,16 +19,6 @@ export const BrandedEmailPreview = ({ tenantId }: BrandedEmailPreviewProps) => {
     const language = normalizeLanguage(i18n.resolvedLanguage || i18n.language) === 'en' ? 'en' : 'de';
 
     const { data, isPending, isError, refetch } = useInviteEmailPreview({ tenantId, language });
-    // Cached by `useSingleTenantData`'s query key — the SMTP form on the same page already loaded it.
-    const { data: tenant } = useSingleTenantData({ id: tenantId ?? '', enabled: tenantId != null });
-
-    // Only a tenant we actually loaded can be said to have no usable logo. While the lookup is in
-    // flight or has failed the branding is UNKNOWN, and `undefined` (= no hint) is the only honest
-    // answer — claiming "no logo" there would accuse the admin of a misconfiguration that may not
-    // exist.
-    const logoFallbackReason =
-        tenantId == null || !tenant ? undefined : resolveEmailLogoFallbackReason(tenant.theming, tenant.id, appURL);
-
     return (
         <BrandedEmailPreviewView
             preview={data}
@@ -40,7 +27,6 @@ export const BrandedEmailPreview = ({ tenantId }: BrandedEmailPreviewProps) => {
             onRetry={() => {
                 refetch();
             }}
-            logoFallbackReason={logoFallbackReason}
         />
     );
 };

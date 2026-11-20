@@ -1,5 +1,5 @@
 import { Form } from 'antd';
-import { M3Switch } from '../../../M3Switch';
+import { MuiSwitch } from '../../../mui/MuiSwitchField';
 import { syncMasterChildTogglesInForm } from './permissionsToggleLogic';
 import type { ToggleAfterChangeHandler } from './types';
 
@@ -23,7 +23,7 @@ const CheckToggleInner = ({ checked, onChange, disabled, label, fieldName, onAft
         onAfterChange?.(fieldName, newValue, form.getFieldsValue(true));
     };
 
-    return <M3Switch checked={checked} label={label} disabled={disabled} onChange={handleToggle} />;
+    return <MuiSwitch checked={!!checked} ariaLabel={label} disabled={disabled} onChange={handleToggle} />;
 };
 
 type CheckToggleProps = {

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ReasonPolicySaveFailure,
+    reasonPolicySaveFailure,
     useCaseHandoverReasonPoliciesData,
     useCaseHandoverReasonPoliciesMutation,
 } from '../../../../../hooks/useCaseHandoverReasonPolicies';
@@ -13,18 +14,22 @@ import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../type
 import {
     applyClientConsentPolicy,
     applyMaxAccessDuration,
-    applyModuleEnabled,
     applyNotificationTemplate,
     isHandoverModuleEnabled,
     NotificationLanguage,
 } from './caseHandoverCardUtils';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
 
-/** Container: wires the platform case-handover reason policies (UserService)
- *  into the permissions card. Policies are platform-scoped — tenant-level
- *  overrides are a backend follow-up, so non-privileged admins see the card
- *  read-only (disable, don't hide). */
+/**
+ * Wires the canonical handover master and Träger-owned reason policies.
+ * The platform master needs no selected Träger; individual reasons need a concrete Träger.
+ * The agency page shows both as read-only instead of writing another scope's configuration.
+ */
 export type CaseHandoverCardProps = {
+    /** The Träger whose rules are shown and saved; undefined on the platform-wide page. */
+    tenantId?: number;
+    /** The Träger is not known yet (its agency is loading): show loading, not "no Träger". */
+    tenantPending?: boolean;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
@@ -34,6 +39,8 @@ export type CaseHandoverCardProps = {
 };
 
 export const CaseHandoverCard = ({
+    tenantId,
+    tenantPending = false,
     policyLevel,
     permissionPolicies,
     pendingPolicyFields,
@@ -44,10 +51,10 @@ export const CaseHandoverCard = ({
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
-    const canEdit = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
+    const canEdit = policyLevel !== 'agency' && canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
 
-    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData();
-    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation();
+    const { data, isLoading, isError, refetch } = useCaseHandoverReasonPoliciesData(tenantId);
+    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation(tenantId);
 
     // Local mirror so toggles respond immediately; server refetch re-syncs it.
     const [policies, setPolicies] = useState<CaseHandoverReasonPolicy[]>([]);
@@ -57,32 +64,33 @@ export const CaseHandoverCard = ({
         }
     }, [data]);
 
-    // Snapshot to roll back to if the mutation fails, so a false success never sticks.
-    const previousPoliciesRef = useRef<CaseHandoverReasonPolicy[]>(policies);
+    // A failed save keeps the edit on screen and says so; no silent rollback (FE#1725).
+    const [saveFailure, setSaveFailure] = useState<ReasonPolicySaveFailure | null>(null);
 
-    const moduleEnabled = useMemo(() => isHandoverModuleEnabled(policies), [policies]);
+    const moduleEnabled = useMemo(
+        () => permissionPolicies?.caseHandoverEnabled?.value ?? isHandoverModuleEnabled(policies),
+        [permissionPolicies, policies],
+    );
 
     const persist = useCallback(
         (nextPolicies: CaseHandoverReasonPolicy[]) => {
-            previousPoliciesRef.current = policies;
+            if (!canEdit) return;
             setPolicies(nextPolicies);
+            setSaveFailure(null);
             updateReasonPolicies.mutate(
                 nextPolicies.map((policy) => ({
                     ...policy,
                     policyAuthority: policy.policyAuthority === '' ? null : policy.policyAuthority,
                 })),
                 {
-                    onError: () => setPolicies(previousPoliciesRef.current),
+                    onError: (error) => setSaveFailure(reasonPolicySaveFailure(error)),
                 },
             );
         },
-        [policies, updateReasonPolicies],
+        [canEdit, updateReasonPolicies],
     );
 
-    const handleModuleEnabledChange = useCallback(
-        (enabled: boolean) => persist(applyModuleEnabled(policies, enabled)),
-        [persist, policies],
-    );
+    const handleRetrySave = useCallback(() => persist(policies), [persist, policies]);
 
     const handleClientConsentPolicyChange = useCallback(
         (code: string, clientConsent: CaseHandoverConsentPolicy) =>
@@ -101,23 +109,23 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
-    if (isError) {
-        return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
-    }
-
     return (
         <CaseHandoverCardView
             policies={policies}
-            isLoading={isLoading}
+            loadError={isError ? t('error.loading') : null}
+            onRetryLoad={() => refetch()}
+            isLoading={tenantPending || isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
+            noTenant={!tenantPending && !(typeof tenantId === 'number' && tenantId > 0)}
+            saveError={saveFailure ? t(`tenants.permissions.card.caseHandover.saveFailed.${saveFailure}`) : null}
+            onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}
-            onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentPolicyChange={handleClientConsentPolicyChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}
-            permissionPolicies={permissionPolicies}
+            permissionPolicies={tenantPending ? undefined : permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}

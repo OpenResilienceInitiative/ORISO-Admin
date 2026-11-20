@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -49,5 +49,17 @@ describe('useTenantAdminsData', () => {
             total: 2,
             data: [expect.objectContaining({ id: 'tenant-two', tenantId: '2' })],
         });
+    });
+
+    it('narrows to one Träger and never sends centres, which tenant admins do not have', async () => {
+        fetchMock.mockResolvedValue({ total: 0, data: [] } as never);
+        const { result } = renderHook(() => useTenantAdminsData({ filters: { tenantId: '7', agencyIds: ['101'] } }), {
+            wrapper: createWrapper(),
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+        const params = new URL(fetchMock.mock.calls[0][0].url, 'https://example.org').searchParams;
+        expect(params.get('tenantId')).toBe('7');
+        expect(params.has('agencyId')).toBe(false);
     });
 });

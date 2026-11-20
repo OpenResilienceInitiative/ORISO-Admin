@@ -1,6 +1,30 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import { GlobalLoginSettingsPage } from '.';
+import { setSessionTokens, clearSessionTokens } from '../../api/auth/tokenSessionStore';
+
+let inactivityReads = 0;
+const server = setupServer(
+    http.get('*/controls/account-inactivity', () => {
+        inactivityReads += 1;
+        return HttpResponse.json({ askerMonths: 24, consultantMonths: 24, otherMonths: 24, revision: 0 });
+    }),
+);
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterAll(() => server.close());
+afterEach(() => {
+    server.resetHandlers();
+    clearSessionTokens();
+});
+const showPage = () =>
+    render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+            <GlobalLoginSettingsPage />
+        </QueryClientProvider>,
+    );
 
 const state = vi.hoisted(() => ({ isSuperAdmin: true, useChatRecoverySettings: vi.fn() }));
 
@@ -20,13 +44,21 @@ vi.mock('../../components/GlobalSettings/TranslationApiKeysCardContainer', () =>
 vi.mock('../../components/GlobalSettings/DocumentMasterDataCardContainer', () => ({
     DocumentMasterDataCardContainer: () => <div data-testid="document-card" />,
 }));
+vi.mock('../../components/GlobalSettings/TemporaryAccountSettingsCards', () => ({
+    TemporaryAccountSettingsCardsContainer: () => <div data-testid="temporary-account-cards" />,
+}));
 vi.mock('../../components/GlobalSettings/ChatRecoverySettingsCard', () => ({
     ChatRecoverySettingsCard: () => <div data-testid="chat-recovery-card" />,
+}));
+vi.mock('../../components/GlobalSettings/StatisticsSettingsCard', () => ({
+    StatisticsSettingsCardContainer: () => <div data-testid="statistics-settings-card" />,
 }));
 
 describe('GlobalLoginSettingsPage chat recovery access', () => {
     beforeEach(() => {
         state.isSuperAdmin = true;
+        inactivityReads = 0;
+        setSessionTokens('browser-contract-access-token', null);
         state.useChatRecoverySettings.mockReset();
         state.useChatRecoverySettings.mockReturnValue({
             data: undefined,
@@ -37,18 +69,21 @@ describe('GlobalLoginSettingsPage chat recovery access', () => {
         });
     });
 
-    it('renders the recovery settings and enables its query for a platform admin', () => {
-        render(<GlobalLoginSettingsPage />);
+    it('renders the recovery settings and enables its query for a platform admin', async () => {
+        showPage();
 
         expect(state.useChatRecoverySettings).toHaveBeenCalledWith(true);
         expect(screen.getByTestId('chat-recovery-card')).toBeVisible();
+        expect(screen.getByTestId('statistics-settings-card')).toBeVisible();
+        await waitFor(() => expect(inactivityReads).toBe(1));
     });
 
     it('hides the recovery settings and suppresses its query for other admins', () => {
         state.isSuperAdmin = false;
-        render(<GlobalLoginSettingsPage />);
+        showPage();
 
         expect(state.useChatRecoverySettings).toHaveBeenCalledWith(false);
         expect(screen.queryByTestId('chat-recovery-card')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('statistics-settings-card')).not.toBeInTheDocument();
     });
 });

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { getTutorialProgress } from '../../api/tutorial/getTutorialProgress';
 import { upsertTutorialProgress } from '../../api/tutorial/upsertTutorialProgress';
 import { versionedTourProgressRepository } from './versionedTourProgressRepository';

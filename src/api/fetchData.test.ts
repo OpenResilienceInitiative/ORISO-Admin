@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node env: fetch/Request/AbortController all come from the same realm, avoiding
 // the jsdom-vs-undici "signal is not an AbortSignal" mismatch. No DOM is needed here.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 
 // fetchData statically pulls in antd / i18next / appConfig / auth side effects.
 // Stub them so the unit stays focused on the self-healing 401 retry flow and we
@@ -29,7 +29,8 @@ vi.mock('../appConfig', () => ({
     },
 }));
 const messageError = vi.hoisted(() => vi.fn());
-vi.mock('antd', () => ({ message: { error: messageError } }));
+// These node tests isolate HTTP/auth contracts; the real dispatcher owns DOM/no-window tests.
+vi.mock('./transportFeedback', () => ({ captureTransportFeedback: () => messageError }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first
@@ -276,6 +277,34 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(messageError).toHaveBeenCalledTimes(1);
     });
 
+    // UserService#1568: the statistics dashboard answers 503 when its settings cannot be read.
+    // Callers that opt in get a code of their own, so the page can say "temporarily unavailable"
+    // instead of the generic load error (CLAUDE.md: unreachable, unauthorised and unavailable differ).
+    it('rejects with SERVICE_UNAVAILABLE on 503 when the caller asks for it, with no toast', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(503)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    it('does not mistake other failures for SERVICE_UNAVAILABLE', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(500)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.not.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+    });
+
     // Dead-session UX: when the refresh fails and we fall back to logout, the
     // admin must be TOLD the session expired instead of watching a spinner or a
     // silent redirect.
@@ -372,5 +401,60 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
+    });
+});
+
+/**
+ * #1015. TenantService now answers 400 with `X-Reason: SUBDOMAIN_INVALID` for a malformed
+ * subdomain. Which object the rejection carries decides whether the admin can be told which
+ * field was refused: a caller that declares no 400 branch falls through to the final `else`
+ * and gets a bare `Error`, so the `error.headers.get('X-Reason')` the tenant form does is
+ * never reachable and the generic "something went wrong" is all that is left.
+ */
+describe('fetchData – a 400 carries its reason only when the caller opts in', () => {
+    const badRequest = {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { get: (name: string) => (name === FETCH_ERRORS.X_REASON ? 'SUBDOMAIN_INVALID' : null) },
+        json: async () => ({}),
+    };
+
+    const saveTenant = (responseHandling: string[]) =>
+        fetchData({
+            url: 'https://api.test/service/tenantadmin/1',
+            method: FETCH_METHODS.PUT,
+            responseHandling,
+            bodyData: JSON.stringify({ subdomain: 'Not Valid' }),
+        });
+
+    beforeEach(() => {
+        getAccessTokenForRequests.mockReset();
+        getAccessTokenForRequests.mockReturnValue('access-token');
+        messageError.mockReset();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badRequest));
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('rejects with a bare Error when no 400 branch is declared, losing the reason', async () => {
+        const error = await saveTenant([FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE]).catch(
+            (rejection) => rejection,
+        );
+
+        expect(error).toBeInstanceOf(Error);
+        expect((error as unknown as Response).headers).toBeUndefined();
+    });
+
+    it('rejects with the raw response, reason header and all, when the caller declares it', async () => {
+        const error = await saveTenant([
+            FETCH_SUCCESS.CONTENT,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+        ]).catch((rejection) => rejection);
+
+        expect(error).not.toBeInstanceOf(Error);
+        expect(error.headers.get(FETCH_ERRORS.X_REASON)).toBe('SUBDOMAIN_INVALID');
     });
 });

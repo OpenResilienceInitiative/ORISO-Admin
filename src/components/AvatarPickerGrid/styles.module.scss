@@ -1,24 +1,60 @@
-/* Avatar picker grid: circular primary-tinted tiles, single-select ring. */
+@use '../../styles/monochromeGlyph' as glyph;
+
+/* Avatar picker grid: circular brand-tinted tiles, single-select ring. */
+
+/* One tile; also the grid's track size, so the circles pack tightly. */
+$tile-size: 52px;
+
 .grid {
     display: grid;
+
+    /* Pack, don't stretch: as many 52px tiles per row as fit, left-aligned.
+       12px in BOTH axes clears the 6px selection ring on every side, with
+       room left for the focus outline around it. */
+    grid-template-columns: repeat(auto-fill, $tile-size);
     gap: 12px;
+    justify-content: start;
     justify-items: center;
 }
 
 .avatar {
     display: inline-flex;
-    width: 52px;
-    height: 52px;
+    width: $tile-size;
+    height: $tile-size;
     align-items: center;
     justify-content: center;
     padding: 0;
     border: 2px solid transparent;
     border-radius: 50%;
+
+    /*
+     * Owner decision 2026-09-17 (revised after seeing both apps side by side):
+     * the counsellor avatar is a LIGHT glyph on SATURATED brand red — the
+     * result the app already produces — and the admin picker must match it.
+     *
+     * The app reaches that result through `primary-container` because
+     * ORISO-Frontend resolves that role to #cc1e1c with #ffe2de on top. THIS
+     * repo resolves the same role to the pale rose #ffe2de with near-black on
+     * top (see the role note in src/app.css), so reusing it here would show
+     * the counsellor a pale tile and then a red one in the app. The
+     * primary/on-primary pair is the role that carries the saturated brand red
+     * in THIS repo, so it is the one that reproduces the app's result. Still
+     * tokens, never literals: a tenant scheme keeps moving both.
+     */
     background: var(--m3-primary, #a5000a);
     color: var(--m3-on-primary, #ffffff);
-    font-size: 24px;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
     cursor: pointer;
     transition: border-color 140ms ease, transform 140ms ease;
+
+    @include glyph.recolour-to-current-color;
+
+    svg {
+        width: 34px;
+        height: 34px;
+    }
 }
 
 .avatar:hover {
@@ -26,30 +62,25 @@
 }
 
 .avatar:focus-visible {
-    outline: 2px solid var(--m3-primary, #a5000a);
+    outline: 2px solid var(--m3-on-surface, #1b1b1c);
     outline-offset: 2px;
 }
 
-/* Monochrome avatar glyphs (fill=black) recolour to the on-primary white.
-   Broadened past <path> so glyphs that fill circles/rects/groups also flip. */
-
-.avatar :global(svg) {
-    width: 30px;
-    height: 30px;
-    fill: currentColor;
-}
-
-.avatar :global(svg path),
-.avatar :global(svg circle),
-.avatar :global(svg rect),
-.avatar :global(svg ellipse),
-.avatar :global(svg polygon),
-.avatar :global(svg polyline),
-.avatar :global(svg g) {
-    fill: currentColor;
-}
+/* Owner, 2026-09-24: a ring drawn IN the tile's colour family disappears on
+   the saturated brand red ("Rot auf Rot sieht man gar nicht"). The selection
+   is therefore two rings OUTSIDE the tile: a light `surface` gap, then the
+   near-black `on-surface` ring. Whatever the tenant's primary colour is, one
+   of the two contrasts with it and the other with the page, so the pick is
+   visible on every scheme — and both tokens swap in a dark scheme, so the
+   ring flips with it. Box-shadows, so the tile does not change size. */
 
 .selected {
-    border-color: var(--m3-on-surface, #1b1b1c);
-    box-shadow: 0 0 0 2px var(--m3-surface, #fcf9f9);
+    box-shadow: 0 0 0 3px var(--m3-surface, #fcf9f9), 0 0 0 6px var(--m3-on-surface, #1b1b1c);
+}
+
+/* The focus outline must sit outside the selection ring, or keyboard focus
+   on the chosen tile is indistinguishable from the selection itself. */
+
+.selected:focus-visible {
+    outline-offset: 8px;
 }

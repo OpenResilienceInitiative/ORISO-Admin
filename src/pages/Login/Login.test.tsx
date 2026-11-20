@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { Login } from './Login';
@@ -93,6 +93,19 @@ describe('Login redirect for an already signed-in admin', () => {
         session.roles = roles;
         session.tenantData = { theming: {} };
     };
+
+    it('resumes first-centre setup for an already authenticated founding admin', async () => {
+        signIn('restricted-agency-admin', 'user-admin');
+        render(
+            <MemoryRouter initialEntries={['/login?agencySetupId=5']}>
+                <Routes>
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/admin/agency/5/setup" element={<h1>Complete centre 5</h1>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        expect(await screen.findByRole('heading', { name: 'Complete centre 5' })).toBeInTheDocument();
+    });
 
     it('lands a Beratungsstellen-Admin on the Beratungsstellen route, not the Träger settings (ORISO-Admin#917)', async () => {
         signIn('restricted-agency-admin', 'user-admin');

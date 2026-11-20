@@ -16,8 +16,9 @@ bottom of the sidebar.
 
 ## Data comes from MSW, never from a real server
 
-Request mocking is global: `.storybook/preview.tsx` calls `initialize()` with
-`onUnhandledRequest: 'bypass'`. A story that needs a response declares it itself:
+Request mocking is global: `.storybook/preview.tsx` starts one MSW worker through the
+`mswLoader` of `msw-storybook-addon/csf3`. Static files load normally; a product request
+without a handler fails the story. A story that needs a response declares it itself:
 
 ```tsx
 export const WithAgencies: Story = {

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vite-plus/test';
 import { applyBrandingFavicon } from './applyBrandingFavicon';
 
 const ICON = 'data:image/vnd.microsoft.icon;base64,AAABAAEA';

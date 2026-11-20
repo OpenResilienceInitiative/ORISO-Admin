@@ -1,6 +1,9 @@
 import routePathNames, { accountInvitesEndpoint, appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { withUtcInstants } from '../../utils/backendInstant';
 import type { AllocationMode } from '../idAllocation/idAllocation';
+import type { OnboardingPurpose } from '../tenantOnboarding/tenantOnboarding';
+import type { CounsellorAvatarKind } from '../../utils/counsellorAvatar';
 
 export type AccountInviteTargetRole =
     | 'TENANT_ADMIN'
@@ -8,20 +11,41 @@ export type AccountInviteTargetRole =
     | 'COUNSELLOR'
     | 'PLATFORM_ADMIN'
     | 'ADVICE_SEEKER';
-export type AccountInviteStatus = 'DRAFT' | 'EMAIL_SENT' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED' | 'SUPERSEDED';
+/** `WAITING_FOR_UNIT`: stored but not sent (no link, mail or expiry) until the new unit's first admin onboarded. */
+export type AccountInviteStatus =
+    | 'WAITING_FOR_UNIT'
+    | 'DRAFT'
+    | 'EMAIL_SENT'
+    | 'ACCEPTED'
+    | 'EXPIRED'
+    | 'REVOKED'
+    | 'SUPERSEDED';
+export type InviteWaitingForUnit = 'AGENCY' | 'TENANT';
+/** Derived on read: the waiting invite has no pending admin invite that would create its unit. */
+export type InviteQueueProblem = 'NO_UNIT_ADMIN';
+/** The CSV import may also send `true` (= CREATE) / `false` (= NONE). */
+export type InviteTopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
 export type EmailVerificationStatus = 'NOT_REQUIRED' | 'PENDING' | 'VERIFIED' | 'FAILED';
 export type TwoFactorGateStatus = 'NOT_REQUIRED' | 'PENDING_SETUP' | 'ACTIVE' | 'WAIVED' | 'DISABLED_BY_POLICY';
 export type AccessGateStatus = 'BLOCKED_INVITE' | 'BLOCKED_EMAIL' | 'BLOCKED_TWO_FACTOR' | 'READY';
 export type InviteEmailDeliveryStatus = 'SENT' | 'FAILED';
 export type InviteEmailTemplateKind = 'TENANT_INVITE' | 'COUNSELLOR_INVITE' | 'DPA_FORWARD';
+/** `CLOSED` = revoked or replaced; the server gives it no tile of its own. */
+export type InviteProgressPhase = 'PREPARED' | 'INVITED' | 'ACCOUNT_CREATED' | 'DONE' | 'NEEDS_ACTION' | 'CLOSED';
 
 export interface AccountInviteDTO {
     id: number;
+    /** Server-derived purpose; absent on older backends means an ordinary invitation. */
+    onboardingPurpose?: OnboardingPurpose;
     targetRole: AccountInviteTargetRole;
     tenantId: number | null;
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
+    /** The inviting admin's suggestion for the counsellor profile (#1274); null = none. */
+    avatarKind?: CounsellorAvatarKind | null;
+    avatarId?: string | null;
+    displayName?: string | null;
     agencyId: number | null;
     departmentId: number | null;
     provisioningStatus: string | null;
@@ -50,6 +74,29 @@ export interface AccountInviteDTO {
      */
     dpaForwardedAt?: string | null;
     dpaSignedAt?: string | null;
+    /** How the unit was addressed; `null` on older invites. */
+    tenantIdAllocationMode?: AllocationMode | null;
+    agencyIdAllocationMode?: AllocationMode | null;
+    /** Agency-admin invites only. */
+    alsoCounsellor?: boolean | null;
+    /** Set only while `inviteStatus === 'WAITING_FOR_UNIT'`. */
+    waitingForUnit?: InviteWaitingForUnit | null;
+    queueProblem?: InviteQueueProblem | null;
+    /** Counsellor invites only; absent on an older backend. */
+    topicPermission?: InviteTopicPermission | null;
+    /** The consultant (or admin) account the accepted invite created; the add-role call addresses it. */
+    provisionedUserId?: string | null;
+    /** The one tracker phase, derived on the server (ORISO-UserService#1260); absent on an older backend. */
+    progressPhase?: InviteProgressPhase | null;
+    /** When each tracker step was reached; null until then. */
+    unitCreatedAt?: string | null;
+    sentAt?: string | null;
+    accountCreatedAt?: string | null;
+    /** When 2FA was activated or waived; dates the Träger tab's "2FA aktiv" step. */
+    twoFactorDoneAt?: string | null;
+    completedAt?: string | null;
+    /** Accepted invites: the roles the account holds now, also ones added later. */
+    accountRoles?: AccountInviteTargetRole[] | null;
     rawToken?: string;
     acceptUrl?: string;
 }
@@ -60,6 +107,10 @@ export interface PagedAccountInviteResponse {
     totalPages: number;
     page: number;
     size: number;
+    /** Every phase counted over all pages of the tab; ignores the status and phase filters. */
+    phaseCounts?: Partial<Record<InviteProgressPhase, number>>;
+    /** Per phase, what its count is made of: the status, or why a NEEDS_ACTION invite is stuck. */
+    phaseDetailCounts?: Partial<Record<InviteProgressPhase, Record<string, number>>>;
 }
 
 export interface CreateAccountInviteRequest {
@@ -75,6 +126,13 @@ export interface CreateAccountInviteRequest {
     recipientEmail: string;
     firstName?: string;
     lastName?: string;
+    /**
+     * Optional suggestion for the invitee's profile (#1274). `avatarId` is the motif id and
+     * only goes with `avatarKind: 'ICON'`. The invitee can change both on the account page.
+     */
+    avatarKind?: CounsellorAvatarKind;
+    avatarId?: string;
+    displayName?: string;
     agencyId?: number;
     /** Same contract for the agency id space (AgencyService, U2). */
     agencyIdAllocationMode?: AllocationMode;
@@ -82,6 +140,10 @@ export interface CreateAccountInviteRequest {
     expiresInDays?: number;
     templateId?: number;
     acceptBaseUrl?: string;
+    /** AGENCY_ADMIN only; the backend defaults to `true`. */
+    alsoCounsellor?: boolean;
+    /** Omitted = the agency default. */
+    topicPermission?: InviteTopicPermission | boolean;
 }
 
 export interface SendAccountInviteRequest {
@@ -89,16 +151,28 @@ export interface SendAccountInviteRequest {
     acceptBaseUrl?: string;
 }
 
+/** The Admin's two tabs: Träger admins founding a Träger, and everyone joining a unit. */
+export type AccountInviteListTab = 'TENANT' | 'UNIT';
+
 export interface ListAccountInvitesParams {
     page?: number;
     size?: number;
+    tab?: AccountInviteListTab;
     targetRole?: AccountInviteTargetRole;
     status?: AccountInviteStatus;
     tenantId?: number;
+    query?: string;
+    progressPhases?: InviteProgressPhase[];
+    sort?: 'recipient' | 'invitedAt';
+    sortDirection?: 'asc' | 'desc';
 }
 
 export interface InviteEmailTemplateDTO {
     id: number;
+    /** Owning Träger; `null` = a platform template every Träger may use. */
+    tenantId?: number | null;
+    /** The server's per-row edit right; absent on an older server (role rule applies). */
+    editable?: boolean;
     kind: InviteEmailTemplateKind;
     name: string;
     language: string | null;
@@ -107,6 +181,8 @@ export interface InviteEmailTemplateDTO {
     active: boolean;
     createDate: string;
     updateDate: string | null;
+    /** Built-in defaults retain their kind/language and cannot be deleted. */
+    systemDefault?: boolean;
 }
 
 /**
@@ -117,6 +193,14 @@ export interface InviteEmailTemplateDTO {
  * Render it as-is inside an isolated frame; never re-style, rewrite or otherwise post-process it,
  * or the Admin re-introduces exactly the drift the issue removes.
  */
+export interface InviteEmailBrandingSnapshot {
+    brandName: string;
+    logoUrl: string | null;
+    accentColor: string;
+    primaryColor: string;
+    logoRendering: 'IMAGE' | 'TEXT_WORDMARK';
+}
+
 export interface InviteEmailPreviewDTO {
     templateId: number | null;
     templateName: string | null;
@@ -127,6 +211,8 @@ export interface InviteEmailPreviewDTO {
     plainText: string;
     /** Always contains the literal token `SAMPLE-PREVIEW-TOKEN`, never a usable invite link. */
     sampleAcceptUrl: string;
+    /** Actual render outcome; absent on older servers means unknown, never a browser guess. */
+    branding?: InviteEmailBrandingSnapshot | null;
 }
 
 export interface InviteEmailPreviewParams {
@@ -167,7 +253,7 @@ export const counsellorOnboardingAcceptBaseUrl = `${appURL.replace(/\/$/, '')}${
  */
 export const acceptBaseUrlForRole = (targetRole: AccountInviteTargetRole): string => {
     if (targetRole === 'TENANT_ADMIN') return tenantAdminOnboardingAcceptBaseUrl;
-    if (targetRole === 'COUNSELLOR') return counsellorOnboardingAcceptBaseUrl;
+    if (targetRole === 'COUNSELLOR' || targetRole === 'AGENCY_ADMIN') return counsellorOnboardingAcceptBaseUrl;
     return accountInviteAcceptBaseUrl;
 };
 export { accountInvitesEndpoint };
@@ -178,8 +264,8 @@ const normalizeAllocatedId = (
     id: number | undefined,
 ): number | undefined => {
     if (mode === 'AUTO') return undefined;
-    if (mode === 'MANUAL' && id == null) {
-        throw new TypeError(`${field} is required when allocation mode is MANUAL`);
+    if ((mode === 'MANUAL' || mode === 'EXISTING') && id == null) {
+        throw new TypeError(`${field} is required when allocation mode is ${mode}`);
     }
     return id;
 };
@@ -190,16 +276,28 @@ export const listAccountInvites = async (
     const search = new URLSearchParams();
     search.set('page', String(params.page ?? 0));
     search.set('size', String(params.size ?? 20));
+    if (params.tab) search.set('tab', params.tab);
     if (params.targetRole) search.set('target_role', params.targetRole);
     if (params.status) search.set('status', params.status);
     if (params.tenantId != null) search.set('tenant_id', String(params.tenantId));
+    if (params.query?.trim()) search.set('query', params.query.trim());
+    if (params.progressPhases?.length) {
+        search.set(
+            params.progressPhases.length > 1 ? 'progress_phases' : 'progress_phase',
+            params.progressPhases.join(','),
+        );
+    }
+    if (params.sort) search.set('sort', params.sort);
+    if (params.sortDirection) search.set('sort_direction', params.sortDirection);
 
-    return fetchData({
-        url: `${accountInvitesEndpoint}?${search.toString()}`,
-        method: FETCH_METHODS.GET,
-        skipAuth: false,
-        responseHandling: [FETCH_ERRORS.CATCH_ALL],
-    });
+    return withUtcInstants(
+        await fetchData({
+            url: `${accountInvitesEndpoint}?${search.toString()}`,
+            method: FETCH_METHODS.GET,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL],
+        }),
+    );
 };
 
 export const createAccountInvite = async (body: CreateAccountInviteRequest): Promise<AccountInviteDTO> => {
@@ -219,14 +317,18 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
         // learns that DELIVERY is misconfigured instead of "something went wrong".
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.NO_MATCH,
             FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
+        // JSON.stringify drops undefined keys: UserService reads an omitted topicPermission as SELECT_EXISTING.
         bodyData: JSON.stringify({
             acceptBaseUrl: body.acceptBaseUrl,
             agencyId,
             agencyIdAllocationMode: body.agencyIdAllocationMode,
+            alsoCounsellor: body.alsoCounsellor,
             departmentId: body.departmentId,
             expiresInDays: body.expiresInDays,
             firstName: body.firstName,
@@ -236,9 +338,10 @@ export const createAccountInvite = async (body: CreateAccountInviteRequest): Pro
             templateId: body.templateId,
             tenantId,
             tenantIdAllocationMode: body.tenantIdAllocationMode,
+            topicPermission: body.topicPermission,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 /**
@@ -262,8 +365,10 @@ export const sendAccountInvite = async (
         // BAD_GATEWAY_WITH_RESPONSE: same for a 502 SMTP failure (UserService#1160).
         // The invite stays DRAFT — the backend writes EMAIL_SENT only after SMTP
         // confirms the handover — so the admin can retry once mail is configured.
+        // A waiting invite answers 409 `UNIT_NOT_CREATED` until its unit exists; the caller explains it.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
@@ -272,39 +377,64 @@ export const sendAccountInvite = async (
             templateId: body.templateId,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const resendAccountInvite = async (
     inviteId: number,
-    body: SendAccountInviteRequest,
+    body?: SendAccountInviteRequest,
 ): Promise<AccountInviteDTO> => {
     const response = await fetchData({
         url: `${accountInvitesEndpoint}/${inviteId}/resend`,
         method: FETCH_METHODS.POST,
         skipAuth: false,
         // Same 403 (UserService#1006) and 502 (UserService#1160) surfacing as send.
+        // A waiting invite answers 409 `UNIT_NOT_CREATED` until its unit exists; the caller explains it.
         responseHandling: [
             FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
             FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
             FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE,
         ],
         bodyData: JSON.stringify({
-            acceptBaseUrl: body.acceptBaseUrl,
-            templateId: body.templateId,
+            acceptBaseUrl: body?.acceptBaseUrl,
+            templateId: body?.templateId,
         }),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
-export const revokeAccountInvite = async (inviteId: number): Promise<AccountInviteDTO> => {
-    const response = await fetchData({
-        url: `${accountInvitesEndpoint}/${inviteId}/revoke`,
-        method: FETCH_METHODS.POST,
+/**
+ * DELETE /useradmin/account-invites/{id} (ORISO-Admin#1522): an open invite is revoked at once (its
+ * link stops working, its address is free again) and the invite leaves every list; the nightly
+ * purge removes it. Answers 204, also when it was already deleted; 409 once its account exists.
+ */
+export const deleteAccountInvite = async (inviteId: number): Promise<void> => {
+    await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}`,
+        method: FETCH_METHODS.DELETE,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
-    return response.json();
+};
+
+/** Also updates an existing account; 400/403 reject with the raw Response for the table to explain. */
+export const updateAccountInviteTopicPermission = async (
+    inviteId: number,
+    topicPermission: InviteTopicPermission,
+): Promise<AccountInviteDTO> => {
+    const response = await fetchData({
+        url: `${accountInvitesEndpoint}/${inviteId}/topic-permission`,
+        method: FETCH_METHODS.PUT,
+        skipAuth: false,
+        responseHandling: [
+            FETCH_ERRORS.CATCH_ALL,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+            FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE,
+        ],
+        bodyData: JSON.stringify({ topicPermission }),
+    });
+    return withUtcInstants(await response.json());
 };
 
 export const listInviteEmailTemplates = async (kind?: InviteEmailTemplateKind): Promise<InviteEmailTemplateDTO[]> =>
@@ -383,7 +513,7 @@ export const createInviteEmailTemplate = async (body: TemplateRequestDTO): Promi
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
         bodyData: JSON.stringify(body),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
 };
 
 export const updateInviteEmailTemplate = async (
@@ -397,5 +527,15 @@ export const updateInviteEmailTemplate = async (
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
         bodyData: JSON.stringify(body),
     });
-    return response.json();
+    return withUtcInstants(await response.json());
+};
+
+/** Deletes an allowed custom template; queued references are rejected by the server. */
+export const deleteInviteEmailTemplate = async (id: number): Promise<void> => {
+    await fetchData({
+        url: `${inviteEmailTemplatesEndpoint}/${id}`,
+        method: FETCH_METHODS.DELETE,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.CATCH_ALL],
+    });
 };

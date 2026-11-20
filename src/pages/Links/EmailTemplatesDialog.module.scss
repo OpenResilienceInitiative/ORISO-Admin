@@ -37,7 +37,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: 2px;
     }
 }
@@ -92,7 +92,7 @@
 }
 
 .metaLabel {
-    color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 14px;
     font-weight: 500;
 }
@@ -107,7 +107,7 @@
 
 .discardBody {
     margin: 0;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 14px;
     line-height: 20px;
     text-align: center;
@@ -116,6 +116,50 @@
 /* #713: the disabled Speichern button explains itself. */
 .saveHint {
     margin: 12px 0 0;
-    color: var(--m3-on-surface-variant, #49454f);
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 13px;
+}
+
+/* Phones (#1127): Kind, Language and Subject leave the table; the kind moves under the name. */
+.nameStack {
+    display: inline-flex;
+    max-width: 100%;
+    flex-direction: column;
+    align-items: center;
+}
+
+.kindLine {
+    display: none;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+@media (max-width: 599px) {
+    .hideOnPhone {
+        display: none;
+    }
+
+    .kindLine {
+        display: block;
+    }
+}
+
+.editorFooter {
+    display: grid;
+    gap: 12px;
+    text-align: left;
+}
+
+.footerFields {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 599px) {
+    .footerFields {
+        gap: 8px;
+        grid-template-columns: 1fr;
+    }
 }

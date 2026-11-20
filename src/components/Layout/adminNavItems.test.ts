@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildAdminNavItems, resolveLogsPage, type AdminNavLabels } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
+import type { CanFn } from '../../constants/caseHandoverAccess';
 import routePathNames from '../../appConfig';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
@@ -8,7 +9,9 @@ import { UserRole } from '../../enums/UserRole';
 
 const labels: AdminNavLabels = {
     account: 'Account',
+    addons: 'Add-ons',
     agency: 'Agencies',
+    home: 'Home',
     links: 'Links',
     logs: 'Logs',
     settings: 'Settings',
@@ -29,12 +32,67 @@ describe('resolveLogsPage', () => {
         expect(resolveLogsPage(false, false, true)).toBe(routePathNames.inactiveAccountAuditLogs);
     });
 
+    it('lands on the deletion log when it is the only view the admin may read', () => {
+        expect(resolveLogsPage(false, false, false, true)).toBe(routePathNames.deletionAuditLogs);
+        expect(resolveLogsPage(false, false, true, true)).toBe(routePathNames.inactiveAccountAuditLogs);
+    });
+
+    it('lands on the add-on log last', () => {
+        expect(resolveLogsPage(false, false, false, false, true)).toBe(routePathNames.addonAuditLogs);
+        expect(resolveLogsPage(false, true, false, false, true)).toBe(routePathNames.caseHandoverLogs);
+    });
+
     it('returns null when the admin may read no log view', () => {
         expect(resolveLogsPage(false, false, false)).toBeNull();
     });
 });
 
 describe('buildAdminNavItems', () => {
+    // ORISO-UserService#1666: a Statistik-Leser·in has exactly one destination.
+    it('shows a Statistik-Leser·in only the statistics entry, without Home', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(Resource.Statistic),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([
+            {
+                key: 'statistics',
+                to: routePathNames.statistic,
+                label: 'Statistics',
+                iconPath: routePathNames.statistic,
+            },
+        ]);
+    });
+
+    it('shows a Statistik-Leser·in no statistics entry either when the permission is missing', () => {
+        const items = build({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items).toEqual([]);
+    });
+
+    // ORISO-Admin#1323: every admin starts at Home, whatever else they may open.
+    it.each([
+        ['platform admin', true, hasRoleFor(UserRole.TenantAdmin, UserRole.AgencyAdmin), canFor(Resource.Tenant)],
+        ['Träger admin', false, hasRoleFor(UserRole.TenantAdmin), canFor(Resource.Tenant, Resource.Agency)],
+        ['admin without any section', false, hasRoleFor(), canFor()],
+    ])('puts Home first for the %s', (_label, isSuperAdmin, hasRole, can) => {
+        const items = build({ isSuperAdmin, hasRole, can, labels, settingsPath: '/admin/theme-settings/legal' });
+
+        expect(items[0]).toMatchObject({ key: 'home', to: routePathNames.home, label: 'Home' });
+    });
+
     it('never renders two nav entries with the same label', () => {
         // A tenant admin who also holds `user-admin` — the role mix the duplicate "Logs"
         // menu was reported with (ORISO-Admin#84).
@@ -91,6 +149,21 @@ describe('buildAdminNavItems', () => {
         expect(logEntries(items)[0].to).toBe(expectedLanding);
     });
 
+    it('shows the Add-ons entry to platform admins and admins who may change the Träger', () => {
+        const addonsEntry = (isSuperAdmin: boolean, can: CanFn) =>
+            build({
+                isSuperAdmin,
+                hasRole: hasRoleFor(),
+                can,
+                labels,
+                settingsPath: '/admin/theme-settings/general',
+            }).find((item) => item.key === 'addons');
+
+        expect(addonsEntry(true, canFor())?.to).toBe(routePathNames.addons);
+        expect(addonsEntry(false, canFor(Resource.Tenant))?.label).toBe(labels.addons);
+        expect(addonsEntry(false, canFor(Resource.Agency, Resource.Consultant))).toBeUndefined();
+    });
+
     it('keeps the "Logs" entry highlighted across every log sub-route', () => {
         const items = build({
             isSuperAdmin: true,
@@ -104,6 +177,7 @@ describe('buildAdminNavItems', () => {
         expect(logs?.activeMatch).toEqual({ paths: [routePathNames.logs], mode: 'startsWith' });
         expect(routePathNames.caseHandoverLogs.startsWith(routePathNames.logs)).toBe(true);
         expect(routePathNames.inactiveAccountAuditLogs.startsWith(routePathNames.logs)).toBe(true);
+        expect(routePathNames.deletionAuditLogs.startsWith(routePathNames.logs)).toBe(true);
     });
 
     it('shows the Beratungsstellen entry to a Beratungsstellen-Admin (restricted-agency-admin + user-admin)', () => {
@@ -120,6 +194,32 @@ describe('buildAdminNavItems', () => {
         const agency = items.find((item) => item.key === 'agency');
         expect(agency?.to).toBe(routePathNames.agency);
         expect(agency?.label).toBe(labels.agency);
+    });
+
+    it('offers no Träger settings to a Beratungsstellen-Admin who reads legal texts', () => {
+        // #1070 gave this role LegalText.read; the Träger legal page denies it and ended on access-denied.
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin),
+            can: canFor(Resource.Agency, Resource.Consultant, Resource.LegalText),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.some((item) => item.key === 'theme')).toBe(false);
+        expect(items.some((item) => item.key === 'agency')).toBe(true);
+    });
+
+    it('keeps the Träger settings for a tenant admin who only reads legal texts', () => {
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.TenantAdmin),
+            can: canFor(Resource.LegalText),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.find((item) => item.key === 'theme')?.to).toBe('/admin/theme-settings/legal');
     });
 
     it('hides the Beratungsstellen entry from an admin without Agency read', () => {
@@ -221,7 +321,7 @@ describe('buildAdminNavItems', () => {
         it.each([
             ['agency-admin + user-admin', hasRoleFor(UserRole.AgencyAdmin, UserRole.UserAdmin)],
             ['restricted-agency-admin + user-admin', hasRoleFor(UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin)],
-        ])('is hidden from a Beratungsstellen-Admin (%s) even with Agency read', (_label, hasRole) => {
+        ])('is shown to a Beratungsstellen-Admin (%s)', (_label, hasRole) => {
             const items = build({
                 isSuperAdmin: false,
                 hasRole,
@@ -229,7 +329,7 @@ describe('buildAdminNavItems', () => {
                 labels,
                 settingsPath: '/admin/theme-settings/general',
             });
-            expect(linksEntry(items)).toBeUndefined();
+            expect(linksEntry(items)).toBeDefined();
         });
     });
 });

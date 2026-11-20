@@ -1,6 +1,6 @@
-import { message } from 'antd';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../../../components/Snackbar';
 import deleteAgencyData from '../../../../api/agency/deleteAgencyData';
 import { Modal } from '../../../../components/Modal';
 import { AgencyData } from '../../../../types/agency';
@@ -10,7 +10,7 @@ export const AgencyDeletionModal = ({ agencyModel, onClose }: { agencyModel: Age
     const handleOnDelete = () => {
         deleteAgencyData(agencyModel)
             .then(() => {
-                message.success({
+                snackbar.success({
                     content: t('message.agency.delete'),
                     duration: 3,
                 });

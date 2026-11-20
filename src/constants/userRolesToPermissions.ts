@@ -11,6 +11,7 @@ const rolesPriority: UserRole[] = [
     UserRole.UserAdmin,
     UserRole.SingleTenantAdmin,
     UserRole.TenantAdmin,
+    UserRole.StatisticsReader,
 ];
 
 export const getEffectivePermissionRoles = (roles: UserRole[]): UserRole[] => {
@@ -80,7 +81,7 @@ export const enforceRestrictedAgencyAdminCeiling = (
 };
 
 export const useUserRolesToPermission = () => {
-    const { roles, isSuperAdmin } = useUserRoles();
+    const { roles, isSuperAdmin, isTenantScopedAdmin } = useUserRoles();
     const { data } = useTenantData();
     const { settings } = useAppConfigContext();
 
@@ -100,6 +101,10 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: false },
             Agency: { read: true, create: false, update: true, delete: false },
             AgencyAdminUser: { read: false, create: false, update: false, delete: false },
+            // #1070: a Beratungsstelle admin (restricted-agency-admin, usually with user-admin) adopts
+            // and saves its own legal texts under the same delegation switch as the full agency
+            // admin. Reading is always allowed. The server still checks the assigned agency.
+            LegalText: { read: true, update: singleCanEditLegalText },
         },
         [UserRole.AgencyAdmin]: {
             Agency: { read: true, create: true, update: true, delete: true },
@@ -120,12 +125,23 @@ export const useUserRolesToPermission = () => {
             Statistic: { read: true },
             TenantAdminUser: {
                 read: true,
+                create: isTenantScopedAdmin || isSuperAdmin,
+                update: isTenantScopedAdmin || isSuperAdmin,
+                delete: isTenantScopedAdmin || isSuperAdmin,
+            },
+            // Tenant admins also manage the agency admins inside their tenant.
+            AgencyAdminUser: { read: true, create: true, update: true, delete: true },
+            // Statistik-Leser·innen see platform-wide numbers, so only a platform admin manages
+            // them (ORISO-UserService#1666); the server answers 403 to everyone else.
+            StatisticsReaderUser: {
+                read: isSuperAdmin,
                 create: isSuperAdmin,
                 update: isSuperAdmin,
                 delete: isSuperAdmin,
             },
-            // Tenant admins also manage the agency admins inside their tenant.
-            AgencyAdminUser: { read: true, create: true, update: true, delete: true },
+            // The platform admin manages the platform-wide topic catalogue (Settings → Themen), whether
+            // or not the registration uses topics yet. Träger admins do not.
+            ...(isSuperAdmin ? { Topic: { read: true, create: true, update: true, delete: true } } : {}),
         },
         [UserRole.TopicAdmin]: {
             Topic: { read: isTopicsEnabled, create: isTopicsEnabled, update: isTopicsEnabled, delete: isTopicsEnabled },
@@ -139,8 +155,16 @@ export const useUserRolesToPermission = () => {
             },
             Statistic: { read: true },
         },
+        // ORISO-UserService#1666: reading statistics is the whole role. Nothing else is granted, so
+        // the OR-merge can never widen a pure reader beyond Statistic.read.
+        [UserRole.StatisticsReader]: {
+            Statistic: { read: true },
+        },
         [UserRole.UserAdmin]: {
             Consultant: { read: true, create: true, update: true, delete: true },
+            // GET/DELETE /useradmin/askers need user-admin; the server narrows to the caller's
+            // Träger or centres (ORISO-Admin#1521). Advice seekers are never created here.
+            AdviceSeeker: { read: true, delete: true },
             AgencyAdminUser: { read: true, create: true, update: true, delete: true },
         },
     };

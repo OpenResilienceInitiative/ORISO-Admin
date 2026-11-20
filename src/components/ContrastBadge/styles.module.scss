@@ -1,0 +1,47 @@
+// Neutral tonal pill for passing ratings; an outlined error-tone pill with a
+// warning glyph for ratings below 4.5 : 1. No green (brand rule) — the level
+// text carries the meaning, colour only reinforces it.
+.badge {
+    display: inline-flex;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    align-items: center;
+    padding: 1px 8px;
+    border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    border-radius: 999px;
+    background-color: var(--m3-surface-container-high, #eae7e8);
+    color: var(--m3-on-surface, #1b1b1c);
+    font-family: var(--m3-body-font-family);
+    font-size: 11px;
+    font-weight: 500;
+    gap: 4px;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.fail {
+    border-color: var(--m3-error, #b1005e);
+    background-color: var(--m3-surface, #fcf9f9);
+    color: var(--m3-error, #b1005e);
+}
+
+.icon {
+    flex: 0 0 auto;
+    font-size: 14px !important;
+}
+
+.notice {
+    display: flex;
+    align-items: flex-start;
+    margin: 8px 0 0;
+    color: var(--m3-error, #b1005e);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    gap: 6px;
+    line-height: 16px;
+
+    .icon {
+        margin-top: 1px;
+    }
+}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Form } from 'antd';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { CardEditable } from '../../../../../components/CardEditable';
 import { AgencySettings } from './index';
 
@@ -47,10 +47,10 @@ describe('AgencySettings team/single toggle', () => {
         const user = userEvent.setup();
         renderSettings({ teamAgency: true });
 
-        const toggle = screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' });
+        const toggle = screen.getByRole('switch', { name: 'teamFunctions.counselling.name' });
         expect(toggle).toBeChecked();
         expect(screen.getByTestId('form-teamAgency')).toHaveTextContent('true');
-        expect(screen.getByText('agency.form.settings.teamAdviceCenter.description')).toBeInTheDocument();
+        expect(screen.getByText('teamFunctions.counselling.description')).toBeInTheDocument();
 
         await user.click(toggle);
 
@@ -61,7 +61,7 @@ describe('AgencySettings team/single toggle', () => {
     it('renders the teamAgency switch unchecked when the field is absent', () => {
         renderSettings({});
 
-        expect(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' })).not.toBeChecked();
+        expect(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' })).not.toBeChecked();
         expect(screen.queryByText('agency.form.settings.teamAdviceCenter.changeWarning')).not.toBeInTheDocument();
     });
 
@@ -71,17 +71,17 @@ describe('AgencySettings team/single toggle', () => {
 
         expect(screen.queryByText('agency.form.settings.teamAdviceCenter.changeWarning')).not.toBeInTheDocument();
 
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
 
         expect(screen.getByText('agency.form.settings.teamAdviceCenter.changeWarning')).toBeInTheDocument();
     });
 
-    it('does not warn when creating a new agency or leaving team counseling on', async () => {
+    it('does not warn when creating a new agency or leaving team counselling on', async () => {
         const user = userEvent.setup();
         const { unmount } = renderSettings({ teamAgency: false }, false);
 
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
         expect(screen.queryByText('agency.form.settings.teamAdviceCenter.changeWarning')).not.toBeInTheDocument();
         unmount();
 
@@ -99,7 +99,7 @@ describe('AgencySettings team/single toggle', () => {
         );
 
         await user.click(screen.getByRole('button', { name: 'edit' }));
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
 
         await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -124,7 +124,7 @@ describe('AgencySettings team/single toggle', () => {
         );
 
         // First (real) conversion: team -> single. Warning correctly appears.
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
         expect(screen.getByText('agency.form.settings.teamAdviceCenter.changeWarning')).toBeInTheDocument();
 
         // Simulate the save completing: the caller's fetched agency data now reflects
@@ -139,8 +139,43 @@ describe('AgencySettings team/single toggle', () => {
 
         // Second edit in the same page load: flip on, then back off. This does not undo a
         // persisted team agency (the agency is already single), so no warning should appear.
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
-        await user.click(screen.getByRole('switch', { name: 'agency.form.settings.teamAdviceCenter.title' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
+        await user.click(screen.getByRole('switch', { name: 'teamFunctions.counselling.name' }));
         expect(screen.queryByText('agency.form.settings.teamAdviceCenter.changeWarning')).not.toBeInTheDocument();
+    });
+});
+
+describe('AgencySettings counsellor topic permission default', () => {
+    const TopicPermissionValue = () => {
+        const value = Form.useWatch(['settings', 'counsellorTopicPermission']);
+        return <span data-testid="form-topic-permission">{String(value)}</span>;
+    };
+    const renderWithPermission = (initialValues: Record<string, unknown>, isEditMode = true) =>
+        render(
+            <Form initialValues={initialValues}>
+                <AgencySettings isEditMode={isEditMode} asFields />
+                <TopicPermissionValue />
+            </Form>,
+        );
+
+    it('shows the stored agency default and changes it', async () => {
+        const user = userEvent.setup();
+        renderWithPermission({ settings: { counsellorTopicPermission: 'CREATE' } });
+
+        const field = screen.getByRole('combobox', { name: 'agency.form.settings.counsellorTopicPermission.title' });
+        expect(field).toHaveValue('links.composer.topics.create');
+
+        await user.click(field);
+        await user.click(await screen.findByRole('option', { name: 'links.composer.topics.selectExisting' }));
+
+        expect(screen.getByTestId('form-topic-permission')).toHaveTextContent('SELECT_EXISTING');
+    });
+
+    it('is not offered while creating an agency (new agencies start with NONE)', () => {
+        renderWithPermission({}, false);
+
+        expect(
+            screen.queryByRole('combobox', { name: 'agency.form.settings.counsellorTopicPermission.title' }),
+        ).not.toBeInTheDocument();
     });
 });

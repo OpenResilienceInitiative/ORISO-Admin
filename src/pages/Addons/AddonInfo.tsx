@@ -1,0 +1,113 @@
+import { Card, Popconfirm, Switch, Tag } from 'antd';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../addons/intlLocale';
+import type { AdminAddon } from '../../addons/addonTypes';
+import { SegmentedTabs } from '../../components/SegmentedTabs';
+import { snackbar } from '../../components/Snackbar';
+import { AddonFeatures } from './AddonFeatures';
+import { AddonReadme } from './AddonReadme';
+import { useSetGlobalEnabled } from './useAddons';
+import { reportAddonSaveError } from './mutationFeedback';
+import styles from './addons.module.scss';
+
+type InfoTab = 'readme' | 'features';
+
+interface AddonInfoProps {
+    addon: AdminAddon;
+}
+
+/**
+ * What an add-on is, for the platform admin: readme, version, apps and the platform-wide switch.
+ * Render it keyed by add-on name so a pending confirmation never applies to another add-on.
+ */
+export const AddonInfo = ({ addon }: AddonInfoProps) => {
+    const { t, i18n } = useTranslation();
+    const language = i18n.resolvedLanguage || i18n.language || 'de';
+    const { manifest, discoveredAt } = addon;
+    const globallyEnabled = !!addon.global?.enabled;
+    const setGlobal = useSetGlobalEnabled(manifest.name);
+    const [confirmOff, setConfirmOff] = useState(false);
+    const switchId = `addon-${manifest.name}-global`;
+    const idPrefix = `addon-${manifest.name}-info`;
+    const tabs = [
+        ...(addon.hasReadme ? [{ key: 'readme' as const, label: t('addons.tabs.readme') }] : []),
+        ...((manifest.apps ?? []).length > 0 ? [{ key: 'features' as const, label: t('addons.features') }] : []),
+    ];
+    const [active, setActive] = useState<InfoTab>('readme');
+    const current = tabs.find((tab) => tab.key === active) ?? tabs[0];
+
+    const apply = (enabled: boolean) =>
+        setGlobal.mutate(enabled, {
+            onSuccess: () => snackbar.success(String(t(enabled ? 'addons.global.enabled' : 'addons.global.disabled'))),
+            onError: (error) => reportAddonSaveError(error, t),
+        });
+
+    return (
+        <Card
+            className={styles.card}
+            data-testid={`addon-info-${manifest.name}`}
+            title={
+                <div className={styles.cardTitle}>
+                    <span className={styles.addonName}>{manifest.name}</span>
+                    <Tag>{t('addons.version', { version: manifest.version })}</Tag>
+                    {manifest.contract && <Tag>{manifest.contract}</Tag>}
+                </div>
+            }
+            extra={
+                <div className={styles.switchRow}>
+                    <label htmlFor={switchId}>{t('addons.global.switchLabel')}</label>
+                    <Popconfirm
+                        open={confirmOff}
+                        title={t('addons.global.confirmOff')}
+                        okText={t('addons.global.confirmOffOk')}
+                        cancelText={t('btn.cancel')}
+                        onConfirm={() => {
+                            setConfirmOff(false);
+                            apply(false);
+                        }}
+                        onCancel={() => setConfirmOff(false)}
+                    >
+                        <Switch
+                            id={switchId}
+                            checked={globallyEnabled}
+                            loading={setGlobal.isPending}
+                            onChange={(enabled) => (enabled ? apply(true) : setConfirmOff(true))}
+                        />
+                    </Popconfirm>
+                </div>
+            }
+        >
+            {current && (
+                <div className={styles.details}>
+                    <SegmentedTabs
+                        ariaLabel={String(t('addons.details.label', { addon: manifest.name }))}
+                        tabs={tabs}
+                        activeKey={current.key}
+                        onChange={(key) => setActive(key as InfoTab)}
+                        idPrefix={idPrefix}
+                    />
+                    <div
+                        role="tabpanel"
+                        id={`${idPrefix}-panel`}
+                        aria-labelledby={`${idPrefix}-tab-${current.key}`}
+                        className={styles.detailsPanel}
+                    >
+                        {current.key === 'readme' ? (
+                            <AddonReadme name={manifest.name} hasReadme={addon.hasReadme} />
+                        ) : (
+                            <AddonFeatures apps={manifest.apps ?? []} />
+                        )}
+                    </div>
+                </div>
+            )}
+            {discoveredAt && (
+                <p className={styles.hint}>
+                    {t('addons.discoveredAt', { date: formatDateTime(discoveredAt, language) })}
+                </p>
+            )}
+        </Card>
+    );
+};
+
+export default AddonInfo;

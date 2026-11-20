@@ -10,6 +10,7 @@ export type SettingsTab = {
 
 type SettingsTabsContext = {
     isSuperAdmin: boolean;
+    canManageServiceNotices?: boolean;
     shouldShowThemeSettings: boolean;
     can: (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
     isTenantSettingsEditEnabled: boolean;
@@ -21,6 +22,7 @@ const compactTabs = (tabs: Array<SettingsTab | false | null | undefined>): Setti
 
 export const getSettingsTabs = ({
     isSuperAdmin,
+    canManageServiceNotices = false,
     shouldShowThemeSettings,
     can,
     isTenantSettingsEditEnabled,
@@ -45,6 +47,12 @@ export const getSettingsTabs = ({
                 titleKey: 'settings.subhead.view',
                 iconName: 'appearance',
             },
+            // The Caritas default topics ship with every installation; the platform admin overrides them here.
+            can(PermissionAction.Update, Resource.Topic) && {
+                to: `${base}/topics`,
+                titleKey: 'settings.subhead.topics',
+                iconName: 'topics',
+            },
             (can(PermissionAction.Read, Resource.LegalText) || can(PermissionAction.Update, Resource.LegalText)) && {
                 to: `${base}/legal`,
                 titleKey: 'settings.subhead.legal',
@@ -53,6 +61,11 @@ export const getSettingsTabs = ({
             can(PermissionAction.Update, Resource.Tenant) && {
                 to: `${base}/smtp`,
                 titleKey: 'settings.subhead.smtp',
+                iconName: 'email_server',
+            },
+            canManageServiceNotices && {
+                to: routePathNames.serviceNotices,
+                titleKey: 'serviceNotices.title',
                 iconName: 'email_server',
             },
             can(PermissionAction.Update, Resource.Tenant) && {
@@ -84,6 +97,11 @@ export const getSettingsTabs = ({
             to: `${base}/legal`,
             titleKey: 'settings.subhead.legal',
             iconName: 'legal',
+        },
+        can(PermissionAction.Update, Resource.Tenant) && {
+            to: `${base}/erstantwort`,
+            titleKey: 'settings.subhead.erstantwort',
+            iconName: 'erstantwort',
         },
         can(PermissionAction.Update, Resource.Tenant) && {
             to: `${base}/smtp`,

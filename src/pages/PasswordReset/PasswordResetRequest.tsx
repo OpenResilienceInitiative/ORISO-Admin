@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import { MuiFormField } from '../../components/mui/MuiFormField';
 import { requestAdminPasswordReset } from '../../api/passwordReset/passwordReset';
 import routePathNames from '../../appConfig';
+import { Notify } from '../../components/Notify';
 
 export const PasswordResetRequestForm = () => {
     const { t, i18n } = useTranslation();
@@ -54,12 +55,12 @@ export const PasswordResetRequestForm = () => {
                     name="username"
                     label={t('passwordReset.identityLabel')}
                     autoComplete="username"
-                    rules={[{ required: true, message: t('passwordReset.identityRequired') }]}
+                    rules={[{ required: true, whitespace: true, message: t('passwordReset.identityRequired') }]}
                 />
                 {failed && (
-                    <Typography role="alert" color="error" sx={{ mb: 2 }}>
+                    <Notify title={t('notify.title.passwordReset')} severity="error">
                         {t('passwordReset.requestError')}
-                    </Typography>
+                    </Notify>
                 )}
                 <Button
                     type="submit"

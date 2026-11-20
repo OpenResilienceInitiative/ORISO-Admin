@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import routePathNames, { appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import {
@@ -8,6 +8,7 @@ import {
     counsellorOnboardingAcceptBaseUrl,
     createAccountInvite,
     createInviteEmailTemplate,
+    deleteAccountInvite,
     getInviteEmailPreview,
     inviteEmailPreviewEndpoint,
     listAccountInvites,
@@ -37,6 +38,20 @@ describe('account invite API', () => {
         mocks.fetchData.mockReset();
     });
 
+    it('deletes an invite with DELETE on its own path (ORISO-Admin#1522)', async () => {
+        mocks.fetchData.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+        await expect(deleteAccountInvite(42)).resolves.toBeUndefined();
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: FETCH_METHODS.DELETE,
+                url: `${accountInvitesEndpoint}/42`,
+                skipAuth: false,
+            }),
+        );
+    });
+
     it('lists account invites with target role and status filters', async () => {
         mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 1, size: 10 });
 
@@ -56,12 +71,86 @@ describe('account invite API', () => {
         );
     });
 
+    it('asks for one tab, so the list and the tile counts cover that tab only', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+
+        await listAccountInvites({ tab: 'TENANT' });
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({ url: `${accountInvitesEndpoint}?page=0&size=20&tab=TENANT` }),
+        );
+    });
+
+    it('sends the literal query, lifecycle buckets and ordering with the requested server page', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 2, size: 10 });
+
+        await listAccountInvites({
+            page: 2,
+            size: 10,
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progressPhases: ['NEEDS_ACTION', 'CLOSED'],
+            sort: 'recipient',
+            sortDirection: 'asc',
+        });
+
+        const request = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example');
+        expect(Object.fromEntries(request.searchParams)).toEqual({
+            page: '2',
+            size: '10',
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progress_phases: 'NEEDS_ACTION,CLOSED',
+            sort: 'recipient',
+            sort_direction: 'asc',
+        });
+    });
+
+    it('keeps the scalar phase contract for a single selected bucket', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ progressPhases: ['DONE'] });
+        const params = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams;
+        expect(params.get('progress_phase')).toBe('DONE');
+        expect(params.has('progress_phases')).toBe(false);
+    });
+
+    it('does not send whitespace-only search as a filter', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ query: '  \t ' });
+        expect(new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams.has('query')).toBe(
+            false,
+        );
+    });
+
+    it('reads the zoneless UTC timestamps of the invite list as UTC', async () => {
+        mocks.fetchData.mockResolvedValueOnce({
+            content: [{ id: 1, createDate: '2026-09-21T17:26:02', expiresAt: null }],
+            totalElements: 1,
+            totalPages: 1,
+            page: 0,
+            size: 20,
+        });
+
+        const page = await listAccountInvites();
+
+        expect(page.content[0].createDate).toBe('2026-09-21T17:26:02Z');
+        expect(page.content[0].expiresAt).toBeNull();
+    });
+
+    it('reads the timestamps of a created invite as UTC', async () => {
+        mocks.fetchData.mockResolvedValueOnce(
+            new Response(JSON.stringify({ id: 2, createDate: '2026-09-21T17:26:02' }), { status: 201 }),
+        );
+        const created = await createAccountInvite({ targetRole: 'COUNSELLOR', recipientEmail: 'a@example.org' });
+        expect(created.createDate).toBe('2026-09-21T17:26:02Z');
+    });
+
     it('creates account invites without using external inbound link status', async () => {
         const responseBody = { id: 1, inviteStatus: 'EMAIL_SENT' };
         mocks.fetchData.mockResolvedValueOnce({ json: async () => responseBody });
 
         const result = await createAccountInvite({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -70,7 +159,7 @@ describe('account invite API', () => {
         });
 
         expect(JSON.parse(mocks.fetchData.mock.calls[0][0].bodyData)).toEqual({
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             expiresInDays: 30,
             recipientEmail: 'person@example.org',
             targetRole: 'TENANT_ADMIN',
@@ -113,7 +202,7 @@ describe('account invite API', () => {
         mocks.fetchData.mockResolvedValueOnce({ json: async () => ({ id: 2 }) });
 
         await resendAccountInvite(2, {
-            acceptBaseUrl: 'https://app.oriso.org/account-invite',
+            acceptBaseUrl: 'https://app.example.org/account-invite',
             templateId: 4,
         });
 
@@ -160,12 +249,9 @@ describe('acceptBaseUrlForRole', () => {
         expect(counsellorOnboardingAcceptBaseUrl.endsWith('/admin/counsellor-onboarding')).toBe(true);
     });
 
-    it.each(['AGENCY_ADMIN', 'PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)(
-        'keeps %s invites on the app-layer accept route',
-        (role) => {
-            expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);
-        },
-    );
+    it.each(['PLATFORM_ADMIN', 'ADVICE_SEEKER'] as const)('keeps %s invites on the app-layer accept route', (role) => {
+        expect(acceptBaseUrlForRole(role)).toBe(accountInviteAcceptBaseUrl);
+    });
 });
 
 describe('invite email template API', () => {
@@ -307,7 +393,7 @@ describe('branded invite e-mail preview (UserService#914)', () => {
             subject: 'Ihre Einladung zu ORISO',
             html: '<!doctype html><html lang="de"><body>mail</body></html>',
             plainText: 'ORISO\n=====',
-            sampleAcceptUrl: 'https://admin.oriso.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
+            sampleAcceptUrl: 'https://admin.example.org/admin/tenant-onboarding/SAMPLE-PREVIEW-TOKEN',
         };
         mocks.fetchData.mockResolvedValueOnce(preview);
 

@@ -4,25 +4,60 @@ import type { TenantSettings } from '../../../../types/tenant';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
 
+/** Where the value a tile shows comes from (ORISO-TenantService#363). */
+export type PermissionPolicySource = 'own' | 'suggested' | 'enforced' | 'forbidden';
+
+/** An effective policy; `suggestedValue` is the suggestion from above when it differs from the value. */
+export type EffectivePolicy = PolicyValue<boolean> & { suggestedValue?: boolean };
+
+/**
+ * The effective value of one feature at this level, as TenantService serves it (ORISO-TenantService#363):
+ * 1. a lock from above (enforced on / forbidden) always wins;
+ * 2. otherwise an own policy (`inherited: false`) or the value this level stored (`ownValue`) wins —
+ *    a suggestion from above never overrides it, it only shows as a hint when it differs;
+ * 3. only without any stored value does the suggestion from above count.
+ */
 export const resolvePermissionPolicy = (
     permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
     fieldKey: string,
     currentValue: unknown,
     restrictedFields: ReadonlySet<string>,
-): PolicyValue<boolean> => {
-    const restricted = restrictedFields.has(fieldKey);
-    return (
-        permissionPolicies?.[fieldKey] ?? {
-            value: currentValue !== false,
-            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
-            inherited: restricted,
-        }
-    );
+    ownValue?: unknown,
+): EffectivePolicy => {
+    const policy = permissionPolicies?.[fieldKey];
+    // Inherited lock first, then a restriction from above, and only then an own requirement.
+    if (policy?.mode === 'ENFORCED' && policy.inherited === true) return policy;
+    if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
+    if (policy && policy.inherited !== true) return policy;
+    if (typeof ownValue === 'boolean') {
+        const differs = policy !== undefined && policy.value !== ownValue;
+        return {
+            value: ownValue,
+            mode: 'SUGGESTED',
+            inherited: false,
+            ...(differs ? { suggestedValue: policy.value } : {}),
+        };
+    }
+    return policy ?? { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
 };
 
+export const permissionPolicySource = (policy: PolicyValue<boolean>): PermissionPolicySource => {
+    if (policy.mode === 'ENFORCED') return policy.value ? 'enforced' : 'forbidden';
+    return policy.inherited === true ? 'suggested' : 'own';
+};
+
+/**
+ * Initial platform preset (ORISO-TenantService#251): the values a platform that has never touched
+ * its preset starts from — every conversation feature on, AI scan off. It is a *seed*, never a
+ * stand-in for a value the backend already holds: wherever a stored platform policy or a stored
+ * Träger value exists, that value wins (ORISO-Admin#989).
+ */
 export const DEFAULT_PERMISSION_SETTINGS = {
     featureAnonymousChatEnabled: true,
     featureGroupChatV2Enabled: true,
+    // ORISO-Admin#988: the two group cards' own masters, separate from featureGroupChatV2Enabled.
+    featureInternalGroupChatEnabled: true,
+    featureSelfHelpGroupsEnabled: true,
     featureCallsEnabled: true,
     featureSupervisionEnabled: true,
     featureSupervisionAnonymousChatsEnabled: true,
@@ -64,6 +99,22 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureMediaAiScanOneOnOneChatsEnabled: false,
     featureMediaAiScanGroupChatsEnabled: false,
     featureMediaAiScanSupervisionChatsEnabled: false,
+    // ORISO-Admin#1242: TenantService#332 keeps the stored value when a save omits these, so every
+    // save sends them explicitly; default on like every conversation feature.
+    featureDirectInviteChatEnabled: true,
+    featureDirectInviteAudioEnabled: true,
+    featureDirectInviteVideoEnabled: true,
+    // ORISO-UserService#1662: guest account modes per chat type; TenantService keeps a stored value
+    // when a save omits it, so every save sends them explicitly. Default: every mode allowed.
+    featureGuestAccountTemporaryChatEnabled: true,
+    featureGuestAccountGuestChoosesChatEnabled: true,
+    featureGuestAccountPermanentChatEnabled: true,
+    featureGuestAccountTemporaryAudioEnabled: true,
+    featureGuestAccountGuestChoosesAudioEnabled: true,
+    featureGuestAccountPermanentAudioEnabled: true,
+    featureGuestAccountTemporaryVideoEnabled: true,
+    featureGuestAccountGuestChoosesVideoEnabled: true,
+    featureGuestAccountPermanentVideoEnabled: true,
 } as const;
 
 export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
@@ -81,6 +132,9 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureAudioCallsGroupChatsEnabled',
         'featureVoiceMessagesGroupChatsEnabled',
         'featureThreadsGroupChatsEnabled',
+        // ORISO-Admin#988: both group formats are locked off with the group chat family.
+        'featureInternalGroupChatEnabled',
+        'featureSelfHelpGroupsEnabled',
     ],
     calls: ['featureCallsEnabled'],
     supervision: [
@@ -299,6 +353,24 @@ export const applyVisibleTogglesAsValues = (visibleToggles?: PermissionToggleVis
         },
     );
 
+    return settings;
+};
+
+/**
+ * The platform preset as concrete feature values: the initial preset, overridden by the legacy
+ * allowed toggles, overridden by the stored per-feature platform policies. Used by the platform
+ * view so a stored policy (e.g. group chats off) is never contradicted by the hard-coded seed.
+ */
+export const platformPresetValues = (controls?: {
+    allowedPermissionToggles?: PermissionToggleVisibility;
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
+}) => {
+    const settings = applyVisibleTogglesAsValues(controls?.allowedPermissionToggles);
+    Object.entries(controls?.permissionPolicies ?? {}).forEach(([fieldKey, policy]) => {
+        if (typeof policy?.value === 'boolean') {
+            settings[fieldKey] = policy.value;
+        }
+    });
     return settings;
 };
 

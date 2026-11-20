@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import generateCsrfToken from './generateCsrfToken';
 import { getValueFromCookie, setValueInCookie } from '../api/auth/accessSessionCookie';
 
@@ -14,6 +14,10 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
+afterEach(() => {
+    vi.restoreAllMocks();
+});
+
 describe('generateCsrfToken', () => {
     it('generates and stores an 18-char alphanumeric token when none exists', () => {
         getMock.mockReturnValue('');
@@ -21,6 +25,21 @@ describe('generateCsrfToken', () => {
         const token = generateCsrfToken();
 
         expect(token).toMatch(/^[A-Za-z0-9]{18}$/);
+        expect(setMock).toHaveBeenCalledWith('CSRF-TOKEN', token);
+    });
+
+    it('uses cryptographic bytes and discards values that would bias the alphabet', () => {
+        getMock.mockReturnValue('');
+        const randomBytes = vi
+            .spyOn(globalThis.crypto, 'getRandomValues')
+            .mockReturnValueOnce(Uint8Array.from([248, ...new Uint8Array(17)]))
+            .mockReturnValueOnce(Uint8Array.of(247));
+
+        const token = generateCsrfToken();
+
+        expect(token).toBe(`${'A'.repeat(17)}9`);
+        expect(randomBytes).toHaveBeenCalledTimes(2);
+        expect(randomBytes).toHaveBeenLastCalledWith(new Uint8Array(1));
         expect(setMock).toHaveBeenCalledWith('CSRF-TOKEN', token);
     });
 

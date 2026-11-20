@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
+import { expect, within, waitFor } from 'storybook/test';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
@@ -178,10 +179,10 @@ export const SplitButtons: Story = {
     ),
 };
 
-export const MenuOpen: Story = {
-    args: {},
-    render: () => (
-        <div style={{ height: 320 }}>
+const MenuExample = ({ pinnedOpen = false }: { pinnedOpen?: boolean }) => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div data-menu-open={pinnedOpen || open} style={{ height: 320 }}>
             <GlobalSearchMenu
                 menu={{
                     items: [
@@ -197,10 +198,23 @@ export const MenuOpen: Story = {
                     ],
                     selectedKeys: [TEMPLATE_NAMES[0]],
                 }}
-                open
+                open={pinnedOpen || open}
+                onOpenChange={setOpen}
             >
-                <SplitButton icon={<MailFilledIcon />} label={TEMPLATE_NAMES[0]} variant="outlined" />
+                <span>
+                    <SplitButton icon={<MailFilledIcon />} label={TEMPLATE_NAMES[0]} variant="outlined" />
+                </span>
             </GlobalSearchMenu>
         </div>
-    ),
+    );
+};
+
+export const MenuOpen: Story = {
+    args: {},
+    render: () => <MenuExample pinnedOpen />,
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(() => expect(body.getByRole('menu')).toBeVisible());
+        await expect(body.getByRole('menuitem', { name: 'Neue E-Mail-Vorlage erstellen' })).toBeVisible();
+    },
 };

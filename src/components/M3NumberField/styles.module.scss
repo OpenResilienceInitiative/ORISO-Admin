@@ -51,7 +51,7 @@
     &:focus-within {
         /* Lift the focused segment above its siblings so the ring is never clipped. */
         z-index: 1;
-        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 }
@@ -68,7 +68,7 @@
     &:focus-visible {
         /* Lift the focused segment above its siblings so the ring is never clipped. */
         z-index: 1;
-        outline: 2px solid var(--admin-control-selected, var(--m3-primary, #a5000a));
+        outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
         outline-offset: 2px;
     }
 
@@ -146,7 +146,7 @@
 }
 
 .fieldDisabled {
-    opacity: 0.38;
+    opacity: var(--m3-number-field-disabled-opacity, 0.38);
 
     .main {
         cursor: not-allowed;
@@ -168,7 +168,7 @@
 }
 
 .root:has(.fieldError) .supportingText {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 }
 
 /* Variant: outlined — transparent pill, outline-variant border, on-surface-variant content. */
@@ -220,10 +220,28 @@
  */
 
 .fieldError {
-    color: var(--m3-error, #ba1a1a);
+    color: var(--m3-error, #b1005e);
 
     .main,
     .stepper {
-        border-color: var(--m3-error, #ba1a1a);
+        border-color: var(--m3-error, #b1005e);
+    }
+}
+
+/* `fitContent`: width comes from the input's `size` attribute, not the 20-character default. */
+.inputFit {
+    width: auto;
+    max-width: 22ch;
+    text-overflow: ellipsis;
+}
+
+/* `fullWidth`: the group fills a stacked form's column. */
+.rootFull {
+    display: flex;
+    width: 100%;
+
+    .field {
+        display: flex;
+        width: 100%;
     }
 }

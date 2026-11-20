@@ -74,8 +74,9 @@ const configuredApiUrl = readConfigValue('API_URL') ?? '';
 const apiHost = stripUrlProtocol(configuredApiUrl);
 const keycloakHost = readConfigValue('KEYCLOAK_URL');
 const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
-const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
-const appHost = configuredAppHost || apiHost.replace(/^api\./i, 'app.');
+// ORISO-Helm#368: APP_URL, else the configured API URL (Helm serves app and API on one domain).
+// Never a host rewritten from the API host (the old `api.` -> `app.` guess).
+const appHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
 const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
 
 let apiBaseUrl = origin;
@@ -122,7 +123,10 @@ export const runtimeConfig = {
     agencyServiceOrigin: serviceOrigin('AGENCY_SERVICE_ORIGIN'),
     tenantServiceOrigin: serviceOrigin('TENANT_SERVICE_ORIGIN'),
     consultingTypeServiceOrigin: serviceOrigin('CONSULTING_TYPE_SERVICE_ORIGIN'),
+    addonServiceOrigin: serviceOrigin('ADDON_SERVICE_ORIGIN'),
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
+    /** APP_URL as configured, with no API fallback; '' when unset. */
+    configuredAppUrl: toAbsoluteUrl(appHost, useHttps),
     matrixBaseUrl: matrixHost ? toAbsoluteUrl(matrixHost, useHttps) : '',
     keycloakRealm: readConfigValue('KEYCLOAK_REALM') ?? 'online-beratung',
     keycloakClientId: readConfigValue('KEYCLOAK_CLIENT_ID') ?? 'app',

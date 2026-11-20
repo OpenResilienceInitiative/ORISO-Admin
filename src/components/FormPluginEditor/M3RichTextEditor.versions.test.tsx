@@ -1,6 +1,8 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { useState } from 'react';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { M3RichTextEditor, parseVersionDate } from './M3RichTextEditor';
 
 vi.mock('react-i18next', () => ({
@@ -38,8 +40,7 @@ const versions = [
 ];
 
 const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-    // The version control lives in the sub-actions row; its stable purpose is on the title attr.
-    const trigger = screen.getByTitle('legal.m3Editor.versionHistory');
+    const trigger = screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ });
     await user.click(trigger);
 };
 
@@ -87,6 +88,55 @@ describe('M3RichTextEditor — version dates from publishedAt (#812)', () => {
 });
 
 describe('M3RichTextEditor — version select (#268)', () => {
+    it('names the newest published variant and keeps its full publication time on hover', () => {
+        render(<M3RichTextEditor title="Impressum" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />);
+
+        const control = screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ });
+        expect(control).toHaveTextContent('legal.m3Editor.versionVariant:2');
+        expect(control).toHaveAttribute('title', expect.stringContaining('01.07.26'));
+        expect(control).toHaveAttribute('title', expect.stringContaining('10:00'));
+    });
+
+    it('uses the live section for the latest button when newer templates exist', () => {
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Entwurf</p>"
+                versionSections={[
+                    {
+                        key: 'templates',
+                        title: 'Vorlagen',
+                        versions: [
+                            { id: 'template:1', name: 'Vorlage 7', label: '29.09.26', content: '<p>Vorlage</p>' },
+                        ],
+                    },
+                    { key: 'live', title: 'Online', versions },
+                ]}
+                enableAnchors={false}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ })).toHaveTextContent(
+            'legal.m3Editor.versionVariant:2',
+        );
+    });
+
+    it('shows an unsupported-history status instead of the never-published menu', () => {
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Aktuelle Fassung</p>"
+                versionHistoryState="unsupported"
+                versionHistoryStatusLabel="Versionsverlauf nicht verfügbar"
+                enableAnchors={false}
+            />,
+        );
+
+        expect(screen.getByRole('status')).toHaveTextContent('Versionsverlauf nicht verfügbar');
+        expect(screen.queryByRole('button', { name: /legal\.m3Editor\.versionHistory/ })).not.toBeInTheDocument();
+        expect(screen.queryByText('legal.m3Editor.versionEmpty')).not.toBeInTheDocument();
+    });
+
     it('parses date-only ids as the same local calendar date', () => {
         const parsed = parseVersionDate('2026-07-01');
         expect(parsed).not.toBeNull();
@@ -103,7 +153,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         await openVersionMenu(user);
 
         await waitFor(() => {
-            expect(screen.getByText('legal.m3Editor.versionVariant:2')).toBeInTheDocument();
+            expect(screen.getAllByText('legal.m3Editor.versionVariant:2')[1]).toBeInTheDocument();
         });
         expect(screen.getByText('legal.m3Editor.versionVariant:1')).toBeInTheDocument();
         // A way back to the editable draft is always offered.
@@ -127,7 +177,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         expect(screen.getByText(`legal.m3Editor.versionOnlineSince:${formatted}`)).toBeInTheDocument();
     });
 
-    it('shows a selected older version read-only with a restore + back banner', async () => {
+    it('shows a selected older version read-only with restore and back actions inside the editor snackbar', async () => {
         const user = userEvent.setup();
         const { container } = render(
             <M3RichTextEditor
@@ -140,15 +190,21 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
 
         // The editor now renders the version content, read-only (contenteditable=false).
         await waitFor(() => {
             expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false');
         });
-        expect(screen.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i })).toBeInTheDocument();
+        // The notice is a pop-up on the shared snackbar channel, not a box inside the editor surface.
+        const popup = within(await screen.findByTestId('snackbar'));
+        expect(popup.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i })).toBeInTheDocument();
+        expect(popup.getByRole('button', { name: 'snackbar.close' })).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('m3-editor-surface')).queryByText(/legal\.m3Editor\.viewingVersion/i),
+        ).not.toBeInTheDocument();
     });
 
     it('restores an old version as a new draft (copy) via onRestoreVersion', async () => {
@@ -165,7 +221,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.restoreVersion/i }));
 
         expect(onRestore).toHaveBeenCalledWith('<p>Fassung Mai</p>');
@@ -175,6 +231,32 @@ describe('M3RichTextEditor — version select (#268)', () => {
         });
     });
 
+    it('stacks the version pop-up and another editor notice', async () => {
+        const user = userEvent.setup();
+        render(
+            <M3RichTextEditor
+                title="Datenschutz"
+                value="<p>Entwurf</p>"
+                versions={versions}
+                snackbarSlot={<EditorHintSnackbar text="Weiterer Hinweis" onClose={() => undefined} />}
+                enableAnchors={false}
+            />,
+        );
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
+        // No notice stack in the editor any more: both are pop-ups on the shared channel and stack.
+        expect(screen.queryByLabelText('legal.m3Editor.notices')).not.toBeInTheDocument();
+        expect(await screen.findByText('Weiterer Hinweis')).toBeInTheDocument();
+        expect(await screen.findByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+
+        // Closing one leaves the other.
+        const other = screen.getByText('Weiterer Hinweis').closest('[data-testid="snackbar"]') as HTMLElement;
+        await user.click(within(other).getByRole('button', { name: 'snackbar.close' }));
+        expect(screen.queryByText('Weiterer Hinweis')).not.toBeInTheDocument();
+        expect(screen.getByText(/legal\.m3Editor\.viewingVersion/i)).toBeInTheDocument();
+    });
+
     it('returns to the editable draft when "back to draft" is clicked', async () => {
         const user = userEvent.setup();
         const { container } = render(
@@ -182,13 +264,36 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:2'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:2/ }));
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('false'));
 
         await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
 
         await waitFor(() => expect(container.querySelector('.tiptap')?.getAttribute('contenteditable')).toBe('true'));
         expect(screen.queryByText(/legal\.m3Editor\.viewingVersion/i)).not.toBeInTheDocument();
+    });
+
+    it('does not overwrite a controlled draft while looking at a published version', async () => {
+        const user = userEvent.setup();
+        const Controlled = () => {
+            const [value, setValue] = useState('<p>Eigener Entwurf</p>');
+            return (
+                <M3RichTextEditor
+                    title="Datenschutz"
+                    value={value}
+                    onChange={setValue}
+                    versions={versions}
+                    enableAnchors={false}
+                />
+            );
+        };
+        const { container } = render(<Controlled />);
+
+        await openVersionMenu(user);
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
+        await waitFor(() => expect(container.querySelector('.tiptap')?.textContent).toContain('Fassung Mai'));
+        await user.click(screen.getByRole('button', { name: /legal\.m3Editor\.backToDraft/i }));
+        await waitFor(() => expect(container.querySelector('.tiptap')?.textContent).toContain('Eigener Entwurf'));
     });
 
     it('does not show restore/back controls when no versions are provided', async () => {
@@ -209,7 +314,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
             />,
         );
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
         // Viewing works, but there is no "restore as draft" in a read-only card.
         expect(screen.queryByRole('button', { name: /legal\.m3Editor\.restoreVersion/i })).not.toBeInTheDocument();
     });
@@ -234,7 +339,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         await openVersionMenu(user);
-        await user.click(await screen.findByText('legal.m3Editor.versionVariant:1'));
+        await user.click(await screen.findByRole('menuitem', { name: /legal\.m3Editor\.versionVariant:1/ }));
 
         // While viewing the version (read-only) the chips still render but lose
         // their remove "x", so there is no path to mutate/overwrite the draft.

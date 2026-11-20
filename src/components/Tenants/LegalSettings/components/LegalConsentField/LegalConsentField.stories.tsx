@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
+import { expect, userEvent, within } from 'storybook/test';
 import { LegalConsentField } from './index';
 
 /**
@@ -7,7 +9,8 @@ import { LegalConsentField } from './index';
  * #862: closed surface is only the in-card CTA; the editor opens in a dialog.
  */
 const meta = {
-    title: 'Organisms/Legal/LegalConsentField',
+    title: 'Settings/Einstellungen/Rechtliches/LegalConsentField',
+    id: 'organisms-legal-legalconsentfield',
     component: LegalConsentField,
     parameters: { layout: 'padded' },
     args: { language: 'de', onChange: () => undefined },
@@ -34,11 +37,37 @@ export const MissingMandatoryToken: Story = {
     },
 };
 
-/** Nothing authored on this level yet — the level above still applies. */
-export const InheritedFromTraeger: Story = {
+/**
+ * Nothing authored yet: the dialog opens with the platform template written in, instead of a
+ * notice about what applies while the field is empty (owner call 2026-09-23).
+ */
+export const EmptyOpensWithTemplate: Story = {
+    args: { value: '' },
+    play: async ({ canvasElement }) => {
+        const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await page.findByTestId('consent-edit-trigger'));
+        const dialog = await page.findByRole('dialog');
+        await expect((within(dialog).getByRole('textbox') as HTMLTextAreaElement).value).toContain('{{legal_links}}');
+        await expect(within(dialog).queryByTestId('consent-inherited-notice')).toBeNull();
+    },
+};
+
+/**
+ * Placeholders that run together (#1255): the sentence that reached help-seekers as
+ * "ImpressumSchuldenAdvice center Lichteberg" (ORISO-Frontend#1920). The dialog warns
+ * and names each spot; applying the sentence stays possible.
+ */
+export const PlaceholdersRunTogether: Story = {
     args: {
-        value: 'Ich habe die {{legal_links}} zur Kenntnis genommen.',
-        inheritedFrom: 'Träger',
+        value: 'Ich habe die {{legal_links}}{{Thema}}{{Beratungsstelle}} gelesen.',
+    },
+    play: async ({ canvasElement }) => {
+        const page = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await page.findByTestId('consent-edit-trigger'));
+        const dialog = await page.findByRole('dialog');
+        const warning = await within(dialog).findByTestId('consent-run-together-warning');
+        await expect(within(warning).getAllByRole('listitem')).toHaveLength(2);
+        await expect(within(dialog).getByRole('button', { name: /übernehmen|apply/i })).toBeEnabled();
     },
 };
 

@@ -1,0 +1,266 @@
+/* Back button of the page header.
+
+   One 40px visual on the 16px raster; a 48px hit area comes from `.root:before`, so the
+   VISIBLE edge is what lines up with the tab bar and the tiles. Colours are M3 tokens only
+   (neutral container, no brand-red filled circle). State layers follow M3: hover 8%, focus
+   and pressed 10%. The `pseudo-*` classes mirror the real states for Storybook screenshots
+   (same names as the storybook pseudo-states addon). */
+
+/* The tooltip wrapper must be allowed to shrink, or a long label would push the row wider. */
+.tooltipSlot {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.root {
+    position: relative;
+    display: inline-flex;
+    min-width: 0;
+    max-width: 100%;
+    height: 40px;
+    box-sizing: border-box;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    margin: 0;
+    background: transparent;
+    border-radius: 20px;
+    color: var(--m3-on-surface-variant, #444748);
+    cursor: pointer;
+    font: 500 14px/20px var(--m3-body-font-family);
+    letter-spacing: 0.1px;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+
+    /* 48px hit area around the 40px visual. */
+    &:before {
+        position: absolute;
+        content: '';
+        inset: -4px;
+    }
+
+    /* Same ring as the other buttons (M3Button, IconButton). */
+    &:focus-visible,
+    &:global(.pseudo-focus-visible) {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chevron {
+    flex: 0 0 auto;
+}
+
+/* A — neutral tonal circle with the label beside it. */
+.tonal {
+    padding-inline-end: 16px;
+    gap: 12px;
+
+    &:hover,
+    &:global(.pseudo-hover) {
+        color: var(--m3-on-surface, #1b1b1c);
+
+        .circle:after {
+            opacity: 0.08;
+        }
+    }
+
+    &:focus-visible,
+    &:global(.pseudo-focus-visible),
+    &:active,
+    &:global(.pseudo-active) {
+        .circle:after {
+            opacity: 0.1;
+        }
+    }
+
+    &.iconOnly {
+        padding-inline-end: 0;
+    }
+}
+
+.circle {
+    position: relative;
+    display: inline-flex;
+    overflow: hidden;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    background: var(--m3-surface-container-highest, #e4e2e2);
+    border-radius: 50%;
+    color: var(--m3-on-surface, #1b1b1c);
+
+    svg {
+        width: 24px;
+        height: 24px;
+        fill: currentcolor;
+    }
+
+    /* State layer. */
+    &:after {
+        position: absolute;
+        background: var(--m3-on-surface, #1b1b1c);
+        content: '';
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+    }
+}
+
+/* B — text button with a leading chevron (same anatomy as the M3Button `text` variant). */
+.text {
+    padding: 0 16px 0 12px;
+    color: var(--m3-primary, #a5000a);
+    gap: 8px;
+
+    /* State layer. */
+    &:after {
+        position: absolute;
+        background: var(--m3-primary, #a5000a);
+        border-radius: inherit;
+        content: '';
+        inset: 0;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 160ms ease;
+    }
+
+    &:hover:after,
+    &:global(.pseudo-hover):after {
+        opacity: 0.08;
+    }
+
+    &:focus-visible:after,
+    &:global(.pseudo-focus-visible):after,
+    &:active:after,
+    &:global(.pseudo-active):after {
+        opacity: 0.1;
+    }
+
+    .chevron {
+        width: 20px;
+        height: 20px;
+        fill: currentcolor;
+    }
+
+    &.iconOnly {
+        width: 40px;
+        justify-content: center;
+        padding: 0;
+
+        .chevron {
+            width: 24px;
+            height: 24px;
+        }
+    }
+}
+
+/* C — breadcrumb: parent link, separator, current page. */
+.trail {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.trailList {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    flex: 0 1 auto;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.trailItem {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+}
+
+.breadcrumb {
+    padding: 0 8px 0 4px;
+    border-radius: 8px;
+    gap: 4px;
+
+    .chevron {
+        width: 20px;
+        height: 20px;
+        fill: currentcolor;
+    }
+
+    &:hover,
+    &:global(.pseudo-hover) {
+        color: var(--m3-on-surface, #1b1b1c);
+
+        .label {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+        }
+    }
+
+    &:active,
+    &:global(.pseudo-active) {
+        color: var(--m3-on-surface, #1b1b1c);
+    }
+}
+
+.trailCurrent {
+    min-width: 0;
+    flex: 0 1 auto;
+    color: var(--m3-on-surface, #1b1b1c);
+    font: 500 14px/20px var(--m3-body-font-family);
+    gap: 4px;
+    letter-spacing: 0.1px;
+}
+
+.separator {
+    flex: 0 0 auto;
+    padding-inline: 4px;
+    color: var(--m3-outline, #747878);
+    font-weight: 400;
+}
+
+.currentLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    /* Only focusable while the name is cut off; same ring as the link. */
+    &:focus-visible {
+        border-radius: 4px;
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .circle:after,
+    .text:after {
+        transition: none;
+    }
+}
+
+/* Windows high-contrast: the tonal fill disappears, so the circle gets a visible edge. */
+@media (forced-colors: active) {
+    .circle {
+        border: 1px solid ButtonText;
+    }
+
+    .root:focus-visible,
+    .currentLabel:focus-visible {
+        outline-color: Highlight;
+    }
+}

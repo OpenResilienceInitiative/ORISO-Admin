@@ -10,7 +10,7 @@ import { parseHalResponse } from '../../utils/parseHalResponse';
  * @return data
  */
 export const addAgencyAdminData = (adminData: Record<string, any>): Promise<AdminData> => {
-    const { firstname, lastname, email, username, twoFactorAuth, tenantId, password } = adminData;
+    const { firstname, lastname, email, username, twoFactorAuth, tenantId, password, contactEmail } = adminData;
 
     return fetchData({
         url: agencyAdminEndpoint,
@@ -28,6 +28,7 @@ export const addAgencyAdminData = (adminData: Record<string, any>): Promise<Admi
             username, // MATRIX MIGRATION: backend handles encoding
             twoFactorAuth,
             tenantId: parseInt(tenantId, 10),
+            ...(contactEmail?.trim() ? { contactEmail: contactEmail.trim() } : {}),
             ...(password ? { password } : {}),
         }),
     })

@@ -89,6 +89,11 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             controlHeight: M3_CONTROL_HEIGHT,
         },
         components: {
+            // Every tooltip is solid black with white text, whatever the tenant theme (#1299).
+            Tooltip: {
+                colorBgSpotlight: '#000000',
+                colorTextLightSolid: '#ffffff',
+            },
             // antd's Layout component keeps its own dark-navy defaults
             // (headerBg/footerBg) independent of the global token set above,
             // so without this override SiteHeader/SiteFooter render near-black

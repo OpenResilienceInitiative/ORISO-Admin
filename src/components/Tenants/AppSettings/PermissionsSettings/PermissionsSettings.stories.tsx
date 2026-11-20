@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath the eslint node resolver can't see (resolves for tsc/Vite)
-import { fn } from 'storybook/test';
+import { expect, fn, within } from 'storybook/test';
 import { UseAppConfigProvider } from '../../../../context/useAppConfig';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSettingsUtils';
@@ -8,10 +9,12 @@ import { DEFAULT_PERMISSION_SETTINGS, getForcedOffFields } from './permissionsSe
 const filledSettings = { ...DEFAULT_PERMISSION_SETTINGS };
 
 const meta = {
-    title: 'Organisms/Permissions/PermissionsSettings',
+    title: 'Settings/Einstellungen/Funktionszugriff/PermissionsSettings',
+    id: 'organisms-permissions-permissionssettings',
     component: PermissionsSettingsView,
     parameters: {
         layout: 'fullscreen',
+        msw: { handlers: [http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([]))] },
         design: {
             type: 'multi',
             designs: [
@@ -52,7 +55,13 @@ type Story = StoryObj<typeof meta>;
  *  Sub-toggles disable when their card master is switched off. */
 export const TenantView: Story = {
     args: {
+        policyLevel: 'tenant',
         initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        await expect(within(row as HTMLElement).getAllByRole('button')).toHaveLength(2);
     },
 };
 
@@ -88,7 +97,46 @@ export const PlatformForcedVideoOff: Story = {
 /** Super-admin (platform) view with every chat-type master enabled. */
 export const SuperAdminView: Story = {
     args: {
+        policyLevel: 'platform',
         initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        await expect(within(row as HTMLElement).getAllByRole('button')).toHaveLength(2);
+    },
+};
+
+/** A centre uses the same cards, while its inherited channel settings remain read-only.
+ *  It cannot set a requirement for another level, because none lies below it. */
+export const AgencyView: Story = {
+    args: {
+        tenantId: 'agency-55',
+        caseHandoverTenantId: 7,
+        policyLevel: 'agency',
+        channelsSetOnTraeger: true,
+        traegerChannelPoliciesStatus: 'success',
+        traegerChannelPolicies: {
+            featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
+            featureAskerEmailAgencyCounsellingEnabled: { value: true, mode: 'ENFORCED', inherited: true },
+        },
+        permissionPolicies: {
+            featureCallsEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+        },
+        initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        // The agency may change its own switch but has no rule-setting button.
+        const buttons = within(row as HTMLElement).getAllByRole('button');
+        await expect(buttons).toHaveLength(1);
+        await expect(buttons[0]).toBeEnabled();
+        const inheritedChannel = canvasElement.querySelector(
+            '[data-feature-policy="featureAskerEmailAgencyCounsellingEnabled"]',
+        );
+        await expect(inheritedChannel).not.toBeNull();
+        await expect(within(inheritedChannel as HTMLElement).getByRole('button')).toBeDisabled();
     },
 };
 
@@ -115,5 +163,26 @@ export const PerFeaturePolicies: Story = {
             featureVoiceMessagesOneOnOneChatsEnabled: { value: false, mode: 'SUGGESTED' },
         },
         initialValues: { settings: filledSettings },
+    },
+};
+
+/** The three name choices are independent; a Träger can enforce the generated option for one type. */
+export const NamePolicies: Story = {
+    args: {
+        initialValues: { settings: filledSettings },
+        permissionPolicies: {
+            featureDisplayNameEditableAgencyCounsellingEnabled: { value: true, mode: 'SUGGESTED' },
+            featureDisplayNameEditableLiveChatEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+            featureDisplayNameEditableSelfHelpEnabled: { value: false, mode: 'SUGGESTED' },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const liveChat = within(canvas.getByTestId('chat-type-card-liveChat'));
+        const nameChoice = liveChat.getByRole('button', {
+            name: /Anmelde- und Anzeigenamen frei eingeben|Type a login and display name/,
+        });
+        await expect(nameChoice).toBeDisabled();
+        await expect(nameChoice).toHaveAttribute('aria-pressed', 'false');
     },
 };

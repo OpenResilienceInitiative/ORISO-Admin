@@ -1,0 +1,119 @@
+// Shared by the invite bar and the CSV import so both send the same contract.
+
+/** `direct` sends the templated e-mail; `createOnly` creates the recipient without a mail. */
+export type InviteSendMode = 'direct' | 'createOnly';
+
+/** Role the invited person gets ("Rolle"). */
+export type InviteRole = 'COUNSELLOR' | 'AGENCY_ADMIN' | 'TENANT_ADMIN';
+
+// Tenant admins are locked to their own Träger; agency admins also to their own
+// Beratungsstelle, and they may only invite counsellors.
+export type InviteViewerScope = 'platform' | 'tenant' | 'agency';
+
+// `NONE`: preselected departments only. `SELECT_EXISTING`: may add the
+// agency's existing departments. `CREATE`: may create new topics.
+export type TopicPermission = 'NONE' | 'SELECT_EXISTING' | 'CREATE';
+
+export const TOPIC_PERMISSIONS: TopicPermission[] = ['NONE', 'SELECT_EXISTING', 'CREATE'];
+// The invite bar's preselection only; an empty CSV cell is omitted and the server applies SELECT_EXISTING (Q32).
+export const BAR_DEFAULT_TOPIC_PERMISSION: TopicPermission = 'NONE';
+
+// Which roles a viewer may invite lives in inviteRules (invitableRoles), the one copy of that rule.
+
+/** German default labels; call sites translate through `t(key, default)`. */
+export const ROLE_LABEL_KEYS: Record<InviteRole, [key: string, fallback: string]> = {
+    COUNSELLOR: ['links.composer.role.counsellor', 'Berater:in'],
+    AGENCY_ADMIN: ['links.composer.role.agencyAdmin', 'BST-Admin'],
+    TENANT_ADMIN: ['links.composer.role.tenantAdmin', 'Träger-Admin'],
+};
+
+export const TOPIC_PERMISSION_LABEL_KEYS: Record<
+    TopicPermission,
+    { title: [key: string, fallback: string]; description: [key: string, fallback: string] }
+> = {
+    NONE: {
+        title: ['links.composer.topics.none', 'Keine weiteren Fachbereiche'],
+        description: ['links.composer.topics.noneHint', 'Nur die vorausgewählten Fachbereiche.'],
+    },
+    SELECT_EXISTING: {
+        title: ['links.composer.topics.selectExisting', 'Darf weitere Fachbereiche auswählen'],
+        description: [
+            'links.composer.topics.selectExistingHint',
+            'Wählt selbst aus den vorhandenen Fachbereichen der Beratungsstelle.',
+        ],
+    },
+    CREATE: {
+        title: ['links.composer.topics.create', 'Darf weitere Themen anlegen'],
+        description: ['links.composer.topics.createHint', 'Darf neue Themen anlegen (Plus-Knopf).'],
+    },
+};
+
+/** Short labels for the table chip, which already says "Themen"; the full text is in the tooltip and menu. */
+export const TOPIC_PERMISSION_SHORT_LABEL_KEYS: Record<TopicPermission, [key: string, fallback: string]> = {
+    NONE: ['links.composer.topics.noneShort', 'Keine weiteren'],
+    SELECT_EXISTING: ['links.composer.topics.selectExistingShort', 'Auswählen'],
+    CREATE: ['links.composer.topics.createShort', 'Anlegen'],
+};
+
+/** "Berät auch" for an agency-admin invite (backend `alsoCounsellor`, default `true`); editable during onboarding. */
+export const ALSO_COUNSELLOR_LABEL_KEYS: Record<
+    'yes' | 'no',
+    { title: [key: string, fallback: string]; description: [key: string, fallback: string] }
+> = {
+    yes: {
+        title: ['links.composer.alsoCounsellor.yes', 'Berät auch'],
+        description: [
+            'links.composer.alsoCounsellor.yesHint',
+            'Verwaltet die Beratungsstelle und berät selbst (Berater:in-Konto).',
+        ],
+    },
+    no: {
+        title: ['links.composer.alsoCounsellor.no', 'Nur Verwaltung'],
+        description: ['links.composer.alsoCounsellor.noHint', 'Verwaltet die Beratungsstelle, berät nicht selbst.'],
+    },
+};
+
+/** German explanations for the 409 `X-Reason` values of the invite and self-assignment endpoints. */
+export const INVITE_CONFLICT_REASON_KEYS: Record<string, [key: string, fallback: string]> = {
+    NO_PENDING_UNIT_ADMIN: [
+        'links.accountInvites.conflict.noPendingUnitAdmin',
+        'Diese Beratungsstelle gibt es noch nicht, und für sie ist keine BST-Admin-Einladung offen. Laden Sie zuerst die Person ein, die sie anlegt: Rolle „BST-Admin“ und dieselbe Nummer. Berater:innen-Einladungen warten dann und gehen automatisch raus, sobald die Beratungsstelle angelegt ist.',
+    ],
+    UNIT_NOT_CREATED: [
+        'links.accountInvites.conflict.unitNotCreated',
+        'Diese Einladung kann noch nicht versendet werden: Die Beratungsstelle bzw. der Träger ist noch nicht angelegt. Sie geht automatisch raus, sobald die Admin-Person ihr Onboarding abgeschlossen hat.',
+    ],
+    SELF_ASSIGNMENT_ALREADY_EXISTS: [
+        'links.selfAssign.conflict.alreadyExists',
+        'Sie sind in dieser Beratungsstelle bereits in dieser Rolle eingetragen.',
+    ],
+    CONSULTANT_IDENTITY_ALREADY_GRANTED: [
+        'links.selfAssign.conflict.alreadyExists',
+        'Sie sind in dieser Beratungsstelle bereits in dieser Rolle eingetragen.',
+    ],
+    // Role change and role addition (ORISO-UserService#1260).
+    INVITE_ALREADY_ACCEPTED: [
+        'links.accountInvites.conflict.inviteAlreadyAccepted',
+        'Das Konto besteht bereits: Die Einladung lässt sich nicht mehr ändern. Ergänzen Sie „auch BST-Admin“ oder ändern Sie Rollen im Bereich Benutzer.',
+    ],
+    INVITE_NOT_PENDING: [
+        'links.accountInvites.conflict.inviteNotPending',
+        'Die Einladung ist nicht mehr aktiv (abgelaufen, widerrufen oder ersetzt). Bitte neu einladen.',
+    ],
+    ROLE_CHANGE_NEEDS_NEW_INVITE: [
+        'links.accountInvites.conflict.roleChangeNeedsNewInvite',
+        'Träger-Admin hat einen eigenen Einladungsweg: Bitte die Einladung widerrufen und neu einladen.',
+    ],
+    ONLY_UNIT_ADMIN: [
+        'links.accountInvites.conflict.onlyUnitAdmin',
+        'Das ist die einzige BST-Admin-Einladung für diese neue Beratungsstelle. Laden Sie zuerst eine weitere BST-Admin ein, sonst warten die Berater:innen auf niemanden.',
+    ],
+    ROLE_ALREADY_GRANTED: [
+        'links.accountInvites.conflict.roleAlreadyGranted',
+        'Das Konto hat diese Rolle schon (oder ist bereits Träger- bzw. Plattform-Admin).',
+    ],
+};
+
+/** The explanation for a 409 `X-Reason`, or `undefined` for a reason this module does not know. */
+export const inviteConflictReasonKey = (reason: string | null | undefined) =>
+    reason ? INVITE_CONFLICT_REASON_KEYS[reason] : undefined;

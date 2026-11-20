@@ -7,76 +7,13 @@
 }
 
 .provider {
-    display: grid;
-    align-items: start;
-    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 3;
-    gap: mui.$mui-unit mui.$mui-unit * 1.5;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: mui.$mui-unit * 1.5;
 
-    & + .provider {
-        border-top: 1px solid rgb(0 0 0 / 8%);
-    }
-}
-
-.providerName {
-    display: block;
-    color: #1b1b1c;
-    font-family: var(--m3-body-font-family);
-    font-size: 14px;
-    grid-column: 1;
-    grid-row: 1;
-    line-height: 20px;
-}
-
-.currentKey {
-    display: block;
-    margin: 0;
-    color: #444748;
-    font-family: var(--m3-body-font-family);
-    font-size: 13px;
-    grid-column: 2;
-    grid-row: 1;
-    line-height: 18px;
-    text-align: right;
-}
-
-.provider > :global(.MuiFormControl-root) {
-    width: 100%;
-    margin: 0;
-    grid-column: 1 / -1;
-    grid-row: 2;
-}
-
-.provider :global(button) {
-    grid-column: 1 / -1;
-    grid-row: 3;
-    justify-self: start;
-}
-
-@media only screen and (max-width: 640px) {
-    .provider {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .providerName,
-    .currentKey {
-        grid-column: 1;
-    }
-
-    .providerName {
-        grid-row: 1;
-    }
-
-    .currentKey {
-        grid-row: 2;
-        text-align: left;
-    }
-
-    .provider > :global(.MuiFormControl-root) {
-        grid-row: 3;
-    }
-
-    .provider :global(button) {
-        grid-row: 4;
+    :global(.MuiFormControl-root) {
+        width: 100%;
+        margin: 0;
     }
 }

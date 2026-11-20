@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { CardGrid } from '../../CardGrid';
+import { walkThroughTileHelp } from '../../TileHelp/tileHelpStory.matrix';
 import { TranslationApiKeysCard } from './index';
 
 const meta = {
-    title: 'Organisms/GlobalSettings/TranslationApiKeysCard',
+    title: 'Settings/Einstellungen/Globale Konfigurationen/TranslationApiKeysCard',
+    id: 'organisms-globalsettings-translationapikeyscard',
     component: TranslationApiKeysCard,
     parameters: { layout: 'padded' },
-    args: { onSave: () => undefined },
+    args: { keys: { openrouter: 'sk-or-…abcd' }, onSave: () => undefined },
 } satisfies Meta<typeof TranslationApiKeysCard>;
 
 export default meta;
@@ -34,4 +37,25 @@ export const DisabledForNonSuperadmins: Story = {
         keys: { openrouter: 'sk-or-…abcd' },
         disabled: true,
     },
+};
+
+/** As it sits on the page, so the use of the free space shows. Narrow the viewport to see it adapt. */
+export const InTheRaster: Story = {
+    parameters: { tileWidth: 'none' },
+    render: (args) => (
+        <CardGrid raster>
+            <CardGrid.Item>
+                <TranslationApiKeysCard {...args} />
+            </CardGrid.Item>
+            <CardGrid.Item>
+                <div style={{ height: 760 }} />
+            </CardGrid.Item>
+        </CardGrid>
+    ),
+};
+
+/** The explanation behind the info button, one slide after the other. */
+export const HelpSlideshow: Story = {
+    ...InTheRaster,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 3),
 };

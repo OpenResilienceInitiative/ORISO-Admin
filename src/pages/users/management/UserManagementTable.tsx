@@ -1,51 +1,72 @@
-import { Alert, Button, Grid, Popover, notification } from 'antd';
+import { Button, Grid, Popover } from 'antd';
 import { TablePaginationConfig } from 'antd/lib/table';
 import classNames from 'classnames';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useDebouncedCallback } from 'use-debounce';
-import { PlusOutlined } from '@ant-design/icons';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
+import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
+import { ListSearchBar } from '../../../components/ListSearchBar';
+import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
-import { PageMobileActions } from '../../../components/Page/PageMobileActions';
+import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import { ResizeTable } from '../../../components/ResizableTable';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
+import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
 import { usePlatformAdminsData } from '../../../hooks/usePlatformAdminsData';
+import { useStatisticsReadersData } from '../../../hooks/useStatisticsReaders';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { CounselorData } from '../../../types/counselor';
 import { TenantData } from '../../../types/tenant';
 import { useAppConfigContext } from '../../../context/useAppConfig';
 import decodeHTML from '../../../utils/decodeHTML';
+import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
-import { USER_TABLE_CONFIGS } from './userTableConfigs';
-import { mapSorterToApiField, useUserTableColumns } from './useUserTableColumns';
-import { normalizeTenantAdminSortField } from '../../../constants/userTableSort';
+import { DeleteStatisticsReaderModal } from '../List/components/DeleteStatisticsReader';
+import { DeletionWindowModal, type DeletionWindowMode } from '../List/components/DeletionWindow';
+import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
+import { mapSorterToApiField } from './useUserTableColumns';
+import { TenantTable } from './TenantTable';
+import { UserDataTable } from './UserDataTable';
+import { UserScopeFilters } from './UserScopeFilters';
+import {
+    normalizeTenantAdminSortField,
+    USER_TABLE_API_SAFE_ORDER,
+    USER_TABLE_API_SAFE_SORT,
+} from '../../../constants/userTableSort';
+import type { UserSearchResult } from '../../../utils/fetchUserSearchWithSortFallback';
 import styles from './UserManagementTable.module.scss';
+import { Notify } from '../../../components/Notify';
+
+const NO_FILTERS: UserSearchFilters = {};
+
+/** The list itself: where "Ansehen" of a list error or a rejected sort takes the person. */
+const USER_LIST_ID = 'user-management-list';
 
 interface UserManagementTableProps {
     figmaTableHeader?: boolean;
 }
 
 export const UserManagementTable = ({ figmaTableHeader = false }: UserManagementTableProps) => {
+    const { notification } = useAdminFeedback();
     const screens = Grid.useBreakpoint();
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;
     const config = USER_TABLE_CONFIGS[sectionId] ?? USER_TABLE_CONFIGS[TypeOfUser.Consultants];
-    const isOrganizations = config.sectionKind === 'organizations';
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
+    const isStatisticsReaders = sectionId === TypeOfUser.StatisticsReaders;
     const isConsultants = sectionId === TypeOfUser.Consultants;
     const isAgencyAdmins = sectionId === TypeOfUser.AgencyAdmins;
     const isMobile = !screens.md;
@@ -54,36 +75,45 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const { t } = useTranslation();
     const { can } = useUserPermissions();
-    const { isSuperAdmin } = useUserRoles();
+    const { isSuperAdmin, hasRole } = useUserRoles();
     const { isEnabled } = useReleasesToggle();
     const { settings } = useAppConfigContext();
     const { data: tenantData } = useTenantData();
     const navigate = useNavigate();
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
-    const [search, setSearch] = useState('');
-    const [openRows, setOpenRows] = useState<string[]>([]);
+    // The admin search (⌘K) is the one place to type; it opens this list with ?q= (no second search field here).
+    const { query: search, clear: clearSearch } = useListQuery();
     const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+    const [deletionWindow, setDeletionWindow] = useState<{ mode: DeletionWindowMode; id: string } | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
+    const [deleteStatisticsReader, setDeleteStatisticsReader] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
 
-    const [tableState, setTableState] = useState<TableState>({
+    // A new search starts on page 1 (in the same render, so the old page is never asked for with it).
+    const [tableState, setTableState] = useListTableState<TableState>(search, {
         current: 1,
         sortBy: config.defaultSort.field,
         order: config.defaultSort.order,
         pageSize: 10,
     });
+    // The page remounts this table per tab (keyed by tab), so plain state is already per tab.
+    const [pickedSort, setPickedSort] = useState<{ sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
+    const [filters, setFilters] = useState<UserSearchFilters>(NO_FILTERS);
 
-    useEffect(() => {
-        setTableState({
-            current: 1,
-            sortBy: config.defaultSort.field,
-            order: config.defaultSort.order,
-            pageSize: 10,
-        });
-        setOpenRows([]);
-        setSearch('');
-    }, [sectionId, config.defaultSort.field, config.defaultSort.order]);
+    // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
+    const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
+    const saveSort = useSaveAdminListSort();
+    const preferencesPending = !isTenants && preferencesQuery.isLoading;
+    const savedSort = preferencesQuery.data?.sorts?.[sectionId];
+    const userSort = isTenants
+        ? { sortBy: tableState.sortBy, order: tableState.order }
+        : pickedSort ??
+          (savedSort && { sortBy: savedSort.field, order: savedSort.order }) ?? {
+              sortBy: config.defaultSort.field,
+              order: config.defaultSort.order,
+          };
+    const userQueryState = { ...tableState, sortBy: userSort.sortBy, order: userSort.order };
 
     const tenantsQuery = useTenantsData({
         page: tableState.current,
@@ -96,30 +126,44 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const consultantsQuery = useConsultantsOrAdminsData({
         search,
-        ...tableState,
+        ...userQueryState,
+        filters,
         typeOfUser: consultantsSectionId,
-        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants,
+        rethrowOnFailure: true,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isStatisticsReaders && !isTenants && !preferencesPending,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
         search,
-        ...tableState,
-        enabled: isTenantAdmins,
+        ...userQueryState,
+        filters,
+        enabled: isTenantAdmins && !preferencesPending,
     });
 
     const platformAdminsQuery = usePlatformAdminsData({
         search,
-        ...tableState,
-        enabled: isPlatformAdmins,
+        ...userQueryState,
+        enabled: isPlatformAdmins && !preferencesPending,
+    });
+
+    const statisticsReadersQuery = useStatisticsReadersData({
+        search,
+        ...userQueryState,
+        enabled: isStatisticsReaders && !preferencesPending,
     });
 
     const activeQuery = (() => {
         if (isTenants) return tenantsQuery;
         if (isTenantAdmins) return tenantAdminsQuery;
         if (isPlatformAdmins) return platformAdminsQuery;
+        if (isStatisticsReaders) return statisticsReadersQuery;
         return consultantsQuery;
     })();
-    const { data: responseList, isLoading, isError, error, refetch } = activeQuery;
+    const { data: responseList, isLoading, isError, refetch } = activeQuery;
+    // When the server refused the chosen order, the arrow follows the rows it actually sent.
+    const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
+    const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : userQueryState.sortBy;
+    const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : userQueryState.order;
 
     const { mutate: deleteTenant } = useDeleteTenant({
         onSuccess: () => {
@@ -128,25 +172,25 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         },
         onError: () => {
             notification.error({
-                closeIcon: null,
-                duration: 10,
                 description: t('tenants.list.deleteMessage.error.description'),
                 message: t('tenants.list.deleteMessage.error.title'),
             });
         },
     });
 
-    const showTenantColumn = isSuperAdmin && !isTenantAdmins && !isTenants;
+    const showTenantColumn = shouldShowTenantColumn(sectionId, isSuperAdmin);
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
 
+    // the platform-admins section shares Resource.TenantAdminUser with the
+    // tenant-admins section, so its manage actions stay super-admin-only even now
+    // that tenant-scoped admins hold create/update/delete on that resource.
+    const canManageSection = canManageSectionActions(sectionId, isSuperAdmin);
     const canCreate =
         can(PermissionAction.Create, config.createResource) &&
+        canManageSection &&
         (!isTenants || isSuperAdmin || isEnabled(ReleaseToggle.TENANT_ADMIN_CREATING));
-    const canEditOrDelete = can([PermissionAction.Update, PermissionAction.Delete], config.updateResource);
-
-    const onToggleRow = useCallback((id: string) => {
-        setOpenRows((current) => (current.includes(id) ? current.filter((rowId) => rowId !== id) : [...current, id]));
-    }, []);
+    const canEditOrDelete =
+        can([PermissionAction.Update, PermissionAction.Delete], config.updateResource) && canManageSection;
 
     const onEditUser = useCallback(
         (record: CounselorData) => {
@@ -157,14 +201,25 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const onDeleteUser = useCallback(
         (record: CounselorData) => {
-            if (isTenantAdmins || isPlatformAdmins) {
+            if (isStatisticsReaders) {
+                setDeleteStatisticsReader(record);
+            } else if (isTenantAdmins || isPlatformAdmins) {
                 setDeleteTenantAdmin(record);
             } else {
                 setDeleteUserId(record.id);
             }
         },
-        [isTenantAdmins, isPlatformAdmins],
+        [isTenantAdmins, isPlatformAdmins, isStatisticsReaders],
     );
+
+    // Ending a running deletion is a consultant-list action; agency admins are a different record.
+    const canEndDeletion = isConsultants && canEditOrDelete;
+    const onCancelDeletion = useCallback((record: CounselorData) => {
+        setDeletionWindow({ mode: 'cancel', id: record.id });
+    }, []);
+    const onPauseDeletion = useCallback((record: CounselorData) => {
+        setDeletionWindow({ mode: 'pause', id: record.id });
+    }, []);
 
     const onEditTenant = useCallback(
         (record: TenantData) => {
@@ -177,30 +232,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setTenantToDelete(record);
     }, []);
 
-    const columns = useUserTableColumns({
-        sectionId,
-        showTenant: showTenantColumn,
-        showSubdomain,
-        openRows,
-        onToggleRow,
-        onEditUser,
-        onDeleteUser,
-        onEditTenant: isTenants ? onEditTenant : undefined,
-        onDeleteTenant: isTenants ? onDeleteTenant : undefined,
-        canEditOrDelete,
-        mainTenantSubdomain: settings.mainTenantSubdomainForSingleDomainMultitenancy,
-        figmaTableHeader: figmaTableHeader && !isOrganizations,
-        fixActionsColumn: !isMobile,
-        sortBy: tableState.sortBy,
-        order: tableState.order,
-    }).filter((column) => column.key !== 'status' || config.showStatus);
-
-    const updateSearch = useCallback((value: string) => {
-        setTableState((state) => ({ ...state, current: 1 }));
-        setSearch(value);
-    }, []);
-    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
-
     const handleTableAction = useCallback(
         (pagination: TablePaginationConfig, _: unknown, sorter: any) => {
             const { current, pageSize } = pagination;
@@ -208,7 +239,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 if (sorter?.field) {
                     const mappedField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
                     const apiField =
-                        sectionId === TypeOfUser.TenantAdmins || sectionId === TypeOfUser.PlatformAdmins
+                        sectionId === TypeOfUser.TenantAdmins ||
+                        sectionId === TypeOfUser.PlatformAdmins ||
+                        sectionId === TypeOfUser.StatisticsReaders
                             ? normalizeTenantAdminSortField(mappedField)
                             : mappedField;
                     return {
@@ -229,20 +262,30 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [sectionId],
     );
 
+    const onUserSortChange = useCallback(
+        (sortBy: string, order: 'ASC' | 'DESC') => {
+            setPickedSort({ sortBy, order });
+            setTableState((prev) => ({ ...prev, current: 1 }));
+            saveSort(sectionId, { field: sortBy, order });
+        },
+        [saveSort, sectionId],
+    );
+
+    const onFiltersChange = useCallback((next: UserSearchFilters) => {
+        setFilters(next);
+        setTableState((prev) => ({ ...prev, current: 1 }));
+    }, []);
+
+    // Links only invites counsellors, and Träger (with their admin) for a platform admin.
+    const canInvite =
+        (isConsultants && canSeeLinksSection({ isSuperAdmin, hasRole })) || (isTenantAdmins && isSuperAdmin);
+
     const onCloseDelete = useCallback(() => {
         setDeleteUserId(null);
         setDeleteTenantAdmin(null);
+        setDeleteStatisticsReader(null);
         refetch();
     }, [refetch]);
-
-    const rowClassName = useCallback(
-        (record: CounselorData | TenantData) =>
-            classNames({
-                'counselorList__row--expanded':
-                    !isOrganizations && openRows.includes(String((record as CounselorData).id)),
-            }),
-        [isOrganizations, openRows],
-    );
 
     const pagination = useMemo(
         () => ({
@@ -255,8 +298,19 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         [responseList?.total, tableState.current, tableState.pageSize],
     );
 
-    const consultantCount = responseList?.total ?? 0;
-    const atConsultantLimit = isConsultants && allowedNumberOfUsers > 0 && consultantCount >= allowedNumberOfUsers;
+    const countLicences = isConsultants && allowedNumberOfUsers > 0;
+    const narrowed = !!search || hasUserSearchFilters(filters);
+    // The licence counts every counsellor, not the searched or filtered list.
+    const unfilteredCount = useConsultantsOrAdminsData({
+        typeOfUser: TypeOfUser.Consultants,
+        current: 1,
+        pageSize: 1,
+        sortBy: USER_TABLE_API_SAFE_SORT,
+        order: USER_TABLE_API_SAFE_ORDER,
+        enabled: countLicences && narrowed,
+    });
+    const consultantCount = narrowed ? unfilteredCount.data?.total : responseList?.total;
+    const atConsultantLimit = countLicences && consultantCount != null && consultantCount >= allowedNumberOfUsers;
 
     const createButton = useMemo(() => {
         if (isTenants) {
@@ -318,91 +372,138 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     return (
         <div className={classNames('counselorList', styles.wrapper)}>
-            <PageMobileActions
-                id="users"
-                search={{
-                    label: t(config.searchPlaceholderKey),
-                    placeholder: t(config.searchPlaceholderKey),
-                    onSearch: updateSearch,
-                }}
-                add={
-                    canCreate && !atConsultantLimit
-                        ? {
-                              label: t(config.createLabelKey ?? 'new'),
-                              onAdd: () =>
-                                  navigate(
-                                      isTenants
-                                          ? `${config.editPathPrefix}/add/general${
-                                                responseList?.total === 0 ? '?main=true' : ''
-                                            }`
-                                          : `${config.editPathPrefix}/add`,
-                                  ),
-                          }
-                        : undefined
-                }
-            >
-                <div className={styles.searchContainer}>
-                    <GlobalSearchBar
-                        className={styles.searchWithButton}
-                        expandedWidth={499}
-                        onSearch={updateSearch}
-                        onSearchChange={setSearchDebounced}
-                        searchPlaceholder={t(config.searchPlaceholderKey)}
-                    >
-                        {canCreate && <div className={styles.toolbarActions}>{createButton}</div>}
-                    </GlobalSearchBar>
-                    {isConsultants && allowedNumberOfUsers > 0 && (
-                        <span className={styles.sectionCount}>
-                            {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
-                        </span>
-                    )}
-                    {isAgencyAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('agencyAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenantAdmins && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenantAdmins.title.text', { userCount: responseList.total })}
-                        </span>
-                    )}
-                    {isTenants && responseList?.total != null && (
-                        <span className={styles.sectionCount}>
-                            {t('tenants.subTitle', { count: responseList.total })}
-                        </span>
-                    )}
-                </div>
-            </PageMobileActions>
-            {isError && (
-                <Alert
-                    message={t('error.loading')}
-                    description={(error as Error)?.message || t('error.default')}
-                    type="error"
-                    showIcon
-                    style={{ marginBottom: 16 }}
+            <div className={styles.searchContainer}>
+                <UserScopeFilters
+                    sectionId={sectionId}
+                    filters={filters}
+                    onChange={onFiltersChange}
+                    actions={
+                        (canCreate || canInvite) && (
+                            <div className={styles.toolbarActions}>
+                                {canInvite && (
+                                    <Link to={routePathNames.links} className={styles.inviteButton}>
+                                        {t('userTable.goToInvitations')}
+                                        <ArrowRightOutlined aria-hidden />
+                                    </Link>
+                                )}
+                                {canCreate && createButton}
+                            </div>
+                        )
+                    }
                 />
-            )}
-            <div className={classNames(styles.tableContainer, { [styles.tableContainerFigma]: figmaTableHeader })}>
-                <ResizeTable
-                    rowKey="id"
-                    loading={isLoading}
-                    columns={columns}
-                    dataSource={tableData}
-                    pagination={pagination}
-                    onChange={handleTableAction}
-                    rowClassName={isOrganizations ? undefined : rowClassName}
-                    locale={config.emptyTextKey ? { emptyText: t(config.emptyTextKey) } : undefined}
-                />
+                <ListSearchBar query={search} onClear={clearSearch} />
+                {countLicences && consultantCount != null && (
+                    <span className={styles.sectionCount}>
+                        {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
+                    </span>
+                )}
+                {isAgencyAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('agencyAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenantAdmins && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('tenantAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isStatisticsReaders && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('statisticsReaders.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isTenants && responseList?.total != null && (
+                    <span className={styles.sectionCount}>{t('tenants.subTitle', { count: responseList.total })}</span>
+                )}
             </div>
-            {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
-                <DeleteUserModal
-                    deleteUserId={deleteUserId}
-                    onClose={onCloseDelete}
-                    typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
+            {isError && (
+                <Notify
+                    severity="error"
+                    title={t('notify.title.users')}
+                    quietText={t('notify.tile.notLoaded')}
+                    causeKey={`users:list:${sectionId}`}
+                    jump={USER_LIST_ID}
+                    retry
+                >
+                    {t('error.loading')}
+                </Notify>
+            )}
+            {rejectedSort && (
+                <Notify severity="warning" title={t('notify.title.users')} jump={USER_LIST_ID}>
+                    {t('userTable.sortNotice', 'Diese Sortierung ist hier nicht möglich. Angezeigt wird: {{order}}.', {
+                        order: t('userTable.sortNotice.safeOrder', 'Vorname A–Z'),
+                    })}
+                </Notify>
+            )}
+            <div id={USER_LIST_ID}>
+                {!isTenants && (
+                    <UserDataTable
+                        sectionId={sectionId}
+                        rows={tableData as CounselorData[]}
+                        loading={isLoading || preferencesPending}
+                        showTenant={showTenantColumn}
+                        showSubdomain={showSubdomain}
+                        canEditOrDelete={canEditOrDelete}
+                        sortBy={shownSortBy}
+                        order={shownOrder}
+                        onSortChange={onUserSortChange}
+                        onEdit={onEditUser}
+                        onDelete={onDeleteUser}
+                        onCancelDeletion={canEndDeletion ? onCancelDeletion : undefined}
+                        onPauseDeletion={canEndDeletion ? onPauseDeletion : undefined}
+                        page={tableState.current}
+                        pageSize={tableState.pageSize}
+                        total={responseList?.total ?? 0}
+                        onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
+                        onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
+                        ariaLabel={t(config.searchPlaceholderKey)}
+                    />
+                )}
+                {isTenants && (
+                    <TenantTable
+                        rows={tenantsQuery.data?.data ?? []}
+                        loading={isLoading}
+                        pagination={pagination}
+                        onChange={handleTableAction}
+                        emptyTextKey={config.emptyTextKey}
+                        figmaTableHeader={figmaTableHeader}
+                        showSubdomain={showSubdomain}
+                        canEditOrDelete={canEditOrDelete}
+                        mainTenantSubdomain={settings.mainTenantSubdomainForSingleDomainMultitenancy}
+                        fixActionsColumn={!isMobile}
+                        sortBy={shownSortBy}
+                        order={shownOrder}
+                        onEdit={onEditTenant}
+                        onDelete={onDeleteTenant}
+                    />
+                )}
+            </div>
+            {deleteUserId &&
+                can(PermissionAction.Delete, config.updateResource) &&
+                !isTenantAdmins &&
+                !isStatisticsReaders && (
+                    <DeleteUserModal
+                        deleteUserId={deleteUserId}
+                        onClose={onCloseDelete}
+                        typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
+                    />
+                )}
+            {deletionWindow && canEndDeletion && (
+                <DeletionWindowModal
+                    mode={deletionWindow.mode}
+                    consultantId={deletionWindow.id}
+                    onClose={() => setDeletionWindow(null)}
                 />
             )}
             {deleteTenantAdmin && can(PermissionAction.Delete, config.updateResource) && (
-                <DeleteTenantAdminModal user={deleteTenantAdmin} onClose={onCloseDelete} />
+                <DeleteTenantAdminModal
+                    user={deleteTenantAdmin}
+                    onClose={onCloseDelete}
+                    isPlatformAdmin={isPlatformAdmins}
+                />
+            )}
+            {deleteStatisticsReader && canEditOrDelete && (
+                <DeleteStatisticsReaderModal user={deleteStatisticsReader} onClose={onCloseDelete} />
             )}
             {tenantToDelete !== null && (
                 <Modal

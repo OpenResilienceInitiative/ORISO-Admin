@@ -1,10 +1,4 @@
-.sliderContainer {
-    :global(.ant-form-item-label label) {
-        height: 26px;
-    }
-
-    :global(.ant-form-item-control) {
-        background: var(--black-3);
-        padding: 10px 20px;
-    }
+/* The first field row used to touch the explanation above it. */
+.intro {
+    margin-bottom: 20px !important;
 }

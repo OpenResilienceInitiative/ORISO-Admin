@@ -7,7 +7,8 @@ import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../../../
  * same-origin base quietly drops that isolation — and `/theme-demo` does not
  * exist on the admin anyway, so the frame would only show its error page.
  * Without a configured app origin there is no preview, which is the point:
- * `runtimeConfig` falls back to the admin's own origin when unset.
+ * `runtimeConfig` falls back to the API URL, which is the admin's own origin on a
+ * single-domain deployment.
  */
 const isSeparateOrigin = (appBaseUrl: string): boolean => {
     const trimmed = appBaseUrl.trim();

@@ -2,6 +2,8 @@ export { DataTable, DataTableRow, DataTableCell } from './DataTable';
 export type { DataTableProps, DataTableRowProps, DataTableCellProps } from './DataTable';
 export { DataTableHeader } from './DataTableHeader';
 export type { DataTableColumn, DataTableHeaderProps, DataTableSort, DataTableSortDirection } from './DataTableHeader';
+export { SortHeaderCell } from './SortHeaderCell';
+export type { SortHeaderCellProps } from './SortHeaderCell';
 export { DataTablePagination } from './DataTablePagination';
 export type { DataTablePaginationProps } from './DataTablePagination';
 export { DataTableToolbar } from './DataTableToolbar';

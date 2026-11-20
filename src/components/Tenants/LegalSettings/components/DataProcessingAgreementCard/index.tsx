@@ -1,23 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button } from 'antd';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { Button } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
 import { EditorVersion, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { EditorStatusLine } from '../../../../FormPluginEditor/EditorStatusLine';
+import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
+import { Notify } from '../../../../Notify';
+import { TenantDpaStatus } from '../../../../../types/dpa';
+import { DpaDeadlineInfo } from '../../../../DpaLegalForm/DpaDeadlineInfo';
 import { useLegalHelp } from '../../hooks/useLegalHelp';
 import { LegalHelpRole } from '../../utils/legalHelpTexts';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
-import { LegalDraftNotice } from '../LegalDraftNotice';
+import { LegalDraftNotice, LegalDraftStatus, useLegalDraftNoticeState } from '../LegalDraftNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
 import { parseLegalContentMap, pickLegalContentLanguage } from '../../utils/legalContentLanguages';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
+import { TileHelpButton } from '../../../../TileHelp';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { dpaState, legalDocumentStatus } from '../LegalDocumentTile/legalDocumentStatus';
+import { contractHelp } from './help';
 import styles from './styles.module.scss';
 
-// "Nicht mehr anzeigen" on the editor snackbars persists across sessions; the X /
-// check affordance only hides it for the session. The blocker ("publish a DPA
+// "Nicht mehr anzeigen" on the tile's tip and confirmation line persists across sessions (an older
+// session-only close is still honoured). The blocker ("publish a DPA
 // first") and the signed confirmation are dismissed independently.
 type SnackbarKind = 'blocker' | 'signed';
 
@@ -43,13 +52,6 @@ const persistSnackbarDismissed = (kind: SnackbarKind, scope: string) => {
     }
 };
 
-const persistSnackbarClosedForSession = (kind: SnackbarKind, scope: string) => {
-    try {
-        window.sessionStorage.setItem(sessionKey(kind, scope), 'true');
-    } catch {
-        // Private mode / storage disabled: the close still works for this mount.
-    }
-};
 export interface LegalVersion {
     /** Stable id for the version — e.g. the activation timestamp in ISO form. */
     id: string;
@@ -94,6 +96,12 @@ interface DataProcessingAgreementCardProps {
     readOnly?: boolean;
     /** Actual confirmation state; read-only alone does not mean the DPA was confirmed. */
     dpaSigned?: boolean;
+    signingDeadlineAt?: string | null;
+    dpaStatus?: TenantDpaStatus;
+    newCounsellingAllowed?: boolean;
+    renewalGraceActive?: boolean;
+    errorMessage?: string;
+    onCloseError?: () => void;
     /** Bypass the JWT role lookup for the help texts (Storybook/demo contexts). */
     helpRole?: LegalHelpRole;
     /** Tenant/account scope for dismissal persistence. */
@@ -103,7 +111,7 @@ interface DataProcessingAgreementCardProps {
      * action; publishing a DPA stamps a new version every tenant has to sign again, so
      * "save" and "publish" must stay two separate decisions.
      */
-    onSaveDraft?: (contentByLanguage: Record<string, string>) => void;
+    onSaveDraft?: (contentByLanguage: Record<string, string>) => boolean;
     /** When set, the editor is showing a restored draft saved at this time. */
     draftSavedAt?: string;
     /** A newer version was published after the restored draft was saved. */
@@ -111,6 +119,15 @@ interface DataProcessingAgreementCardProps {
     onDiscardDraft?: () => void;
     /** Audit status rendered in the shared read-only footer. */
     readOnlyFooter?: React.ReactNode;
+    /**
+     * Folds the card up to a tile header (icon, title, state). The explanation button and the help text then
+     * sit at the top of the unfolded content, and the editor does not repeat the title.
+     */
+    collapsible?: boolean;
+    /** With `collapsible`: the tile is unfolded on first render. */
+    defaultOpen?: boolean;
+    /** With `collapsible`: reports every fold and unfold, so a parent that rebuilds the card can keep the state. */
+    onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -130,6 +147,12 @@ export const DataProcessingAgreementCard = ({
     onTranslate,
     readOnly,
     dpaSigned,
+    signingDeadlineAt,
+    dpaStatus,
+    newCounsellingAllowed,
+    renewalGraceActive,
+    errorMessage,
+    onCloseError,
     helpRole,
     dismissalScope,
     onSaveDraft,
@@ -137,8 +160,14 @@ export const DataProcessingAgreementCard = ({
     draftStale,
     onDiscardDraft,
     readOnlyFooter,
+    collapsible = false,
+    defaultOpen = false,
+    onOpenChange,
 }: DataProcessingAgreementCardProps) => {
     const { t } = useTranslation();
+    const cardId = useId();
+    const translateFieldId = useId();
+    const draftNotice = useLegalDraftNoticeState({ savedAt: draftSavedAt, stale: draftStale });
     const {
         activeLanguage,
         setActiveLanguage,
@@ -192,11 +221,23 @@ export const DataProcessingAgreementCard = ({
     }, [dismissalScope]);
     // Gate snackbar vs inline hint on the resolved help role (platform = super admin).
     const isPlatformAdmin = help.role === 'platform';
-    const showBlockerSnackbar = isPlatformAdmin && !blockerHidden;
+    // The tip and the signed confirmation are permanent help/state, so plain text in the tile with a
+    // "Nicht mehr anzeigen" link, never a pop-up (Frank, 2026-11-07).
+    const showBlockerHint = isPlatformAdmin && !blockerHidden;
+    // Platform admins can hide the hint for good; everyone else always reads it.
+    const blockerHint = isPlatformAdmin && !showBlockerHint ? undefined : help.hint;
     // The signed confirmation belongs in the editor's own snackbar (Figma 1261-51137,
     // success tone) rather than in a separate alert below the card — same field, one
     // message. Platform admins never see it: they publish the DPA, they do not sign it.
-    const showSignedSnackbar = !isPlatformAdmin && !!dpaSigned && !signedHidden;
+    const showSignedStatus = !isPlatformAdmin && !!dpaSigned && !signedHidden;
+    const dismissBlockerHint = () => {
+        if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
+        setBlockerHidden(true);
+    };
+    const dismissSignedStatus = () => {
+        if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
+        setSignedHidden(true);
+    };
     // The editor's version select browses the versions in the ACTIVE language; a version
     // that was never stored in that language falls back to its first stored language
     // rather than showing an empty page.
@@ -214,13 +255,73 @@ export const DataProcessingAgreementCard = ({
         [versions, activeLanguage],
     );
 
-    return (
-        <div className={styles.card}>
+    const title = t('tenants.legal.dataProcessingAgreement.title');
+    // Typed but not saved yet is a draft too, as it is for the imprint and the privacy statement.
+    const hasUnsavedEdits =
+        !readOnly &&
+        languages.some(
+            (language) => (contentMapWithEdits[language] ?? '') !== (initialContentByLanguage[language] ?? ''),
+        );
+    const tileStatus = legalDocumentStatus(
+        t,
+        dpaState({ hasDraft: !!draftSavedAt || hasUnsavedEdits, versionCount: versions.length }),
+    );
+
+    const helpSlotContent = (
+        <>
+            <EditorHelpText
+                text={help.text}
+                hint={blockerHint}
+                onDismissHint={showBlockerHint ? dismissBlockerHint : undefined}
+            />
+            {showSignedStatus && (
+                <EditorStatusLine
+                    data-testid="dpa-signed-status"
+                    actions={[{ label: t('legal.help.snackbar.dismiss'), onClick: dismissSignedStatus }]}
+                >
+                    {t('legal.dpa.sign.complete')}
+                </EditorStatusLine>
+            )}
             {!readOnly && onDiscardDraft && (
-                <LegalDraftNotice savedAt={draftSavedAt} stale={draftStale} onDiscard={onDiscardDraft} />
+                <LegalDraftStatus
+                    savedAt={draftSavedAt}
+                    stale={draftStale}
+                    dismissed={draftNotice.dismissed}
+                    onReopen={draftNotice.reopen}
+                    onDiscard={onDiscardDraft}
+                    inset
+                />
+            )}
+            <DpaDeadlineInfo
+                signingDeadlineAt={signingDeadlineAt}
+                status={dpaStatus}
+                newCounsellingAllowed={newCounsellingAllowed}
+                renewalGraceActive={renewalGraceActive}
+            />
+        </>
+    );
+
+    const card = (
+        <div id={cardId} className={styles.card}>
+            {!readOnly && onDiscardDraft && (
+                <LegalDraftNotice
+                    savedAt={draftSavedAt}
+                    stale={draftStale}
+                    jump={cardId}
+                    dismissed={draftNotice.dismissed}
+                    onDismiss={draftNotice.dismiss}
+                    onDiscard={onDiscardDraft}
+                />
             )}
             <M3RichTextEditor
-                title={t('tenants.legal.dataProcessingAgreement.title')}
+                title={title}
+                // In a tile the header, the explanation button and the help text belong to the tile.
+                hideHeader={collapsible}
+                headerAction={
+                    collapsible ? undefined : (
+                        <TileHelpButton topic={contractHelp} tileTitle={title} tileIcon={<DpaIcon />} />
+                    )
+                }
                 icon={DpaIcon}
                 value={currentContent}
                 onChange={readOnly ? undefined : handleEditorChange}
@@ -242,40 +343,28 @@ export const DataProcessingAgreementCard = ({
                         />
                     ) : undefined
                 }
-                helpSlot={<EditorHelpText text={help.text} hint={isPlatformAdmin ? undefined : help.hint} />}
+                helpSlot={collapsible ? undefined : helpSlotContent}
                 snackbarSlot={
-                    (showBlockerSnackbar && (
-                        <EditorHintSnackbar
-                            text={help.hint}
-                            onClose={() => {
-                                if (dismissalScope) persistSnackbarClosedForSession('blocker', dismissalScope);
-                                setBlockerHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
-                                setBlockerHidden(true);
-                            }}
-                        />
-                    )) ||
-                    (showSignedSnackbar && (
-                        <EditorHintSnackbar
-                            tone="success"
-                            text={t('legal.dpa.sign.complete')}
-                            onClose={() => {
-                                if (dismissalScope) persistSnackbarClosedForSession('signed', dismissalScope);
-                                setSignedHidden(true);
-                            }}
-                            onDismiss={() => {
-                                if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
-                                setSignedHidden(true);
-                            }}
-                        />
-                    ))
+                    <EditorSnackbarQueue
+                        items={[
+                            errorMessage && {
+                                key: 'publish-error',
+                                node: (
+                                    <EditorHintSnackbar
+                                        layout="long"
+                                        tone="error"
+                                        text={errorMessage}
+                                        onClose={onCloseError}
+                                    />
+                                ),
+                            },
+                        ]}
+                    />
                 }
                 aboveEditorSlot={
                     !readOnly &&
                     showFieldTranslate && (
-                        <div className={styles.translateField}>
+                        <div id={translateFieldId} className={styles.translateField}>
                             <Button
                                 size="small"
                                 loading={fieldTranslating}
@@ -284,8 +373,15 @@ export const DataProcessingAgreementCard = ({
                             >
                                 {t('legal.translation.field.button')}
                             </Button>
+                            {/* A failed translation is an event: a pop-up, never text that pushes the editor down. */}
                             {fieldErrorKey && (
-                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                                <Notify
+                                    severity="error"
+                                    title={t('legal.translation.field.error.title')}
+                                    jump={translateFieldId}
+                                >
+                                    {t(fieldErrorKey)}
+                                </Notify>
                             )}
                         </div>
                     )
@@ -320,6 +416,22 @@ export const DataProcessingAgreementCard = ({
                 }
             />
         </div>
+    );
+
+    if (!collapsible) return card;
+
+    return (
+        <LegalDocumentTile
+            icon={DpaIcon}
+            title={title}
+            status={tileStatus}
+            help={contractHelp}
+            intro={helpSlotContent}
+            defaultOpen={defaultOpen}
+            onOpenChange={onOpenChange}
+        >
+            {card}
+        </LegalDocumentTile>
     );
 };
 

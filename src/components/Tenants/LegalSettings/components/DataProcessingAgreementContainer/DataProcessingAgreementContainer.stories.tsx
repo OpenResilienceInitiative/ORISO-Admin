@@ -6,10 +6,11 @@ import { DataProcessingAgreementContainer } from './index';
  * The wired DPA card — real container, real hooks, real localStorage, mocked HTTP.
  * This is the story to look at for ORISO-Admin#708: type into the editor, press
  * "Entwurf bearbeiten", reload the page and the text is still there, announced
- * by the draft notice. Publishing (PUT .../dpa) is mocked and clears the draft.
+ * by the draft notice. Publishing (PUT .../dpa/v2) is mocked and clears the draft.
  */
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementContainer',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementContainer',
+    id: 'organisms-legal-dataprocessingagreementcontainer',
     component: DataProcessingAgreementContainer,
     parameters: {
         layout: 'padded',
@@ -19,7 +20,7 @@ const meta = {
                 http.get('*/service/tenant/public/*', () =>
                     HttpResponse.json({ id: 1, subdomain: 'app', settings: { activeLanguages: ['de', 'en'] } }),
                 ),
-                http.get('*/service/tenant', () =>
+                http.get('*/service/tenant/1', () =>
                     HttpResponse.json({ id: 1, name: 'ORISO', settings: { activeLanguages: ['de', 'en'] } }),
                 ),
                 http.get('*/service/tenantadmin/:id/dpa/versions', () =>
@@ -40,7 +41,7 @@ const meta = {
                 http.get('*/service/tenantadmin/:id/dpa/gate', () =>
                     HttpResponse.json({ dpaPublished: true, dpaSigned: false }),
                 ),
-                http.put('*/service/tenantadmin/:id/dpa', () =>
+                http.put('*/service/tenantadmin/:id/dpa/v2', () =>
                     HttpResponse.json({ dpaPublished: true, dpaSigned: false }),
                 ),
             ],

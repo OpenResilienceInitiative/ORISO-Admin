@@ -22,7 +22,7 @@
 // Why NOT the full-hide pattern that this repo already uses in ~10 places:
 // every one of those is a HORIZONTAL control row — the chapter chips
 // (FormPluginEditor.styles.scss), the editor toolbar, the function bar,
-// CardDeck, the segmented tabs. Each carries its own affordance (a 32px edge
+// the segmented tabs. Each carries its own affordance (a 32px edge
 // fade, prev/next arrows, an active chip). The surfaces this mixin is for are
 // VERTICAL readers and form scrollers — the contract box the owner
 // screenshotted, the onboarding sheet body, the public page itself. Hiding the

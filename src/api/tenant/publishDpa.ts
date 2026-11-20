@@ -1,16 +1,18 @@
 import { tenantAdminEndpoint } from '../../appConfig';
 import { DpaGateStatus } from '../../types/dpa';
-import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
+import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
+import { isFutureSigningDeadline } from '../../utils/dpaSigningDeadline';
 
-/** Publishes the tenant DPA (per-language HTML map) and stamps a new version. */
-export const publishDpa = (tenantId: number, contentByLanguage: Record<string, string>) =>
-    fetchData({
-        url: `${tenantAdminEndpoint}/${tenantId}/dpa`,
+/** Publishes a deadline-governed DPA through the additive v2 contract. */
+export const publishDpa = (tenantId: number, contentByLanguage: Record<string, string>, signingDeadlineAt: string) => {
+    if (!isFutureSigningDeadline(signingDeadlineAt)) return Promise.reject(new Error('INVALID_SIGNING_DEADLINE'));
+    return fetchData({
+        url: `${tenantAdminEndpoint}/${tenantId}/dpa/v2?${new URLSearchParams({ signingDeadlineAt })}`,
         method: FETCH_METHODS.PUT,
         skipAuth: false,
         bodyData: JSON.stringify(contentByLanguage),
         // CATCH_ALL_SILENT: reject without fetchData's generic message.error toast —
-        // usePublishDpa surfaces a DPA-specific notification.error instead, so a
-        // failed publish shows one clear message rather than two stacked toasts.
-        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
+        // the card keeps one inline error and its editable draft.
+        responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_SUCCESS.CONTENT],
     }) as Promise<DpaGateStatus>;
+};

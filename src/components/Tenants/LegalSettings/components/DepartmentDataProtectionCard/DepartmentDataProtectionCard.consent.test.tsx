@@ -1,9 +1,10 @@
 import React from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 import { LegalTextVersion } from '../../../../../types/legalVersion';
+import { jumpTo } from '../../../../Snackbar';
 
 /** #862: consent lives in a dialog — open the CTA before reading the field. */
 const openConsent = async () => {
@@ -18,7 +19,7 @@ const commitConsentText = async (text: string) => {
     await userEvent.click(input);
     (input as HTMLTextAreaElement).focus();
     await userEvent.paste(text);
-    await userEvent.click(screen.getByRole('button', { name: 'save' }));
+    await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 };
 
 vi.mock('react-i18next', () => ({
@@ -48,6 +49,7 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         consentSlot,
         topicSlot,
         belowSlot,
+        snackbarSlot,
     }: {
         value?: string;
         versions?: { id: string; label: string; content: string; restorable?: boolean }[];
@@ -57,8 +59,10 @@ vi.mock('../../../../FormPluginEditor/M3RichTextEditor', () => ({
         consentSlot?: React.ReactNode;
         topicSlot?: React.ReactNode;
         belowSlot?: React.ReactNode;
+        snackbarSlot?: React.ReactNode;
     }) => (
         <div data-testid="editor" data-value={value}>
+            {snackbarSlot}
             <ul data-testid="versions">
                 {(versions ?? []).map((version) => (
                     <li key={version.id} data-restorable={String(version.restorable)}>
@@ -204,10 +208,10 @@ describe('DepartmentDataProtectionCard — consent field', () => {
         );
         await userEvent.click(screen.getByRole('button', { name: 'publish' }));
         expect(onSave).not.toHaveBeenCalled();
-        expect(screen.getByText(/legal.consent.publishBlocked.description/)).toHaveTextContent('de');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent(/legal.consent.publishBlocked.description.*DE/);
     });
 
-    it('tells assistive technology why the consent action is marked invalid', () => {
+    it('marks the consent action invalid and raises the reason as a pop-up', async () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich stimme zu.' }}
@@ -216,9 +220,8 @@ describe('DepartmentDataProtectionCard — consent field', () => {
                 onSave={() => undefined}
             />,
         );
-        expect(screen.getByTestId('consent-edit-trigger')).toHaveAccessibleDescription(
-            /legal\.consent\.publishBlocked\.title/,
-        );
+        expect(screen.getByTestId('consent-edit-trigger')).toHaveAttribute('data-missing-token', 'true');
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent(/legal\.consent\.publishBlocked\.description/);
     });
 });
 
@@ -346,7 +349,7 @@ describe('DepartmentDataProtectionCard — a consent-only edit still publishes t
  * through the language switcher, is being told about a blocked document by accident.
  */
 describe('DepartmentDataProtectionCard — a stored sentence that fails the rule', () => {
-    it('names the affected language before Publish is ever pressed', () => {
+    it('names the affected language before Publish is ever pressed', async () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: 'I agree.' }}
@@ -358,10 +361,7 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
 
         // `de` is the active language and is fine — without this notice the `en`
         // violation is invisible until the publish attempt fails.
-        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
-        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
-            'legal.consent.publishBlocked.description:EN',
-        );
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('legal.consent.publishBlocked.description:EN');
     });
 
     it('names the languages the admin reads, not the wire codes', async () => {
@@ -374,9 +374,7 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
             />,
         );
 
-        expect(screen.getByTestId('consent-publish-blocked')).toHaveTextContent(
-            'legal.consent.publishBlocked.description:DE',
-        );
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('legal.consent.publishBlocked.description:DE');
     });
 
     it('goes away once the sentence carries the token again', async () => {
@@ -388,14 +386,28 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
                 onSave={() => undefined}
             />,
         );
-        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
+        expect(await screen.findByTestId('snackbar')).toBeInTheDocument();
 
         await commitConsentText('Ich habe {{legal_links}} gelesen.');
 
         expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByTestId('snackbar')).not.toBeInTheDocument());
     });
 
-    it('stays silent while every authored sentence is valid — blank is not a violation', () => {
+    it('stays silent while every sentence carries the token', () => {
+        render(
+            <DepartmentDataProtectionCard
+                consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: 'I read {{legal_links}}.' }}
+                initialContentByLanguage={{ de: '<p>x</p>' }}
+                languages={['de', 'en']}
+                onSave={() => undefined}
+            />,
+        );
+
+        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+    });
+
+    it('reports a blank language as missing (owner call 2026-09-23)', async () => {
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: 'Ich habe {{legal_links}} gelesen.', en: '' }}
@@ -405,7 +417,7 @@ describe('DepartmentDataProtectionCard — a stored sentence that fails the rule
             />,
         );
 
-        expect(screen.queryByTestId('consent-publish-blocked')).not.toBeInTheDocument();
+        expect(await screen.findByTestId('snackbar')).toHaveTextContent('legal.consent.publishBlocked.description:EN');
     });
 });
 
@@ -434,7 +446,9 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         expect(screen.getByTestId('consent-missing-token-error')).toHaveTextContent('{{legal_links}}');
     });
 
-    it('reads a blank sentence as inheritance, never as an error', async () => {
+    it('blocks a blank sentence and opens it with the platform template written in', async () => {
+        // Owner call 2026-09-23: no "empty means inherited" notice — the template is in the field,
+        // and an empty sentence is an error that blocks publishing.
         render(
             <DepartmentDataProtectionCard
                 consentByLanguage={{ de: '   ' }}
@@ -444,10 +458,10 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
             />,
         );
 
-        expect(screen.getByTestId('consent-edit-trigger')).not.toHaveAttribute('data-missing-token');
+        expect(screen.getByTestId('consent-publish-blocked')).toBeInTheDocument();
         await openConsent();
-        expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
-        expect(screen.getByTestId('consent-inherited-notice')).toHaveTextContent('legal.consent.emptyMeansInherited');
+        expect(screen.queryByTestId('consent-inherited-notice')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('consent-empty-error')).not.toBeInTheDocument();
     });
 
     it('clears the mark as soon as the token is typed back in', async () => {
@@ -470,5 +484,76 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         await userEvent.paste('Ich habe {{legal_links}} gelesen.');
 
         expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
+    });
+});
+
+describe('shared legal document tile', () => {
+    it('opens the agency document and preserves the editor when folded', async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+            <DepartmentDataProtectionCard
+                collapsible
+                documentScope="agency"
+                documentType="privacy"
+                publicationStatus="PUBLISHED"
+                initialContentByLanguage={{ de: '<p>aktuell</p>' }}
+                languages={['de']}
+                versions={versions}
+                onSave={() => undefined}
+            />,
+        );
+        const heading = screen.getByRole('button', { name: /tenants\.legal\.agencyDataProtection\.title/ });
+        expect(heading.getAttribute('aria-expanded')).toBe('false');
+        expect(container.querySelectorAll('[data-collapsible-tile]')).toHaveLength(1);
+        await user.click(heading);
+        expect(heading.getAttribute('aria-expanded')).toBe('true');
+        expect(screen.getByTestId('editor').getAttribute('data-value')).toBe('<p>aktuell</p>');
+        const mountedEditor = screen.getByTestId('editor');
+        await user.click(heading);
+        await user.click(heading);
+        expect(screen.getByTestId('editor')).toBe(mountedEditor);
+        expect(screen.getByTestId('editor').getAttribute('data-value')).toBe('<p>aktuell</p>');
+    });
+});
+
+describe('jump to a closed agency document', () => {
+    it('opens and focuses the editor both initially and after closing it again', async () => {
+        const JumpHarness = () => {
+            const [open, setOpen] = React.useState(false);
+            return (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => jumpTo({ target: 'test-legal-editor', onJump: () => setOpen(true) })}
+                    >
+                        View draft
+                    </button>
+                    <DepartmentDataProtectionCard
+                        anchorId="test-legal-editor"
+                        collapsible
+                        open={open}
+                        onOpenChange={setOpen}
+                        documentScope="agency"
+                        initialContentByLanguage={{ de: '<p>draft</p>' }}
+                        onSave={() => undefined}
+                    />
+                </>
+            );
+        };
+        render(<JumpHarness />);
+        const user = userEvent.setup();
+        const verifyJump = async () => {
+            await user.click(screen.getByRole('button', { name: 'View draft' }));
+            const heading = screen.getByRole('button', {
+                name: /tenants\.legal\.agencyDataProtection\.title/,
+                expanded: true,
+            });
+            expect(heading).toHaveAttribute('aria-expanded', 'true');
+            await waitFor(() => expect(document.activeElement?.id).toBe('test-legal-editor'));
+            await user.click(heading);
+            expect(heading).toHaveAttribute('aria-expanded', 'false');
+        };
+        await verifyJump();
+        await verifyJump();
     });
 });

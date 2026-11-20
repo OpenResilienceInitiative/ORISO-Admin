@@ -1,17 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
-import { userEvent, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import type { IdAllocationClient } from '../../api/idAllocation/idAllocation';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
-import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
+import { parseInviteCsv, type ParseInviteCsvResult } from './csv/parseInviteCsv';
+import type { InviteEmailTemplateDTO } from '../../api/accountInvites/accountInvites';
 import { InviteComposer, type InviteSendMode } from './InviteComposer';
 import { InviteCsvImportModal } from './InviteCsvImportModal';
 
 /**
  * A parse result as `parseInviteCsv` would produce it for a mixed file: valid
- * rows (some without names, some without Träger-ID — those get auto-populated)
+ * rows (some without names, some without Träger-ID — those stay AUTO until create)
  * plus rejected rows carrying their line number and reason.
  */
 const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
@@ -38,8 +39,7 @@ const MIXED_PARSE_RESULT: ParseInviteCsvResult = {
 /**
  * Allocation stub for the composer's Träger-ID field (the composer talks to an
  * `IdAllocationClient` since U4; stories inject a stub instead of the real
- * TenantService client). Ids 1, 2 and 4 are taken — matching the modal's
- * `takenTenantIds` below.
+ * TenantService client). Ids 1, 2 and 4 are taken in this composer fixture.
  */
 const TAKEN_IDS = new Set<number>([1, 2, 4]);
 
@@ -67,17 +67,16 @@ const CsvImportHarness = () => {
     return (
         <div style={{ padding: 24 }}>
             <InviteComposer
+                tab="tenant"
                 persistKey="TENANT_ADMIN"
-                requireTenantId
-                templates={[]}
-                tenantIdAllocation={stubbedTenantIdAllocation}
-                onCsvParsed={(result, sendMode) => setCsvImport({ result, sendMode })}
-                onManageTemplates={() => {}}
+                viewer={{ scope: 'platform' }}
+                clients={{ tenantIdAllocation: stubbedTenantIdAllocation }}
+                templates={{ list: [], onManage: () => {} }}
+                csv={{ onParsed: (result, sendMode) => setCsvImport({ result, sendMode }) }}
                 onSubmit={() => true}
             />
             {csvImport && (
                 <InviteCsvImportModal
-                    forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
                     idKind="tenant"
                     createInvite={async (row) => {
                         await new Promise((resolve) => {
@@ -89,7 +88,6 @@ const CsvImportHarness = () => {
                         }
                     }}
                     parseResult={csvImport.result}
-                    takenTenantIds={new Set([1, 2, 4])}
                     onClose={() => setCsvImport(null)}
                     onCreated={() => {}}
                 />
@@ -123,15 +121,14 @@ export const MoreMenuOpen: Story = {
 };
 
 /**
- * Preview modal with mixed rows: valid entries (Träger-IDs 3 and 5 auto-populated
- * around the explicit 7 and the taken ids 1, 2, 4), an importable row without
+ * Preview modal with mixed rows: valid entries (empty Träger-IDs stay AUTO;
+ * the explicit 7 is preserved), an importable row without
  * names (inline-editable), and two rejected rows (invalid e-mail on line 5,
  * invalid Träger-ID on line 6) that are excluded from the batch count.
  */
 export const PreviewModalMixedRows: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Nur Plattform-Administratoren können Träger-Admins einladen."
             idKind="tenant"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -143,7 +140,6 @@ export const PreviewModalMixedRows: Story = {
                 }
             }}
             parseResult={MIXED_PARSE_RESULT}
-            takenTenantIds={new Set([1, 2, 4])}
             onClose={() => {}}
             onCreated={() => {}}
         />
@@ -158,7 +154,6 @@ export const PreviewModalMixedRows: Story = {
 export const PreviewModalAgencyIds: Story = {
     render: () => (
         <InviteCsvImportModal
-            forbiddenFallback="Ihre Rolle ist nicht berechtigt, Berater*innen einzuladen."
             idKind="agency"
             createInvite={async (row) => {
                 await new Promise((resolve) => {
@@ -174,4 +169,68 @@ export const PreviewModalAgencyIds: Story = {
             onCreated={() => {}}
         />
     ),
+};
+
+// The CSV is the main invite path, so every invite-bar field has a column.
+const COUNSELLOR_TEMPLATES: InviteEmailTemplateDTO[] = [
+    {
+        id: 11,
+        kind: 'COUNSELLOR_INVITE',
+        name: 'Berater:innen-Willkommen',
+        language: 'de',
+        subject: 'Ihr Zugang',
+        body: 'Hallo {{firstName}}: {{inviteLink}}',
+        active: true,
+        createDate: '2026-07-01T10:00:00Z',
+        updateDate: null,
+    },
+];
+
+const ALL_COLUMNS_CSV = [
+    'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche;Berät auch',
+    'anna.beispiel@traeger.de;Anna;Beispiel;42;bestehend;Berater:in;;NONE;',
+    // The BST-Admin row founds Beratungsstelle 900 ...
+    'bernd.muster@traeger.de;Bernd;Muster;900;neu;BST-Admin;;;ja',
+    // ... and the counsellor row with the same number waits for it (any row order).
+    'carla.test@traeger.de;Carla;Test;900;neu;Berater:in;Berater:innen-Willkommen;SELECT_EXISTING;',
+    'dora.probe@traeger.de;Dora;Probe;42;bestehend;Berater:in;;true;',
+    'emil.vorlage@traeger.de;Emil;Vorlage;42;bestehend;Berater:in;Sommerfest;false;',
+    'fritz.fehler@traeger.de;Fritz;Fehler;;bestehend;Berater:in;;;',
+    'gabi.wert@traeger.de;Gabi;Wert;42;bestehend;Berater:in;;vielleicht;',
+    'hanna.ohne@traeger.de;Hanna;Ohne;;neu;Berater:in;;;',
+].join('\r\n');
+
+export const PreviewModalAllColumns: Story = {
+    render: () => (
+        <InviteCsvImportModal
+            idKind="agency"
+            tabRole="COUNSELLOR"
+            templates={COUNSELLOR_TEMPLATES}
+            viewerScope="tenant"
+            createInvite={async (row) => {
+                await new Promise((resolve) => {
+                    setTimeout(resolve, 400);
+                });
+                // The backend stores Carla as waiting for Beratungsstelle 900.
+                return { waiting: row.role === 'COUNSELLOR' && row.target === 'NEW', noUnitAdmin: false };
+            }}
+            parseResult={parseInviteCsv(ALL_COLUMNS_CSV)}
+            onClose={() => {}}
+            onCreated={() => {}}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await body.findByText('anna.beispiel@traeger.de');
+        await expect(body.getAllByText('Bestehend').length).toBeGreaterThan(0);
+        await expect(body.getByText('Darf weitere Themen anlegen')).toBeInTheDocument();
+        await expect(body.getAllByText('Berät auch').length).toBeGreaterThan(1);
+        await expect(body.getByText(/Die Vorlage „Sommerfest“ gibt es hier nicht/)).toBeInTheDocument();
+        await expect(body.getByText(/„bestehend“ braucht eine/)).toBeInTheDocument();
+        await expect(body.getByText(/brauchen deren Nummer/)).toBeInTheDocument();
+        // Four good rows go into the batch; four are held back with their reason.
+        const confirm = body.getByRole('button', { name: /4 Empfänger anlegen|4 recipients/ });
+        await userEvent.click(confirm);
+        await body.findByText('Vorgemerkt', undefined, { timeout: 5000 });
+    },
 };

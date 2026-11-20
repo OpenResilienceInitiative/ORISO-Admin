@@ -11,7 +11,7 @@
             min-width: 280px;
             padding: 0;
             border-radius: 28px;
-            background: var(--m3-surface-container-high, #eae7e8);
+            background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
         }
 
         .ant-modal-header {
@@ -226,5 +226,25 @@
 @keyframes actionSpin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* Optional working-sheet layout: the footer never scrolls with a long editor. */
+.scrollableBody {
+    :global(.ant-modal-content) {
+        display: flex;
+        max-height: calc(100dvh - 32px);
+        flex-direction: column;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex: none;
+    }
+
+    :global(.ant-modal-body) {
+        overflow: auto;
+        min-height: 0;
+        overscroll-behavior: contain;
     }
 }

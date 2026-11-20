@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import {
     DEFAULT_LANGUAGE,
     LANGUAGE_COOKIE_KEY,
     LANGUAGE_STORAGE_KEY,
+    SUPPORTED_LANGUAGES,
     detectBrowserLanguage,
     getInitialLanguage,
     getStoredLanguage,
     isSupportedLanguage,
     normalizeLanguage,
     storeLanguage,
+    toIntlLocale,
     updateDocumentLanguage,
 } from './language';
 
@@ -32,9 +34,12 @@ describe('language utilities', () => {
 
     it('normalizes supported locale strings', () => {
         expect(isSupportedLanguage('de')).toBe(true);
-        expect(isSupportedLanguage('fr')).toBe(false);
+        expect(isSupportedLanguage('fr')).toBe(true);
         expect(normalizeLanguage('de-DE')).toBe('de');
-        expect(normalizeLanguage('fr-FR')).toBeNull();
+        expect(normalizeLanguage('fr-FR')).toBe('fr');
+        expect(normalizeLanguage('de@informal')).toBe('de@informal');
+        expect(normalizeLanguage('ti-ER')).toBe('ti');
+        expect(normalizeLanguage('es')).toBeNull();
     });
 
     it('stores and reads the preferred language from cookie/localStorage', () => {
@@ -49,6 +54,16 @@ describe('language utilities', () => {
         updateDocumentLanguage('en');
 
         expect(document.documentElement.lang).toBe('en');
+    });
+
+    it('gives Intl a valid locale for every supported language (Admin#1503)', () => {
+        expect(toIntlLocale('de@informal')).toBe('de');
+        expect(toIntlLocale('de')).toBe('de');
+        expect(toIntlLocale('tr')).toBe('tr');
+        expect(toIntlLocale(undefined)).toBeUndefined();
+        SUPPORTED_LANGUAGES.forEach((language) => {
+            expect(() => new Intl.DateTimeFormat(toIntlLocale(language))).not.toThrow();
+        });
     });
 
     it('falls back to the default language for non-German browsers', () => {

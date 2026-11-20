@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { act } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { DESKTOP_LAYOUT_QUERY, useIsDesktopLayout } from './useIsDesktopLayout.hook';
 
 const Probe = () => <span data-testid="layout">{useIsDesktopLayout() ? 'desktop' : 'mobile'}</span>;

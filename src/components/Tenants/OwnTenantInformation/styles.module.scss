@@ -1,0 +1,23 @@
+.card {
+    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+
+    :global {
+        .MuiFormControl-root,
+        .MuiTextField-root,
+        .MuiInputBase-root {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    }
+}
+
+.fieldGroup {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin-bottom: 16px;
+}

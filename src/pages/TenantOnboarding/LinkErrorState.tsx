@@ -1,6 +1,13 @@
 import Typography from '@mui/material/Typography';
+import LoginRounded from '@mui/icons-material/LoginRounded';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import routePathNames from '../../appConfig';
 import { InviteLinkErrorReason } from '../../api/tenantOnboarding/tenantOnboarding';
+import { M3Button } from '../../components/M3Button';
+import { OnboardingLeadArt } from '../../components/OnboardingDesign/OnboardingLeadArt';
+import { OnboardingPageHeader } from '../../components/OnboardingDesign/OnboardingPageHeader';
+import { HintText } from '../../components/HintText';
 
 const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: string }> = {
     CONSUMED: {
@@ -25,25 +32,55 @@ const REASON_KEYS: Record<InviteLinkErrorReason, { title: string; description: s
         title: 'tenantOnboarding.linkError.invalid.title',
         description: 'tenantOnboarding.linkError.invalid.description',
     },
+    SETUP_IN_PROGRESS: {
+        title: 'accountSetup.inProgress.title',
+        description: 'accountSetup.inProgress.description',
+    },
+    SETUP_OPERATOR_REVIEW_REQUIRED: {
+        title: 'accountSetup.operatorReview.title',
+        description: 'accountSetup.operatorReview.description',
+    },
 };
 
 /**
  * Terminal state for consumed/revoked/expired/unknown invite links (#571).
  * Deliberately renders NO form and no retry action — a dead link cannot be
- * resubmitted; the tenant admin has to request a fresh invite instead.
+ * resubmitted. A consumed link belongs to an account that already exists, so
+ * its only action is the way to the login (#1065); every other death needs a
+ * fresh invite instead.
  */
 export const LinkErrorState = ({ reason }: { reason: InviteLinkErrorReason }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const keys = REASON_KEYS[reason];
+
+    if (reason === 'CONSUMED') {
+        return (
+            <div data-testid="link-error-consumed">
+                <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
+                <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
+                    {t(keys.description)}
+                </HintText>
+                <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    {t('tenantOnboarding.linkError.consumed.loginHint')}
+                </Typography>
+                <M3Button
+                    variant="filled"
+                    icon={<LoginRounded fontSize="small" />}
+                    onClick={() => navigate(routePathNames.login)}
+                >
+                    {t('tenantOnboarding.linkError.consumed.toLogin')}
+                </M3Button>
+            </div>
+        );
+    }
 
     return (
         <div data-testid={`link-error-${reason.toLowerCase()}`}>
-            <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 3 }}>
-                {t(keys.title)}
-            </Typography>
-            <Typography role="alert" sx={{ mb: 2 }}>
+            <OnboardingPageHeader lead={<OnboardingLeadArt variant="clock" />} title={t(keys.title)} />
+            <HintText tone="error" role="alert" style={{ marginBottom: 16 }}>
                 {t(keys.description)}
-            </Typography>
+            </HintText>
             <Typography color="text.secondary">{t('tenantOnboarding.linkError.contactHint')}</Typography>
         </div>
     );

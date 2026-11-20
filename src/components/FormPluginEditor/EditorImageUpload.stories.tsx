@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect, waitFor, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { delay, http, HttpResponse } from 'msw';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
@@ -20,7 +20,9 @@ const pngFile = () => {
 };
 
 const pasteImageIntoEditor = async (canvasElement: HTMLElement) => {
-    const editorEl = within(canvasElement).getByRole('textbox', { name: 'Impressum' });
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
+    const editorEl = canvas.getByRole('textbox', { name: 'Impressum' });
     // A real DataTransfer: the browser's ClipboardEvent constructor rejects plain objects.
     const clipboardData = new DataTransfer();
     clipboardData.items.add(pngFile());

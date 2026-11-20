@@ -1,17 +1,11 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { snackbar } from '../../../Snackbar';
 import { useLegalDraft } from './useLegalDraft';
 import { legalDraftKey, readLegalDraft, writeLegalDraft } from '../utils/legalDraftStorage';
 
 const successNotification = vi.fn();
 const errorNotification = vi.fn();
-
-vi.mock('antd', () => ({
-    notification: {
-        success: (...args: unknown[]) => successNotification(...args),
-        error: (...args: unknown[]) => errorNotification(...args),
-    },
-}));
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key }),
@@ -58,8 +52,12 @@ describe('useLegalDraft', () => {
 
     it('stores the content map and confirms the save to the admin', () => {
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc', '2026-08-01T09:00:00.000Z'));
-        act(() => result.current.saveDraft({ de: '<p>neu</p>', en: '<p>new</p>' }));
+        let saved = false;
+        act(() => {
+            saved = result.current.saveDraft({ de: '<p>neu</p>', en: '<p>new</p>' });
+        });
 
+        expect(saved).toBe(true);
         const stored = readLegalDraft(legalDraftKey('dpa', '1:user-abc'));
         expect(stored?.content).toEqual({ de: '<p>neu</p>', en: '<p>new</p>' });
         expect(stored?.baseVersionId).toBe('2026-08-01T09:00:00.000Z');
@@ -140,8 +138,12 @@ describe('useLegalDraft', () => {
             throw new Error('quota');
         });
         const { result } = renderHook(() => useLegalDraft('dpa', '1:user-abc'));
-        act(() => result.current.saveDraft({ de: '<p>neu</p>' }));
+        let saved = true;
+        act(() => {
+            saved = result.current.saveDraft({ de: '<p>neu</p>' });
+        });
 
+        expect(saved).toBe(false);
         expect(errorNotification).toHaveBeenCalledTimes(1);
         expect(successNotification).not.toHaveBeenCalled();
         expect(result.current.savedAt).toBeUndefined();
@@ -170,4 +172,9 @@ describe('useLegalDraft', () => {
         const { result } = renderHook(() => useLegalDraft('imprint', '1:user-abc'));
         expect(result.current.isStale).toBe(false);
     });
+});
+
+beforeEach(() => {
+    vi.spyOn(snackbar, 'success').mockImplementation(successNotification as never);
+    vi.spyOn(snackbar, 'error').mockImplementation(errorNotification as never);
 });

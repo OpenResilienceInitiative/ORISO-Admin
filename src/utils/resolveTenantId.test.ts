@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { resolveTenantId } from './resolveTenantId';
 
 describe('resolveTenantId', () => {
     it('preserves the technical platform tenant id', () => {
         expect(resolveTenantId(undefined, 0)).toBe('0');
+        expect(resolveTenantId(0, 42)).toBe('0');
     });
 
     it('prefers an explicitly selected tenant', () => {

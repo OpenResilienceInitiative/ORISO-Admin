@@ -6,7 +6,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within } from 'storybook/test';
 import { ReactComponent as LockOpenRightFilledIcon } from '../../resources/img/svg/oriso/lock_open_right_filled_20px.svg';
 import { NavGlyph } from '../NavGlyph';
-import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
+import { M3FabMenu, type M3FabMenuItem, type M3FabMenuProps } from './M3FabMenu';
 
 const items = [
     { key: 'settings', label: 'Einstellungen', icon: <NavGlyph name="displaySettings" />, to: '/admin/settings' },
@@ -22,20 +22,24 @@ const footerItems = [
     { key: 'logout', label: 'Abmelden', icon: <NavGlyph name="logout" /> },
 ];
 
-const policyItems = [
-    { key: 'enabled-enforced', label: 'Aktivierung erzwungen', icon: <LockIcon /> },
-    { key: 'disabled-enforced', label: 'Deaktivierung erzwungen', icon: <LockIcon /> },
+// Tone per action (#992): "activate" is primary, "deactivate" and the info
+// entry are neutral — whatever the feature is currently set to.
+const policyItems: M3FabMenuItem[] = [
+    { key: 'enabled-enforced', label: 'Aktivierung (Vorgabe)', icon: <LockIcon />, tone: 'primary' },
+    { key: 'disabled-enforced', label: 'Deaktivierung (Vorgabe)', icon: <LockIcon />, tone: 'neutral' },
     {
         key: 'enabled-suggested',
         label: 'Aktivierung (anpassbar)',
         icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'primary',
     },
     {
         key: 'disabled-suggested',
         label: 'Deaktivierung (anpassbar)',
         icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'neutral',
     },
-    { key: 'info', label: 'Weitere Informationen', icon: <InfoIcon /> },
+    { key: 'info', label: 'Weitere Informationen', icon: <InfoIcon />, tone: 'neutral' },
 ];
 
 /**
@@ -63,7 +67,7 @@ const PhoneFrame = (props: M3FabMenuProps) => {
     );
 };
 
-const ActionPlacementFrame = ({ edge }: { edge: 'top' | 'bottom' }) => (
+const ActionPlacementFrame = ({ edge, tone = 'primary' }: { edge: 'top' | 'bottom'; tone?: 'primary' | 'neutral' }) => (
     <div
         style={{
             position: 'fixed',
@@ -84,7 +88,7 @@ const ActionPlacementFrame = ({ edge }: { edge: 'top' | 'bottom' }) => (
             openLabel="Policy-Auswahl öffnen"
             closeLabel="Policy-Auswahl schließen"
             variant="action"
-            tone="primary"
+            tone={tone}
             onOpenChange={() => undefined}
         />
     </div>
@@ -167,5 +171,87 @@ export const ActionNearBottomOpensUpward: Story = {
     render: () => <ActionPlacementFrame edge="bottom" />,
     play: async ({ canvasElement }) => {
         await expectPlacement(canvasElement, 'up');
+    },
+};
+
+const expectActionTones = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    // Drop the focus state layer (a color-mix on the tone) before measuring.
+    (document.activeElement as HTMLElement | null)?.blur();
+    const primary = 'rgb(165, 0, 10)';
+    const neutral = 'rgb(76, 85, 95)';
+    const backgroundOf = (name: string) =>
+        window.getComputedStyle(canvas.getByRole('button', { name })).backgroundColor;
+    await Promise.all([
+        ...['Aktivierung (Vorgabe)', 'Aktivierung (anpassbar)'].map((name) => expect(backgroundOf(name)).toBe(primary)),
+        ...['Deaktivierung (Vorgabe)', 'Deaktivierung (anpassbar)', 'Weitere Informationen'].map((name) =>
+            expect(backgroundOf(name)).toBe(neutral),
+        ),
+    ]);
+};
+
+/** Feature currently ON: the FAB is primary, but "deactivate" pills stay neutral (#992). */
+export const ActionTonesFollowTheActionWhileOn: Story = {
+    args: { open: true },
+    render: () => <ActionPlacementFrame edge="bottom" tone="primary" />,
+    play: async ({ canvasElement }) => {
+        await expectActionTones(canvasElement);
+        const fab = within(canvasElement).getByRole('button', { name: 'Policy-Auswahl schließen' });
+        await expect(window.getComputedStyle(fab).backgroundColor).toBe('rgb(165, 0, 10)');
+    },
+};
+
+/** Feature currently OFF: the FAB is neutral, but "activate" pills stay primary (#992). */
+export const ActionTonesFollowTheActionWhileOff: Story = {
+    args: { open: true },
+    render: () => <ActionPlacementFrame edge="bottom" tone="neutral" />,
+    play: async ({ canvasElement }) => {
+        await expectActionTones(canvasElement);
+        const fab = within(canvasElement).getByRole('button', { name: 'Policy-Auswahl schließen' });
+        await expect(window.getComputedStyle(fab).backgroundColor).toBe('rgb(76, 85, 95)');
+    },
+};
+
+const consentItems: M3FabMenuItem[] = [
+    {
+        key: 'opt-in',
+        label: 'Zustimmung Opt-In (anpassbar)',
+        description: 'Die ratsuchende Person wird vorher gefragt. Der Zugriff beginnt erst mit ihrer Zustimmung.',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'primary',
+    },
+    {
+        key: 'opt-out',
+        label: 'Zustimmung Opt-Out (anpassbar)',
+        description:
+            'Stillschweigend: Der Zugriff beginnt sofort, die ratsuchende Person wird informiert und kann widersprechen.',
+        icon: <LockOpenRightFilledIcon aria-hidden />,
+        tone: 'neutral',
+    },
+    { key: 'info', label: 'Weitere Informationen', icon: <InfoIcon />, tone: 'neutral' },
+];
+
+/** FE#1725: pills with a supporting sentence (case-handover consent); the sentence is the description. */
+export const ActionWithDescriptions: Story = {
+    args: { open: true },
+    render: () => (
+        <PhoneFrame
+            variant="action"
+            items={consentItems}
+            activeKey="opt-in"
+            open
+            openLabel="Policy-Auswahl öffnen"
+            closeLabel="Policy-Auswahl schließen"
+            onOpenChange={() => undefined}
+        />
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const optOut = await canvas.findByRole('button', { name: 'Zustimmung Opt-Out (anpassbar)' });
+        await expect(optOut).toHaveAccessibleDescription(/sofort.*widersprechen/);
+        await expect(canvas.getByText(/sofort, die ratsuchende Person/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Weitere Informationen' })).not.toHaveAttribute(
+            'aria-describedby',
+        );
     },
 };

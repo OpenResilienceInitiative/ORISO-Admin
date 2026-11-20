@@ -1,17 +1,39 @@
+@use '../../styles/muiSpacing' as mui;
+
 .content {
     height: 100vh;
     overflow: auto;
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 
     :global(.ant-layout-content) {
-        background: var(--admin-workspace-background, #e4e2e2);
+        background: var(--admin-workspace-background, #fcf9f9);
     }
 }
 
 .mainContent {
-    background: var(--admin-workspace-background, #e4e2e2);
+    background: var(--admin-workspace-background, #fcf9f9);
 
     :global(.ant-layout) {
-        background: var(--admin-workspace-background, #e4e2e2);
+        background: var(--admin-workspace-background, #fcf9f9);
     }
+}
+
+// Row with the search bar, centred. The page below keeps the rest of the height.
+// The 48px bar sits 16px below the window edge (two 8px grid steps) and 8px above the page.
+$top-bar-padding-top: mui.$mui-unit * 2;
+$top-bar-padding-bottom: mui.$mui-unit;
+$top-bar-height: 48px + $top-bar-padding-top + $top-bar-padding-bottom;
+
+.topBar {
+    display: flex;
+    height: $top-bar-height;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    padding: $top-bar-padding-top mui.$mui-unit * 3 $top-bar-padding-bottom;
+    background: var(--admin-workspace-background, #fcf9f9);
+}
+
+.contentWithTopBar {
+    height: calc(100vh - #{$top-bar-height});
 }

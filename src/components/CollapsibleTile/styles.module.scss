@@ -1,0 +1,139 @@
+/* Same surface and radius as every settings tile (Card, variant "dialog"). */
+.tile {
+    min-width: 0;
+    background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
+    border: 1px solid var(--admin-card-outline, transparent);
+    border-radius: 28px;
+    box-shadow: var(
+        --admin-card-elevation,
+        0 6px 16px rgb(0 0 0 / 8%),
+        0 3px 6px -4px rgb(0 0 0 / 12%),
+        0 9px 28px 8px rgb(0 0 0 / 5%)
+    );
+    color: var(--m3-on-surface, #1b1b1c);
+}
+
+.heading {
+    margin: 0;
+}
+
+.header {
+    display: flex;
+    width: 100%;
+    min-height: 72px;
+    align-items: center;
+    padding: 12px 24px;
+    border: 0;
+    background: none;
+    border-radius: 28px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: 16px;
+    text-align: left;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        --admin-focus-ring-offset: -2px;
+
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: var(--admin-focus-ring-offset);
+    }
+}
+
+.icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: var(--m3-on-surface-variant, #444748);
+
+    svg {
+        width: 32px;
+        height: 32px;
+        font-size: 32px;
+    }
+}
+
+.title {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 28px;
+    overflow-wrap: anywhere;
+}
+
+.chip {
+    flex: 0 0 auto;
+    padding: 2px 12px;
+    border: 1px solid var(--m3-outline, #747878);
+    border-radius: 8px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+    white-space: nowrap;
+}
+
+.chipAttention {
+    border-color: var(--m3-error, #ba1a1a);
+    background: var(--m3-error-container, #ffdad6);
+    color: var(--m3-on-error-container, #410002);
+}
+
+.chevron {
+    flex: 0 0 auto;
+    color: var(--m3-on-surface-variant, #444748);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}
+
+.open .chevron {
+    transform: rotate(180deg);
+}
+
+/* The tile's own header says what the card inside would say again. */
+.body {
+    --m3-editor-max-width: none;
+
+    padding: 0 16px 16px;
+
+    [data-admin-card-title] {
+        display: none;
+    }
+}
+
+@media (max-width: 599px) {
+    /* Icon, title and chevron on one line; the state chip drops under the title. */
+    .header {
+        display: grid;
+        padding: 12px 16px;
+        gap: 4px 12px;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .chip {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: start;
+    }
+
+    .chevron {
+        grid-column: 3;
+        grid-row: 1;
+    }
+
+    .title {
+        font-size: 18px;
+        line-height: 24px;
+    }
+
+    .body {
+        padding: 0 8px 12px;
+    }
+}

@@ -1,8 +1,9 @@
 import React from 'react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataProcessingAgreementContainer } from './index';
+import { UserRole } from '../../../../../enums/UserRole';
 
 const {
     useDpaVersions,
@@ -11,7 +12,7 @@ const {
     useTenantAdminData,
     useUserData,
     useDpaGate,
-    useDpaSignatures,
+    useDpaStatus,
     createInviteApi,
     sendInviteEmailApi,
     userRoles,
@@ -22,7 +23,7 @@ const {
     useTenantAdminData: vi.fn(),
     useUserData: vi.fn(),
     useDpaGate: vi.fn(),
-    useDpaSignatures: vi.fn(),
+    useDpaStatus: vi.fn(),
     createInviteApi: vi.fn(),
     sendInviteEmailApi: vi.fn(),
     userRoles: {
@@ -32,6 +33,19 @@ const {
     },
 }));
 
+vi.mock('../DpaPublishDeadlineDialog', () => ({
+    DpaPublishDeadlineDialog: ({ onConfirm, onCancel }: any) => (
+        <div>
+            <button type="button" onClick={() => onConfirm('2099-10-30T15:00:00+01:00')}>
+                confirm deadline
+            </button>
+            <button type="button" onClick={onCancel}>
+                cancel deadline
+            </button>
+        </div>
+    ),
+}));
+
 vi.mock('react-i18next', () => ({ useTranslation }));
 vi.mock('../../../../../hooks/useDpaVersions.hook', () => ({ useDpaVersions }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData }));
@@ -39,10 +53,13 @@ vi.mock('../../../../../hooks/useUserData.hook', () => ({
     useUserData,
 }));
 vi.mock('../../../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => userRoles,
+    useUserRoles: () => ({
+        ...userRoles,
+        hasRole: (role: UserRole) => userRoles.isTenantScopedAdmin && role === UserRole.TenantAdmin,
+    }),
 }));
 vi.mock('../../../../../hooks/useDpaGate.hook', () => ({ useDpaGate }));
-vi.mock('../../../../../hooks/useDpaSignatures.hook', () => ({ useDpaSignatures }));
+vi.mock('../../../../../hooks/useDpaStatus.hook', () => ({ useDpaStatus }));
 vi.mock('../../../../../api/tenant/createDpaSignInvite', () => ({
     createDpaSignInvite: createInviteApi,
     resolveDpaSignLink: (link: string) => link,
@@ -60,8 +77,8 @@ vi.mock('../../../../DpaForwardDialog/DpaForwardDialog', () => ({
             <button
                 type="button"
                 onClick={async () => {
-                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@oriso.org' });
-                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@oriso.org', mailFailed });
+                    const { link, mailFailed } = await forward({ recipientEmail: 'bart.simpson@example.org' });
+                    onForwarded({ link, recipientEmail: mailFailed ? null : 'bart.simpson@example.org', mailFailed });
                 }}
             >
                 complete forward
@@ -94,11 +111,16 @@ vi.mock('../DataProcessingAgreementCard', () => ({
         draftStale,
         onDiscardDraft,
         readOnlyFooter,
+        errorMessage,
+        collapsible,
+        defaultOpen,
+        onOpenChange,
     }: any) => {
         const [draft, setDraft] = React.useState('');
         return (
             <div
                 data-testid="card"
+                data-publish-error={errorMessage ?? ''}
                 data-content={JSON.stringify(initialContentByLanguage)}
                 data-languages={(languages ?? []).join(',')}
                 data-default-language={defaultLanguage}
@@ -109,11 +131,16 @@ vi.mock('../DataProcessingAgreementCard', () => ({
                 data-draft-saved-at={draftSavedAt ?? ''}
                 data-draft-stale={draftStale ? 'true' : 'false'}
                 data-has-draft-action={onSaveDraft ? 'true' : 'false'}
+                data-collapsible={String(!!collapsible)}
+                data-default-open={String(!!defaultOpen)}
             >
                 <div data-testid="card-readonly-footer">{readOnlyFooter}</div>
                 <span data-testid="draft">{draft}</span>
                 <button type="button" onClick={() => setDraft('unsaved draft')}>
                     edit draft
+                </button>
+                <button type="button" onClick={() => onOpenChange?.(true)}>
+                    unfold tile
                 </button>
                 <button type="button" onClick={() => onPublish({ ...initialContentByLanguage, en: '<p>edited</p>' })}>
                     publish
@@ -148,7 +175,7 @@ beforeEach(() => {
     useTenantAdminData.mockReturnValue({ data: { settings: { activeLanguages: ['de', 'en'] } } });
     useUserData.mockReturnValue({ data: { id: 'admin-1' } });
     useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
-    useDpaSignatures.mockReturnValue({ data: [], isError: false });
+    useDpaStatus.mockReturnValue({ data: undefined, isError: false });
     createInviteApi.mockReset();
     sendInviteEmailApi.mockReset();
     userRoles.isSuperAdmin = true;
@@ -157,6 +184,34 @@ beforeEach(() => {
 });
 
 describe('DataProcessingAgreementContainer', () => {
+    it('hands the tile settings to the card and starts unfolded only when asked to', () => {
+        const { unmount } = render(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'false');
+        unmount();
+
+        render(<DataProcessingAgreementContainer tenantId={1} collapsible defaultOpen />);
+        expect(screen.getByTestId('card')).toHaveAttribute('data-collapsible', 'true');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'true');
+    });
+
+    it('keeps the tile unfolded when the card is rebuilt after a publish', async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+        await user.click(screen.getByRole('button', { name: 'edit draft' }));
+        await user.click(screen.getByRole('button', { name: 'unfold tile' }));
+        expect(screen.getByTestId('draft')).toHaveTextContent('unsaved draft');
+
+        // A new published version changes the card's key, so React builds the card again.
+        useDpaVersions.mockReturnValue({
+            data: [{ activationDate: '2026-07-01T10:00:00', content: '{"de":"<p>DE</p>"}' }],
+        });
+        rerender(<DataProcessingAgreementContainer tenantId={1} collapsible />);
+
+        expect(screen.getByTestId('draft')).toHaveTextContent('');
+        expect(screen.getByTestId('card')).toHaveAttribute('data-default-open', 'true');
+    });
+
     it('passes the complete latest content map and the editable languages to the card', () => {
         useDpaVersions.mockReturnValue({
             data: [
@@ -205,11 +260,36 @@ describe('DataProcessingAgreementContainer', () => {
         render(<DataProcessingAgreementContainer tenantId={1} />);
 
         await user.click(screen.getByRole('button', { name: 'publish' }));
+        await user.click(screen.getByRole('button', { name: 'confirm deadline' }));
 
         expect(publishMutate).toHaveBeenCalledWith(
-            { de: '<p>DE</p>', en: '<p>edited</p>' },
+            {
+                contentByLanguage: { de: '<p>DE</p>', en: '<p>edited</p>' },
+                signingDeadlineAt: '2099-10-30T15:00:00+01:00',
+            },
             expect.objectContaining({ onSuccess: expect.any(Function) }),
         );
+    });
+
+    it('closes an unsubmitted deadline when the tenant changes', async () => {
+        const user = userEvent.setup();
+        const view = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'publish' }));
+        expect(screen.getByRole('button', { name: 'confirm deadline' })).toBeInTheDocument();
+        view.rerender(<DataProcessingAgreementContainer tenantId={2} />);
+        expect(screen.queryByRole('button', { name: 'confirm deadline' })).not.toBeInTheDocument();
+        expect(publishMutate).not.toHaveBeenCalled();
+    });
+
+    it('ignores a late publication error after the tenant changes', async () => {
+        const user = userEvent.setup();
+        const view = render(<DataProcessingAgreementContainer tenantId={1} />);
+        await user.click(screen.getByRole('button', { name: 'publish' }));
+        await user.click(screen.getByRole('button', { name: 'confirm deadline' }));
+        const callbacks = publishMutate.mock.calls.at(-1)?.[1];
+        view.rerender(<DataProcessingAgreementContainer tenantId={2} />);
+        act(() => callbacks?.onError());
+        expect(screen.getByTestId('card')).toHaveAttribute('data-publish-error', '');
     });
 
     it('forwards read-only mode to the card', () => {
@@ -267,7 +347,7 @@ describe('DataProcessingAgreementContainer', () => {
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: false }, isError: false });
         createInviteApi.mockResolvedValue({
             signLink: 'https://app.example/dpa-sign/secret',
-            expiresAt: '2026-07-20T12:00:00Z',
+            expiresAt: '2099-07-20T12:00:00Z',
         });
         sendInviteEmailApi.mockResolvedValue(undefined);
 
@@ -285,9 +365,9 @@ describe('DataProcessingAgreementContainer', () => {
         expect(createInviteApi).toHaveBeenCalledWith(84);
         expect(sendInviteEmailApi).toHaveBeenCalledWith({
             tenantId: 84,
-            recipientEmail: 'bart.simpson@oriso.org',
+            recipientEmail: 'bart.simpson@example.org',
             signLink: 'https://app.example/dpa-sign/secret',
-            expiresAt: '2026-07-20T12:00:00Z',
+            expiresAt: '2099-07-20T12:00:00Z',
         });
         expect(await screen.findByText('legal.dpa.sign.sent')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'legal.dpa.sign.openLink' })).toBeInTheDocument();
@@ -302,7 +382,7 @@ describe('DataProcessingAgreementContainer', () => {
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: false }, isError: false });
         createInviteApi.mockResolvedValue({
             signLink: 'https://app.example/dpa-sign/secret',
-            expiresAt: '2026-07-20T12:00:00Z',
+            expiresAt: '2099-07-20T12:00:00Z',
         });
         sendInviteEmailApi.mockResolvedValue(undefined);
 
@@ -323,17 +403,16 @@ describe('DataProcessingAgreementContainer', () => {
         userRoles.isTenantScopedAdmin = true;
         userRoles.tenantId = 84;
         useDpaGate.mockReturnValue({ data: { dpaPublished: true, dpaSigned: true }, isError: false });
-        useDpaSignatures.mockReturnValue({
-            data: [
-                {
-                    status: 'SIGNED',
-                    signerName: 'Erika E2E Mustermann',
-                    signerPosition: 'Geschäftsführung',
-                    signerEmail: 'erika.e2e.mustermann@oriso.org',
-                    signerOrganisation: 'E2E Full Gate 202607191747',
-                    signedAt: '2026-07-19T18:49:00Z',
-                },
-            ],
+        useDpaVersions.mockReturnValue({ data: [{ activationDate: '2026-07-01T10:00:00', content: '{}' }] });
+        useDpaStatus.mockReturnValue({
+            data: {
+                tenantId: 84,
+                status: 'VALID',
+                currentDpaVersion: '2026-07-01T10:00:00',
+                signedDpaVersion: '2026-07-01T10:00:00',
+                signedBy: 'Erika E2E Mustermann',
+                signedAt: '2026-07-19T18:49:00Z',
+            },
             isError: false,
         });
 
@@ -344,7 +423,7 @@ describe('DataProcessingAgreementContainer', () => {
         expect(footer).toHaveTextContent('Erika E2E Mustermann');
         expect(footer).toHaveTextContent(/19\.07\.2026/);
         expect(screen.queryByText('Geschäftsführung')).not.toBeInTheDocument();
-        expect(screen.queryByText('erika.e2e.mustermann@oriso.org')).not.toBeInTheDocument();
+        expect(screen.queryByText('erika.e2e.mustermann@example.org')).not.toBeInTheDocument();
         expect(screen.queryByText('E2E Full Gate 202607191747')).not.toBeInTheDocument();
     });
 });
@@ -433,6 +512,7 @@ describe('DataProcessingAgreementContainer — local draft', () => {
         const first = render(<DataProcessingAgreementContainer tenantId={1} />);
         await user.click(screen.getByRole('button', { name: 'save draft' }));
         await user.click(screen.getByRole('button', { name: 'publish' }));
+        await user.click(screen.getByRole('button', { name: 'confirm deadline' }));
         first.unmount();
 
         render(<DataProcessingAgreementContainer tenantId={1} />);

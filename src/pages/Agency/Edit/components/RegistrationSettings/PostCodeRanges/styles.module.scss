@@ -1,3 +1,5 @@
+@use '../../../../../../styles/breakpoints' as bp;
+
 .postCodeRangesContainer {
     --post-code-ranges-bg: color-mix(in srgb, var(--skin-main-background) 97%, var(--black));
     --input-label-bg: var(--post-code-ranges-bg);
@@ -70,4 +72,19 @@
     border: 2px solid rgb(0 0 0 / 90%);
     margin-right: 15px;
     margin-bottom: 20px;
+}
+
+@media (max-width: bp.$to-mobile) {
+    .fieldsContainer {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .fieldsContainer > .input:first-child {
+        grid-column: 1 / -1;
+    }
+
+    .minusContainer {
+        display: none;
+    }
 }

@@ -5,6 +5,7 @@ export interface AppRuntimeConfig {
     AGENCY_SERVICE_ORIGIN?: string;
     TENANT_SERVICE_ORIGIN?: string;
     CONSULTING_TYPE_SERVICE_ORIGIN?: string;
+    ADDON_SERVICE_ORIGIN?: string;
     KEYCLOAK_ORIGIN?: string;
     APP_URL?: string;
     MATRIX_URL?: string;

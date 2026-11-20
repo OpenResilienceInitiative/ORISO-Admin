@@ -13,8 +13,9 @@ import {
     Link as LinkIcon,
     Image as ImageIcon,
 } from '@mui/icons-material';
-import { Button, ConfigProvider, Select } from 'antd';
+import { Button, ConfigProvider } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../M3Select';
 import { ResolvingImage } from './createResolvingImage';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { HeadingAnchors } from './headingAnchors';
@@ -111,7 +112,7 @@ const Toolbar = ({
             <div className="RichEditor-controls">
                 {showHeadingSelect && (
                     <div className="RichEditor-control-group">
-                        <Select
+                        <M3Select
                             size="small"
                             value={activeHeadingLevel}
                             popupMatchSelectWidth={false}
@@ -191,7 +192,7 @@ const Toolbar = ({
                 </div>
             </div>
             {placeholders && Object.keys(placeholders).length > 0 && (
-                <Select
+                <M3Select
                     size="small"
                     placeholder={t('editor.plugin.placeholder.select.placeholder', 'Placeholder')}
                     value={null}
@@ -325,7 +326,7 @@ const TiptapEditor = ({
                         shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
                     >
                         <div className="RichEditor-anchorBubble">
-                            <Select
+                            <M3Select
                                 size="small"
                                 placeholder={t('editor.plugin.anchor.link.placeholder', 'Link to section')}
                                 value={null}

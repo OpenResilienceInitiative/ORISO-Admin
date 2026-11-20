@@ -1,33 +1,23 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const brandingStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
 const brandingSource = readFileSync(resolve(__dirname, './index.tsx'), 'utf8');
+const uploaderProps = [...brandingSource.matchAll(/<FormFileUploaderField([\s\S]*?)\/>/g)].map(([, props]) => props);
+const uploaderFor = (field: string) => uploaderProps.find((props) => props.includes(`name={['theming', '${field}']}`));
 
 describe('LogoAndFavicon preview size contract', () => {
-    it('renders the 32x32 favicon preview at exactly 32px in every desktop height', () => {
-        const faviconRule = brandingStyles.match(/\.faviconUploader\s*{([^}]*)}/s)?.[1] ?? '';
+    it('shows the 32 × 32 favicon at exactly 32px, so a blurry or cut-off icon is noticed', () => {
+        const faviconRule = brandingStyles.match(/\.faviconPreview img\s*{([^}]*)}/s)?.[1] ?? '';
 
         expect(faviconRule).toMatch(/width:\s*32px/);
-        expect(brandingStyles).not.toMatch(
-            /@media only screen and \(min-height:\s*1000px\)[\s\S]*?\.faviconUploader\s*{/,
-        );
+        expect(faviconRule).toMatch(/height:\s*32px/);
+        expect(uploaderFor('favicon')).toContain('previewClassName: styles.faviconPreview');
     });
 
-    it('does not apply the favicon dimensions to the optional 512x512 association logo', () => {
-        const uploaderProps = [...brandingSource.matchAll(/<FormFileUploaderField([\s\S]*?)\/>/g)].map(
-            ([, props]) => props,
-        );
-        const associationLogoUploader = uploaderProps.find((props) =>
-            props.includes("name={['theming', 'associationLogo']}"),
-        );
-
-        expect(associationLogoUploader).toContain('styles.associationLogoUploader');
-        expect(associationLogoUploader).not.toContain('styles.faviconUploader');
-        expect(brandingStyles).toMatch(/\.associationLogoUploader\s*{[\s\S]*?width:\s*54px/);
-        expect(brandingStyles).toMatch(
-            /@media only screen and \(min-height:\s*1000px\)[\s\S]*?\.associationLogoUploader\s*{\s*width:\s*64px/,
-        );
+    it('does not apply the favicon size to the 512 × 512 logos', () => {
+        expect(uploaderFor('logo')).not.toContain('styles.faviconPreview');
+        expect(uploaderFor('associationLogo')).not.toContain('styles.faviconPreview');
     });
 });

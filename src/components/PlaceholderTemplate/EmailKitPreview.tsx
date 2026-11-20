@@ -8,6 +8,7 @@ import {
     type InviteEmailTemplateKind,
 } from '../../api/accountInvites/accountInvites';
 import styles from './EmailKitPreview.module.scss';
+import { Notify } from '../Notify';
 
 export interface EmailKitPreviewProps {
     /**
@@ -42,6 +43,8 @@ export interface EmailKitPreviewProps {
 
 /** Keystrokes are cheap, mail renders are not — coalesce a burst of typing. */
 const PREVIEW_DEBOUNCE_MS = 300;
+
+const preventPreviewAction = (event: Event) => event.preventDefault();
 
 /**
  * Grows the frame to fit the rendered document, so the preview shows the whole
@@ -148,6 +151,22 @@ export const EmailKitPreview = ({
     const html = preview?.html ?? '';
     const renderedSubject = preview?.subject ?? '';
     const { ref, height, measure } = useFittedFrame(html);
+    const handleFrameLoad = useCallback(() => {
+        // A sandbox blocks scripts and top-level navigation, but links can still
+        // replace the frame itself. Keep the original mail markup and scrolling
+        // while cancelling mouse, keyboard-generated clicks and form actions.
+        const doc = ref.current?.contentDocument;
+        doc?.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]').forEach(
+            (control) => {
+                control.setAttribute('aria-disabled', 'true');
+                control.setAttribute('tabindex', '-1');
+            },
+        );
+        ['click', 'auxclick', 'submit'].forEach((type) => {
+            doc?.addEventListener(type, preventPreviewAction, true);
+        });
+        measure();
+    }, [measure, ref]);
 
     return (
         <section aria-label={previewLabel} className={styles.preview}>
@@ -162,12 +181,14 @@ export const EmailKitPreview = ({
                 </strong>
             </div>
             {failed ? (
-                <div className={styles.error} role="status">
-                    <span>{t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}</span>
-                    <button className={styles.retry} type="button" onClick={retry}>
-                        {t('placeholderTemplate.preview.retry', 'Retry')}
-                    </button>
-                </div>
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.emailPreview')}
+                    severity="error"
+                    actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: retry }]}
+                >
+                    {t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}
+                </Notify>
             ) : (
                 <iframe
                     ref={ref}
@@ -188,7 +209,7 @@ export const EmailKitPreview = ({
                     srcDoc={html}
                     style={{ height, background: emailColor.canvas, borderColor: emailColor.outline }}
                     title={previewLabel}
-                    onLoad={measure}
+                    onLoad={handleFrameLoad}
                 />
             )}
         </section>

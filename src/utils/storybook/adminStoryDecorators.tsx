@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { UseAppConfigProvider } from '../../context/useAppConfig';
 import { FeatureProvider } from '../../context/FeatureContext';
 import { setSessionTokens } from '../../api/auth/tokenSessionStore';
 import type { UserRole } from '../../enums/UserRole';
 import type { TenantData } from '../../types/tenant';
+import { createStoryQueryClient } from './storyQueryClients';
 
 /**
  * Storybook-only helpers for rendering admin **page-tree organisms** (#285). These pages
@@ -30,13 +31,23 @@ const STORY_TENANT = { id: 1, name: 'Demo-Mandant', settings: {}, licensing: {} 
 /**
  * Wrap a story in the admin app contexts (config + features) with a fresh React Query
  * cache (so a story's "loading" state is not served a sibling story's cached data).
+ * `seed` pre-fills that cache, e.g. the tenant's licensing.
  */
-export const withAdminProviders = (Story: () => ReactElement): ReactElement => (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <UseAppConfigProvider>
-            <FeatureProvider tenantData={STORY_TENANT} publicTenantData={STORY_TENANT}>
-                <Story />
-            </FeatureProvider>
-        </UseAppConfigProvider>
-    </QueryClientProvider>
-);
+export const withSeededAdminProviders = (
+    Story: () => ReactElement,
+    seed?: (client: QueryClient) => void,
+): ReactElement => {
+    const client = createStoryQueryClient();
+    seed?.(client);
+    return (
+        <QueryClientProvider client={client}>
+            <UseAppConfigProvider>
+                <FeatureProvider tenantData={STORY_TENANT} publicTenantData={STORY_TENANT}>
+                    <Story />
+                </FeatureProvider>
+            </UseAppConfigProvider>
+        </QueryClientProvider>
+    );
+};
+
+export const withAdminProviders = (Story: () => ReactElement): ReactElement => withSeededAdminProviders(Story);

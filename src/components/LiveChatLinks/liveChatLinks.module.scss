@@ -1,0 +1,78 @@
+// Live-chat links on the live-chat tile in Funktionszugriff (ORISO-Admin#1321).
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.createRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.topicField {
+    flex: 1 1 200px;
+    min-width: 0;
+}
+
+.createButton {
+    flex: none;
+}
+
+.note {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    gap: 8px;
+
+    & + & {
+        border-top: 1px solid var(--m3-outline-variant, #c4c7c7);
+    }
+}
+
+.rowText {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.topic {
+    color: var(--m3-on-surface, #1b1b1c);
+    font-size: 14px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+}
+
+.date {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.actions {
+    display: flex;
+    flex: none;
+    gap: 2px;
+}
+
+.action {
+    display: inline-flex;
+}

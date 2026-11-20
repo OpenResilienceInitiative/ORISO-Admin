@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
+import { expect } from 'storybook/test';
 import { Card } from './index';
 import { M3Button } from '../M3Button';
 
@@ -102,5 +104,30 @@ export const DialogWithFooter: Story = {
                 <M3Button>Speichern</M3Button>
             </>
         ),
+    },
+};
+
+/** The info button sits in the corner of the card it belongs to, in the default variant too (#1329). */
+export const DefaultWithHelp: Story = {
+    args: {
+        dataTestId: 'card-with-help',
+        children: 'Karteninhalt im Admin-Panel.',
+        help: { id: 'story', titleKey: 'Allgemeine Informationen', essenceKey: 'Kurz erklärt', slides: [] },
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 400, marginLeft: 200 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const card = canvasElement.querySelector('[data-testid="card-with-help"]') as HTMLElement;
+        const button = card.querySelector('button') as HTMLElement;
+        const cardBox = card.getBoundingClientRect();
+        const buttonBox = button.getBoundingClientRect();
+        await expect(buttonBox.right).toBeLessThanOrEqual(cardBox.right);
+        await expect(buttonBox.top).toBeGreaterThanOrEqual(cardBox.top);
+        await expect(buttonBox.bottom).toBeLessThanOrEqual(cardBox.bottom);
     },
 };

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { resolveBrandingFavicon } from './resolveBrandingFavicon';
 
 const TENANT_ICON = 'data:image/png;base64,dGVuYW50';

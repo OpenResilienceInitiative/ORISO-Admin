@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Skeleton } from 'antd';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Skeleton } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { DpiaTextEditor } from '../DpiaTextEditor';
 import { DpiaTextDocument, DpiaTextGateway, createMockDpiaTextGateway } from '../../api/dpiaTextGateway';
 import { DpiaTextMap } from '../../utils/dpiaSections';
 import { seedDpiaDefaults, stripDpiaDefaults } from '../../utils/dpiaDefaults';
+import { Notify } from '../../../../Notify';
 
 interface DpiaTextEditorContainerProps {
     tenantId: string | number;
@@ -24,6 +25,7 @@ interface DpiaTextEditorContainerProps {
 export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTextEditorContainerProps) => {
     const { t } = useTranslation();
     const id = Number(tenantId);
+    const editorAnchorId = useId();
     // A caller-supplied gateway wins; otherwise one mock instance per mount keeps its own store.
     const resolvedGateway = useMemo(() => gateway ?? createMockDpiaTextGateway(), [gateway]);
 
@@ -152,16 +154,14 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
     // state could silently overwrite an existing DSFA text, so we withhold the editor.
     if (loadFailed) {
         return (
-            <Alert
-                type="error"
-                showIcon
-                message={t('dpia.editor.loadError')}
-                action={
-                    <Button size="small" onClick={() => load()}>
-                        {t('tenants.legal.version.retry')}
-                    </Button>
-                }
-            />
+            <Notify
+                quietText={t('notify.tile.notLoaded')}
+                title={t('notify.title.dpia')}
+                severity="error"
+                actions={[{ label: t('tenants.legal.version.retry'), onClick: () => load() }]}
+            >
+                {t('dpia.editor.loadError')}
+            </Notify>
         );
     }
 
@@ -174,24 +174,22 @@ export const DpiaTextEditorContainer = ({ tenantId, gateway, readOnly }: DpiaTex
             {/* A save failure is not a load failure: the editor and its unsaved chapters stay
                 mounted, and only a save (not a re-fetch) is retried. */}
             {saveFailed && (
-                <Alert
-                    type="error"
-                    showIcon
-                    closable
+                <Notify
+                    title={t('notify.title.dpia')}
+                    severity="error"
+                    jump={editorAnchorId}
                     onClose={() => setSaveFailed(false)}
-                    message={t('dpia.editor.saveError')}
-                    action={
-                        <Button size="small" onClick={retrySave}>
-                            {t('tenants.legal.version.retry')}
-                        </Button>
-                    }
-                />
+                    actions={[{ label: t('tenants.legal.version.retry'), onClick: retrySave }]}
+                >
+                    {t('dpia.editor.saveError')}
+                </Notify>
             )}
             <DpiaTextEditor
                 // Remount on tenant switch: the editor's own `edits` state has no idea the tenant
                 // changed, so without a fresh instance tenant A's unsaved edits would keep
                 // overriding tenant B's loaded texts (mirrors AgencyLegalTextContainer's key).
                 key={id}
+                anchorId={editorAnchorId}
                 // Empty slots open with the pre-filled draft (see dpiaDefaults.ts); stored
                 // operator text always wins.
                 initialTexts={seedDpiaDefaults(document.texts)}
