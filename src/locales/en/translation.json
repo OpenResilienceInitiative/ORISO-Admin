@@ -4199,7 +4199,7 @@
     "tenants.permissions.caseSharing.option.caseHandover.description": "A case belongs to one counsellor. For absence, end of responsibility or when advice is needed, it is handed over or shared for a limited time – with the advice seeker's consent, depending on the reason.",
     "tenants.permissions.caseSharing.option.none.label": "None",
     "tenants.permissions.caseSharing.option.none.description": "Strict and private: the case stays with the counsellor who accepted it. Nobody else reads along.",
-    "tenants.permissions.caseSharing.bothActive": "Team counselling and case handover are both active today. Choose one option.",
+    "tenants.permissions.caseSharing.bothActive": "Team counselling and case handover are both active today. From now on only case handover applies, as the safer option. Choose another one if needed.",
     "tenants.permissions.caseSharing.handoverSettings": "Case handover settings",
     "tenants.permissions.card.summary.off": "Off",
     "tenants.permissions.card.summary.onPlain": "On",
