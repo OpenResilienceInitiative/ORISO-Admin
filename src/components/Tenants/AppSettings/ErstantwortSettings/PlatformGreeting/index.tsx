@@ -66,6 +66,7 @@ export const PlatformGreetingSettings = () => {
     const [openKey, setOpenKey] = useState<PlatformGreetingKey>(PLATFORM_GREETING_KEYS[0]);
     const [modalOpen, setModalOpen] = useState(false);
     const [modalErrorKey, setModalErrorKey] = useState<string | null>(null);
+    const [publishFailed, setPublishFailed] = useState(false);
 
     const content = useMemo<PlatformTextMap>(() => {
         const merged: PlatformTextMap = { ...stored };
@@ -98,12 +99,13 @@ export const PlatformGreetingSettings = () => {
 
     const publish = async (published: PlatformTextMap) => {
         const sent = edits;
+        setPublishFailed(false);
         try {
             await save(buildPlatformPayload(published));
             // A keystroke during the request replaces `edits`. Clearing only the map we sent keeps that keystroke.
             setEdits((current) => (current === sent ? {} : current));
         } catch {
-            // The edits stay on screen for another attempt.
+            setPublishFailed(true);
         }
     };
 
@@ -195,6 +197,18 @@ export const PlatformGreetingSettings = () => {
                 }
             >
                 <div className={styles.body}>
+                    {publishFailed && (
+                        <div id="platform-greeting-publish">
+                            <Notify
+                                title={t('notify.title.erstantwort')}
+                                severity="error"
+                                causeKey="platform-greeting:publish"
+                                jump="platform-greeting-publish"
+                            >
+                                {t('message.error.default')}
+                            </Notify>
+                        </div>
+                    )}
                     <section className={styles.section}>
                         <p className={styles.help}>{t('settings.greeting.intro')}</p>
                         <LegalContentLanguageSelect

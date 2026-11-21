@@ -169,6 +169,18 @@ describe('PlatformGreetingSettings', () => {
         expect(greetingEditor()).toHaveValue('<p>B</p>');
     });
 
+    it('says the greeting was not published and keeps the text', async () => {
+        save.mockRejectedValueOnce(new Error('no'));
+        render(<PlatformGreetingSettings />);
+        fireEvent.change(screen.getByLabelText('language'), { target: { value: 'fr' } });
+
+        fireEvent.change(greetingEditor(), { target: { value: '<p>A</p>' } });
+        publish();
+
+        await waitFor(() => expect(screen.getByText('message.error.default')).toBeInTheDocument());
+        expect(greetingEditor()).toHaveValue('<p>A</p>');
+    });
+
     it('says the texts could not be loaded instead of showing an empty editor', () => {
         usePlatformTexts.mockReturnValue({ data: undefined, isLoading: false, isError: true });
         render(<PlatformGreetingSettings />);
