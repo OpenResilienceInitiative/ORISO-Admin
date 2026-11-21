@@ -30,10 +30,9 @@ jobs:
                   ref: ${{ github.sha }}
                   persist-credentials: false
 
-            - name: Create Storybook Docker image
+            - name: Build and scan Storybook Docker image
               uses: ./.github/actions/docker-build-push
               with:
                   push_to_ghcr: false
                   image_name: oriso-admin-storybook
                   dockerfile: Dockerfile.storybook
-                  github_token: ${{ secrets.GITHUB_TOKEN }}

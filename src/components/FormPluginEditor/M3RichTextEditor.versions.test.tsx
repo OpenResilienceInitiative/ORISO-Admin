@@ -40,7 +40,7 @@ const versions = [
 ];
 
 const openVersionMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-    const trigger = screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' });
+    const trigger = screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ });
     await user.click(trigger);
 };
 
@@ -91,7 +91,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
     it('names the newest published variant and keeps its full publication time on hover', () => {
         render(<M3RichTextEditor title="Impressum" value="<p>Entwurf</p>" versions={versions} enableAnchors={false} />);
 
-        const control = screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' });
+        const control = screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ });
         expect(control).toHaveTextContent('legal.m3Editor.versionVariant:2');
         expect(control).toHaveAttribute('title', expect.stringContaining('01.07.26'));
         expect(control).toHaveAttribute('title', expect.stringContaining('10:00'));
@@ -116,7 +116,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
             />,
         );
 
-        expect(screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' })).toHaveTextContent(
+        expect(screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ })).toHaveTextContent(
             'legal.m3Editor.versionVariant:2',
         );
     });
@@ -133,7 +133,7 @@ describe('M3RichTextEditor — version select (#268)', () => {
         );
 
         expect(screen.getByRole('status')).toHaveTextContent('Versionsverlauf nicht verfügbar');
-        expect(screen.queryByRole('button', { name: 'legal.m3Editor.versionHistory' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /legal\.m3Editor\.versionHistory/ })).not.toBeInTheDocument();
         expect(screen.queryByText('legal.m3Editor.versionEmpty')).not.toBeInTheDocument();
     });
 

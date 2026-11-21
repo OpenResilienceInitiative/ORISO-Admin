@@ -78,16 +78,6 @@ jobs:
                     exit 1
                   fi
 
-            - name: Reject fixable high or critical image vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-              with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/oriso-admin@${{ steps.publish.outputs.digest }}
-                  format: table
-                  exit-code: '1'
-                  ignore-unfixed: true
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-
     # Split out of `build` and sharded: the suite is 407 jsdom files and was
     # 20 of the 24 minutes of that job, most of it module import cost paid once
     # per worker. Four shards run concurrently, so the wall clock is roughly a

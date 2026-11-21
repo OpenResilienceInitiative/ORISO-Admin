@@ -694,6 +694,7 @@ const AgencyPageEditForm = ({
             },
             {
                 id: 'contract-documents',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(
                     <DescriptionOutlinedIcon />,
                     'tenants.legal.dataProcessingAgreement.title',
@@ -702,10 +703,17 @@ const AgencyPageEditForm = ({
                 document: true,
                 span: 3,
                 // The DPA is managed at tenant (Träger) level — agency admins get a read-only view.
-                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />,
+                node: (
+                    <DataProcessingAgreementContainer
+                        tenantId={agencyTenantId}
+                        readOnly
+                        collapsible={legalLayout === 'collapsible'}
+                    />
+                ),
             },
             {
                 id: 'imprint',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(<ImprintIcon />, 'tenants.legal.agencyImprint.title', imprintTileStatus(agencyData)),
                 document: true,
                 span: 3,
@@ -714,6 +722,7 @@ const AgencyPageEditForm = ({
                    with "Alle Fachbereiche" editing the inheritable agency-wide text. */
                 node: (
                     <AgencyLegalTextWithTemplates
+                        collapsible={legalLayout === 'collapsible'}
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -723,6 +732,7 @@ const AgencyPageEditForm = ({
             },
             {
                 id: 'privacy',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(
                     <GdprIcon />,
                     'tenants.legal.agencyDataProtection.title',
@@ -732,6 +742,7 @@ const AgencyPageEditForm = ({
                 span: 3,
                 node: (
                     <AgencyLegalTextWithTemplates
+                        collapsible={legalLayout === 'collapsible'}
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -845,7 +856,7 @@ const AgencyPageEditForm = ({
     );
 };
 
-export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'collapsible' }: AgencyPageEditProps) => {
     const { id } = useParams();
     const { can } = useUserPermissions();
     const canCreateAgency = can(PermissionAction.Create, Resource.Agency);
