@@ -7,6 +7,7 @@ import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
 import type { TenantData } from '../../../types/tenant';
 import { LegalSettings } from './index';
+import { LONG_DPA_HTML } from '../../DpaLegalForm/dpaStoryText';
 
 /**
  * The legal tab of a Träger as tiles: data processing agreement ("Vertragsunterlagen"), imprint and privacy
@@ -48,7 +49,7 @@ const tenant = {
 const agreementVersion = {
     activationDate: '2026-07-13T10:22:00',
     content: JSON.stringify({
-        de: '<h1>Vertragsunterlagen</h1><p>Veröffentlichte Fassung: Weisungsbindung, Vertraulichkeit, TOMs.</p>',
+        de: LONG_DPA_HTML.replace('<h1>Vertragsunterlagen</h1>', '<h1>Auftragsverarbeitungsvertrag</h1>'),
         en: '<h1>Contract documents</h1><p>Published version: instruction binding, confidentiality, TOMs.</p>',
     }),
 };
@@ -77,8 +78,9 @@ const meta = {
     component: LegalSettings,
     parameters: { layout: 'padded', msw: { handlers: handlers() } },
     decorators: [
-        (Story) => {
-            setStoryAuth([UserRole.TenantAdmin], TENANT_ID);
+        (Story, { parameters }) => {
+            if (parameters.platformView) setStoryAuth([UserRole.TenantAdmin, UserRole.AgencyAdmin], 0);
+            else setStoryAuth([UserRole.TenantAdmin], TENANT_ID);
             // As in the app: the tenant is already loaded when this tab opens.
             return withSeededAdminProviders(
                 () => (
@@ -86,7 +88,11 @@ const meta = {
                         <Story />
                     </div>
                 ),
-                (client) => client.setQueryData([TENANT_DATA_KEY, TENANT_ID], tenant as unknown as TenantData),
+                (client) =>
+                    client.setQueryData(
+                        [TENANT_DATA_KEY, parameters.platformView ? 0 : TENANT_ID],
+                        tenant as unknown as TenantData,
+                    ),
             );
         },
     ],
@@ -173,3 +179,12 @@ export const DraftSurvivesFolding: Story = {
         await expect(tile.getByText(/Neu: Telefon 0123 456789\./)).toBeVisible();
     },
 };
+
+/** Review the platform's published documents in the same layout as the Träger settings. */
+export const PlattformVorschau: Story = {
+    args: { draftTenantId: 0 },
+    parameters: { platformView: true },
+};
+
+/** Review a signed agreement together with the Träger's imprint and privacy statement. */
+export const TraegerVorschau: Story = {};

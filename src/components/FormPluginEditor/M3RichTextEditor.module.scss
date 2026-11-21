@@ -1831,3 +1831,66 @@ $m3-state-active: rgb(39 50 112 / 12%);
     clip: rect(0 0 0 0);
     white-space: nowrap;
 }
+
+.fullscreenAction {
+    display: flex;
+    justify-content: center;
+    padding: 12px 16px;
+}
+
+.readerFullscreenToolbar {
+    display: flex;
+    justify-content: center;
+    padding: 8px 16px;
+
+    @media (min-width: 600px) {
+        display: none;
+    }
+}
+
+.fullscreenDialogName {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.documentReader {
+    --m3-editor-text-max-width: 88ch;
+}
+
+.documentReader:not(.inDialog) {
+    @media (min-width: 600px) {
+        height: clamp(470px, 69vh, 660px);
+    }
+}
+
+.documentReader.readMode {
+    .editor {
+        margin-inline: 16px;
+        background: var(--m3-surface-container-lowest, #ffffff);
+        border: 1px solid var(--m3-outline-variant, #c4c7c8);
+    }
+
+    .anchorNav {
+        background: var(--m3-surface-container-lowest, #ffffff);
+    }
+
+    @media (max-width: 599px) {
+        .editor {
+            margin-inline: 8px;
+        }
+
+        &:not(.inDialog) .editorContentScroll {
+            max-height: 48dvh;
+            overflow-y: auto;
+        }
+
+        :global(.ProseMirror) h1 {
+            font-size: clamp(20px, 5.6vw, 28px);
+            line-height: 1.25;
+        }
+    }
+}
