@@ -25,12 +25,16 @@ import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
-import { buildAdminAntdTheme } from './theme/antdM3Theme';
+import { buildAdminAntdTheme, type AdminAntdThemeOptions } from './theme/antdM3Theme';
 import { PasswordResetRequestPage } from './pages/PasswordReset/PasswordResetRequestPage';
 import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetConfirmPage';
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
+import { AdminDisplayProvider, useAdminDisplay } from './context/AdminDisplayContext';
+import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
+import { getAdminDisplaySessionScope } from './api/auth/adminDisplaySessionScope';
+import { readSeeds, type ThemingSeedFields } from './utils/themeSeeds';
 import { SnackbarHost } from './components/Snackbar';
 
 interface LangMap {
@@ -59,7 +63,13 @@ const AppSettingsWrapper = ({ children }: { children: JSX.Element }): JSX.Elemen
     return loaded ? children : <Initialization />;
 };
 
-const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) => {
+export const LanguageAwareConfigProvider = ({
+    children,
+    appearance,
+}: {
+    children: JSX.Element;
+    appearance?: AdminAntdThemeOptions;
+}) => {
     const [language, setLanguage] = useState(() => normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE);
 
     useEffect(() => {
@@ -77,12 +87,65 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     // table, list and select that runs out of data shows the ORISO graphic
     // instead of antd's stock tray drawing.
     return (
-        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
+        <ConfigProvider
+            locale={myLanguages[language]}
+            theme={buildAdminAntdTheme(appearance)}
+            renderEmpty={() => <AdminEmpty />}
+        >
             <AntdApp component={false}>
                 {children}
                 <SnackbarHost />
             </AntdApp>
         </ConfigProvider>
+    );
+};
+
+const PersonalAdminTheme = ({ children, theming }: { children: JSX.Element; theming?: ThemingSeedFields | null }) => {
+    const display = useAdminDisplay();
+    const theme = buildAdminAntdTheme({
+        scheme: display?.scheme,
+        textScale: display?.textScale,
+        contrast: display?.contrast,
+        seeds: display?.contrast === 'standard' ? undefined : readSeeds(theming),
+    });
+
+    // The inner AntdApp makes App.useApp() (modal.confirm, message, notification) render its holders inside
+    // this provider, so confirm dialogs follow the personal scheme, text size and contrast too.
+    return (
+        <ConfigProvider theme={theme}>
+            <AntdApp component={false}>{children}</AntdApp>
+        </ConfigProvider>
+    );
+};
+
+export const AdminDisplayBoundary = ({
+    children,
+    theming,
+    isReady,
+    sessionScope = null,
+}: {
+    children: JSX.Element;
+    theming?: ThemingSeedFields | null;
+    isReady?: boolean;
+    sessionScope?: string | null;
+}) => {
+    return (
+        <AdminDisplayProvider key={sessionScope} theming={theming} isReady={isReady} sessionScope={sessionScope}>
+            <PersonalAdminTheme theming={theming}>{children}</PersonalAdminTheme>
+        </AdminDisplayProvider>
+    );
+};
+
+const ProtectedAdmin = () => {
+    const tenant = usePublicTenantData();
+    return (
+        <AdminDisplayBoundary
+            theming={tenant.data?.theming}
+            isReady={tenant.isFetched || !tenant.isLoading}
+            sessionScope={getAdminDisplaySessionScope()}
+        >
+            <App />
+        </AdminDisplayBoundary>
     );
 };
 
@@ -138,7 +201,7 @@ export const AdminApp = () => (
                                     path="*"
                                     element={
                                         <ProtectedRoute>
-                                            <App />
+                                            <ProtectedAdmin />
                                         </ProtectedRoute>
                                     }
                                 />
