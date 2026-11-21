@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import getTopicByTenantData from '../api/topic/getTopicByTenantData';
 import { TopicData } from '../types/topic';
+import { useLanguage } from './useLanguage';
 
 interface UseTenantTopicsOptions {
     /**
@@ -16,9 +17,16 @@ export const useTenantTopics = (
     enabled = true,
     { failClosed = false }: UseTenantTopicsOptions = {},
 ) => {
+    // Topic names are resolved server-side from Accept-Language (#564) — the
+    // current UI language must be part of the key or a language switch keeps
+    // serving the names cached in the previous language.
+    const { language } = useLanguage();
+
     return useQuery<TopicData[]>({
         enabled,
-        queryKey: failClosed ? ['ALL_TOPICS', onlyActive, 'fail-closed'] : ['ALL_TOPICS', onlyActive],
+        queryKey: failClosed
+            ? ['ALL_TOPICS', onlyActive, language, 'fail-closed']
+            : ['ALL_TOPICS', onlyActive, language],
         queryFn: () =>
             getTopicByTenantData()
                 .then((topics) => {
