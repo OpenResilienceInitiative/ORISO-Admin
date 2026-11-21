@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useAdminFeedback } from './useAdminFeedback';
-import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import { getSingleTenantData } from '../api/tenant/getSingleTenantData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
@@ -11,6 +11,8 @@ import { useSingleTenantData, TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
 import { PUBLIC_TENANT_DATA_KEY } from './usePublicTenantData.hook';
 import { TENANT_DATA_KEY } from './useTenantData.hook';
+
+class TenantSettingsOutcomeUnknownError extends Error {}
 
 interface TenantAdminDataOptions
     extends UseMutationOptions<Partial<TenantAdminData>, unknown, Partial<TenantAdminData>> {
@@ -60,7 +62,18 @@ export const useTenantAdminDataMutation = ({
                 method: FETCH_METHODS.PUT,
                 skipAuth: false,
                 bodyData: serializeTenantAdminDataUpdate(mergeBase, data),
-                responseHandling: [],
+                responseHandling: [FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE],
+            }).catch((error: unknown) => {
+                // Only this PUT can report an uncertain save. A failed preflight GET wrote nothing.
+                if (error instanceof Response && error.status === 502) {
+                    if (error.headers.get(FETCH_ERRORS.X_REASON) === 'CONSULTING_SETTINGS_OUTCOME_UNKNOWN') {
+                        throw new TenantSettingsOutcomeUnknownError('Tenant settings save could not be confirmed', {
+                            cause: error,
+                        });
+                    }
+                    throw new Error(`API call error: ${error.status} ${error.statusText}`);
+                }
+                throw error;
             });
         },
         ...options,
@@ -83,11 +96,13 @@ export const useTenantAdminDataMutation = ({
             }
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
-        // `responseHandling: []` means fetchData rejects a 5xx without showing anything,
-        // so without this the only feedback the user ever gets is the success toast.
         onError: (error, updatedData, onMutateResult, context) => {
             notification.error({
-                message: t('message.error.default'),
+                message: t(
+                    error instanceof TenantSettingsOutcomeUnknownError
+                        ? 'message.error.tenantSettingsOutcomeUnknown'
+                        : 'message.error.default',
+                ),
             });
             options?.onError?.(error, updatedData, onMutateResult, context);
         },

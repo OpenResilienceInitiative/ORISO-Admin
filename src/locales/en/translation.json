@@ -350,6 +350,7 @@
     "message.error.NUMBER_OF_LICENSES_EXCEEDED": "You have reached the maximum number of counsellors. Contact your admin to add more users or remove inactive counsellors.",
     "message.error.TENANT_LICENSING_NOT_CONFIGURED": "No user licence is configured for this provider, so new counsellors cannot be created. Please ask your administrator to set the licensed number of users.",
     "message.error.default": "Something went wrong. Please try again later.",
+    "message.error.tenantSettingsOutcomeUnknown": "The save could not be confirmed. Check the current settings before trying again.",
     "message.error.sessionExpired": "Your session has expired. Please sign in again.",
     "agency.edit.settings.legal.validation.officer_required": "Enter the data protection officer contact details in full.",
     "agency.edit.settings.legal.validation.responsible_required": "Enter the responsible data protection contact in full.",

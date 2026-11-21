@@ -36,5 +36,6 @@
     "tenants.permissions.asker.collection.agencyCounselling": "ኣድራሻ ኢ-መይል ኣብ 1:1 ምኽሪ",
     "tenants.permissions.asker.collection.selfHelp": "ኣድራሻ ኢ-መይል ኣብ ጉጅለታት ርእሰ-ሓገዝ",
     "tenants.permissions.asker.collection.masterOff": "መጀመርታ ንሕሳብ ኣድራሻ ኢ-መይል ፍቐድ። እዚ ምርጫ ይዕቀብ።",
-    "tenants.permissions.asker.collection.description": "እዞም ቅጥዕታት ኣድራሻ ንምእካብ ይፈቕዱ። ኣድራሻ ግዴታ ኣይገብሩን ምልክታታት ድማ ኣይቕይሩን።"
+    "tenants.permissions.asker.collection.description": "እዞም ቅጥዕታት ኣድራሻ ንምእካብ ይፈቕዱ። ኣድራሻ ግዴታ ኣይገብሩን ምልክታታት ድማ ኣይቕይሩን።",
+    "message.error.tenantSettingsOutcomeUnknown": "እቲ ምዕቃብ ክረጋገጽ ኣይከኣለን። ዳግማይ ቅድሚ ምፍታንኩም፣ ነቲ ሕጂ ዘሎ ቅጥዕታት መርምሩ።"
 }
