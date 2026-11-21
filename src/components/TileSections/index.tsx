@@ -1,5 +1,8 @@
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import classNames from 'classnames';
-import { Children, isValidElement, type CSSProperties, type ReactNode } from 'react';
+import { Children, isValidElement, useState, type CSSProperties, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import styles from './styles.module.scss';
 
 interface TileSectionsProps {
@@ -23,6 +26,11 @@ interface TileSectionProps {
     pictureBeside?: boolean;
     /** Spans every column of the tile, for a panel that reads better wide and short (e.g. a status). */
     wide?: boolean;
+    /** Folds up to its heading (open at first). For long tiles such as Funktionszugriff (ORISO-Admin#1558). */
+    collapsible?: boolean;
+    defaultOpen?: boolean;
+    /** A page that explains the topic (e.g. a feature page on ORISO Understand); opens in a new tab. */
+    learnMoreHref?: string;
     children?: ReactNode;
 }
 
@@ -35,9 +43,16 @@ const TileSection = ({
     picture,
     pictureBeside,
     wide,
+    collapsible = false,
+    defaultOpen = true,
+    learnMoreHref,
     children,
 }: TileSectionProps) => {
+    const { t } = useTranslation();
     const headingId = `tile-section-${id}`;
+    const bodyId = `${headingId}-body`;
+    const [open, setOpen] = useState(defaultOpen);
+    const folded = collapsible && !open;
 
     return (
         <section
@@ -46,18 +61,55 @@ const TileSection = ({
             className={classNames(styles.section, {
                 [styles.sectionBeside]: pictureBeside,
                 [styles.sectionWide]: wide,
+                [styles.folded]: folded,
             })}
         >
             <div className={styles.main}>
                 <div className={styles.heading}>
-                    <h3 id={headingId}>{title}</h3>
+                    <h3 className={collapsible ? styles.collapsibleHeading : undefined}>
+                        {collapsible ? (
+                            <button
+                                type="button"
+                                className={styles.toggle}
+                                aria-expanded={open}
+                                aria-controls={bodyId}
+                                onClick={() => setOpen(!open)}
+                            >
+                                <span id={headingId}>{title}</span>
+                                <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                            </button>
+                        ) : (
+                            <span id={headingId}>{title}</span>
+                        )}
+                    </h3>
                     {titleAction}
                 </div>
-                {note && <p className={styles.note}>{note}</p>}
-                {children}
+                <div id={bodyId} className={styles.body} hidden={folded}>
+                    {(note || learnMoreHref) && (
+                        <p className={styles.note}>
+                            {note}
+                            {learnMoreHref && (
+                                <>
+                                    {note && ' '}
+                                    <a
+                                        href={learnMoreHref}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className={styles.learnMore}
+                                    >
+                                        {t('tileSections.learnMore')}
+                                        <OpenInNewIcon aria-hidden className={styles.learnMoreIcon} />
+                                        <span className={styles.visuallyHidden}>{t('tileSections.newTab')}</span>
+                                    </a>
+                                </>
+                            )}
+                        </p>
+                    )}
+                    {children}
+                </div>
             </div>
-            {footer && <div className={styles.footer}>{footer}</div>}
-            {picture && (
+            {footer && !folded && <div className={styles.footer}>{footer}</div>}
+            {picture && !folded && (
                 <div className={styles.picture} aria-hidden data-admin-tile-section-picture>
                     <div className={styles.pictureFrame}>{picture}</div>
                 </div>

@@ -162,6 +162,30 @@
     display: contents;
 }
 
+/* ORISO-Admin#1558: a conversation-type tile folds up (CollapsibleTile); the wrapper keeps test and
+   search anchors on the whole tile. */
+
+.chatTypeTile {
+    min-width: 0;
+    container-type: inline-size;
+}
+
+/* "Aktiviert" and the explanation button share the first row of the unfolded tile; the button is
+   positioned against this row (as on the Legal page), so the switch never runs under it. */
+
+.tileIntro {
+    position: relative;
+    min-height: 60px;
+    padding: 0 64px 8px 8px;
+}
+
+.tileSections {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+}
+
 // Live-chat tile: switch and links first, so the links never end up below every other setting.
 .tileColumns {
     display: grid;
