@@ -33,6 +33,21 @@
     }
 }
 
+// The "?" tour launcher (`data-admin-tour-launcher`, 56px FAB) sits in the same bottom-right corner.
+// Floating elements never lie on top of each other, so the stack starts above the FAB instead.
+:global(body:has([data-admin-tour-launcher])) .host:not(.contained) {
+    @media (min-width: 600px) {
+        bottom: calc(24px + 56px + 12px);
+    }
+}
+
+// Phones: the launcher itself is lifted above the bottom navigation (84px), so the stack goes higher.
+:global(body:has([data-admin-mobile-nav]):has([data-admin-tour-launcher])) .host:not(.contained) {
+    @media (max-width: 767.98px) {
+        bottom: calc(8px + 84px + 56px + 12px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 // Stories showing the stack inside a frame instead of the viewport.
 .contained {
     position: absolute;

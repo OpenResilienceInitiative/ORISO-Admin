@@ -35,6 +35,19 @@ export interface TutorialStatisticRow {
  */
 const frontendTourAudiencesById: Record<string, TourAudience[]> = {
     'consultant-walkthrough': ['consultant'],
+    'consultant-mail-counselling': ['consultant'],
+    'consultant-practice-accept': ['consultant'],
+    'consultant-practice-supervision': ['consultant'],
+    // Use-case tours (ORISO-Frontend#2339); ids fixed by the UserService allowlist.
+    'consultant-case-handover': ['consultant'],
+    'consultant-calendar': ['consultant'],
+    'consultant-group-circle': ['consultant'],
+    'consultant-profile': ['consultant'],
+    'consultant-live-chat': ['consultant'],
+    'consultant-timeline': ['consultant'],
+    'consultant-video-call': ['consultant'],
+    'asker-first-steps': ['asker'],
+    'asker-settings': ['asker'],
 };
 
 const knownTourAudiencesById: Record<string, TourAudience[]> = {

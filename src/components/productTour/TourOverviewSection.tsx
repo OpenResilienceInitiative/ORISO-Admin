@@ -1,51 +1,42 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card } from '../Card';
+import { M3Switch } from '../M3Switch';
 import { TilePicture } from '../TileFill';
 import tutorialsPicture from '../../resources/img/tile-help/tutorials.webp';
 import { ReactComponent as TopicIcon } from '../../resources/img/svg/topic.svg';
-import { ProductTourAdapter } from './ProductTourAdapter';
-import { ProductTourTooltip } from './ProductTourTooltip';
-import { TourOverviewCarousel, TourStartMode } from './TourOverviewCarousel';
+import { TourOverviewCarousel } from './TourOverviewCarousel';
 import { adminTours } from './tourDefinitions';
+import { tourLaunchStore, useTourLaunchState } from './tourLaunchStore';
+import { useTourAudience } from './tourAudience';
+import { useTourLauncherVisible } from './tourLauncherPreference';
 import { versionedTourProgressRepository } from './versionedTourProgressRepository';
-import { useUserRoles } from '../../hooks/useUserRoles.hook';
-import { UserRole } from '../../enums/UserRole';
-import type { TourAudience, TourDefinition, TourProgress } from './types';
-
-interface TourLaunch {
-    tour: TourDefinition;
-    mode: TourStartMode;
-    requestedAt: number;
-}
+import type { TourDefinition } from './types';
+import styles from './tourOverviewSection.module.scss';
 
 /**
  * Profile card wiring the tutorial carousel to the versioned progress API.
- * No production tour ships yet (adminTours is empty by epic decision), so the
- * card shows the empty state until concrete admin tours are accepted.
+ * Starting a tour only requests it: the global `TourHost` in the protected
+ * layout runs it, so the tour survives the navigation of its own steps.
+ * The card also holds the per-user switch for the "?" tour launcher.
  */
 export const TourOverviewSection = () => {
-    const { hasRole, isSuperAdmin } = useUserRoles();
-    const [launch, setLaunch] = useState<TourLaunch | null>(null);
+    const { t } = useTranslation();
+    const switchId = useId();
+    const audience = useTourAudience();
+    const [launcherVisible, setLauncherVisible] = useTourLauncherVisible();
+    const { progressRevision } = useTourLaunchState();
 
-    let audience: TourAudience = 'agency_admin';
-    if (isSuperAdmin) {
-        audience = 'platform_admin';
-    } else if (hasRole(UserRole.TenantAdmin) || hasRole(UserRole.SingleTenantAdmin)) {
-        audience = 'tenant_admin';
-    }
+    // A new revision (a tour just finished) gives the carousel a new loader,
+    // so the card shows the freshly saved status.
+    const loadProgress = useCallback(
+        () => versionedTourProgressRepository.getProgress(),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- the revision is the reload trigger
+        [progressRevision],
+    );
 
-    const loadProgress = useCallback(() => versionedTourProgressRepository.getProgress(), []);
-
-    const handleStartTour = useCallback((tour: TourDefinition, mode: TourStartMode) => {
-        setLaunch({ tour, mode, requestedAt: Date.now() });
-    }, []);
-
-    const handleTerminalStatus = useCallback(async (progress: TourProgress) => {
-        try {
-            await versionedTourProgressRepository.saveProgress(progress);
-        } finally {
-            setLaunch(null);
-        }
+    const handleStartTour = useCallback((tour: TourDefinition) => {
+        tourLaunchStore.requestLaunch(tour.id);
     }, []);
 
     return (
@@ -61,15 +52,19 @@ export const TourOverviewSection = () => {
                 loadProgress={loadProgress}
                 onStartTour={handleStartTour}
             />
-            {launch && (
-                <ProductTourAdapter
-                    key={launch.requestedAt}
-                    tour={launch.tour}
-                    active
-                    tooltipComponent={ProductTourTooltip}
-                    onTerminalStatus={handleTerminalStatus}
+            <div className={styles.launcherSwitch}>
+                <label htmlFor={switchId} className="m3-body-large">
+                    {t('productTour.launcher.switch')}
+                </label>
+                <M3Switch
+                    id={switchId}
+                    label={t('productTour.launcher.switch')}
+                    checked={launcherVisible}
+                    onChange={setLauncherVisible}
+                    showStateLabel
                 />
-            )}
+            </div>
+            <p className={`${styles.launcherSwitchHint} m3-body-medium`}>{t('productTour.launcher.switchHelp')}</p>
         </Card>
     );
 };

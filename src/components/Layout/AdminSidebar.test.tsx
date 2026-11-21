@@ -121,3 +121,19 @@ describe('AdminSidebar', () => {
         expect(screen.queryByRole('group')).not.toBeInTheDocument();
     });
 });
+
+describe('AdminSidebar tour anchors', () => {
+    it('anchors the navigation landmark for the admin introduction', () => {
+        renderSidebar();
+        expect(screen.getByRole('navigation')).toHaveAttribute('data-tour-target', 'admin-navigation');
+    });
+
+    it('anchors every destination by its stable key and the account item as admin-nav-account', () => {
+        renderSidebar({ items: [agencyItem, statsItem, linksItem] });
+
+        expect(screen.getByRole('link', { name: 'Agencies' })).toHaveAttribute('data-tour-target', 'admin-nav-agency');
+        expect(screen.getByRole('link', { name: 'Statistics' })).toHaveAttribute('data-tour-target', 'admin-nav-stats');
+        expect(screen.getByRole('link', { name: 'Links' })).toHaveAttribute('data-tour-target', 'admin-nav-links');
+        expect(screen.getByRole('link', { name: 'Account' })).toHaveAttribute('data-tour-target', 'admin-nav-account');
+    });
+});
