@@ -132,10 +132,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
 
     const handleDeadline = (days: number | undefined) => setDeadlineEdit({ days });
 
-    const publish = async (
-        publishedContent: ErstantwortContentMap,
-        sentEdits: ErstantwortContentMap = edits,
-    ) => {
+    const publish = async (publishedContent: ErstantwortContentMap, sentEdits: ErstantwortContentMap = edits) => {
         const { generation } = scopeRef.current;
         const sentDeadline = deadlineEdit;
         const deadlinePayload = deadlineEdit ? deadlineEdit.days ?? null : undefined;
