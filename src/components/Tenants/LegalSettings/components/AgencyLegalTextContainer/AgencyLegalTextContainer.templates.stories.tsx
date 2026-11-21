@@ -244,7 +244,10 @@ export const AgencyMobile390: Story = {
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
             LOAD,
         );
-        await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        // The document tile unfolds with an animation; wait until it is open.
+        await waitFor(() =>
+            expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible(),
+        );
         await Promise.all(
             within(reference)
                 .getAllByRole('button')

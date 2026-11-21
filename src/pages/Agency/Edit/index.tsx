@@ -690,7 +690,6 @@ const AgencyPageEditForm = ({
                         tenantId={agencyTenantId}
                         readOnly
                         collapsible={legalLayout === 'collapsible'}
-                        defaultOpen
                     />
                 ),
             },
