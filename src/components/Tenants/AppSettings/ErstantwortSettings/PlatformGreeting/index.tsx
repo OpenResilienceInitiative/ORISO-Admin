@@ -97,9 +97,11 @@ export const PlatformGreetingSettings = () => {
     };
 
     const publish = async (published: PlatformTextMap) => {
+        const sent = edits;
         try {
             await save(buildPlatformPayload(published));
-            setEdits({});
+            // A keystroke during the request replaces `edits`. Clearing only the map we sent keeps that keystroke.
+            setEdits((current) => (current === sent ? {} : current));
         } catch {
             // The edits stay on screen for another attempt.
         }

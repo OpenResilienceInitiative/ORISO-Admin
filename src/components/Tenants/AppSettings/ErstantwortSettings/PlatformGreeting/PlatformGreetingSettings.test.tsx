@@ -149,6 +149,26 @@ describe('PlatformGreetingSettings', () => {
         expect(saved().greeting).toEqual({ de: '', en: '' });
     });
 
+    it('keeps a keystroke that lands while publish is still running', async () => {
+        let finish: (value: unknown) => void = () => undefined;
+        save.mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    finish = resolve;
+                }),
+        );
+        render(<PlatformGreetingSettings />);
+        fireEvent.change(screen.getByLabelText('language'), { target: { value: 'fr' } });
+
+        fireEvent.change(greetingEditor(), { target: { value: '<p>A</p>' } });
+        publish();
+        fireEvent.change(greetingEditor(), { target: { value: '<p>B</p>' } });
+        finish({});
+
+        await waitFor(() => expect(save).toHaveBeenCalled());
+        expect(greetingEditor()).toHaveValue('<p>B</p>');
+    });
+
     it('says the texts could not be loaded instead of showing an empty editor', () => {
         usePlatformTexts.mockReturnValue({ data: undefined, isLoading: false, isError: true });
         render(<PlatformGreetingSettings />);

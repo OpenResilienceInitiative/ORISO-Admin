@@ -37,13 +37,13 @@ export const toBackend = (content: Record<string, unknown>): BackendTexts => {
 
 /** `GET /useradmin/erstantwort/agencies/{agencyId}`: the centre's own texts, per language with `__meta`. */
 export const getAgencyErstantwort = async (agencyId: string | number): Promise<ErstantwortContentMap> => {
-    const response = await fetchData({
+    // GET already resolves to the parsed body. A second .json() throws, and the centre greeting never loads.
+    const body = (await fetchData({
         url: `${erstantwortAgencyEndpoint}/${agencyId}`,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
-    });
-    const body = (await response.json()) as { texts?: BackendTexts };
+    })) as { texts?: BackendTexts };
     return fromBackend(body.texts);
 };
 

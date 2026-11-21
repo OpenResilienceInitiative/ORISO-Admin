@@ -84,9 +84,11 @@ export const AgencyErstantwortSettings = ({
     const purged = purgeStaleTranslations(content, stored, sourceLanguage);
 
     const publish = async (published: ErstantwortContentMap) => {
+        const sent = edits;
         try {
             await save(buildErstantwortContentPayload(published, undefined));
-            setEdits({});
+            // A keystroke during the request replaces `edits`. Clearing only the map we sent keeps that keystroke.
+            setEdits((current) => (current === sent ? {} : current));
         } catch {
             // The edits stay on screen for another attempt.
         }

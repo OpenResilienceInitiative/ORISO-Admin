@@ -10,15 +10,14 @@ export interface ErstantwortPlatformTextsDTO {
     builtIn: PlatformTextMap;
 }
 
-export const getErstantwortPlatformTexts = async (): Promise<ErstantwortPlatformTextsDTO> => {
-    const response = await fetchData({
+export const getErstantwortPlatformTexts = async (): Promise<ErstantwortPlatformTextsDTO> =>
+    // GET already resolves to the parsed body. A second .json() throws, and the greeting page stays on the error.
+    fetchData({
         url: erstantwortPlatformEndpoint,
         method: FETCH_METHODS.GET,
         skipAuth: false,
         responseHandling: [FETCH_ERRORS.CATCH_ALL],
     });
-    return response.json();
-};
 
 export const putErstantwortPlatformTexts = async (texts: PlatformTextMap): Promise<ErstantwortPlatformTextsDTO> => {
     const response = await fetchData({
