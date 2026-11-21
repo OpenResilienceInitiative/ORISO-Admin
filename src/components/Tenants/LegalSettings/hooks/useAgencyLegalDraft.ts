@@ -73,6 +73,8 @@ export const useAgencyLegalDraft = (agencyId: number, kind: AgencyLegalDraftKind
                 // A read started before this write would land afterwards and put the
                 // pre-save revision back in the cache, so the next save conflicts.
                 await queryClient.cancelQueries({ queryKey: agencyLegalDraftKey(agencyId, kind) });
+                // The draft context may change while cancellation is pending.
+                if (contextIdentityRef.current !== contextIdentity) return saved;
                 queryClient.setQueryData(agencyLegalDraftKey(agencyId, kind), saved);
                 setConflictState((previous) => (previous?.context === contextIdentity ? undefined : previous));
                 return saved;
@@ -91,6 +93,7 @@ export const useAgencyLegalDraft = (agencyId: number, kind: AgencyLegalDraftKind
                 if (contextIdentityRef.current !== contextIdentity) return;
                 // Same race as in save, except a late read resurrects the deleted draft.
                 await queryClient.cancelQueries({ queryKey: agencyLegalDraftKey(agencyId, kind) });
+                if (contextIdentityRef.current !== contextIdentity) return;
                 queryClient.setQueryData(agencyLegalDraftKey(agencyId, kind), null);
                 setConflictState((previous) => (previous?.context === contextIdentity ? undefined : previous));
             } catch (error) {
