@@ -132,9 +132,11 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
 
     const handleDeadline = (days: number | undefined) => setDeadlineEdit({ days });
 
-    const publish = async (publishedContent: ErstantwortContentMap) => {
+    const publish = async (
+        publishedContent: ErstantwortContentMap,
+        sentEdits: ErstantwortContentMap = edits,
+    ) => {
         const { generation } = scopeRef.current;
-        const sentEdits = edits;
         const sentDeadline = deadlineEdit;
         const deadlinePayload = deadlineEdit ? deadlineEdit.days ?? null : undefined;
         try {
@@ -192,7 +194,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
                 texts: collectSourceTexts(content, sourceLanguage),
             }),
         });
-        await publish(translated);
+        await publish(translated, translated);
     };
 
     const requestPublish = () => {

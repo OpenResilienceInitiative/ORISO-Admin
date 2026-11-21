@@ -83,8 +83,7 @@ export const AgencyErstantwortSettings = ({
     const sourceTexts = collectSourceTexts(content, sourceLanguage, changedKeys);
     const purged = purgeStaleTranslations(content, stored, sourceLanguage);
 
-    const publish = async (published: ErstantwortContentMap) => {
-        const sent = edits;
+    const publish = async (published: ErstantwortContentMap, sent: ErstantwortContentMap = edits) => {
         try {
             await save(buildErstantwortContentPayload(published, undefined));
             // A keystroke during the request replaces `edits`. Clearing only the map we sent keeps that keystroke.
@@ -118,7 +117,7 @@ export const AgencyErstantwortSettings = ({
         }
         setModalOpen(false);
         setEdits(translated);
-        await publish(translated);
+        await publish(translated, translated);
     };
 
     if (isLoading) return <Spin />;

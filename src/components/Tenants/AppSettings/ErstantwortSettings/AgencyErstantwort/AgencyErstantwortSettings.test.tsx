@@ -109,6 +109,11 @@ describe('AgencyErstantwortSettings', () => {
             texts: { erstantwortGreeting: '<p>Neu</p>' },
         });
         expect(save.mock.calls[0][0].erstantwortGreeting.en).toBe('<p>New</p>');
+        await waitFor(() =>
+            expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue(
+                '<p>Hallo aus der Beratungsstelle</p>',
+            ),
+        );
     });
 
     it('is read-only without the right to edit', () => {

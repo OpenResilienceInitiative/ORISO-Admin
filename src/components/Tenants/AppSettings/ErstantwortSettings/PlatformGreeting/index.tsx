@@ -97,8 +97,7 @@ export const PlatformGreetingSettings = () => {
         }));
     };
 
-    const publish = async (published: PlatformTextMap) => {
-        const sent = edits;
+    const publish = async (published: PlatformTextMap, sent: PlatformTextMap = edits) => {
         setPublishFailed(false);
         try {
             await save(buildPlatformPayload(published));
@@ -137,7 +136,7 @@ export const PlatformGreetingSettings = () => {
         }
         setModalOpen(false);
         setEdits(translated);
-        await publish(translated);
+        await publish(translated, translated);
     };
 
     if (isLoading) return <Spin />;

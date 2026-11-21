@@ -141,6 +141,9 @@ describe('ErstantwortSettings', () => {
         expect(greeting.en).toBe('<p>Hello</p>');
         expect(greeting.fr).toBe('<p>Bonjour</p>');
         expect(JSON.parse(greeting.en__meta)).toEqual({ mt: true, src: 'de', at: expect.any(String) });
+        await waitFor(() =>
+            expect(screen.getByLabelText('tenants.erstantwort.greeting.label')).toHaveValue('<p>Guten Tag</p>'),
+        );
     });
 
     it('sends the short source language "de" to the translation service even when the Träger writes informally', async () => {

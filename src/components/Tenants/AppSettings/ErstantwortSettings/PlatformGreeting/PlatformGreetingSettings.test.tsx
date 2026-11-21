@@ -110,6 +110,8 @@ describe('PlatformGreetingSettings', () => {
         expect(saved().greeting.de).toBe('<p>Neu</p>');
         expect(saved().greeting.en).toBe('<p>Hello platform</p>');
         expect(JSON.parse(saved().greeting.en__meta)).toMatchObject({ mt: true, src: 'de' });
+        fireEvent.change(screen.getByLabelText('language'), { target: { value: 'en' } });
+        await waitFor(() => expect(greetingEditor()).toHaveValue(''));
     });
 
     it('drops stale translations when the admin publishes without translating', async () => {
