@@ -12,7 +12,7 @@ import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
 import { PUBLIC_TENANT_DATA_KEY } from './usePublicTenantData.hook';
 import { TENANT_DATA_KEY } from './useTenantData.hook';
 
-class TenantSettingsOutcomeUnknownError extends Error {}
+import { UnconfirmedFormSaveError } from '../utils/UnconfirmedFormSaveError';
 
 interface TenantAdminDataOptions
     extends UseMutationOptions<Partial<TenantAdminData>, unknown, Partial<TenantAdminData>> {
@@ -67,7 +67,7 @@ export const useTenantAdminDataMutation = ({
                 // Only this PUT can report an uncertain save. A failed preflight GET wrote nothing.
                 if (error instanceof Response && error.status === 502) {
                     if (error.headers.get(FETCH_ERRORS.X_REASON) === 'CONSULTING_SETTINGS_OUTCOME_UNKNOWN') {
-                        throw new TenantSettingsOutcomeUnknownError('Tenant settings save could not be confirmed', {
+                        throw new UnconfirmedFormSaveError('Tenant settings save could not be confirmed', {
                             cause: error,
                         });
                     }
@@ -96,14 +96,34 @@ export const useTenantAdminDataMutation = ({
             }
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
-        onError: (error, updatedData, onMutateResult, context) => {
+        onError: async (error, updatedData, onMutateResult, context) => {
+            const mergeBase = writtenBasesRef.current.get(updatedData);
+            writtenBasesRef.current.delete(updatedData);
             notification.error({
                 message: t(
-                    error instanceof TenantSettingsOutcomeUnknownError
+                    error instanceof UnconfirmedFormSaveError
                         ? 'message.error.tenantSettingsOutcomeUnknown'
                         : 'message.error.default',
                 ),
             });
+            if (error instanceof UnconfirmedFormSaveError) {
+                const tenantKey = [TENANT_QUERY_KEY, Number(id)];
+                const previousVersion = queryClient.getQueryState(tenantKey)?.dataUpdateCount;
+                try {
+                    const current: TenantAdminData = await getSingleTenantData(id, { keepPageOnError: true });
+                    if (
+                        String(current?.id) === String(id) &&
+                        current.settings &&
+                        (!mergeBase?.settings?.extendedSettings || current.settings.extendedSettings) &&
+                        queryClient.getQueryState(tenantKey)?.dataUpdateCount === previousVersion
+                    ) {
+                        error.recordCurrentValues({ ...current });
+                        queryClient.setQueryData(tenantKey, current);
+                    }
+                } catch {
+                    // The write still failed. A second error would obscure the save outcome.
+                }
+            }
             options?.onError?.(error, updatedData, onMutateResult, context);
         },
     });

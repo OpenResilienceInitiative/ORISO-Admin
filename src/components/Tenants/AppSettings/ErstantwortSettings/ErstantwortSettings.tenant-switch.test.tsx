@@ -7,7 +7,10 @@ import type { TenantAdminData } from '../../../../types/TenantAdminData';
 import { ErstantwortSettings } from './index';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock('../../../../api/fetchData', () => ({ fetchData: vi.fn(), FETCH_METHODS: { PUT: 'PUT' } }));
+vi.mock('../../../../api/fetchData', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../../../api/fetchData')>()),
+    fetchData: vi.fn(),
+}));
 vi.mock('../../../../hooks/useErstantwortDefaults.hook', () => ({
     useErstantwortDefaults: () => ({ data: undefined }),
 }));

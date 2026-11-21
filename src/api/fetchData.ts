@@ -23,6 +23,9 @@ export const FETCH_ERRORS = {
     BAD_REQUEST_WITH_RESPONSE: 'BAD_REQUEST_WITH_RESPONSE',
     CATCH_ALL: 'CATCH_ALL',
     CATCH_ALL_SILENT: 'CATCH_ALL_SILENT',
+    // A follow-up read can report its failure locally, including 401 and 403,
+    // while the user is still looking at the result of the preceding action.
+    LOCAL_FAILURE_WITH_RESPONSE: 'LOCAL_FAILURE_WITH_RESPONSE',
     // Opt-in only: skips the global `/admin/access-denied` redirect for this one call so the
     // caller can render its own inline access-denied state. Additive — every existing caller
     // that doesn't pass this flag keeps the redirect exactly as before.
@@ -182,7 +185,9 @@ const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Pro
                             : response;
                     resolve(data);
                 } else if (props.responseHandling) {
-                    if (
+                    if (props.responseHandling.includes(FETCH_ERRORS.LOCAL_FAILURE_WITH_RESPONSE)) {
+                        reject(response);
+                    } else if (
                         response.status === 400 &&
                         (props.responseHandling.includes(FETCH_ERRORS.BAD_REQUEST) ||
                             props.responseHandling.includes(FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE))
