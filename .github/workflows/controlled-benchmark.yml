@@ -62,13 +62,13 @@ jobs:
                       'RUNNER_OS', 'RUNNER_ARCH', 'ImageOS', 'ImageVersion']}, indent=2) + '\n')
                   PY
             - name: Checkout immutable reviewed tools and source Git objects
-              uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4, API-verified
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4, API-verified
               with:
                   ref: ${{ env.BENCHMARK_TOOLS_COMMIT }}
                   fetch-depth: 0
                   persist-credentials: false
             - name: Set up shared exact Node
-              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4, API-verified
+              uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v4, API-verified
               with:
                   node-version: '22.23.3'
                   check-latest: false
@@ -82,7 +82,7 @@ jobs:
                     --profile "$BENCHMARK_PROFILE"
             - name: Retain raw evidence on success or failure
               if: always()
-              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4, API-verified
+              uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v4, API-verified
               with:
                   name: admin1611-comparison-${{ github.run_id }}-${{ github.run_attempt }}
                   path: ${{ env.COMPARISON_ARTIFACTS }}
