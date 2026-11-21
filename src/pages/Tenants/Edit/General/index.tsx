@@ -29,6 +29,7 @@ import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../../config/subdomainFeature';
 import { TraegerFieldSections } from './TraegerFieldSections';
 import { TenantInformationCard } from './TenantInformationCard';
+import { TenantUnitAdmins } from './TenantUnitAdmins';
 import { TraegerContactPersonTile } from './TraegerContactPersonTile';
 
 /** Which parts the create dialog shows (the edit tile lives in `TenantInformationCard`): with the topic. */
@@ -207,6 +208,7 @@ export const GeneralTenantSettings = () => {
                         </>
                     }
                 />
+                <TenantUnitAdmins tenantId={id} />
             </ThemeProvider>
         );
     }
