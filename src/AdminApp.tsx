@@ -109,7 +109,13 @@ const PersonalAdminTheme = ({ children, theming }: { children: JSX.Element; them
         seeds: display?.contrast === 'standard' ? undefined : readSeeds(theming),
     });
 
-    return <ConfigProvider theme={theme}>{children}</ConfigProvider>;
+    // The inner AntdApp makes App.useApp() (modal.confirm, message, notification) render its holders inside
+    // this provider, so confirm dialogs follow the personal scheme, text size and contrast too.
+    return (
+        <ConfigProvider theme={theme}>
+            <AntdApp component={false}>{children}</AntdApp>
+        </ConfigProvider>
+    );
 };
 
 export const AdminDisplayBoundary = ({

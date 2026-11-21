@@ -95,13 +95,24 @@ describe('applyAdminTheme', () => {
         expect(root.style.getPropertyValue('--m3-external-preview')).toBe('#ddd');
     });
 
-    it('keeps the static palette on an invalid stored seed', () => {
+    it.each([
+        ['light', 'standard'],
+        ['dark', 'standard'],
+        ['light', 'high'],
+        ['dark', 'high'],
+    ] as const)('falls back to the ORISO seed for an invalid stored primary (%s/%s)', (scheme, contrast) => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const root = document.createElement('div');
-        const applied = applyAdminTheme({ primaryColor: 'not-a-hex' }, root);
+        const applied = applyAdminTheme({ primaryColor: 'not-a-hex' }, root, scheme, contrast);
+        const { tokens } = computeOrisoPalette(
+            { accentDark: DEFAULT_ADMIN_SEED, primary: DEFAULT_ADMIN_SEED },
+            scheme,
+            contrast,
+        );
 
         expect(applied).toBe(false);
-        expect(root.style.length).toBe(0);
+        expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
+        expect(root.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });
@@ -239,13 +250,17 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--m3-primary-container')).toBe(tokens['--m3-primary-container']);
     });
 
-    it('keeps the static palette on an invalid stored seed', () => {
+    it('falls back to the ORISO seed for an invalid stored primary', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const root = document.createElement('div');
         const applied = applyAdminInvertedTheme({ primaryColor: 'not-a-hex' }, root);
+        const { tokens } = computeOrisoPalette(
+            { accentDark: DEFAULT_ADMIN_SEED, primary: DEFAULT_ADMIN_SEED },
+            'inverted',
+        );
 
         expect(applied).toBe(false);
-        expect(root.style.length).toBe(0);
+        expect(root.style.getPropertyValue('--m3-surface')).toBe(tokens['--m3-surface']);
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });
@@ -267,18 +282,23 @@ describe('applyAdminInvertedTheme', () => {
         expect(root.style.getPropertyValue('--admin-field-selected-surface')).toBe('');
     });
 
-    it('clears previously applied admin tokens when a later seed is invalid', () => {
+    it('replaces previously applied tenant tokens when a later seed is invalid', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const root = document.createElement('div');
+        const tenantSeed = '#1f6f8b';
 
-        applyAdminInvertedTheme({ primaryColor: BENCHMARK_SEED }, root);
-        expect(root.style.getPropertyValue('--m3-surface')).not.toBe('');
+        applyAdminInvertedTheme({ primaryColor: tenantSeed }, root);
+        const tenantPrimary = root.style.getPropertyValue('--m3-primary');
 
         const applied = applyAdminInvertedTheme({ primaryColor: 'not-a-hex' }, root);
+        const { tokens } = computeOrisoPalette(
+            { accentDark: DEFAULT_ADMIN_SEED, primary: DEFAULT_ADMIN_SEED },
+            'inverted',
+        );
 
         expect(applied).toBe(false);
-        expect(root.style.getPropertyValue('--m3-surface')).toBe('');
-        expect(root.style.getPropertyValue('--m3-primary')).toBe('');
+        expect(root.style.getPropertyValue('--m3-primary')).toBe(tokens['--m3-primary']);
+        expect(root.style.getPropertyValue('--m3-primary')).not.toBe(tenantPrimary);
         warn.mockRestore();
     });
 

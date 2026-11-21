@@ -65,9 +65,16 @@ const applyAdminSchemeTheme = (
 ): boolean => {
     try {
         const seeds = readSeeds(theming);
-        const primary =
-            normalizeSeed(seeds.primary ?? seeds.accentDark, 'primary', { optional: contrast !== 'standard' }) ??
-            DEFAULT_ADMIN_SEED;
+        // One rule for every scheme and contrast: an invalid stored primary falls back to the ORISO seed, so a
+        // dark or high-contrast user still gets the palette they chose instead of the static light defaults.
+        const storedPrimary = seeds.primary ?? seeds.accentDark;
+        const validPrimary = normalizeSeed(storedPrimary, 'primary', { optional: true });
+        const primaryRejected = Boolean(storedPrimary?.trim()) && !validPrimary;
+        if (primaryRejected) {
+            // eslint-disable-next-line no-console
+            console.warn('Admin theming: stored primary seed is not a valid hex colour, using the ORISO seed.');
+        }
+        const primary = validPrimary ?? DEFAULT_ADMIN_SEED;
         const accent = normalizeSeed(seeds.accent ?? seeds.accentLight, 'accent', { optional: true });
         const { tokens } = computeOrisoPalette(
             {
@@ -96,7 +103,7 @@ const applyAdminSchemeTheme = (
             entries.map(([name]) => name),
         );
 
-        return true;
+        return !primaryRejected;
     } catch (error) {
         // eslint-disable-next-line no-console
         console.warn('Admin theming: stored seed is invalid, keeping the static palette.', error);

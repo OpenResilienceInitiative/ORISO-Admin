@@ -198,10 +198,15 @@ const MuiSelectControl = ({
             slotProps={{
                 paper: {
                     sx: {
+                        // Text size applies in every contrast mode; the option sets it directly because MUI
+                        // option typography overrides a size inherited from the paper.
+                        fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        '& .MuiAutocomplete-option': {
+                            fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        },
                         'html[data-admin-personal-contrast] &': {
                             backgroundColor: 'var(--admin-field-surface)',
                             color: 'var(--admin-form-field-text)',
-                            fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
                             '& .MuiAutocomplete-option.Mui-focused, & .MuiAutocomplete-option.Mui-focusVisible': {
                                 backgroundColor: 'var(--admin-field-surface-hover)',
                                 color: 'var(--admin-form-field-text)',
