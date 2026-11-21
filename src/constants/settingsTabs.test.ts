@@ -47,6 +47,7 @@ describe('settings tabs', () => {
             '/settings/master-data',
             '/settings/general',
             '/settings/topics',
+            '/settings/greeting',
             '/settings/legal',
             '/settings/smtp',
             '/settings/permissions',
@@ -64,6 +65,16 @@ describe('settings tabs', () => {
         expect(getSettingsTabs({ ...baseContext, isSuperAdmin: true, can: withoutTopicRight })).not.toContainEqual(
             topicsTab,
         );
+    });
+
+    // The platform admin overrides the built-in Caritas Erstantwort texts here (ADR-018 §6).
+    it('offers the platform-level greeting tab only to the super admin', () => {
+        expect(getSettingsTabs({ ...baseContext, isSuperAdmin: true })).toContainEqual({
+            to: '/settings/greeting',
+            titleKey: 'settings.subhead.greeting',
+            iconName: 'erstantwort',
+        });
+        expect(getSettingsTabs(baseContext).some((tab) => tab.to === '/settings/greeting')).toBe(false);
     });
 
     // Figma Admin.ORISO node 465-27854 ("Subsection Translations German"), level 2:

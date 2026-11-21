@@ -40,6 +40,12 @@ export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consu
 export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
+/** Platform admin's own Erstantwort texts (Settings → Begrüßung), above the built-in default. */
+/** A Beratungsstelle's own Erstantwort texts: `${erstantwortAgencyEndpoint}/{agencyId}`. */
+export const erstantwortAgencyEndpoint = `${userServiceURL}/service/useradmin/erstantwort/agencies`;
+export const erstantwortPlatformEndpoint = `${userServiceURL}/service/useradmin/erstantwort/platform`;
+/** Journeys per conversation type and the layers of Träger and Beratungsstelle (ADR-036 part E, ORISO-UserService#1689). */
+export const journeysEndpoint = `${userServiceURL}/service/useradmin/journeys`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 /** Advice seekers for the admin interface: GET lists, DELETE /{id} marks one for deletion (ORISO-Admin#1521). */
 export const adviceSeekerAdminEndpoint = `${userServiceURL}/service/useradmin/askers`;

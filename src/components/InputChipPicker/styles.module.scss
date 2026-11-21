@@ -9,6 +9,11 @@
     gap: 8px 12px;
 }
 
+/* The list item around the "+" chip: it only gives the chip its place in the list. */
+.addItem {
+    display: inline-flex;
+}
+
 .chip,
 .add {
     display: inline-flex;

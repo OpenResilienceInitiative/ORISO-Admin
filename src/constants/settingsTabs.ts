@@ -53,6 +53,12 @@ export const getSettingsTabs = ({
                 titleKey: 'settings.subhead.topics',
                 iconName: 'topics',
             },
+            // Platform level of the Erstantwort chain: overrides the built-in Caritas texts.
+            can(PermissionAction.Update, Resource.Tenant) && {
+                to: `${base}/greeting`,
+                titleKey: 'settings.subhead.greeting',
+                iconName: 'erstantwort',
+            },
             (can(PermissionAction.Read, Resource.LegalText) || can(PermissionAction.Update, Resource.LegalText)) && {
                 to: `${base}/legal`,
                 titleKey: 'settings.subhead.legal',

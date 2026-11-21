@@ -16,6 +16,7 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
 import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarPolicy';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
@@ -28,6 +29,8 @@ export const TenantPermissionsSettings = ({
     liveChatLinks,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
+    // The Träger's journeys: the platform's with its own layer for An Bord and Ankunft (ADR-036 decision 29).
+    const journeys = useJourneysInTiles({ level: 'tenant', tenantId });
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const {
         data: permissionPolicyData,
@@ -272,31 +275,35 @@ export const TenantPermissionsSettings = ({
     }
 
     return (
-        <PermissionsSettingsView
-            tenantId={tenantId}
-            caseHandoverTenantId={Number(tenantId) || undefined}
-            excludeCardKeys={excludeCardKeys}
-            liveChatLinks={liveChatLinks}
-            isLoading={isLoading || policiesLoading}
-            initialValues={initialValues}
-            formStateKey={formStateKey}
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            policyLevel="tenant"
-            permissionPolicies={effectivePolicyData?.policies}
-            ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
-            pendingPolicyFields={pendingPolicyFields}
-            onPolicyChange={handlePolicyChange}
-            recipientScope={{
-                // Until the effect above has copied the loaded data over, read the query result: an
-                // absent field means "backend too old", and must not flash while loading.
-                policy: (effectivePolicyData ?? loadedPolicyData)?.internalGroupChat?.recipientScope,
-                onSave: handleRecipientScopeSave,
-            }}
-            calendar={{
-                policies: (effectivePolicyData ?? loadedPolicyData)?.calendar,
-                onSave: handleCalendarSave,
-            }}
-        />
+        <>
+            <PermissionsSettingsView
+                tenantId={tenantId}
+                caseHandoverTenantId={Number(tenantId) || undefined}
+                excludeCardKeys={excludeCardKeys}
+                liveChatLinks={liveChatLinks}
+                renderJourneys={journeys.renderJourneys}
+                isLoading={isLoading || policiesLoading}
+                initialValues={initialValues}
+                formStateKey={formStateKey}
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                policyLevel="tenant"
+                permissionPolicies={effectivePolicyData?.policies}
+                ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
+                pendingPolicyFields={pendingPolicyFields}
+                onPolicyChange={handlePolicyChange}
+                recipientScope={{
+                    // Until the effect above has copied the loaded data over, read the query result: an
+                    // absent field means "backend too old", and must not flash while loading.
+                    policy: (effectivePolicyData ?? loadedPolicyData)?.internalGroupChat?.recipientScope,
+                    onSave: handleRecipientScopeSave,
+                }}
+                calendar={{
+                    policies: (effectivePolicyData ?? loadedPolicyData)?.calendar,
+                    onSave: handleCalendarSave,
+                }}
+            />
+            {journeys.dialog}
+        </>
     );
 };

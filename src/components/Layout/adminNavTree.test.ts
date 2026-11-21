@@ -29,6 +29,7 @@ describe('buildAdminNavTree', () => {
             'settings:master-data',
             'settings:general',
             'settings:topics',
+            'settings:greeting',
             'settings:legal',
             'settings:smtp',
             'settings:service-notices',

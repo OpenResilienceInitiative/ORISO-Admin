@@ -93,6 +93,8 @@ export type PermissionsSettingsViewProps = {
     calendar?: Omit<CalendarCardProps, 'level'>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
+    /** The way into the journeys of a conversation type, shown on its tile (ADR-036 amendment). */
+    renderJourneys?: (cardKey: ChatTypeCardKey) => ReactNode;
 };
 
 export const PermissionsSettingsView = ({
@@ -117,6 +119,7 @@ export const PermissionsSettingsView = ({
     calendar,
     traegerDirectInvitePolicies,
     liveChatLinks,
+    renderJourneys,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const cardsToRender = excludeCardKeys?.length
@@ -362,6 +365,16 @@ export const PermissionsSettingsView = ({
                                                                     disabled={!masterEnabled}
                                                                 />
                                                             )}
+
+                                                        {renderJourneys && (
+                                                            <>
+                                                                <div className={styles.cardDivider} />
+                                                                <div className={styles.togglesSectionLabel}>
+                                                                    {t('journeys.title')}
+                                                                </div>
+                                                                {renderJourneys(card.key)}
+                                                            </>
+                                                        )}
 
                                                         {showLinks && (
                                                             <>
