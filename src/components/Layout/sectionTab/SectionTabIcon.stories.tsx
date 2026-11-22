@@ -43,6 +43,7 @@ const buildSections = (): AdminSidebarNavItem[] => [
         can: canFor(...(Object.values(Resource) as Resource[])),
         labels: {
             account: label('sidebar.account'),
+            addons: label('sidebar.addons'),
             agency: label('sidebar.agency'),
             home: label('sidebar.home'),
             links: label('sidebar.links'),
@@ -175,6 +176,7 @@ const SECTION_ROUTES = [
     routePathNames.tenantAdmins,
     routePathNames.statistic,
     routePathNames.links,
+    routePathNames.addons,
     routePathNames.caseHandoverLogs,
     routePathNames.userProfile,
 ];
@@ -229,7 +231,11 @@ export const TwoTenants: Story = {
             { routes: SECTION_ROUTES, drawn: true, fits: true, tabs: labels },
         ]);
         await expect(labels.some((text) => text.includes('Admin'))).toBe(false);
-        await waitFor(() => expect(within(canvasElement).getAllByTestId('section-tab-icon-png')).toHaveLength(18));
+        await waitFor(() =>
+            expect(within(canvasElement).getAllByTestId('section-tab-icon-png')).toHaveLength(
+                SECTION_ROUTES.length * 2,
+            ),
+        );
     },
 };
 
