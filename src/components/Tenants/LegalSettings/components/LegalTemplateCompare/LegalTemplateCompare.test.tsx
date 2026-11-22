@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { useState } from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar, SnackbarHost } from '../../../../Snackbar';
 import type { M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { LegalTemplateCompare, LegalTemplateCompareProps } from './index';
 import type { LegalTemplateProposal } from '../../hooks/useLegalProposalInbox';
@@ -28,7 +30,9 @@ const pending: LegalTemplateProposal = {
 
 const MockEditor = ({ comparison, snackbarSlot }: Pick<M3RichTextEditorProps, 'comparison' | 'snackbarSlot'>) => (
     <div>
-        <div data-testid="own-draft-editor">Eigener Entwurf</div>
+        <div id="test-proposal-editor" data-testid="own-draft-editor">
+            Eigener Entwurf
+        </div>
         {comparison && (
             <button type="button" onClick={() => comparison.onOpenChange?.(!comparison.open)}>
                 {comparison.open ? 'Vergleich schließen' : 'Vorlage vergleichen'}
@@ -200,5 +204,57 @@ describe('LegalTemplateCompare', () => {
         renderCompare({ language: 'en' });
         await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
         expect(screen.getByText(/legal.proposal.otherLanguage/)).toHaveTextContent('"language":"de"');
+    });
+});
+
+describe('received template while the document tile is closed', () => {
+    afterEach(() => snackbar.clear());
+
+    const ClosedTile = ({ readOnly = false }: { readOnly?: boolean }) => {
+        const [open, setOpen] = useState(false);
+        return (
+            <>
+                <SnackbarHost />
+                <button type="button" onClick={() => setOpen(!open)}>
+                    toggle tile
+                </button>
+                <LegalTemplateCompare
+                    proposal={pending}
+                    source="traeger"
+                    documentType="imprint"
+                    language="de"
+                    hasDraft={false}
+                    readOnly={readOnly}
+                    tileOpen={open}
+                    tileTarget="test-proposal-editor"
+                    onOpenTile={() => setOpen(true)}
+                    onAdopt={() => undefined}
+                    onDismiss={() => undefined}
+                >
+                    <MockEditor />
+                </LegalTemplateCompare>
+                <span data-testid="tile-open">{String(open)}</span>
+            </>
+        );
+    };
+
+    it('announces the template once, opens its comparison and retains it after folding', async () => {
+        render(<ClosedTile />);
+        expect(await screen.findAllByRole('button', { name: 'legal.proposal.preview' })).toHaveLength(1);
+        await userEvent.click(screen.getByRole('button', { name: 'legal.proposal.preview' }));
+        expect(screen.getByTestId('tile-open')).toHaveTextContent('true');
+        await waitFor(() => expect(document.activeElement?.id).toBe('test-proposal-editor'));
+        expect(screen.getByTestId('legal-template-reader')).toHaveTextContent('Muster-Impressum der Plattform');
+        await userEvent.click(screen.getByRole('button', { name: 'toggle tile' }));
+        expect(screen.getByTestId('tile-open')).toHaveTextContent('false');
+        expect(screen.queryByRole('button', { name: 'legal.proposal.preview' })).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'toggle tile' }));
+        expect(screen.getByTestId('legal-template-reader')).toBeInTheDocument();
+    });
+
+    it('does not offer to dismiss the template to a read-only user', async () => {
+        render(<ClosedTile readOnly />);
+        await screen.findByRole('button', { name: 'legal.proposal.preview' });
+        expect(screen.queryByRole('button', { name: 'legal.help.snackbar.dismiss' })).not.toBeInTheDocument();
     });
 });

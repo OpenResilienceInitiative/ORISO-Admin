@@ -28,6 +28,7 @@ const UserRolesHarness = () => {
             <output aria-label="tenant-scoped">{String(roles.isTenantScopedAdmin)}</output>
             <output aria-label="counsellor">{String(roles.isCounsellor)}</output>
             <output aria-label="technical">{String(roles.isTechnicalAccount)}</output>
+            <output aria-label="statistics-reader">{String(roles.isStatisticsReader)}</output>
             <output aria-label="has-admin-role">
                 {String(roles.hasRole([UserRole.AgencyAdmin, UserRole.UserAdmin]))}
             </output>
@@ -132,5 +133,28 @@ describe('useUserRoles', () => {
         mocks.parseJwt.mockReturnValue(null);
         render(<UserRolesHarness />);
         expect(screen.getByLabelText('counsellor')).toHaveTextContent('false');
+    });
+
+    // ORISO-UserService#1666: the read-only statistics account.
+    it('flags a pure Statistik-Leser·in, but never as a super admin', () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('token');
+        mocks.parseJwt.mockReturnValue({ realm_access: { roles: [UserRole.StatisticsReader] }, tenantId: 0 });
+
+        render(<UserRolesHarness />);
+
+        expect(screen.getByLabelText('statistics-reader')).toHaveTextContent('true');
+        expect(screen.getByLabelText('super-admin')).toHaveTextContent('false');
+    });
+
+    it('does not flag an account that also holds another admin role as a pure reader', () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('token');
+        mocks.parseJwt.mockReturnValue({
+            realm_access: { roles: [UserRole.StatisticsReader, UserRole.TenantAdmin] },
+            tenantId: 4,
+        });
+
+        render(<UserRolesHarness />);
+
+        expect(screen.getByLabelText('statistics-reader')).toHaveTextContent('false');
     });
 });

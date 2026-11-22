@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DepartmentDataProtectionCard } from './index';
 import { LegalTextVersion } from '../../../../../types/legalVersion';
+import { jumpTo } from '../../../../Snackbar';
 
 /** #862: consent lives in a dialog — open the CTA before reading the field. */
 const openConsent = async () => {
@@ -483,5 +484,76 @@ describe('DepartmentDataProtectionCard — the mandatory token on the field bein
         await userEvent.paste('Ich habe {{legal_links}} gelesen.');
 
         expect(screen.queryByTestId('consent-missing-token-error')).not.toBeInTheDocument();
+    });
+});
+
+describe('shared legal document tile', () => {
+    it('opens the agency document and preserves the editor when folded', async () => {
+        const user = userEvent.setup();
+        const { container } = render(
+            <DepartmentDataProtectionCard
+                collapsible
+                documentScope="agency"
+                documentType="privacy"
+                publicationStatus="PUBLISHED"
+                initialContentByLanguage={{ de: '<p>aktuell</p>' }}
+                languages={['de']}
+                versions={versions}
+                onSave={() => undefined}
+            />,
+        );
+        const heading = screen.getByRole('button', { name: /tenants\.legal\.agencyDataProtection\.title/ });
+        expect(heading.getAttribute('aria-expanded')).toBe('false');
+        expect(container.querySelectorAll('[data-collapsible-tile]')).toHaveLength(1);
+        await user.click(heading);
+        expect(heading.getAttribute('aria-expanded')).toBe('true');
+        expect(screen.getByTestId('editor').getAttribute('data-value')).toBe('<p>aktuell</p>');
+        const mountedEditor = screen.getByTestId('editor');
+        await user.click(heading);
+        await user.click(heading);
+        expect(screen.getByTestId('editor')).toBe(mountedEditor);
+        expect(screen.getByTestId('editor').getAttribute('data-value')).toBe('<p>aktuell</p>');
+    });
+});
+
+describe('jump to a closed agency document', () => {
+    it('opens and focuses the editor both initially and after closing it again', async () => {
+        const JumpHarness = () => {
+            const [open, setOpen] = React.useState(false);
+            return (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => jumpTo({ target: 'test-legal-editor', onJump: () => setOpen(true) })}
+                    >
+                        View draft
+                    </button>
+                    <DepartmentDataProtectionCard
+                        anchorId="test-legal-editor"
+                        collapsible
+                        open={open}
+                        onOpenChange={setOpen}
+                        documentScope="agency"
+                        initialContentByLanguage={{ de: '<p>draft</p>' }}
+                        onSave={() => undefined}
+                    />
+                </>
+            );
+        };
+        render(<JumpHarness />);
+        const user = userEvent.setup();
+        const verifyJump = async () => {
+            await user.click(screen.getByRole('button', { name: 'View draft' }));
+            const heading = screen.getByRole('button', {
+                name: /tenants\.legal\.agencyDataProtection\.title/,
+                expanded: true,
+            });
+            expect(heading).toHaveAttribute('aria-expanded', 'true');
+            await waitFor(() => expect(document.activeElement?.id).toBe('test-legal-editor'));
+            await user.click(heading);
+            expect(heading).toHaveAttribute('aria-expanded', 'false');
+        };
+        await verifyJump();
+        await verifyJump();
     });
 });

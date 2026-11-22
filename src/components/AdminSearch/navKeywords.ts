@@ -75,6 +75,17 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'dashboard',
         'metrics',
     ],
+    addons: [
+        'erweiterung',
+        'erweiterungen',
+        'zusatzmodul',
+        'plugin',
+        'add-on',
+        'addon',
+        'extension',
+        'extensions',
+        'module',
+    ],
     links: [
         'einladen',
         'einladung',
@@ -238,6 +249,13 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
 
     // Accounts
     'users:platform-admins': ['plattform admin', 'superadmin', 'administrator', 'platform admin', 'super admin'],
+    'users:statistics-readers': [
+        'statistik leser',
+        'statistik-leser',
+        'statistikleser',
+        'statistics reader',
+        'read only statistics',
+    ],
     'users:tenant-admins': ['träger admin', 'trägeradmin', 'mandanten admin', 'tenant admin', 'organisation admin'],
     'users:agency-admins': [
         'beratungsstellen admin',
@@ -275,6 +293,7 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
     ],
     'logs:inactive': ['inaktiv', 'inaktivität', 'stillgelegt', 'inactive', 'inactivity', 'dormant'],
     'logs:deletions': ['löschprotokoll', 'löschen', 'gelöscht', 'entfernt', 'deletion', 'delete', 'deleted', 'removed'],
+    'logs:addons': ['add-on', 'addon', 'erweiterung', 'protokoll', 'audit', 'extension'],
 
     // Links
     'links:tenants': ['träger einladung', 'träger invite', 'tenant invite', 'organisation invite'],

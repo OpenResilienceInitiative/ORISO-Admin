@@ -27,7 +27,13 @@ export const useSaveTopicCatalogue = () => {
                 url: `${topicAdminEndpoint}/catalogue`,
                 method: FETCH_METHODS.PUT,
                 skipAuth: false,
-                responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_SUCCESS.CONTENT],
+                // 409: a topic name is already taken; the dialog says so instead of a generic error.
+                responseHandling: [
+                    FETCH_ERRORS.CONFLICT,
+                    FETCH_ERRORS.CATCH_ALL_SILENT,
+                    FETCH_ERRORS.FORBIDDEN_SILENT,
+                    FETCH_SUCCESS.CONTENT,
+                ],
                 bodyData: JSON.stringify(catalogue),
             }),
         onSuccess: (saved) => {

@@ -112,6 +112,30 @@ vi.mock('../../../components/GlobalSearch', () => ({
 vi.mock('../../../components/Page/PageMobileActions', () => ({
     PageMobileActions: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 }));
+vi.mock('../../../hooks/useStatisticsReaders', () => ({
+    useStatisticsReadersData: ({ enabled }: { enabled?: boolean }) => ({
+        data: enabled
+            ? {
+                  data: [
+                      {
+                          id: '44',
+                          tenantId: 0,
+                          firstname: 'Sam',
+                          lastname: 'Reader',
+                          email: 'sam@example.test',
+                          username: 'sam',
+                          agencies: [],
+                      },
+                  ],
+                  total: 1,
+              }
+            : undefined,
+        refetch: vi.fn(),
+    }),
+}));
+vi.mock('../List/components/DeleteStatisticsReader', () => ({
+    DeleteStatisticsReaderModal: () => <div>reader-delete-confirmation</div>,
+}));
 vi.mock('../List/components/DeleteUser', () => ({ DeleteUserModal: () => null }));
 vi.mock('../List/components/DeleteTenantAdmin', () => ({
     DeleteTenantAdminModal: () => <div>delete-confirmation</div>,
@@ -200,6 +224,34 @@ describe('UserManagementTable section authorization', () => {
         const row = within(screen.getByRole('table'));
         expect(row.getByRole('button', { name: 'userTable.card.edit', exact: true })).toBeInTheDocument();
         expect(row.getByRole('button', { name: 'userTable.card.delete', exact: true })).toBeInTheDocument();
+    });
+
+    // ORISO-UserService#1666
+    describe('Statistik-Leser·innen', () => {
+        it('lets a platform admin create, edit and delete readers', () => {
+            state.section = TypeOfUser.StatisticsReaders;
+            state.isSuperAdmin = true;
+            show();
+            fireEvent.click(screen.getByRole('button', { name: /new$/ }));
+            expect(state.navigate).toHaveBeenLastCalledWith('/admin/users/statistics-readers/add');
+            const row = within(screen.getByRole('table'));
+            expect(row.getByText('sam@example.test')).toBeInTheDocument();
+            fireEvent.click(row.getByRole('button', { name: 'userTable.card.edit', exact: true }));
+            expect(state.navigate).toHaveBeenLastCalledWith('/admin/users/statistics-readers/44');
+            fireEvent.click(row.getByRole('button', { name: 'userTable.card.delete', exact: true }));
+            expect(screen.getByText('reader-delete-confirmation')).toBeInTheDocument();
+            expect(screen.queryByText('delete-confirmation')).toBeNull();
+        });
+
+        it('offers no actions to anyone but a platform admin', () => {
+            state.section = TypeOfUser.StatisticsReaders;
+            state.isSuperAdmin = false;
+            show();
+            expect(screen.queryByRole('button', { name: /new$/ })).not.toBeInTheDocument();
+            const table = within(screen.getByRole('table'));
+            expect(table.queryByRole('button', { name: 'userTable.card.edit', exact: true })).toBeNull();
+            expect(table.queryByRole('button', { name: 'userTable.card.delete', exact: true })).toBeNull();
+        });
     });
 
     describe('ending a running deletion', () => {

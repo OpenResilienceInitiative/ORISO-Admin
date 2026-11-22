@@ -86,6 +86,7 @@ export const X_REASON = {
 
 export const FETCH_SUCCESS = {
     CONTENT: 'CONTENT',
+    TEXT: 'TEXT',
 };
 
 export class FetchErrorWithOptions extends Error {
@@ -114,160 +115,121 @@ interface FetchDataProps {
     retriedAfterRefresh?: boolean;
 }
 
-const executeFetchData = (props: FetchDataProps, report: TransportFeedback): Promise<any> =>
-    new Promise((resolve, reject) => {
-        const accessToken = getAccessTokenForRequests();
-        // Check if manual authorization header is provided in headersData
-        const manualAuth = (props.headersData as any)?.Authorization;
+const readResponse = (response: Response, props: FetchDataProps, report: TransportFeedback) => {
+    const { status } = response;
+    const handling = props.responseHandling;
+    if (status === 204) return response;
+    if (status >= 200 && status < 300) {
+        if (handling?.includes(FETCH_SUCCESS.TEXT)) return response.text();
+        if (props.method === FETCH_METHODS.GET || handling?.includes(FETCH_SUCCESS.CONTENT)) return response.json();
+        return response;
+    }
 
-        let authorization = null;
-        if (!props.skipAuth) {
-            if (manualAuth) {
-                authorization = { Authorization: manualAuth }; // Use manual auth header if provided
-            } else {
-                authorization = { Authorization: `Bearer ${accessToken}` }; // Fall back to cookie-based auth
-            }
+    if (handling) {
+        if (status === 400) {
+            if (handling.includes(FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE)) return Promise.reject(response);
+            if (handling.includes(FETCH_ERRORS.BAD_REQUEST)) throw new Error(FETCH_ERRORS.BAD_REQUEST);
         }
-
-        const csrfToken = generateCsrfToken();
-
-        const localDevelopmentHeader =
-            isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
-
-        const controller = new AbortController();
-        const timeoutMs = props.timeout ?? 30_000;
-        setTimeout(() => controller.abort(), timeoutMs);
-        if (props.signal) {
-            props.signal.addEventListener('abort', () => controller.abort());
+        if (status === 404 && handling.includes(FETCH_ERRORS.NO_MATCH)) throw new Error(FETCH_ERRORS.NO_MATCH);
+        if (status === 405 && handling.includes(FETCH_ERRORS.NOT_ALLOWED)) throw new Error(FETCH_ERRORS.NOT_ALLOWED);
+        if (status === 409) {
+            if (handling.includes(FETCH_ERRORS.CONFLICT_WITH_RESPONSE)) return Promise.reject(response);
+            if (handling.includes(FETCH_ERRORS.CONFLICT)) throw new Error(FETCH_ERRORS.CONFLICT);
         }
-
-        // Remove Authorization from headersData if it exists to avoid duplication
-        const { Authorization: removedAuth, ...otherHeadersData } = (props.headersData as any) || {};
-
-        const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
-
-        const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
-        const req = new Request(props.url, {
-            method: props.method,
-            headers: {
-                ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
-                'cache-control': 'no-cache',
-                'Accept-Language': normalizedLanguage,
-                ...authorization,
-                'X-CSRF-TOKEN': csrfToken,
-                ...otherHeadersData,
-                ...localDevelopmentHeader,
-            },
-            credentials: 'include',
-            body: props.bodyData,
-            signal: controller.signal,
-        });
-
-        fetch(req)
-            .then((response) => {
-                if (response.status === 204) {
-                    resolve(response);
-                } else if (response.status >= 200 && response.status < 300) {
-                    const data =
-                        props.method === FETCH_METHODS.GET ||
-                        (props.responseHandling && props.responseHandling.includes(FETCH_SUCCESS.CONTENT))
-                            ? response.json()
-                            : response;
-                    resolve(data);
-                } else if (props.responseHandling) {
-                    if (
-                        response.status === 400 &&
-                        (props.responseHandling.includes(FETCH_ERRORS.BAD_REQUEST) ||
-                            props.responseHandling.includes(FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE))
-                    ) {
-                        reject(
-                            props.responseHandling.includes(FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE)
-                                ? response
-                                : new Error(FETCH_ERRORS.BAD_REQUEST),
-                        );
-                    } else if (response.status === 404 && props.responseHandling.includes(FETCH_ERRORS.NO_MATCH)) {
-                        reject(new Error(FETCH_ERRORS.NO_MATCH));
-                    } else if (response.status === 405 && props.responseHandling.includes(FETCH_ERRORS.NOT_ALLOWED)) {
-                        reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
-                    } else if (
-                        response.status === 409 &&
-                        (props.responseHandling.includes(FETCH_ERRORS.CONFLICT) ||
-                            props.responseHandling.includes(FETCH_ERRORS.CONFLICT_WITH_RESPONSE))
-                    ) {
-                        reject(
-                            props.responseHandling.includes(FETCH_ERRORS.CONFLICT_WITH_RESPONSE)
-                                ? response
-                                : new Error(FETCH_ERRORS.CONFLICT),
-                        );
-                    } else if (
-                        response.status === 403 &&
-                        props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE)
-                    ) {
-                        // Reject with the raw response so the caller can read the backend's
-                        // message (see FORBIDDEN_WITH_RESPONSE above). No redirect.
-                        reject(response);
-                    } else if (response.status === 403 && props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN)) {
-                        // Reject locally so the caller can render an in-place "no access"
-                        // state instead of losing the whole page to the redirect below.
-                        reject(new Error(FETCH_ERRORS.FORBIDDEN));
-                    } else if (response.status === 403) {
-                        if (props.responseHandling.includes(FETCH_ERRORS.FORBIDDEN_SILENT)) {
-                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
-                        } else {
-                            window.location.href = '/admin/access-denied';
-                            reject(new Error(FETCH_ERRORS.NOT_ALLOWED));
-                        }
-                    } else if (
-                        response.status === 502 &&
-                        props.responseHandling.includes(FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE)
-                    ) {
-                        // Raw response: the body carries WHY the upstream refused
-                        // (see BAD_GATEWAY_WITH_RESPONSE above). No toast here — the
-                        // caller renders the specific one.
-                        reject(response);
-                    } else if (
-                        response.status === 503 &&
-                        props.responseHandling.includes(FETCH_ERRORS.SERVICE_UNAVAILABLE)
-                    ) {
-                        reject(new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE));
-                    } else if (response.status === 401) {
-                        // Don't force a logout here. fetchData()'s wrapper attempts a single
-                        // token refresh + retry before falling back to logout, so a lapsed or
-                        // empty access token self-heals instead of dropping the user on the
-                        // login page mid-action (e.g. while creating an agency).
-                        reject(new Error(FETCH_ERRORS.UNAUTHORIZED));
-                    } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) {
-                        // Reject without showing a toast so the caller can decide how to handle it.
-                        reject(response);
-                    } else if (props.responseHandling.includes(FETCH_ERRORS.CATCH_ALL)) {
-                        report({
-                            content: i18next.t([
-                                `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
-                                'message.error.default',
-                            ]) as string,
-                            duration: 8,
-                        });
-
-                        reject(new Error(FETCH_ERRORS.CATCH_ALL));
-                    } else {
-                        reject(new Error(`API call error: ${response.status} ${response.statusText}`));
-                    }
-                } else {
-                    // Handle unhandled response status - reject with appropriate error
-                    // console.error(`Unhandled response status: ${response.status} for URL: ${props.url}`);
-                    reject(new Error(`API call error: ${response.status} ${response.statusText}`));
-                }
-            })
-            .catch((error) => {
-                if (props.signal?.aborted && error.name === 'AbortError') {
-                    reject(new Error(FETCH_ERRORS.ABORT));
-                } else if (error.name === 'AbortError') {
-                    reject(new Error(FETCH_ERRORS.TIMEOUT));
-                } else {
-                    reject(error);
-                }
+        if (status === 403) {
+            if (handling.includes(FETCH_ERRORS.FORBIDDEN_WITH_RESPONSE)) return Promise.reject(response);
+            if (handling.includes(FETCH_ERRORS.FORBIDDEN)) throw new Error(FETCH_ERRORS.FORBIDDEN);
+            if (!handling.includes(FETCH_ERRORS.FORBIDDEN_SILENT)) window.location.href = '/admin/access-denied';
+            throw new Error(FETCH_ERRORS.NOT_ALLOWED);
+        }
+        if (status === 502 && handling.includes(FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE))
+            return Promise.reject(response);
+        if (status === 503 && handling.includes(FETCH_ERRORS.SERVICE_UNAVAILABLE)) {
+            throw new Error(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+        }
+        if (status === 401) throw new Error(FETCH_ERRORS.UNAUTHORIZED);
+        if (handling.includes(FETCH_ERRORS.CATCH_ALL_SILENT)) return Promise.reject(response);
+        if (handling.includes(FETCH_ERRORS.CATCH_ALL)) {
+            report({
+                content: i18next.t([
+                    `message.error.${response.headers.get(FETCH_ERRORS.X_REASON)}`,
+                    'message.error.default',
+                ]) as string,
+                duration: 8,
             });
+            throw new Error(FETCH_ERRORS.CATCH_ALL);
+        }
+    }
+    throw new Error(`API call error: ${status} ${response.statusText}`);
+};
+
+const executeFetchData = async (props: FetchDataProps, report: TransportFeedback): Promise<any> => {
+    if (props.signal?.aborted) throw new Error(FETCH_ERRORS.ABORT);
+
+    const accessToken = getAccessTokenForRequests();
+    const { Authorization: manualAuth, ...otherHeadersData } = (props.headersData as any) || {};
+    const authorization = props.skipAuth ? null : { Authorization: manualAuth || `Bearer ${accessToken}` };
+    const csrfToken = generateCsrfToken();
+    const localDevelopmentHeader =
+        isLocalDevelopment && CSRF_WHITELIST_HEADER ? { [CSRF_WHITELIST_HEADER]: csrfToken } : null;
+    const normalizedLanguage = normalizeLanguage(i18next.resolvedLanguage || i18next.language) || DEFAULT_LANGUAGE;
+    const isMultipartBody = typeof FormData !== 'undefined' && props.bodyData instanceof FormData;
+    const controller = new AbortController();
+    const request = new Request(props.url, {
+        method: props.method,
+        headers: {
+            ...(isMultipartBody ? {} : { 'Content-Type': 'application/json' }),
+            'cache-control': 'no-cache',
+            'Accept-Language': normalizedLanguage,
+            ...authorization,
+            'X-CSRF-TOKEN': csrfToken,
+            ...otherHeadersData,
+            ...localDevelopmentHeader,
+        },
+        credentials: 'include',
+        body: props.bodyData,
+        signal: controller.signal,
     });
+
+    if (props.signal?.aborted) throw new Error(FETCH_ERRORS.ABORT);
+    let interruption: string | undefined;
+    const cancel = (cause: string) => {
+        if (controller.signal.aborted) return;
+        interruption = cause;
+        controller.abort();
+    };
+    const abort = () => cancel(FETCH_ERRORS.ABORT);
+    const deadline = setTimeout(() => cancel(FETCH_ERRORS.TIMEOUT), props.timeout ?? 30_000);
+    props.signal?.addEventListener('abort', abort);
+
+    try {
+        const response = await fetch(request);
+        if (interruption) throw new Error(interruption);
+        // Keep cancellation active while reading a body owned by this helper.
+        return await readResponse(response, props, report);
+    } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            throw new Error(interruption ?? FETCH_ERRORS.TIMEOUT);
+        }
+        throw error;
+    } finally {
+        clearTimeout(deadline);
+        props.signal?.removeEventListener('abort', abort);
+    }
+};
+
+const refreshForRequest = (signal?: AbortSignal): Promise<boolean> => {
+    if (!signal) return tryRefreshAccessToken();
+    if (signal.aborted) return Promise.reject(new Error(FETCH_ERRORS.ABORT));
+    return new Promise((resolve, reject) => {
+        const abort = () => reject(new Error(FETCH_ERRORS.ABORT));
+        signal.addEventListener('abort', abort, { once: true });
+        // This caller can stop waiting without interrupting the shared refresh.
+        tryRefreshAccessToken()
+            .finally(() => signal.removeEventListener('abort', abort))
+            .then(resolve, reject);
+    });
+};
 
 /**
  * Public request helper. Wraps {@link executeFetchData} with a self-healing 401
@@ -282,9 +244,11 @@ const fetchWithFeedback = async (props: FetchDataProps, report: TransportFeedbac
         return await executeFetchData(props, report);
     } catch (error) {
         const isUnauthorized = error instanceof Error && error.message === FETCH_ERRORS.UNAUTHORIZED;
+        if (isUnauthorized && props.signal?.aborted) throw new Error(FETCH_ERRORS.ABORT);
 
         if (isUnauthorized && !props.skipAuth && !props.retriedAfterRefresh) {
-            const refreshed = await tryRefreshAccessToken();
+            const refreshed = await refreshForRequest(props.signal);
+            if (props.signal?.aborted) throw new Error(FETCH_ERRORS.ABORT);
             if (refreshed) {
                 // Retry once through this private wrapper (not executeFetchData) so a retry that
                 // is still unauthorized also runs the logout fallback below.

@@ -79,6 +79,28 @@ describe('LogsTabsLayout', () => {
         expect(screen.getAllByRole('tab')).toHaveLength(2);
     });
 
+    it('adds the add-on log as the last tab when the admin may see the Add-ons section', () => {
+        renderLayout({
+            showSupervisor: true,
+            showCaseHandover: true,
+            showInactive: false,
+            showDeletion: false,
+            showAddons: true,
+        });
+
+        expect(tabTargets()).toEqual([
+            routePathNames.logs,
+            routePathNames.caseHandoverLogs,
+            routePathNames.addonAuditLogs,
+        ]);
+    });
+
+    it('hides the add-on log tab when the Add-ons section is hidden', () => {
+        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
+
+        expect(tabTargets()).not.toContain(routePathNames.addonAuditLogs);
+    });
+
     it('renders no tablist when the admin may read no log view at all', () => {
         renderLayout({ showSupervisor: false, showCaseHandover: false, showInactive: false, showDeletion: false });
 

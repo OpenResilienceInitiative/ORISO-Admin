@@ -33,6 +33,12 @@ describe('DepartmentSelect', () => {
         render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
 
         expect(screen.getByText('Alle Fachbereiche')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Fachbereich wählen/i })).toHaveAccessibleName(
+            'Alle Fachbereiche Fachbereich wählen',
+        );
+        expect(
+            screen.getByRole('button', { name: /Fachbereich wählen/i }).querySelector('[aria-hidden="true"]'),
+        ).toBeInTheDocument();
     });
 
     it('shows the selected department name as the label', () => {

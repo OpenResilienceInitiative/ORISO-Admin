@@ -252,3 +252,21 @@ describe('platformPresetValues direct invitations', () => {
         expect(preset.featureDirectInviteChatEnabled).toBe(true);
     });
 });
+
+// ORISO-UserService#1662: TenantService keeps a stored guest account mode when a save omits it, so a
+// platform save carries all nine explicitly; default every mode allowed.
+describe('platformPresetValues guest account modes', () => {
+    it('seeds all nine as explicit true and takes a resolved policy over the seed', () => {
+        const keys = ['Temporary', 'GuestChooses', 'Permanent'].flatMap((mode) =>
+            ['Chat', 'Audio', 'Video'].map((medium) => `featureGuestAccount${mode}${medium}Enabled`),
+        );
+        keys.forEach((key) => expect(platformPresetValues()[key]).toBe(true));
+        const preset = platformPresetValues({
+            permissionPolicies: {
+                featureGuestAccountPermanentChatEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+            },
+        });
+        expect(preset.featureGuestAccountPermanentChatEnabled).toBe(false);
+        expect(preset.featureGuestAccountPermanentAudioEnabled).toBe(true);
+    });
+});
