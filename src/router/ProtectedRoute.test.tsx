@@ -138,13 +138,13 @@ describe('ProtectedRoute', () => {
         expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
     });
 
-    it('logs out and redirects when the token has no admin portal access', async () => {
+    it('replaces the denied route when the token has no admin portal access', async () => {
         mocks.hasAdminPortalAccess.mockReturnValue(false);
 
         renderProtectedRoute();
 
         await waitFor(() => {
-            expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login');
+            expect(mocks.logout).toHaveBeenCalledWith(true, { url: '/admin/login', replace: true });
         });
         expect(screen.getByText('Initializing')).toBeInTheDocument();
         expect(screen.queryByText('Login page')).not.toBeInTheDocument();

@@ -4,7 +4,7 @@ import routePathNames from '../appConfig';
 import { getTokenExpiryFromLocalStorage } from '../api/auth/accessSessionLocalStorage';
 import { bootstrapAuthSession, getAccessTokenForRequests, getRefreshTokenForRequests } from '../api/auth/auth';
 import { agencySetupLoginFromPath } from '../constants/agencySetupContinuation';
-import logout from '../api/auth/logout';
+import logout, { type LogoutDestination } from '../api/auth/logout';
 import { Initialization } from '../components/Layout/Initialization';
 import { hasAdminPortalAccess } from '../utils/adminPortalAccess';
 
@@ -12,7 +12,9 @@ interface ProtectedRouteTypes {
     children: React.ReactNode;
 }
 
-const getLogoutDestination = (path: string): string | null => {
+const roleDeniedDestination = { url: routePathNames.login, replace: true } as const;
+
+const getLogoutDestination = (path: string): LogoutDestination | null => {
     const accessToken = getAccessTokenForRequests();
     const refreshToken = getRefreshTokenForRequests();
 
@@ -27,7 +29,7 @@ const getLogoutDestination = (path: string): string | null => {
         return agencySetupLoginFromPath(path);
     }
 
-    return hasAdminPortalAccess(accessToken) ? null : routePathNames.login;
+    return hasAdminPortalAccess(accessToken) ? null : roleDeniedDestination;
 };
 
 export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
