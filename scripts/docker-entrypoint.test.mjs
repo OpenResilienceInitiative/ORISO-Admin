@@ -26,6 +26,17 @@ const runEntrypoint = (env) => {
     }
 };
 
+describe('Admin image payload', () => {
+    it('keeps the two BFF modules outside the document root', () => {
+        const dockerfile = fs.readFileSync(path.resolve(path.dirname(entrypoint), '../Dockerfile'), 'utf8');
+        expect(dockerfile).not.toMatch(/^COPY\s+scripts\/?\s/m);
+        expect(dockerfile).toContain(
+            'COPY scripts/auth-bff-server.mjs scripts/auth-bff-handlers.mjs /opt/oriso/admin-auth-bff/',
+        );
+        expect(fs.readFileSync(entrypoint, 'utf8')).toContain('node /opt/oriso/admin-auth-bff/auth-bff-server.mjs');
+    });
+});
+
 describe('Admin docker-entrypoint runtime config', () => {
     it.each([{}, { VITE_API_URL: '' }, { REACT_APP_API_URL: '   ' }])(
         'fails and names VITE_API_URL when it is missing (%j)',

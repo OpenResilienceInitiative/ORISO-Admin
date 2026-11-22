@@ -96,7 +96,7 @@ if ! command -v node >/dev/null 2>&1; then
     exit 1
 fi
 
-node /usr/share/nginx/html/admin-auth-bff/auth-bff-server.mjs &
+node /opt/oriso/admin-auth-bff/auth-bff-server.mjs &
 AUTH_BFF_PID=$!
 
 i=0
