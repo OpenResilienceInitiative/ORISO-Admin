@@ -1,20 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
     getTenantAdmins: vi.fn(),
-    deleteAdmin: vi.fn(),
+    fetchData: vi.fn(),
 }));
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock('../../../../api/admins/getTenantAdmins', () => ({
     getTenantAdmins: mocks.getTenantAdmins,
 }));
-vi.mock('../../../../hooks/useDeleteTenantAdmin', () => ({
-    useDeleteTenantAdmin: () => ({ mutate: mocks.deleteAdmin }),
+// The real delete hook runs; only its transport is replaced.
+vi.mock('../../../../api/fetchData', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../../../api/fetchData')>()),
+    fetchData: mocks.fetchData,
 }));
 
 import { TenantUnitAdmins } from './TenantUnitAdmins';
@@ -38,8 +40,9 @@ const renderList = () => {
 describe('TenantUnitAdmins', () => {
     beforeEach(() => {
         mocks.getTenantAdmins.mockReset();
-        mocks.deleteAdmin.mockReset();
+        mocks.fetchData.mockReset();
         mocks.getTenantAdmins.mockResolvedValue(admins);
+        mocks.fetchData.mockResolvedValue(undefined);
     });
 
     it('lists every admin of the unit and adds another for this tenant', async () => {
@@ -53,8 +56,9 @@ describe('TenantUnitAdmins', () => {
         );
     });
 
-    it('removes one admin and leaves the other on the list', async () => {
+    it('removes one admin and refreshes the list without them', async () => {
         const user = userEvent.setup();
+        mocks.getTenantAdmins.mockResolvedValueOnce(admins).mockResolvedValue([admins[0]]);
         renderList();
         await screen.findByText('Ada One');
 
@@ -62,8 +66,22 @@ describe('TenantUnitAdmins', () => {
         await user.click(removeButtons[1]);
         await user.click(screen.getByRole('button', { name: 'delete' }));
 
-        expect(mocks.deleteAdmin).toHaveBeenCalledWith('b');
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({ url: expect.stringMatching(/\/b$/), method: 'DELETE' }),
+        );
+        await waitFor(() => expect(screen.queryByText('Bea Two')).not.toBeInTheDocument());
         expect(screen.getByText('Ada One')).toBeInTheDocument();
-        expect(screen.getByText('Bea Two')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'delete' })).not.toBeInTheDocument();
+    });
+
+    it('shows a load error with retry instead of claiming there is no admin', async () => {
+        const user = userEvent.setup();
+        mocks.getTenantAdmins.mockRejectedValueOnce(new Error('503')).mockResolvedValue(admins);
+        renderList();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('tenants.edit.admins.loadError');
+        expect(screen.queryByText('tenants.edit.adminEmailsCardEmpty')).not.toBeInTheDocument();
+        await user.click(screen.getByRole('button', { name: 'tenants.edit.admins.retry' }));
+        expect(await screen.findByText('Ada One')).toBeInTheDocument();
     });
 });

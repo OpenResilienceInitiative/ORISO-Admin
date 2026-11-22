@@ -208,7 +208,8 @@ export const GeneralTenantSettings = () => {
                         </>
                     }
                 />
-                <TenantUnitAdmins tenantId={id} />
+                {/* Keyed by tenant so an open removal dialog cannot survive a tenant change. */}
+                <TenantUnitAdmins key={id} tenantId={id} />
             </ThemeProvider>
         );
     }

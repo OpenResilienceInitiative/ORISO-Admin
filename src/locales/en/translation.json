@@ -2162,6 +2162,8 @@
     "tenants.edit.adminEmailsCardTooltip": "Add another admin for this provider, or remove one. The others stay.",
     "tenants.edit.admins.add": "Add admin",
     "tenants.edit.admins.remove": "Remove",
+    "tenants.edit.admins.loadError": "The admins of this provider could not be loaded.",
+    "tenants.edit.admins.retry": "Try again",
     "tenants.globalSettings.allowedPermissionToggles.anonymousChat": "Anonymous counselling",
     "tenants.globalSettings.allowedPermissionToggles.audioCalls": "Allow audio calls",
     "tenants.globalSettings.allowedPermissionToggles.calls": "Allow calls",
