@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import routePathNames from '../appConfig';
 import { getTokenExpiryFromLocalStorage } from '../api/auth/accessSessionLocalStorage';
 import { bootstrapAuthSession, getAccessTokenForRequests, getRefreshTokenForRequests } from '../api/auth/auth';
@@ -12,13 +12,26 @@ interface ProtectedRouteTypes {
     children: React.ReactNode;
 }
 
-/**
- * test if the user is logged in, otherwise redirect to the login page
- * @param children {Component}
- * @constructor
- */
+const getLogoutDestination = (path: string): string | null => {
+    const accessToken = getAccessTokenForRequests();
+    const refreshToken = getRefreshTokenForRequests();
+
+    if (!accessToken || !refreshToken) {
+        return agencySetupLoginFromPath(path);
+    }
+
+    const now = Date.now();
+    const { accessTokenValidUntilTime, refreshTokenValidUntilTime } = getTokenExpiryFromLocalStorage();
+
+    if (refreshTokenValidUntilTime <= now && accessTokenValidUntilTime <= now) {
+        return agencySetupLoginFromPath(path);
+    }
+
+    return hasAdminPortalAccess(accessToken) ? null : routePathNames.login;
+};
+
 export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
-    const location = useLocation();
+    const { pathname } = useLocation();
     const [sessionReady, setSessionReady] = useState(false);
 
     useEffect(() => {
@@ -31,31 +44,17 @@ export const ProtectedRoute = ({ children }: ProtectedRouteTypes) => {
             });
     }, []);
 
-    if (!sessionReady) {
+    const logoutDestination = sessionReady ? getLogoutDestination(pathname) : null;
+    useEffect(() => {
+        if (logoutDestination) {
+            logout(true, logoutDestination);
+        }
+    }, [logoutDestination]);
+
+    // Logout clears the session and navigates. Mounting login here would start a
+    // second page's work before that navigation replaces this document.
+    if (!sessionReady || logoutDestination) {
         return <Initialization />;
-    }
-
-    const currentTime = new Date().getTime();
-    const tokenExpiry = getTokenExpiryFromLocalStorage();
-    const accessToken = getAccessTokenForRequests();
-    const refreshToken = getRefreshTokenForRequests();
-
-    const accessTokenValidInMs = tokenExpiry.accessTokenValidUntilTime - currentTime;
-    const refreshTokenValidInMs = tokenExpiry.refreshTokenValidUntilTime - currentTime;
-
-    if (!accessToken || !refreshToken) {
-        logout(true, agencySetupLoginFromPath(location.pathname));
-        return <Navigate to={agencySetupLoginFromPath(location.pathname)} state={{ from: location }} />;
-    }
-
-    if (refreshTokenValidInMs <= 0 && accessTokenValidInMs <= 0) {
-        logout(true, agencySetupLoginFromPath(location.pathname));
-        return <Navigate to={agencySetupLoginFromPath(location.pathname)} state={{ from: location }} />;
-    }
-
-    if (!hasAdminPortalAccess(accessToken)) {
-        logout(true, routePathNames.login);
-        return <Navigate to={routePathNames.login} replace />;
     }
 
     // eslint-disable-next-line react/jsx-no-useless-fragment
