@@ -14,6 +14,7 @@ import { Languages } from './components/Languages';
 import { LogoAndFavicon } from './components/LogoAndFavicon';
 import { NameAndSlogan } from './components/NameAndSlogan';
 import { OwnTenantInformation } from '../OwnTenantInformation';
+import { TraegerContactPersonTile } from '../../../pages/Tenants/Edit/General/TraegerContactPersonTile';
 import { ThemeBuilder } from './components/ThemeBuilder';
 import { TypeOfLanguage } from './components/TypeOfLanguage';
 import { resolveTenantId } from '../../../utils/resolveTenantId';
@@ -105,15 +106,23 @@ export const GeneralSettings = ({ tenantId, section = 'all', leadingTiles }: Gen
                 <ThemeBuilder tenantId={finalTenantId} readOnly={readOnly} />
             </CardGrid.Item>
         ),
-        // The platform admin's Träger page brings its own editable card; a Träger admin on their own
-        // settings page gets the same information, editable with the tenant update permission
-        // (ORISO-Admin#1466).
+        // The platform admin's Träger page brings its own editable card and the Träger default contact
+        // person; a Träger admin on their own settings page gets the same information, editable with
+        // the tenant update permission (ORISO-Admin#1466), and sets the default contact person here
+        // (ORISO-Admin#1534). The contact tile decides itself who may see or edit it.
         leadingTiles:
             leadingTiles ??
             (!isSuperAdmin && (
-                <CardGrid.Item>
-                    <OwnTenantInformation />
-                </CardGrid.Item>
+                <>
+                    <CardGrid.Item>
+                        <OwnTenantInformation />
+                    </CardGrid.Item>
+                    {Number(finalTenantId) > 0 && (
+                        <CardGrid.Item>
+                            <TraegerContactPersonTile tenantId={Number(finalTenantId)} />
+                        </CardGrid.Item>
+                    )}
+                </>
             )),
         nameAndSlogan: (
             <CardGrid.Item>

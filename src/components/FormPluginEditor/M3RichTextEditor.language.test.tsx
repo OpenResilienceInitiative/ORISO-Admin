@@ -17,7 +17,7 @@ describe('M3RichTextEditor language control', () => {
     it('stays visible but inert when the tenant has a single active language', () => {
         render(<M3RichTextEditor title="Datenschutz" languages={[{ value: 'de', label: 'Deutsch' }]} language="de" />);
 
-        const control = screen.getByRole('button', { name: 'legal.m3Editor.chooseLanguage' });
+        const control = screen.getByRole('button', { name: /legal\.m3Editor\.chooseLanguage/ });
         expect(control).toBeInTheDocument();
         expect(control).toBeDisabled();
     });
@@ -25,7 +25,7 @@ describe('M3RichTextEditor language control', () => {
     it('stays visible but inert when the tenant has no active language', () => {
         render(<M3RichTextEditor title="Datenschutz" languages={[]} language="de" />);
 
-        const control = screen.getByRole('button', { name: 'legal.m3Editor.chooseLanguage' });
+        const control = screen.getByRole('button', { name: /legal\.m3Editor\.chooseLanguage/ });
         expect(control).toBeInTheDocument();
         expect(control).toBeDisabled();
     });
@@ -45,7 +45,7 @@ describe('M3RichTextEditor language control', () => {
             />,
         );
 
-        const control = screen.getByRole('button', { name: 'legal.m3Editor.chooseLanguage' });
+        const control = screen.getByRole('button', { name: /legal\.m3Editor\.chooseLanguage/ });
         expect(control).toBeEnabled();
 
         await user.click(control);

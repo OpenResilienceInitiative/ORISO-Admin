@@ -44,6 +44,8 @@ export interface AgencyLegalTextContainerProps {
     /** Persists the agency-wide text (the "Alle Fachbereiche" entry). */
     onSaveAgencyWide: <T>(formData: T) => Promise<unknown>;
     saving?: boolean;
+    /** Use the same collapsible document tile as platform and Träger. */
+    collapsible?: boolean;
     /** Templates this Beratungsstelle's Träger forwarded (#1070): shown beside the own draft. */
     templateInbox?: AgencyTemplateInbox;
 }
@@ -73,6 +75,7 @@ export const AgencyLegalTextContainer = ({
     field,
     onSaveAgencyWide,
     saving,
+    collapsible = false,
     templateInbox,
 }: AgencyLegalTextContainerProps) => {
     const { notification } = useAdminFeedback();
@@ -82,6 +85,7 @@ export const AgencyLegalTextContainer = ({
     // right the Träger-level cards ask for, one rung down the ladder.
     const canEditLegalText = can(PermissionAction.Update, Resource.LegalText);
     const readOnlyReason = useLegalTextReadOnlyReason();
+    const [tileOpen, setTileOpen] = useState(false);
     const [chosen, setChosen] = useState<number | typeof ALL_DEPARTMENTS>(ALL_DEPARTMENTS);
     // After adopting a template the agency-wide draft is what changed, so it is shown even where a
     // single Fachbereich is otherwise preselected; any explicit choice lifts that again.
@@ -653,6 +657,9 @@ export const AgencyLegalTextContainer = ({
         templateInbox ? (
             <LegalTemplateCompare
                 proposal={templateInbox.current}
+                tileOpen={collapsible ? tileOpen : undefined}
+                tileTarget={collapsible ? cardId : undefined}
+                onOpenTile={collapsible ? () => setTileOpen(true) : undefined}
                 source="traeger"
                 documentType={field}
                 language={languages[0] ?? 'de'}
@@ -679,6 +686,9 @@ export const AgencyLegalTextContainer = ({
 
     const card = (
         <DepartmentDataProtectionCard
+            collapsible={collapsible}
+            open={collapsible ? tileOpen : undefined}
+            onOpenChange={setTileOpen}
             anchorId={cardId}
             statusSlot={
                 <TenantLegalDraftStatus
@@ -761,7 +771,7 @@ export const AgencyLegalTextContainer = ({
     return (
         <>
             <TenantLegalDraftNotice
-                jumpTarget={cardId}
+                jumpTarget={collapsible ? { target: cardId, onJump: () => setTileOpen(true) } : cardId}
                 dismissed={draftDecision.dismissed}
                 onDismiss={draftDecision.dismiss}
                 savedAt={serverBase.draft?.savedAt}

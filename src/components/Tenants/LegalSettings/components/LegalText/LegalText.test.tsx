@@ -1216,6 +1216,26 @@ describe('LegalText — publish confirmation and publication state (#1066)', () 
         expect(mocks.updateTenant.mock.calls[0][0]).toMatchObject({ content: { confirmPrivacy: false } });
     });
 
+    it('publishes the normalized privacy text, consent and declined notification in one payload', async () => {
+        const user = userEvent.setup();
+        const content = { de: '<p>Normalized privacy text</p>', en: '<p>Preserved privacy text</p>' };
+        const privacyConsent = { de: 'Normalized consent {{legal_links}}' };
+        mocks.storedConsent = { de: 'Published consent {{legal_links}}' };
+        mocks.serverResponse = { content, privacyConsent, revision: 'privacy:normalized' };
+        mocks.updateTenant.mockResolvedValue(undefined);
+
+        renderPrivacy();
+        await askToInform(user);
+        await user.click(screen.getByRole('button', { name: 'privacy.confirmation.cancel' }));
+
+        await waitFor(() =>
+            expect(mocks.updateTenant).toHaveBeenCalledExactlyOnceWith({
+                content: { privacy: content, privacyConsent, confirmPrivacy: false },
+            }),
+        );
+        expect(mocks.serverDiscard).toHaveBeenCalledWith('privacy:normalized');
+    });
+
     it('confirms a publish with one "Veröffentlicht" toast instead of two generic ones', async () => {
         const user = userEvent.setup();
         mocks.updateTenant.mockResolvedValue(undefined);

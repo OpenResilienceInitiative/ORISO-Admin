@@ -59,65 +59,56 @@ jobs:
             - name: Build admin application
               uses: ./.github/actions/node-build
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v4
+            - name: Build and scan the versioned Admin image
+              id: app_archive
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: ${{ env.APP_IMAGE_NAME }}
+                  image_tags: ${{ env.APP_IMAGE }}
+                  image_labels: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ github.sha }}
+                      org.opencontainers.image.version=${{ env.VERSION }}
 
-            - name: Login to GHCR
+            - name: Build and scan the versioned Storybook image
+              id: storybook_archive
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: ${{ env.STORYBOOK_IMAGE_NAME }}
+                  dockerfile: Dockerfile.storybook
+                  image_tags: ${{ env.STORYBOOK_IMAGE }}
+                  image_labels: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ github.sha }}
+                      org.opencontainers.image.version=${{ env.VERSION }}
+
+            # A failure in either scan must stop the release before any registry write.
+            - name: Login to GitHub Container Registry
               uses: docker/login-action@v4
               with:
                   registry: ${{ env.REGISTRY }}
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and push admin image
-              id: app_image
-              uses: docker/build-push-action@v7
-              with:
-                  context: .
-                  file: Dockerfile
-                  push: true
-                  tags: ${{ env.APP_IMAGE }}
-                  labels: |
-                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-                      org.opencontainers.image.revision=${{ github.sha }}
-                      org.opencontainers.image.version=${{ env.VERSION }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+            - name: Publish the scanned Admin image
+              shell: bash
+              env:
+                  IMAGE_ARCHIVE: ${{ steps.app_archive.outputs.archive }}
+                  IMAGE_TAGS: ${{ env.APP_IMAGE }}
+                  EXPECTED_DIGEST: ${{ steps.app_archive.outputs.archive_digest }}
+                  EXPECTED_ARCHIVE_SHA256: ${{ steps.app_archive.outputs.archive_sha256 }}
+              run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
 
-            - name: Reject fixable admin image vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-              with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}@${{ steps.app_image.outputs.digest }}
-                  format: table
-                  exit-code: '1'
-                  ignore-unfixed: true
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
-
-            - name: Build and push admin Storybook image
-              id: storybook_image
-              uses: docker/build-push-action@v7
-              with:
-                  context: .
-                  file: Dockerfile.storybook
-                  push: true
-                  tags: ${{ env.STORYBOOK_IMAGE }}
-                  labels: |
-                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-                      org.opencontainers.image.revision=${{ github.sha }}
-                      org.opencontainers.image.version=${{ env.VERSION }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
-
-            - name: Reject fixable Storybook image vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-              with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}@${{ steps.storybook_image.outputs.digest }}
-                  format: table
-                  exit-code: '1'
-                  ignore-unfixed: true
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
+            - name: Publish the scanned Storybook image
+              shell: bash
+              env:
+                  IMAGE_ARCHIVE: ${{ steps.storybook_archive.outputs.archive }}
+                  IMAGE_TAGS: ${{ env.STORYBOOK_IMAGE }}
+                  EXPECTED_DIGEST: ${{ steps.storybook_archive.outputs.archive_digest }}
+                  EXPECTED_ARCHIVE_SHA256: ${{ steps.storybook_archive.outputs.archive_sha256 }}
+              run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
 
             - name: Create and push release tag
               shell: bash
