@@ -64,6 +64,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
     // the stubbed fetch never leak into the next test.
     afterEach(() => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
 
@@ -424,6 +425,186 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
+    });
+
+    it('does not send a request whose signal has already been aborted', async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const fetchMock = vi.fn().mockResolvedValue(response(204));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({ url: 'https://api.test/settings', method: FETCH_METHODS.GET, signal: controller.signal }),
+        ).rejects.toThrow(FETCH_ERRORS.ABORT);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([200, 409])('releases cancellation resources for raw HTTP %i responses', async (status) => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const addListener = vi.spyOn(controller.signal, 'addEventListener');
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        const raw = new Response('explanation', { status });
+        let sent: Request | undefined;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => {
+                sent = request;
+                return raw;
+            }),
+        );
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.PUT,
+            responseHandling: [FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+            signal: controller.signal,
+            timeout: 50,
+        });
+        if (status === 200) {
+            await expect(pending).resolves.toBe(raw);
+        } else {
+            await expect(pending).rejects.toBe(raw);
+        }
+        expect(vi.getTimerCount()).toBe(0);
+        expect(removeListener).toHaveBeenCalledWith('abort', addListener.mock.calls[0][1]);
+        controller.abort();
+        await vi.advanceTimersByTimeAsync(50);
+        expect(sent?.signal.aborted).toBe(false);
+        await expect(raw.text()).resolves.toBe('explanation');
+    });
+
+    it('keeps the deadline through managed body reads and reports its first cause', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        let failBody: () => void = () => {};
+        const readBody = vi.fn(
+            () =>
+                new Promise((_resolve, reject) => {
+                    failBody = () => reject(new DOMException('aborted', 'AbortError'));
+                }),
+        );
+        const fetchMock = vi.fn(async (request: Request) => {
+            expect(request.signal.aborted).toBe(false);
+            return { ...response(200), json: readBody };
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            signal: controller.signal,
+            timeout: 50,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.TIMEOUT);
+        await vi.advanceTimersByTimeAsync(50);
+        expect(readBody).toHaveBeenCalledOnce();
+        expect(fetchMock.mock.calls[0][0].signal.aborted).toBe(true);
+        controller.abort();
+        failBody();
+        await assertion;
+        expect(vi.getTimerCount()).toBe(0);
+        expect(removeListener).toHaveBeenCalledOnce();
+    });
+
+    it('aborts an internally-read text body and releases its deadline', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => ({
+                ...response(200),
+                text: () =>
+                    new Promise((_resolve, reject) => {
+                        request.signal.addEventListener('abort', () =>
+                            reject(new DOMException('aborted', 'AbortError')),
+                        );
+                    }),
+            })),
+        );
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            responseHandling: [FETCH_SUCCESS.TEXT],
+            signal: controller.signal,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.ABORT);
+        await vi.advanceTimersByTimeAsync(0);
+        controller.abort();
+        await assertion;
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not retain resources when constructing the request fails', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const addListener = vi.spyOn(controller.signal, 'addEventListener');
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        await expect(
+            fetchData({ url: 'not a URL', method: FETCH_METHODS.GET, signal: controller.signal }),
+        ).rejects.toBeInstanceOf(TypeError);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(addListener.mock.calls.length).toBe(removeListener.mock.calls.length);
+    });
+
+    it('leaves a shared refresh running when one caller is cancelled', async () => {
+        const controller = new AbortController();
+        let finishRefresh: (value: boolean) => void = () => {};
+        const shared = new Promise<boolean>((resolve) => {
+            finishRefresh = resolve;
+        });
+        tryRefreshAccessToken.mockReturnValue(shared);
+        const fetchMock = vi.fn().mockResolvedValueOnce(response(401)).mockResolvedValueOnce(response(401));
+        fetchMock.mockResolvedValue(response(204));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const request = { url: 'https://api.test/settings', method: FETCH_METHODS.GET, responseHandling: [] };
+        const cancelled = fetchData({ ...request, signal: controller.signal }).catch((error: unknown) => error);
+        const other = fetchData(request);
+        await vi.waitFor(() => expect(tryRefreshAccessToken).toHaveBeenCalledTimes(2));
+        try {
+            controller.abort();
+            const outcome = await Promise.race([
+                cancelled,
+                new Promise((resolve) => {
+                    setTimeout(() => resolve('still waiting'), 50);
+                }),
+            ]);
+            expect(outcome).toEqual(new Error(FETCH_ERRORS.ABORT));
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            finishRefresh(true);
+            await other;
+        }
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(logout).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    it('does not log out when cancellation wins a retry returning 401', async () => {
+        const controller = new AbortController();
+        let sendRetryHeaders: (value: ReturnType<typeof response>) => void = () => {};
+        const retry = new Promise<ReturnType<typeof response>>((resolve) => {
+            sendRetryHeaders = resolve;
+        });
+        const fetchMock = vi.fn().mockResolvedValueOnce(response(401)).mockReturnValueOnce(retry);
+        vi.stubGlobal('fetch', fetchMock);
+        tryRefreshAccessToken.mockResolvedValue(true);
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            responseHandling: [],
+            signal: controller.signal,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.ABORT);
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        sendRetryHeaders(response(401));
+        controller.abort();
+        await assertion;
+        expect(logout).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
     });
 });
 
