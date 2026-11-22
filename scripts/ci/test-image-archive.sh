@@ -29,8 +29,26 @@ for filename in ci-main.yml ci-storybook-main.yml ci-pull-request.yml ci-storybo
     fail "$filename must use the shared archive gate once"
 done
 [[ "$(grep -Fc "$call" "$release")" == 2 &&
-   "$(grep -Fc 'push_to_ghcr: true' "$release")" == 2 ]] ||
-  fail 'Both versioned images must go through the shared publication gate'
+   "$(grep -Fc 'push_to_ghcr: false' "$release")" == 2 ]] ||
+  fail 'Both versioned images must be scanned without publishing'
+app_scan_line=$(line_number "$release" 'id: app_archive')
+storybook_scan_line=$(line_number "$release" 'id: storybook_archive')
+release_login_line=$(line_number "$release" 'docker/login-action')
+app_publish_line=$(line_number "$release" 'name: Publish the scanned Admin image')
+storybook_publish_line=$(line_number "$release" 'name: Publish the scanned Storybook image')
+tag_line=$(line_number "$release" 'name: Create and push release tag')
+release_line=$(line_number "$release" 'name: Create GitHub Release')
+((app_scan_line < storybook_scan_line && storybook_scan_line < release_login_line &&
+  release_login_line < app_publish_line && app_publish_line < storybook_publish_line &&
+  storybook_publish_line < tag_line && tag_line < release_line)) ||
+  fail 'Both scans must succeed before registry login and both uploads before tagging'
+for archive_step in app_archive storybook_archive; do
+  for output in archive archive_digest archive_sha256; do
+    require_line "$release" "steps.${archive_step}.outputs.${output} }}"
+  done
+done
+[[ "$(grep -Fc 'publish-image-archive.sh' "$release")" == 2 ]] ||
+  fail 'The versioned images must be published from their scanned archives'
 for filename in ci-main.yml ci-storybook-main.yml; do
   require_line "$workflow_dir/$filename" 'push_to_ghcr: true'
 done
@@ -43,7 +61,7 @@ for filename in ci-pull-request.yml ci-storybook-pull-request.yml; do
     fail "$filename must not have publishing operations or credentials"
   fi
 done
-for workflow in "$workflow_dir"/ci-main.yml "$workflow_dir"/ci-storybook-main.yml "$release"; do
+for workflow in "$workflow_dir"/ci-main.yml "$workflow_dir"/ci-storybook-main.yml; do
   if grep -Eq 'docker/build-push-action|docker/login-action' "$workflow"; then
     fail "$workflow must use the shared archive gate for image operations"
   fi

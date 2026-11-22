@@ -23,6 +23,15 @@ inputs:
         default: ''
 
 outputs:
+    archive:
+        description: Path to the scanned OCI archive in the current job.
+        value: ${{ steps.scan.outputs.archive }}
+    archive_digest:
+        description: Immutable OCI index digest of the scanned image.
+        value: ${{ steps.build.outputs.digest }}
+    archive_sha256:
+        description: Checksum of the scanned archive bytes.
+        value: ${{ steps.scan.outputs.archive_sha256 }}
     digest:
         description: Immutable digest of the scanned and published image.
         value: ${{ steps.publish.outputs.digest }}
@@ -77,7 +86,9 @@ runs:
               IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
               IMAGE_PLATFORMS: linux/amd64
               EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
-          run: bash "$GITHUB_ACTION_PATH/scan-image-archive.sh" "$IMAGE_ARCHIVE" "$IMAGE_PLATFORMS" "$EXPECTED_DIGEST"
+          run: |
+              bash "$GITHUB_ACTION_PATH/scan-image-archive.sh" "$IMAGE_ARCHIVE" "$IMAGE_PLATFORMS" "$EXPECTED_DIGEST"
+              printf 'archive=%s\n' "$IMAGE_ARCHIVE" >> "$GITHUB_OUTPUT"
 
         - name: Login to GitHub Container Registry
           if: ${{ inputs.push_to_ghcr == 'true' }}
@@ -92,7 +103,7 @@ runs:
           if: ${{ inputs.push_to_ghcr == 'true' }}
           shell: bash
           env:
-              IMAGE_ARCHIVE: ${{ runner.temp }}/${{ inputs.image_name }}.tar
+              IMAGE_ARCHIVE: ${{ steps.scan.outputs.archive }}
               IMAGE_TAGS: ${{ inputs.image_tags || steps.meta.outputs.tags }}
               EXPECTED_DIGEST: ${{ steps.build.outputs.digest }}
               EXPECTED_ARCHIVE_SHA256: ${{ steps.scan.outputs.archive_sha256 }}
