@@ -4,7 +4,7 @@ FROM ${ADMIN_RUNTIME_IMAGE}
 
 # nginx proxies Admin authentication to the Node.js BFF.
 RUN apk upgrade --no-cache \
-    && apk add --no-cache nodejs \
+    && apk add --no-cache nodejs 'libxml2>=2.13.9-r3' \
     && node --version
 
 COPY build /usr/share/nginx/html/admin
