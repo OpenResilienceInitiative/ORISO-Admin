@@ -178,14 +178,15 @@ const startTimers = (afterRenewal = false) => {
     startRefreshExpiryTimer(getTokenExpiryFromLocalStorage().refreshTokenValidUntilTime - Date.now());
 };
 
-export const bootstrapAuthSession = async (): Promise<boolean> => {
+export const bootstrapAuthSession = async (signal?: AbortSignal): Promise<boolean> => {
+    if (signal?.aborted) return false;
     if (hasSessionTokens()) {
         return true;
     }
 
     try {
-        const session = await bootstrapAuthSessionViaBff();
-        if (!session?.access_token || !session.refresh_token) {
+        const session = await bootstrapAuthSessionViaBff(signal);
+        if (signal?.aborted || !session?.access_token || !session.refresh_token) {
             return false;
         }
 
