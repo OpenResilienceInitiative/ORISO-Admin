@@ -7,7 +7,8 @@
  *   of the counselling centre see all chats and may join at any time.
  * - `chat` (Team-Chat / Team chat) is a permission policy (featureTeamDiscussionEnabled), set on the
  *   platform, per Träger and per Beratungsstelle like supervision (ORISO-Frontend#2491): counsellors
- *   coordinate on an OPEN enquiry in a team-only room; it closes when the enquiry is accepted.
+ *   coordinate on an OPEN enquiry in a team-only room; it closes when the enquiry is accepted, unless the
+ *   policy featureTeamDiscussionAfterAcceptEnabled keeps it open (Frank, 2026-11-23).
  *
  * Name and description live in the locale files under `teamFunctions.*`. Every place that sets or
  * mentions a team function reads them through this module (`TeamFunctionSwitch` for the form-card row;

@@ -8,7 +8,7 @@ import i18n from '../../../../i18n';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { DEFAULT_PERMISSION_SETTINGS } from './permissionsSettingsUtils';
-import { TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from './traegerFunctions';
+import { TEAM_CHAT_AFTER_ACCEPT, TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from './traegerFunctions';
 
 /**
  * ORISO-Frontend#2491 (Frank, 2026-11-23): the Team-Chat (the counsellors' side chat on an open enquiry) is
@@ -176,5 +176,69 @@ export const CentreRequiredByTraeger: Story = {
         const master = section.getByRole('button', { name: new RegExp(`^${label}: `) });
         await expect(master).toBeDisabled();
         await expect(section.getByRole('button', { name: configureName() })).toBeDisabled();
+    },
+};
+
+const withName = () => ({ name: String(i18n.t('teamFunctions.chat.name')) });
+const afterAcceptLabel = () => String(i18n.t('tenants.permissions.teamChat.afterAccept.label', withName()));
+const switchOn = (name: string) =>
+    `${name}: ${String(i18n.t('tenants.permissions.policy.deactivated'))} – ${String(
+        i18n.t('tenants.permissions.policy.activate'),
+    )}`;
+
+/**
+ * Träger, Frank 2026-11-23: "Team-Chat läuft nach der Annahme weiter". Switching it on first asks the same
+ * data-protection question as supervision; the story stops with the question open.
+ */
+export const AfterAcceptConfirm: Story = {
+    play: async ({ canvasElement, args }) => {
+        const section = await teamChatSection(canvasElement);
+        await expect(
+            section.getByText(String(i18n.t('tenants.permissions.teamChat.afterAccept.off', withName()))),
+        ).toBeVisible();
+        await userEvent.click(section.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
+        const body = within(canvasElement.ownerDocument.body);
+        const title = await body.findByText(
+            String(i18n.t('tenants.permissions.teamChat.afterAccept.confirm.title', withName())),
+        );
+        await waitFor(() => expect(title).toBeVisible());
+        await expect(args.onPoliciesChange).not.toHaveBeenCalled();
+    },
+};
+
+/** Träger: confirmed — the team chat of a case stays open after acceptance, for counsellors only. */
+export const AfterAcceptOn: Story = {
+    play: async ({ canvasElement, args }) => {
+        const section = await teamChatSection(canvasElement);
+        await userEvent.click(section.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(
+            await body.findByRole('button', {
+                name: String(i18n.t('tenants.permissions.teamChat.afterAccept.confirm.confirm')),
+            }),
+        );
+        await waitFor(() =>
+            expect(args.onPoliciesChange).toHaveBeenCalledWith({
+                [TEAM_CHAT_AFTER_ACCEPT]: expect.objectContaining({ value: true }),
+            }),
+        );
+        await expect(
+            section.getByText(String(i18n.t('tenants.permissions.teamChat.afterAccept.on', withName()))),
+        ).toBeVisible();
+    },
+};
+
+/** Beratungsstelle: the Träger requires it on; the centre sees it locked. */
+export const CentreAfterAcceptRequiredByTraeger: Story = {
+    args: {
+        policyLevel: 'agency',
+        permissionPolicies: {
+            [TEAM_CHAT_MASTER]: { value: true, mode: 'SUGGESTED', inherited: true },
+            [TEAM_CHAT_AFTER_ACCEPT]: { value: true, mode: 'ENFORCED', inherited: true },
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const section = await teamChatSection(canvasElement);
+        await expect(section.getByRole('button', { name: new RegExp(`^${afterAcceptLabel()}: `) })).toBeDisabled();
     },
 };

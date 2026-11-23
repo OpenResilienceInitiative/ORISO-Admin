@@ -4,13 +4,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { M3Button } from '../../../../M3Button';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
+import { TEAM_CHAT_AFTER_ACCEPT_PRIVACY_CONFIRM, usePrivacyConfirm } from '../../../../SupervisionPrivacyConfirm';
 import { runtimeConfig } from '../../../../../config/runtimeConfig';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
 import { TEAM_FUNCTIONS } from '../../../../TeamFunctions';
 import { APP_ONLY_HINT_KEY } from '../chatTypeCards';
 import { ChatFeaturesDialog, type ChatFeature } from '../ChatFeaturesDialog';
 import type { EffectivePolicy } from '../permissionsSettingsUtils';
-import { TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from '../traegerFunctions';
+import { TEAM_CHAT_AFTER_ACCEPT, TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from '../traegerFunctions';
 import permissionStyles from '../styles.module.scss';
 import styles from './styles.module.scss';
 
@@ -33,6 +34,9 @@ const unavailable = (feature: ChatFeature) =>
  * master is a permission policy on all three levels — preset or requirement on the platform, own value or
  * requirement on the Träger, own value on the Beratungsstelle unless required from above — and
  * "Konfigurieren" opens what the side chat offers, each feature with its own "Anpassbar"/"Vorgabe".
+ *
+ * Frank, 2026-11-23: "Team-Chat läuft nach der Annahme weiter" is a second policy with the same controls.
+ * It needs the master, and switching it on first asks the same data-protection question as supervision.
  */
 export const TeamChatSection = ({ level, policyOf, pending, onChange }: TeamChatSectionProps) => {
     const { t } = useTranslation();
@@ -40,6 +44,20 @@ export const TeamChatSection = ({ level, policyOf, pending, onChange }: TeamChat
     const [dialogRun, setDialogRun] = useState(0);
     const [configuring, setConfiguring] = useState(false);
     const master = policyOf(TEAM_CHAT_MASTER);
+    // The shared name of the team function, never typed again (teamFunctions.names.test.ts).
+    const name = { name: t(TEAM_FUNCTIONS.chat.nameKey) };
+    const afterAccept = policyOf(TEAM_CHAT_AFTER_ACCEPT);
+    const confirmAfterAccept = usePrivacyConfirm({ ...TEAM_CHAT_AFTER_ACCEPT_PRIVACY_CONFIRM, options: name });
+    let afterAcceptText = t('tenants.permissions.teamChat.afterAccept.off', name);
+    if (!master.value) afterAcceptText = t('tenants.permissions.teamChat.afterAccept.needsMaster', name);
+    else if (afterAccept.value) afterAcceptText = t('tenants.permissions.teamChat.afterAccept.on', name);
+
+    const changeAfterAccept = (next: PolicyValue<boolean>) => {
+        // Like supervision: widening who reads on asks about data protection first; switching off never asks.
+        if (next.value && !afterAccept.value)
+            confirmAfterAccept.confirmEnable(() => onChange({ [TEAM_CHAT_AFTER_ACCEPT]: next }));
+        else onChange({ [TEAM_CHAT_AFTER_ACCEPT]: next });
+    };
 
     return (
         <>
@@ -54,6 +72,19 @@ export const TeamChatSection = ({ level, policyOf, pending, onChange }: TeamChat
                     onChange={(next) => onChange({ [TEAM_CHAT_MASTER]: next })}
                 />
             </div>
+            <div className={permissionStyles.masterRow} data-testid="team-chat-after-accept">
+                <PermissionPolicyControl
+                    featureKey={TEAM_CHAT_AFTER_ACCEPT}
+                    label={t('tenants.permissions.teamChat.afterAccept.label', name)}
+                    supportingText={afterAcceptText}
+                    level={level}
+                    policy={afterAccept}
+                    pending={pending(TEAM_CHAT_AFTER_ACCEPT)}
+                    disabled={!master.value}
+                    onChange={changeAfterAccept}
+                />
+            </div>
+            {confirmAfterAccept.dialog}
             <div className={styles.actions}>
                 <M3Button
                     variant="outlined"

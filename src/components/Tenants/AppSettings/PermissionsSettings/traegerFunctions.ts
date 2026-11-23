@@ -40,6 +40,12 @@ export const SUPERVISION_FEATURES: ChatFeature[] = [
  */
 export const TEAM_CHAT_MASTER = 'featureTeamDiscussionEnabled';
 
+/**
+ * Frank, 2026-11-23: whether the team chat of a case stays open after the enquiry is accepted. Off by
+ * default: it closes at acceptance and the history stays read-only. Only works while the master is on.
+ */
+export const TEAM_CHAT_AFTER_ACCEPT = 'featureTeamDiscussionAfterAcceptEnabled';
+
 export const TEAM_CHAT_FEATURES: ChatFeature[] = [
     { labelKey: 'tenants.permissions.feature.videoCalls', field: 'featureVideoCallsTeamDiscussionsEnabled' },
     { labelKey: 'tenants.permissions.feature.audioCalls', field: 'featureAudioCallsTeamDiscussionsEnabled' },

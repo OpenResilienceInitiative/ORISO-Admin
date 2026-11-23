@@ -7,6 +7,8 @@ export interface TenantSettings {
     featureStatisticsEnabled?: boolean | null;
     featureGroupChatV2Enabled?: boolean | null;
     featureTeamDiscussionEnabled?: boolean | null;
+    /** ORISO-Frontend#2491: the team chat of a case stays open after the enquiry is accepted. */
+    featureTeamDiscussionAfterAcceptEnabled?: boolean | null;
     featureCentralDataProtectionTemplateEnabled?: boolean | null;
     featureAnonymousChatEnabled?: boolean | null;
     featureCallsEnabled?: boolean | null;
@@ -109,6 +111,7 @@ interface TenantAdminPermissionToggles {
     voiceMessagesGroupChats?: boolean | null;
     voiceMessagesSupervisionChats?: boolean | null;
     teamDiscussion?: boolean | null;
+    teamDiscussionAfterAccept?: boolean | null;
     videoCallsTeamDiscussions?: boolean | null;
     audioCallsTeamDiscussions?: boolean | null;
     voiceMessagesTeamDiscussions?: boolean | null;

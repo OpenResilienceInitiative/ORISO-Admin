@@ -4713,7 +4713,7 @@
     "tenants.permissions.supervision.dialogDescription": "Diese Funktionen gelten im geschützten Chat zwischen Beratenden und Supervision. Änderungen werden erst mit „Speichern“ übernommen.",
     "tenants.permissions.supervision.save": "Speichern",
     "tenants.permissions.supervision.cancel": "Abbrechen",
-    "tenants.permissions.teamChat.note": "Gilt für offene Anfragen in der Mail Beratung, bis eine Beraterin sie annimmt. Eingestellt wie Supervision: auf der Plattform, je Träger und je Beratungsstelle, solange es keine Vorgabe von oben gibt.",
+    "tenants.permissions.teamChat.note": "Gilt für Anfragen in der Mail Beratung; ob er nach der Annahme weiterläuft, legt der zweite Schalter fest. Eingestellt wie Supervision: auf der Plattform, je Träger und je Beratungsstelle, solange es keine Vorgabe von oben gibt.",
     "tenants.permissions.legacyNotice.groupChat.title": "Gruppenchats in der Beratungs-App ausgeschaltet",
     "tenants.permissions.legacyNotice.groupChat.body": "Die ältere Einstellung „Gruppenchat erlauben“ ist aus. Solange sie aus ist, können Beratende in der Beratungs-App keine Gruppenchats anlegen, obwohl diese Gesprächsart eingeschaltet ist.",
     "tenants.permissions.legacyNotice.groupChat.action": "Gruppenchats erlauben",
@@ -4772,6 +4772,14 @@
     "tenants.permissions.teamChat.dialogDescription": "Der Team-Chat ist der Sidechat zu einer offenen Anfrage: Beratende stimmen sich darin ab, bis eine Beraterin die Anfrage annimmt. Änderungen werden erst mit „Speichern“ übernommen.",
     "tenants.permissions.teamChat.save": "Speichern",
     "tenants.permissions.teamChat.cancel": "Abbrechen",
+    "tenants.permissions.teamChat.afterAccept.label": "{{name}} läuft nach der Annahme weiter",
+    "tenants.permissions.teamChat.afterAccept.off": "Bei Annahme wird der {{name}} geschlossen; die Beratenden sehen den Verlauf nur noch lesend.",
+    "tenants.permissions.teamChat.afterAccept.on": "Nach der Annahme liest und schreibt das Team im {{name}} des Falls weiter – nur Beratende der Beratungsstelle, nie die ratsuchende Person.",
+    "tenants.permissions.teamChat.afterAccept.needsMaster": "Nur möglich, solange der {{name}} eingeschaltet ist.",
+    "tenants.permissions.teamChat.afterAccept.confirm.title": "{{name}} nach der Annahme: Datenschutz prüfen",
+    "tenants.permissions.teamChat.afterAccept.confirm.text": "Das Team kann nach der Annahme im {{name}} des Falls weiter lesen und schreiben. Das sind nur Beratende der Beratungsstelle, nie die ratsuchende Person. Bitte prüfen Sie, ob die Datenschutzerklärung der Plattform bzw. des Trägers das abdeckt. Schalten Sie es später aus, schließt der {{name}} wieder bei der Annahme; der bisherige Verlauf bleibt lesbar.",
+    "tenants.permissions.teamChat.afterAccept.confirm.confirm": "Ist geregelt, einschalten",
+    "tenants.permissions.teamChat.afterAccept.confirm.cancel": "Abbrechen",
     "tenants.permissions.feature.planned": "Vorbereitet",
     "tenants.permissions.feature.notStoredYet": "Noch nicht einstellbar: Der Server speichert diese Auswahl noch nicht."
 }

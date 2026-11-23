@@ -102,6 +102,8 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     // ORISO-Frontend#2491: the team chat on an enquiry and what it offers, defaults like supervision
     // (TenantService#405): on, AI scan off.
     featureTeamDiscussionEnabled: true,
+    // Off by default: at acceptance the team chat closes and stays read-only (ADR-016).
+    featureTeamDiscussionAfterAcceptEnabled: false,
     featureVideoCallsTeamDiscussionsEnabled: true,
     featureAudioCallsTeamDiscussionsEnabled: true,
     featureVoiceMessagesTeamDiscussionsEnabled: true,
@@ -163,7 +165,9 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
         'featureAudioCallsTeamDiscussionsEnabled',
         'featureVoiceMessagesTeamDiscussionsEnabled',
         'featureThreadsTeamDiscussionsEnabled',
+        'featureTeamDiscussionAfterAcceptEnabled',
     ],
+    teamDiscussionAfterAccept: ['featureTeamDiscussionAfterAcceptEnabled'],
     audioCalls: [
         'featureAudioCallsEnabled',
         'featureAudioCallsAnonymousChatsEnabled',

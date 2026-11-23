@@ -42,6 +42,7 @@ export type PermissionToggleVisibility = {
     mediaAiScanSupervisionChats?: boolean;
     // ORISO-Frontend#2491: the team chat on an enquiry, governed like supervision.
     teamDiscussion?: boolean;
+    teamDiscussionAfterAccept?: boolean;
     videoCallsTeamDiscussions?: boolean;
     audioCallsTeamDiscussions?: boolean;
     voiceMessagesTeamDiscussions?: boolean;

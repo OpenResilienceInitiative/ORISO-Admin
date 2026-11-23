@@ -466,6 +466,7 @@ export const SEARCH_TILES: RegistryTile[] = [
                 ...NOTIFICATION_LABELS,
                 'teamFunctions.chat.name',
                 'tenants.permissions.teamChat.dialogTitle',
+                'tenants.permissions.teamChat.afterAccept.label',
             ],
         },
     ),
