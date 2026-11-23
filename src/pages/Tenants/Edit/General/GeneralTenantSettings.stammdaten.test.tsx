@@ -36,6 +36,11 @@ vi.mock('../../../../components/CardEditable', async () => {
 vi.mock('../../../../components/EntityStatusCard', () => ({ ManagedEntityStatus: () => null }));
 // The contact-person tile (#1534) loads its own data and has its own tests.
 vi.mock('./TraegerContactPersonTile', () => ({ TraegerContactPersonTile: () => null }));
+vi.mock('./TenantUnitAdmins', () => ({
+    TenantUnitAdmins: ({ tenantId }: { tenantId: string }) => (
+        <section data-testid="tenant-unit-admins">{tenantId}</section>
+    ),
+}));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
     GeneralSettings: ({
         tenantId,
@@ -64,6 +69,7 @@ describe('platform admin editing a Träger: Stammdaten tab', () => {
         expect(raster).toHaveAttribute('data-tenant', '7');
         expect(raster).toContainElement(screen.getByTestId('traeger-card'));
         expect(screen.getByTestId('traeger-card')).toHaveAttribute('data-title', 'tenants.add.mainTenantTitle');
+        expect(screen.getByTestId('tenant-unit-admins')).toHaveTextContent('7');
     });
 
     it('gives the Trägerinformationen card a header icon like the tiles next to it', () => {

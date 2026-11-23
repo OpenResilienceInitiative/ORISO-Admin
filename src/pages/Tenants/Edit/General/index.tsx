@@ -29,6 +29,7 @@ import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../../config/subdomainFeature';
 import { TraegerFieldSections } from './TraegerFieldSections';
 import { TenantInformationCard } from './TenantInformationCard';
+import { TenantUnitAdmins } from './TenantUnitAdmins';
 import { TraegerContactPersonTile } from './TraegerContactPersonTile';
 
 /**
@@ -208,6 +209,8 @@ export const GeneralTenantSettings = () => {
                         </>
                     }
                 />
+                {/* Keyed by tenant so an open removal dialog cannot survive a tenant change. */}
+                <TenantUnitAdmins key={id} tenantId={id} />
             </ThemeProvider>
         );
     }

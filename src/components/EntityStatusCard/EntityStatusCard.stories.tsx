@@ -526,6 +526,7 @@ export const TenantMetadataPreservesStatus: Story = {
                     HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
                 ),
                 http.get('*/service/tenantadmin/1', () => HttpResponse.json(tenantFixture)),
+                http.get('*/service/useradmin/tenantadmins', () => HttpResponse.json([])),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json(tenantFixture)),
                 ...contactPersonReadHandlers(),
                 http.put('*/service/tenantadmin/1', async ({ request }) => {

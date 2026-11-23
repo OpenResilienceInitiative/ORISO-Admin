@@ -48,6 +48,8 @@ export const storyTenant = {
 /** Every call the Träger edit pages make, answered with the story tenant (other calls are not needed to render). */
 export const tenantEditHandlers = [
     ...contactPersonReadHandlers(),
+    // The Träger admins tile (#1575).
+    http.get('*/service/useradmin/tenantadmins', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/controls', () =>
         HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
     ),
