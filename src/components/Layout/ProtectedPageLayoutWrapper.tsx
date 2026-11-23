@@ -14,6 +14,7 @@ import AdminMobileNavBar from './AdminMobileNavBar';
 import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
 import { AdminSearchButton, AdminSearchProvider } from '../AdminSearch';
 import { useAdminNavigation } from './useAdminNavigation';
+import { SectionTabIdentity } from './sectionTab/SectionTabIdentity';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
@@ -89,6 +90,9 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
 
     return (
         <MobileNavProvider>
+            {/* Browser tab shows the active section's name and sidebar icon. Not on the
+            2FA-gated (restricted) layout, which has no sections. */}
+            {!restricted && <SectionTabIdentity navItems={upperNavItems} accountItem={accountNavItem} />}
             <AdminSearchProvider
                 navItems={upperNavItems}
                 account={accountNavItem}
