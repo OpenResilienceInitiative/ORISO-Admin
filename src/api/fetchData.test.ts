@@ -218,6 +218,29 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(location.href).toBe('');
     });
 
+    it.each([401, 403])('leaves the current page and rejects locally when a read returns %s', async (status) => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const failure = response(status);
+        const fetchMock = vi.fn().mockResolvedValue(failure);
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/tenantadmin/42',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_ERRORS.LOCAL_FAILURE_WITH_RESPONSE],
+            }),
+        ).rejects.toBe(failure);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0].headers.get('Authorization')).toBe('Bearer access-token');
+        expect(location.href).toBe('');
+        expect(logout).not.toHaveBeenCalled();
+        expect(tryRefreshAccessToken).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
     // UserService#1006 (client half): a 403 on invite create carries the backend's
     // role explanation. Callers opting into FORBIDDEN_WITH_RESPONSE get the raw
     // Response (to read that message) and must NOT lose the page to the

@@ -36,5 +36,6 @@
     "tenants.permissions.asker.collection.agencyCounselling": "Adresse e-mail dans le conseil 1:1",
     "tenants.permissions.asker.collection.selfHelp": "Adresse e-mail dans les groupes d’entraide",
     "tenants.permissions.asker.collection.masterOff": "Autorisez d’abord les adresses e-mail pour le compte. Ces choix sont conservés.",
-    "tenants.permissions.asker.collection.description": "Ces réglages autorisent la collecte. Ils ne rendent pas l’adresse obligatoire et ne modifient pas les notifications."
+    "tenants.permissions.asker.collection.description": "Ces réglages autorisent la collecte. Ils ne rendent pas l’adresse obligatoire et ne modifient pas les notifications.",
+    "message.error.tenantSettingsOutcomeUnknown": "L’enregistrement n’a pas pu être confirmé. Vérifiez les paramètres actuels avant de réessayer."
 }

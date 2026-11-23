@@ -36,5 +36,6 @@
     "tenants.permissions.asker.collection.agencyCounselling": "Адрес электронной почты в консультации 1:1",
     "tenants.permissions.asker.collection.selfHelp": "Адрес электронной почты в группах взаимопомощи",
     "tenants.permissions.asker.collection.masterOff": "Сначала разрешите адрес электронной почты для аккаунта. Выбранные настройки сохраняются.",
-    "tenants.permissions.asker.collection.description": "Эти настройки разрешают сбор адреса. Они не делают адрес обязательным и не меняют отправку уведомлений."
+    "tenants.permissions.asker.collection.description": "Эти настройки разрешают сбор адреса. Они не делают адрес обязательным и не меняют отправку уведомлений.",
+    "message.error.tenantSettingsOutcomeUnknown": "Не удалось подтвердить сохранение. Проверьте текущие настройки перед повторной попыткой."
 }

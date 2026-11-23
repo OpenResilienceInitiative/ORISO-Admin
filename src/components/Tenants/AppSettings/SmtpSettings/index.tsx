@@ -212,7 +212,7 @@ export const SmtpSettings = ({ tenantId }: { tenantId: string }) => {
                             const prepared = prepareTenantSettings(formData);
                             if (confirmed) prepared.settings.smtp.nonstandardTransportConfirmed = true;
                             mutate(prepared, {
-                                onError: () => options?.onError?.(),
+                                onError: options?.onError,
                             });
                         };
                         const mode = form.getFieldValue(['settings', 'smtpMode']);
