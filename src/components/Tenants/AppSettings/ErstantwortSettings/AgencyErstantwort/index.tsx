@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
+import Spinner from '../../../../Spinner/Spinner';
 import { M3Button } from '../../../../M3Button';
 import { Notify } from '../../../../Notify';
 import { TranslateOnPublishModal } from '../../../LegalSettings/components/TranslateOnPublishModal';
@@ -120,7 +120,7 @@ export const AgencyErstantwortSettings = ({
         await publish(translated, translated);
     };
 
-    if (isLoading) return <Spin />;
+    if (isLoading) return <Spinner />;
     if (isError || !data) {
         return (
             <div id="agency-erstantwort-state">

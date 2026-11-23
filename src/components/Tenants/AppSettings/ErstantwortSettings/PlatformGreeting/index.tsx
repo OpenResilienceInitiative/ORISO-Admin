@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Spin } from 'antd';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import ChatOutlined from '@mui/icons-material/ChatOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Spinner from '../../../../Spinner/Spinner';
 import { Card } from '../../../../Card';
 import { M3Button } from '../../../../M3Button';
 import { Notify } from '../../../../Notify';
@@ -139,7 +139,7 @@ export const PlatformGreetingSettings = () => {
         await publish(translated, translated);
     };
 
-    if (isLoading) return <Spin />;
+    if (isLoading) return <Spinner />;
     if (isError || !data) {
         return (
             <div id="platform-greeting-state">
