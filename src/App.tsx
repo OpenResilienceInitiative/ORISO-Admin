@@ -272,8 +272,7 @@ export const App = () => {
 
     return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-            {/* The signed-in admin's OWN tenant icon overrides the platform default that
-                the globally mounted <TenantFavicon /> (index.tsx) already applied. */}
+            {/* The signed-in admin's tenant icon takes precedence over the platform default. */}
             <TenantFavicon tenantFavicon={data?.theming?.favicon} />
             {/* TEN-INV-U10 (#572): global non-bypassable DPA blocker. Wraps the WHOLE
                 protected tree, so every direct URL renders the blocker instead of the
