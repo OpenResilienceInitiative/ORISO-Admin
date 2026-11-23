@@ -195,6 +195,30 @@ const MuiSelectControl = ({
             getOptionDisabled={(option) => Boolean((option as ResolvedOption).disabled)}
             noOptionsText={placeholder}
             sx={muiFieldSx(isDisabled)}
+            slotProps={{
+                paper: {
+                    sx: {
+                        // Text size applies in every contrast mode; the option sets it directly because MUI
+                        // option typography overrides a size inherited from the paper.
+                        fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        '& .MuiAutocomplete-option': {
+                            fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        },
+                        'html[data-admin-personal-contrast] &': {
+                            backgroundColor: 'var(--admin-field-surface)',
+                            color: 'var(--admin-form-field-text)',
+                            '& .MuiAutocomplete-option.Mui-focused, & .MuiAutocomplete-option.Mui-focusVisible': {
+                                backgroundColor: 'var(--admin-field-surface-hover)',
+                                color: 'var(--admin-form-field-text)',
+                            },
+                            '& .MuiAutocomplete-option[aria-selected="true"]': {
+                                backgroundColor: 'var(--admin-field-selected-surface)',
+                                color: 'var(--admin-field-selected-text)',
+                            },
+                        },
+                    },
+                },
+            }}
             renderOption={(liProps, option) => {
                 // MUI puts `key` in the same object as the DOM props; React 19
                 // warns when a key is spread, so pull it out explicitly.

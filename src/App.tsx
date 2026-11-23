@@ -30,7 +30,6 @@ import {
     canSeeSupervisorLogs,
 } from './constants/caseHandoverAccess';
 import { useAppConfigContext } from './context/useAppConfig';
-import { useAdminTheme } from './hooks/useAdminTheme.hook';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AgencyDefaultSectionRedirect } from './pages/Agency/Edit/AgencyDefaultSectionRedirect';
 import { LegacyAppSettingsRedirect } from './pages/Tenants/Edit/LegacyAppSettingsRedirect';
@@ -100,14 +99,9 @@ const AgencyInitialMeetingRedirect = () => {
 
 export const App = () => {
     useAccountInactivityActivity();
-    const {
-        data: publicTenantData,
-        isLoading: isPublicTenantLoading,
-        isFetched: isPublicTenantFetched,
-    } = usePublicTenantData();
+    const { data: publicTenantData } = usePublicTenantData();
     const { isLoading, data } = useTenantData();
     const { isLoading: isUserDataLoading, isError: isUserDataError, data: userData } = useUserData();
-    useAdminTheme(publicTenantData?.theming, isPublicTenantFetched || !isPublicTenantLoading);
     const { settings } = useAppConfigContext();
     const navigate = useNavigate();
     const location = useLocation();

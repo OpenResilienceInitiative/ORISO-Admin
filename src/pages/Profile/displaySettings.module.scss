@@ -1,0 +1,19 @@
+.settings {
+    display: grid;
+    color: var(--m3-on-surface);
+    font-size: calc(0.875rem * var(--admin-personal-text-scale, 1));
+    gap: var(--spacing-sm);
+    min-inline-size: 0;
+}
+
+@media (forced-colors: active) {
+    .settings :global(.ant-select):focus-within {
+        outline: var(--admin-focus-ring-width) solid Highlight;
+        outline-offset: var(--admin-focus-ring-offset);
+    }
+
+    .dropdown :global(.ant-select-item-option-active) {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+}

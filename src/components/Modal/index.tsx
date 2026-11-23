@@ -9,6 +9,8 @@ import { DialogButton } from './DialogButton';
 export { DialogButton };
 
 export interface ModalProps {
+    /** Pass explicitly to keep the dialog mounted through dismissal and restore trigger focus. */
+    open?: boolean;
     titleKey?: string;
     titleKeyOptions?: Record<string, unknown>;
     /** Raw title node for dynamic titles that are not an i18n key. Ignored if `titleKey` is set. */
@@ -85,6 +87,7 @@ export interface ModalProps {
  * for genuinely custom action rows.
  */
 export const Modal = ({
+    open = true,
     titleKey,
     titleKeyOptions,
     title,
@@ -158,7 +161,10 @@ export const Modal = ({
         <AntModal
             className={classNames(styles.modal, { [styles.scrollableBody]: scrollableBody }, className)}
             styles={{
-                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                mask: {
+                    background: 'var(--admin-dialog-scrim, rgba(255, 255, 255, 0.8))',
+                    backdropFilter: 'blur(4px)',
+                },
             }}
             title={
                 titleKey || title ? (
@@ -181,7 +187,7 @@ export const Modal = ({
                     </div>
                 ) : null
             }
-            open
+            open={open}
             destroyOnHidden
             centered
             maskClosable={maskClosable}
