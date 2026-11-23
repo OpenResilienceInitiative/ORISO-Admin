@@ -7,6 +7,8 @@ export interface TenantSettings {
     featureStatisticsEnabled?: boolean | null;
     featureGroupChatV2Enabled?: boolean | null;
     featureTeamDiscussionEnabled?: boolean | null;
+    /** ORISO-Frontend#2491: the team chat of a case stays open after the enquiry is accepted. */
+    featureTeamDiscussionAfterAcceptEnabled?: boolean | null;
     featureCentralDataProtectionTemplateEnabled?: boolean | null;
     featureAnonymousChatEnabled?: boolean | null;
     featureCallsEnabled?: boolean | null;
@@ -48,6 +50,14 @@ export interface TenantSettings {
     featureMediaAiScanOneOnOneChatsEnabled?: boolean | null;
     featureMediaAiScanGroupChatsEnabled?: boolean | null;
     featureMediaAiScanSupervisionChatsEnabled?: boolean | null;
+    // ORISO-Frontend#2491: what the team chat on an enquiry offers (policies like supervision).
+    featureVideoCallsTeamDiscussionsEnabled?: boolean | null;
+    featureAudioCallsTeamDiscussionsEnabled?: boolean | null;
+    featureVoiceMessagesTeamDiscussionsEnabled?: boolean | null;
+    featureThreadsTeamDiscussionsEnabled?: boolean | null;
+    featureMediaUploadTeamDiscussionsEnabled?: boolean | null;
+    featureMediaInlineDisplayTeamDiscussionsEnabled?: boolean | null;
+    featureMediaAiScanTeamDiscussionsEnabled?: boolean | null;
     featureSystemNotificationEmailsEnabled?: boolean | null;
     /** Missing on legacy tenants until their mail route has been audited. */
     smtpMode?: 'PLATFORM' | 'OWN' | null;
@@ -100,6 +110,15 @@ interface TenantAdminPermissionToggles {
     voiceMessagesOneOnOneChats?: boolean | null;
     voiceMessagesGroupChats?: boolean | null;
     voiceMessagesSupervisionChats?: boolean | null;
+    teamDiscussion?: boolean | null;
+    teamDiscussionAfterAccept?: boolean | null;
+    videoCallsTeamDiscussions?: boolean | null;
+    audioCallsTeamDiscussions?: boolean | null;
+    voiceMessagesTeamDiscussions?: boolean | null;
+    threadsTeamDiscussions?: boolean | null;
+    mediaUploadTeamDiscussions?: boolean | null;
+    mediaInlineDisplayTeamDiscussions?: boolean | null;
+    mediaAiScanTeamDiscussions?: boolean | null;
 }
 
 /** Same shape as an agency's `dataProtectionOfficerContact`. */

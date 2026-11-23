@@ -21,8 +21,9 @@ type Story = StoryObj<typeof meta>;
 
 export const PlatformAdmin: Story = { beforeEach: () => installAgencyStoryAuth('platformAdmin') };
 /**
- * ORISO-Admin#1577: the centre sees the Supervision tile like every level, and Team-Chat on the Mail
- * Beratung tile as its Träger's value, read-only (TenantService stores it per Träger only).
+ * ORISO-Admin#1577: the centre sees the Supervision tile like every level. ORISO-Frontend#2491: Team-Chat on
+ * the Mail Beratung tile is the centre's own policy value, like supervision — a switch, but no requirement
+ * lock (there is no level below a Beratungsstelle).
  */
 export const AgencyAdmin: Story = {
     beforeEach: () => installAgencyStoryAuth('agencyAdmin'),
@@ -42,9 +43,8 @@ export const AgencyAdmin: Story = {
         await canvas.findByTestId('supervision-tile', {}, { timeout: 8000 });
         const mail = canvas.getByTestId('chat-type-card-oneOnOne');
         const teamChat = within(mail).getByRole('group', { name: /Team-Chat|Team chat/ });
-        // Read-only here: never a switch the centre could press.
-        within(teamChat)
-            .queryAllByRole('button', { name: /Team-Chat:|Team chat:/ })
-            .forEach((button) => expect(button).toBeDisabled());
+        const buttons = within(teamChat).getAllByRole('button', { name: /^(Team-Chat|Team chat): / });
+        await expect(buttons).toHaveLength(1);
+        await expect(buttons[0]).toBeEnabled();
     },
 };

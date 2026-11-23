@@ -14,7 +14,6 @@ import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
 import { SupervisionTile } from './SupervisionTile';
 import { TeamChatSection } from './TeamChatSection';
-import type { TraegerOnlySettings } from './traegerFunctions';
 import {
     GROUP_CHAT_UMBRELLA,
     affectsCalls,
@@ -155,11 +154,6 @@ export type PermissionsSettingsViewProps = {
     /** What this page applies to, said in the page intro (e.g. one Träger, ORISO-Admin#1577). */
     introScopeNote?: ReactNode;
     /**
-     * ORISO-Admin#1577: Team-Chat, stored per Träger only. Without it the page says it is set per
-     * Träger (platform).
-     */
-    traegerSettings?: TraegerOnlySettings;
-    /**
      * Träger page only, where the former "Anrufe" switch was offered: the Träger's
      * `isVideoCallAllowed`, which follows the call switches of the tiles. Without it the page cannot
      * write the value and says nothing about it (ORISO-TenantService#380).
@@ -195,7 +189,6 @@ export const PermissionsSettingsView = ({
     liveChatLinks,
     renderJourneys,
     introScopeNote,
-    traegerSettings = { source: 'none' },
     callsPermission,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
@@ -670,8 +663,8 @@ export const PermissionsSettingsView = ({
                                 />
                             )}
 
-                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here; Frank,
-                                2026-11-20: with "Konfigurieren" like supervision. */}
+                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here;
+                                ORISO-Frontend#2491: a policy with "Konfigurieren", governed like supervision. */}
                             {card.key === 'oneOnOne' && (
                                 <TileSections.Section
                                     wide
@@ -683,7 +676,6 @@ export const PermissionsSettingsView = ({
                                 >
                                     <TeamChatSection
                                         level={policyLevel}
-                                        settings={traegerSettings}
                                         policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
                                         pending={policyPending}
                                         onChange={(changes) => changePolicies(changes, form)}

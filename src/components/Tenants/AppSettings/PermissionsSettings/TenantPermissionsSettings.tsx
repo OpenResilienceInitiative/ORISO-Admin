@@ -22,7 +22,6 @@ import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarP
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 import { Notify } from '../../../Notify';
-import type { TraegerOnlySetting, TraegerOnlySettings } from './traegerFunctions';
 import type { CallsPermission } from './derivedLegacySettings';
 import type { TenantAdminData } from '../../../../types/TenantAdminData';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
@@ -62,13 +61,12 @@ export const TenantPermissionsSettings = ({
     const policySaveOutcomes = useRef(new Map<string, Promise<boolean>>());
     const activeTenantId = useRef(tenantId);
     const tenantGeneration = useRef(0);
-    const { mutate: updateTenantSettings, mutateAsync: saveTenantSettings } = useTenantAdminDataMutation({
+    const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
     // ORISO-Admin#1577: follows the tiles in the background; the tile change already said "saved".
     const { mutateAsync: writeCallsAllowed } = useTenantAdminDataMutation({ id: tenantId, successMessageKey: null });
-    const [pendingTraegerFields, setPendingTraegerFields] = useState<ReadonlySet<string>>(new Set());
     const [callsPermissionPending, setCallsPermissionPending] = useState(false);
     // The stored call permission as of now, not as of the render that queued a write (#1578 review).
     const storedCallsAllowed = tenantData?.settings?.extendedSettings?.isVideoCallAllowed;
@@ -318,30 +316,6 @@ export const TenantPermissionsSettings = ({
         [tenantId],
     );
 
-    // Team-Chat: a plain Träger setting (no policy), saved like every other Träger setting.
-    const changeTraegerSetting = useCallback(
-        (field: TraegerOnlySetting, value: boolean) => {
-            setPendingTraegerFields((current) => new Set([...current, field]));
-            enqueueTenantWrite(async () => {
-                try {
-                    await saveTenantSettings({ settings: { [field]: value } } as Partial<TenantAdminData>);
-                } finally {
-                    setPendingTraegerFields((current) => new Set([...current].filter((f) => f !== field)));
-                }
-            });
-        },
-        [enqueueTenantWrite, saveTenantSettings],
-    );
-    const traegerSettings = useMemo<TraegerOnlySettings>(
-        () => ({
-            source: 'own',
-            values: tenantData?.settings as TraegerOnlySettings['values'],
-            pendingFields: pendingTraegerFields,
-            onChange: changeTraegerSetting,
-        }),
-        [changeTraegerSetting, pendingTraegerFields, tenantData?.settings],
-    );
-
     /**
      * ORISO-Admin#1577: the counselling app shows call buttons only while the Träger's
      * `extendedSettings.isVideoCallAllowed` is on, so it follows the tiles: in the same queue, after
@@ -393,7 +367,6 @@ export const TenantPermissionsSettings = ({
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
                 introScopeNote={introScopeNote}
-                traegerSettings={traegerSettings}
                 callsPermission={callsPermission}
                 renderJourneys={journeys.renderJourneys}
                 isLoading={isLoading || policiesLoading}

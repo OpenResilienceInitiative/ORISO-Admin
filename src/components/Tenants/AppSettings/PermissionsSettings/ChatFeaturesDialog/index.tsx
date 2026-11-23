@@ -97,13 +97,21 @@ export const ChatFeaturesDialog = ({
     const { t } = useTranslation();
     const [drafts, setDrafts] = useState<Record<string, PolicyValue<boolean>>>({});
     const switchable = (feature: ChatFeature) => feature.stored !== false && !unavailableReason(feature);
-    const policyFor = (feature: ChatFeature) =>
-        unavailableReason(feature) ? LOCKED_OFF : drafts[feature.field] ?? policyOf(feature.field);
+    // A requirement inherited from above (also one that arrives while the dialog is open) wins over a draft.
+    const lockedFromAbove = (field: string) => {
+        const current = policyOf(field);
+        return current.inherited === true && current.mode === 'ENFORCED';
+    };
+    const policyFor = (feature: ChatFeature) => {
+        if (unavailableReason(feature)) return LOCKED_OFF;
+        if (lockedFromAbove(feature.field)) return policyOf(feature.field);
+        return drafts[feature.field] ?? policyOf(feature.field);
+    };
 
     const save = () => {
         const changed = Object.fromEntries(
             features
-                .filter((feature) => switchable(feature) && drafts[feature.field])
+                .filter((feature) => switchable(feature) && drafts[feature.field] && !lockedFromAbove(feature.field))
                 .map((feature) => [feature.field, drafts[feature.field]] as const)
                 .filter(([field, next]) => {
                     const current = policyOf(field);

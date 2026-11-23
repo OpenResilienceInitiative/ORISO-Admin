@@ -33,8 +33,6 @@ export const storyTenant = {
         activeLanguages: ['de', 'en'],
         extendedSettings: { languageFormal: true },
         smtpMode: 'PLATFORM',
-        // The Team-Chat on the Mail Beratung tile, with "Konfigurieren" (Frank, 2026-11-20).
-        featureTeamDiscussionEnabled: true,
     },
     content: {
         claim: { de: 'Beratung, die ankommt' },

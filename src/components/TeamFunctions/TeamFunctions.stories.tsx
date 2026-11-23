@@ -12,8 +12,7 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { applyAdminInvertedTheme, clearAdminInvertedThemeTokens } from '../../utils/applyAdminTheme';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
-import { TraegerSettingCard } from '../Tenants/AppSettings/PermissionsSettings/TraegerSettingCard';
-import { TEAM_FUNCTIONS } from './teamFunctions';
+import { TeamChatSection } from '../Tenants/AppSettings/PermissionsSettings/TeamChatSection';
 
 type Language = 'de' | 'en';
 type Scheme = 'light' | 'inverted';
@@ -31,7 +30,7 @@ interface StoryArgs {
  * | Function | Saved key | Set at |
  * | --- | --- | --- |
  * | Teamberatung / Team counselling | `teamAgency` | Beratungsstelle: create form and Stammdaten → Einstellungen |
- * | Team-Chat / Team chat | `featureTeamDiscussionEnabled` | Träger: Funktionszugriff → Mail Beratung → Team-Chat (ORISO-Admin#1577) |
+ * | Team-Chat / Team chat | `featureTeamDiscussionEnabled` (policy) | Platform, Träger and Beratungsstelle: Funktionszugriff → Mail Beratung → Team-Chat (ORISO-Admin#1577, ORISO-Frontend#2491) |
  *
  * The `scheme` control (light / inverted) previews the experimental inverted scheme; it has no story of its
  * own because several existing Admin cards are not legible in it yet (the product has no dark mode).
@@ -105,11 +104,11 @@ const TeamFunctionsEverywhere = ({ language }: StoryArgs) => (
         }}
     >
         <Panel caption={CAPTIONS[language].tenant}>
-            <TraegerSettingCard
-                field="featureTeamDiscussionEnabled"
-                labelKey={TEAM_FUNCTIONS.chat.nameKey}
-                descriptionKey={TEAM_FUNCTIONS.chat.descriptionKey}
-                settings={{ source: 'own', values: { featureTeamDiscussionEnabled: true }, onChange: () => {} }}
+            <TeamChatSection
+                level="tenant"
+                policyOf={() => ({ value: true, mode: 'SUGGESTED', inherited: false })}
+                pending={() => false}
+                onChange={() => {}}
             />
         </Panel>
         <Panel caption={CAPTIONS[language].agencyEdit}>
@@ -177,7 +176,8 @@ export const AllPlaces: Story = {
         const canvas = within(canvasElement);
         const counselling = await canvas.findAllByRole('switch', { name: 'Teamberatung' });
         await expect(counselling).toHaveLength(2);
-        await expect(await canvas.findAllByRole('button', { name: /^Team-Chat: / })).toHaveLength(1);
+        // The Team-Chat policy: one switch and one lock ("Anpassbar"/"Vorgabe"), ORISO-Frontend#2491.
+        await expect(await canvas.findAllByRole('button', { name: /^Team-Chat: / })).toHaveLength(2);
         // Read from the locale, not typed again here: the check is "both places show the SAME text".
         await expect(canvas.getAllByText(String(i18n.t('teamFunctions.counselling.description')))).toHaveLength(2);
     },
@@ -188,6 +188,6 @@ export const AllPlacesEnglish: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findAllByRole('switch', { name: 'Team counselling' })).toHaveLength(2);
-        await expect(await canvas.findAllByRole('button', { name: /^Team chat: / })).toHaveLength(1);
+        await expect(await canvas.findAllByRole('button', { name: /^Team chat: / })).toHaveLength(2);
     },
 };
