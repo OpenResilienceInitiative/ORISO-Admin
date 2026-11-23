@@ -100,20 +100,13 @@ export const TenantReadOnly: Story = {
     },
 };
 
-export const TenantAdminDetails: Story = {
-    decorators: [
-        (Story) => (
-            <div style={{ width: 320, maxWidth: '100%' }}>
-                <Story />
-            </div>
-        ),
-    ],
+const adminDetails = (section: 'tenant-admins' | 'platform-admins', tenantId: number): Story => ({
     render: () =>
         withSeededAdminProviders(
             () => (
                 <Routes>
-                    <Route path="/" element={<Navigate to="/admin/users/tenant-admins/account-1197" replace />} />
-                    <Route path="/admin/users/tenant-admins/:id" element={<TenantAdminEditOrAdd />} />
+                    <Route path="/" element={<Navigate to={`/admin/users/${section}/account-1197`} replace />} />
+                    <Route path={`/admin/users/${section}/:id`} element={<TenantAdminEditOrAdd />} />
                 </Routes>
             ),
             (client) => {
@@ -122,7 +115,7 @@ export const TenantAdminDetails: Story = {
                     firstname: 'Selected',
                     lastname: 'Administrator',
                     email: 'selected@example.org',
-                    tenantId: 1,
+                    tenantId,
                 });
                 client.setQueryData(['tenant-data', 0], { id: 1, name: 'Demo', settings: {}, licensing: {} });
                 client.setQueryData(['TENANTS', undefined, 1000, undefined, 'NAME', 'ASC'], {
@@ -142,7 +135,7 @@ export const TenantAdminDetails: Story = {
                             firstname: 'Selected',
                             lastname: 'Administrator',
                             email: 'selected@example.org',
-                            tenantId: 1,
+                            tenantId,
                         },
                     }),
                 ),
@@ -160,13 +153,18 @@ export const TenantAdminDetails: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByDisplayValue('Selected')).toBeDisabled();
+        const firstName = await canvas.findByDisplayValue('Selected');
+        await expect(firstName).toBeDisabled();
+        await expect(firstName.closest('form')?.nextElementSibling).toBe(canvas.getByTestId('entity-status-card'));
         await waitFor(() => expect(canvas.getByTestId('account-security-info')).toHaveTextContent('selected-account'));
         await expect(canvas.getByTestId('2fa-required')).toHaveAttribute('data-state', 'true');
         await expect(canvas.getByTestId('entity-status-context')).toHaveTextContent('Selected Administrator');
         await expect(canvas.getByTestId('entity-status-context')).toBeVisible();
     },
-};
+});
+
+export const TenantAdminDetails = adminDetails('tenant-admins', 1);
+export const PlatformAdminDetails = adminDetails('platform-admins', 0);
 
 export const SaveRejected: Story = {
     parameters: {
@@ -191,7 +189,7 @@ export const SaveRejected: Story = {
         await userEvent.click(within(canvas.getByTestId('entity-status-save')).getByRole('button'));
         await expect(await canvas.findByTestId('entity-status-error')).toHaveTextContent('Einschränkungen');
         await expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
-        await expect(canvas.getByRole('switch')).toBeChecked();
+        await expect(canvas.getByRole('switch')).not.toBeChecked();
     },
 };
 export const UnknownTwoFactor: Story = {
@@ -439,11 +437,13 @@ export const English: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await waitFor(() => expect(canvas.getByTestId('account-security-info')).toHaveTextContent('selected-account'));
-        await expect(canvas.getByTestId('entity-status-confirmed')).toHaveTextContent('Active');
+        await expect(canvas.getByTestId('entity-status-confirmed')).toHaveTextContent('Allowed');
         await expect(
             within(canvas.getByRole('group', { name: 'Two-factor authentication' })).getByText('Configured'),
         ).toBeVisible();
-        await expect(within(canvas.getByTestId('entity-status-edit')).getByRole('button')).toHaveAccessibleName('Edit');
+        await expect(within(canvas.getByTestId('entity-status-edit')).getByRole('button')).toHaveAccessibleName(
+            'Edit account access',
+        );
     },
 };
 const mobilePlay = async ({ canvasElement }: { canvasElement: HTMLElement }) => {
@@ -750,7 +750,7 @@ const failedPutPlay = async ({ canvasElement }: { canvasElement: HTMLElement }) 
     await expect(error).toHaveTextContent(i18n.t('entityStatus.error.save'));
     await expect(error).toBeVisible();
     await expect(canvas.getByTestId('entity-status-confirmed')).toHaveAttribute('data-active', 'false');
-    await expect(canvas.getByRole('switch')).toBeChecked();
+    await expect(canvas.getByRole('switch')).not.toBeChecked();
     await expect(within(canvas.getByTestId('entity-status-save')).getByRole('button')).toBeEnabled();
     const card = canvas.getByTestId('entity-status-card');
     await expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth);

@@ -6,6 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { snackbar } from '../../../components/Snackbar';
 import { MuiFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import profileStyles from '../accountProfile.module.scss';
 import { Page } from '../../../components/Page';
 import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
@@ -164,6 +165,7 @@ const TenantAdminEditor = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
+                    className={profileStyles.form}
                     disabled={isReadOnly || !canWrite}
                     labelAlign="left"
                     labelWrap
@@ -173,17 +175,6 @@ const TenantAdminEditor = () => {
                     initialValues={{ tenantId, ...data }}
                 >
                     <Row gutter={[24, 24]}>
-                        {isEditing && data && (
-                            <Col xs={24} lg={12}>
-                                <ManagedEntityStatus
-                                    entityKind="account"
-                                    entityName={`${data.firstname ?? ''} ${data.lastname ?? ''}`.trim()}
-                                    entityId={id}
-                                    canManage={canUpdate}
-                                    targetTenantId={data.tenantId}
-                                />
-                            </Col>
-                        )}
                         <Col xs={24} lg={12}>
                             <Card titleKey={`${labelScope}.card.personalDataTitle`}>
                                 <MuiFormField
@@ -266,6 +257,15 @@ const TenantAdminEditor = () => {
                         )}
                     </Row>
                 </Form>
+                {isEditing && data && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${data.firstname ?? ''} ${data.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        canManage={canUpdate}
+                        targetTenantId={data.tenantId}
+                    />
+                )}
             </ThemeProvider>
         </Page>
     );

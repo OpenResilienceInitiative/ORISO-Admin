@@ -79,7 +79,9 @@ export const EntityStatusCard = ({
             setSaving(false);
         }
     };
+    const isAccount = entityKind === 'account';
     const active = loadError ? null : data?.active;
+    const ownActive = editing ? draft : data?.ownActive === true;
     const account = loadError ? undefined : data?.account;
     const formatDate = (value?: string | null) => {
         if (!value || Number.isNaN(Date.parse(value))) return t('entityStatus.unknown');
@@ -88,12 +90,12 @@ export const EntityStatusCard = ({
     const confirmed = (
         <output
             className={`${styles.confirmed} m3-body-medium`}
-            aria-label={t('entityStatus.confirmed')}
+            aria-label={t(isAccount ? 'entityStatus.account.confirmed' : 'entityStatus.confirmed')}
             aria-live="polite"
             data-testid="entity-status-confirmed"
             data-active={state(active)}
         >
-            {t(statusLabel(active))}
+            {t(isAccount ? `entityStatus.account.access.${state(active)}` : statusLabel(active))}
         </output>
     );
     const actions = editing && (
@@ -108,12 +110,12 @@ export const EntityStatusCard = ({
                         setSaveError(undefined);
                     }}
                 >
-                    {t('btn.cancel')}
+                    {t(isAccount ? 'entityStatus.account.cancel' : 'btn.cancel')}
                 </M3Button>
             </span>
             <span data-testid="entity-status-save">
                 <M3Button block variant="filled" disabled={!canSave} loading={saving} onClick={save}>
-                    {t('save')}
+                    {t(isAccount ? 'entityStatus.account.save' : 'save')}
                 </M3Button>
             </span>
         </div>
@@ -135,7 +137,7 @@ export const EntityStatusCard = ({
                                     setEditing(true);
                                 }}
                             >
-                                {t('edit')}
+                                {t(isAccount ? 'entityStatus.account.edit' : 'edit')}
                             </M3Button>
                         </span>
                     )}
@@ -143,11 +145,11 @@ export const EntityStatusCard = ({
                 <div className={styles.switch} data-testid="entity-status-switch">
                     {known ? (
                         <ToggleRow
-                            label={t('entityStatus.control')}
+                            label={t(isAccount ? 'entityStatus.account.pause' : 'entityStatus.control')}
                             description={t(`entityStatus.scope.${entityKind}`)}
-                            checked={editing ? draft : data?.ownActive === true}
+                            checked={isAccount ? !ownActive : ownActive}
                             switchDisabled={!editing || !canEdit}
-                            onCheckedChange={setDraft}
+                            onCheckedChange={(checked) => setDraft(isAccount ? !checked : checked)}
                         />
                     ) : (
                         !loadError && <p>{t('entityStatus.unknownNotice')}</p>
@@ -181,7 +183,7 @@ export const EntityStatusCard = ({
                         {t(activationBlocked)}
                     </p>
                 )}
-                {data?.ownActive !== active && !loadError && typeof data?.ownActive === 'boolean' && (
+                {!isAccount && data?.ownActive !== active && !loadError && typeof data?.ownActive === 'boolean' && (
                     <p>
                         {t('entityStatus.own')}:{' '}
                         <output data-testid="entity-status-own-active" data-active={state(data?.ownActive)}>
@@ -201,7 +203,7 @@ export const EntityStatusCard = ({
                     </ul>
                 )}
             </div>
-            {entityKind === 'account' && (
+            {isAccount && (
                 <div data-testid="account-security-info" className={styles.accountInfo}>
                     <div role="group" aria-labelledby={`${metadataId}-account`} className={styles.group}>
                         <h6 id={`${metadataId}-account`} className="m3-title-small">
@@ -256,7 +258,7 @@ export const EntityStatusCard = ({
                 </div>
             ) : (
                 <Card
-                    titleKey="entityStatus.title"
+                    titleKey={isAccount ? 'entityStatus.account.title' : 'entityStatus.title'}
                     cardTitleClassName={styles.header}
                     cardTitleChildren={confirmed}
                     footer={actions}

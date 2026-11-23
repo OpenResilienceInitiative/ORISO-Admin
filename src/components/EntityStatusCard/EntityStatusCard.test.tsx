@@ -114,6 +114,34 @@ describe('compact status settings presentation', () => {
         onReload: vi.fn(),
     };
 
+    it.each([
+        { active: true, ownActive: true, expectedStatus: 'Freigegeben' },
+        { active: false, ownActive: false, expectedStatus: 'Eingeschränkt' },
+        // Not paused, but blocked by another restriction: effective access and
+        // the pause switch must be shown independently.
+        { active: false, ownActive: true, expectedStatus: 'Eingeschränkt' },
+    ])(
+        'describes access and saves the inverse of the pause switch (active $active, ownActive $ownActive)',
+        async ({ active, ownActive, expectedStatus }) => {
+            const save = vi.fn(async () => {});
+            render(<EntityStatusCard {...props} data={{ ...accountData, active, ownActive }} onSave={save} />);
+
+            expect(screen.getByText('Kontozugriff')).toBeVisible();
+            expect(screen.getByTestId('entity-status-confirmed')).toHaveTextContent(expectedStatus);
+            const control = screen.getByRole('switch', { name: 'Konto pausieren' });
+            if (ownActive) {
+                expect(control).not.toBeChecked();
+            } else {
+                expect(control).toBeChecked();
+            }
+
+            fireEvent.click(screen.getByRole('button', { name: 'Kontozugriff bearbeiten' }));
+            fireEvent.click(control);
+            fireEvent.click(screen.getByRole('button', { name: 'Kontozugriff speichern' }));
+            await waitFor(() => expect(save).toHaveBeenCalledWith(!ownActive));
+        },
+    );
+
     it('uses one actionable load notice without duplicate unknown copy or stale security facts', () => {
         render(<EntityStatusCard {...props} data={accountData} loadError={new Error('unavailable')} />);
         const error = screen.getByRole('alert');
@@ -138,7 +166,7 @@ describe('compact status settings presentation', () => {
         fireEvent.click(within(screen.getByTestId('entity-status-edit')).getByRole('button'));
         const actions = screen.getByTestId('entity-status-actions');
         expect(within(actions).getAllByRole('button')).toHaveLength(2);
-        expect(within(actions).getByRole('button', { name: de.save })).toBeEnabled();
+        expect(within(actions).getByRole('button', { name: 'Kontozugriff speichern' })).toBeEnabled();
         page.rerender(
             <EntityStatusCard {...props} onReload={reload} data={accountData} loadError={new Error('readback')} />,
         );
@@ -149,7 +177,7 @@ describe('compact status settings presentation', () => {
             }),
         ).not.toBeInTheDocument();
         expect(
-            within(screen.getByTestId('entity-status-actions')).getByRole('button', { name: de.save }),
+            within(screen.getByTestId('entity-status-actions')).getByRole('button', { name: 'Kontozugriff speichern' }),
         ).toBeDisabled();
     });
 
