@@ -744,7 +744,14 @@ const blankStep = (draft: NewStep, phase: JourneyPhase, id: string): JourneyStep
                 aspects: [{ id: `${id}-1`, title: {}, body: {} }],
             };
         default:
-            return { id, kind: 'message', title: {}, description: {}, body: {} };
+            return {
+                id,
+                kind: 'message',
+                title: {},
+                description: {},
+                body: {},
+                trigger: triggersFor(phase)[0],
+            };
     }
 };
 

@@ -504,6 +504,15 @@ describe('levels, permissions and triggers (Frank, 2026-11-18)', () => {
         expect(addStep(mail(), 'arrival', { kind: 'question' }, 'q').phases.arrival.at(-1)?.trigger).toBe('onClose');
     });
 
+    it('stores the displayed default timing on a new message step', () => {
+        expect(addStep(mail(), 'flight', { kind: 'message' }, 'flight-message').phases.flight.at(-1)?.trigger).toBe(
+            'withGreeting',
+        );
+        expect(addStep(mail(), 'arrival', { kind: 'message' }, 'arrival-message').phases.arrival.at(-1)?.trigger).toBe(
+            'onClose',
+        );
+    });
+
     it('sends "suggest another service" only when the counsellor chooses it in the conversation menu', () => {
         expect(stepOf(mail(), 'suggestAlternative').trigger).toBe('manual');
     });
