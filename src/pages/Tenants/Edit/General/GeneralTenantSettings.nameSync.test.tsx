@@ -20,6 +20,8 @@ vi.mock('../../../../hooks/useAddOrUpdateTenantAdmin.hook', () => ({
 vi.mock('../../../../components/EntityStatusCard', () => ({ ManagedEntityStatus: () => null }));
 // The contact-person tile (#1534) loads its own data and has its own tests.
 vi.mock('./TraegerContactPersonTile', () => ({ TraegerContactPersonTile: () => null }));
+// The Träger admins tile (#1575) loads its own data and has its own tests.
+vi.mock('./TenantUnitAdmins', () => ({ TenantUnitAdmins: () => null }));
 vi.mock('../../../../components/Tenants/GeneralSettings', () => ({
     GeneralSettings: ({ leadingTiles }: { leadingTiles?: ReactNode }) => <div>{leadingTiles}</div>,
 }));

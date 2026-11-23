@@ -477,6 +477,30 @@ describe('reason state is independent from the canonical master view', () => {
     );
 });
 
+// ORISO-Admin#1558: inside the Mailberatung tile the choice "Fallübergabe" is the master switch.
+describe('embedded in the case-sharing choice', () => {
+    const props: CaseHandoverCardViewProps = {
+        policies: mocks.defaultPolicies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onClientConsentPolicyChange: vi.fn(),
+        onNotificationTemplateChange: vi.fn(),
+        onMaxAccessDurationChange: vi.fn(),
+        onFeaturePolicyChange: vi.fn(),
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+    };
+
+    it('shows the reasons without a tile or master switch of its own', () => {
+        render(<CaseHandoverCardView {...props} embedded />);
+
+        expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
+        expect(screen.getByTestId('case-handover-settings')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+        expect(screen.getAllByRole('tablist').length).toBeGreaterThan(0);
+    });
+});
+
 it('withholds stale canonical master authority until the owning Träger is resolved', async () => {
     mocks.policies = mocks.defaultPolicies;
     mocks.dataState.isError = false;

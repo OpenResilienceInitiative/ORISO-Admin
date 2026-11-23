@@ -36,5 +36,6 @@
     "tenants.permissions.asker.collection.agencyCounselling": "1:1 danışmanlıkta e-posta adresi",
     "tenants.permissions.asker.collection.selfHelp": "Öz yardım gruplarında e-posta adresi",
     "tenants.permissions.asker.collection.masterOff": "Önce hesap için e-posta adreslerine izin verin. Bu seçimler korunur.",
-    "tenants.permissions.asker.collection.description": "Bu ayarlar adres toplanmasına izin verir. Adresi zorunlu kılmaz ve bildirimlerin gönderilmesini değiştirmez."
+    "tenants.permissions.asker.collection.description": "Bu ayarlar adres toplanmasına izin verir. Adresi zorunlu kılmaz ve bildirimlerin gönderilmesini değiştirmez.",
+    "message.error.tenantSettingsOutcomeUnknown": "Kaydetme işlemi doğrulanamadı. Tekrar denemeden önce mevcut ayarları kontrol edin."
 }

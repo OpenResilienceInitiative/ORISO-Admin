@@ -4,7 +4,7 @@
 import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState, type JSX } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { App as AntdApp, ConfigProvider } from 'antd';
 import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
@@ -139,15 +139,25 @@ export const AdminDisplayBoundary = ({
 const ProtectedAdmin = () => {
     const tenant = usePublicTenantData();
     return (
-        <AdminDisplayBoundary
-            theming={tenant.data?.theming}
-            isReady={tenant.isFetched || !tenant.isLoading}
-            sessionScope={getAdminDisplaySessionScope()}
-        >
-            <App />
-        </AdminDisplayBoundary>
+        <>
+            <TenantFavicon />
+            <AdminDisplayBoundary
+                theming={tenant.data?.theming}
+                isReady={tenant.isFetched || !tenant.isLoading}
+                sessionScope={getAdminDisplaySessionScope()}
+            >
+                <App />
+            </AdminDisplayBoundary>
+        </>
     );
 };
+
+const PublicAdminLayout = () => (
+    <>
+        <TenantFavicon />
+        <Outlet />
+    </>
+);
 
 /**
  * The admin's provider + route composition, extracted from `index.tsx` so it can
@@ -161,40 +171,40 @@ export const AdminApp = () => (
                 <LanguageAwareConfigProvider>
                     <AppSettingsWrapper>
                         <Router>
-                            {/* Outside <Routes> on purpose: the branding favicon has to reach
-                                anonymous visitors on /admin/login, the onboarding and
-                                password-reset pages too, not only the protected tree behind
-                                <ProtectedRoute>, which is where the old effect lived. */}
-                            <TenantFavicon />
                             <Routes>
-                                <Route path={routePathNames.login} element={<Login />} />
-                                <Route path={routePathNames.passwordReset} element={<PasswordResetRequestPage />} />
-                                <Route
-                                    path={routePathNames.passwordResetConfirm}
-                                    element={<PasswordResetConfirmPage />}
-                                />
-                                {/* Public tenant-admin onboarding (TEN-INV U8, #571): reached
-                                    from the emailed invite link {base}/{rawToken}. */}
-                                <Route
-                                    path={`${routePathNames.tenantOnboarding}/:token`}
-                                    element={<TenantAdminOnboardingPage />}
-                                />
-                                <Route path={routePathNames.tenantOnboarding} element={<TenantAdminOnboardingPage />} />
-                                {/* Public counsellor onboarding wizard (#997): reached from the
-                                    emailed counsellor invite link {base}/{rawToken}. */}
-                                <Route
-                                    path={`${routePathNames.counsellorOnboarding}/:token`}
-                                    element={<CounsellorOnboardingPage />}
-                                />
-                                <Route
-                                    path={routePathNames.counsellorOnboarding}
-                                    element={<CounsellorOnboardingPage />}
-                                />
-                                <Route path="/admin/404" element={<Error404 />} />
-                                <Route path="/admin/access-denied" element={<AccessDenied />} />
+                                <Route element={<PublicAdminLayout />}>
+                                    <Route path={routePathNames.login} element={<Login />} />
+                                    <Route path={routePathNames.passwordReset} element={<PasswordResetRequestPage />} />
+                                    <Route
+                                        path={routePathNames.passwordResetConfirm}
+                                        element={<PasswordResetConfirmPage />}
+                                    />
+                                    {/* Public tenant-admin onboarding (TEN-INV U8, #571): reached
+                                        from the emailed invite link {base}/{rawToken}. */}
+                                    <Route
+                                        path={`${routePathNames.tenantOnboarding}/:token`}
+                                        element={<TenantAdminOnboardingPage />}
+                                    />
+                                    <Route
+                                        path={routePathNames.tenantOnboarding}
+                                        element={<TenantAdminOnboardingPage />}
+                                    />
+                                    {/* Public counsellor onboarding wizard (#997): reached from the
+                                        emailed counsellor invite link {base}/{rawToken}. */}
+                                    <Route
+                                        path={`${routePathNames.counsellorOnboarding}/:token`}
+                                        element={<CounsellorOnboardingPage />}
+                                    />
+                                    <Route
+                                        path={routePathNames.counsellorOnboarding}
+                                        element={<CounsellorOnboardingPage />}
+                                    />
+                                    <Route path="/admin/404" element={<Error404 />} />
+                                    <Route path="/admin/access-denied" element={<AccessDenied />} />
 
-                                <Route path={routePathNames.imprint} element={<Imprint />} />
-                                <Route path={routePathNames.privacy} element={<Privacy />} />
+                                    <Route path={routePathNames.imprint} element={<Imprint />} />
+                                    <Route path={routePathNames.privacy} element={<Privacy />} />
+                                </Route>
 
                                 {/* put protected routes at the end to act as a wildcard route fetcher */}
                                 <Route

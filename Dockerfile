@@ -4,11 +4,11 @@ FROM ${ADMIN_RUNTIME_IMAGE}
 
 # nginx proxies Admin authentication to the Node.js BFF.
 RUN apk upgrade --no-cache \
-    && apk add --no-cache nodejs \
+    && apk add --no-cache nodejs 'libxml2>=2.13.9-r3' \
     && node --version
 
 COPY build /usr/share/nginx/html/admin
-COPY scripts /usr/share/nginx/html/admin-auth-bff
+COPY scripts/auth-bff-server.mjs scripts/auth-bff-handlers.mjs /opt/oriso/admin-auth-bff/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx-headers.conf /etc/nginx/admin-response-headers.conf
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh

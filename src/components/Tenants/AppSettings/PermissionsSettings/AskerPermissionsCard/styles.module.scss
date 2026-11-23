@@ -73,3 +73,11 @@
     text-align: center;
     color: var(--admin-control-selected, var(--m3-primary, #a5000a));
 }
+
+/* ORISO-Admin#1558: inside the Mailberatung tile, no card shell of its own. */
+.embedded {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+}

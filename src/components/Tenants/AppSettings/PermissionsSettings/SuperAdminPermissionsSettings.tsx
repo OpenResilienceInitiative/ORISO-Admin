@@ -36,7 +36,7 @@ export const SuperAdminPermissionsSettings = ({
         platformControls,
     );
     const confirmedPlatformControls = useRef<TenantAdminControls | undefined>(platformControls);
-    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const pendingPolicyOperations = useRef<{ id: number; changes: Record<string, PolicyValue<boolean>> }[]>([]);
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const updateTenantAdminControls = useTenantAdminControlsMutation({
@@ -58,11 +58,11 @@ export const SuperAdminPermissionsSettings = ({
         const confirmed = confirmedPlatformControls.current;
         if (!confirmed) return;
         const permissionPolicies = pendingPolicyOperations.current.reduce(
-            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            (current, operation) => ({ ...current, ...operation.changes }),
             { ...confirmed.permissionPolicies },
         );
         setEffectivePlatformControls({ ...confirmed, permissionPolicies });
-        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.flatMap(({ changes }) => Object.keys(changes))));
     }, []);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
@@ -88,10 +88,11 @@ export const SuperAdminPermissionsSettings = ({
         ],
     );
 
-    const handlePolicyChange = useCallback(
-        (fieldKey: string, policy: PolicyValue<boolean>) => {
+    // Several fields in one operation are one request: they are saved, or rolled back, together (#1560).
+    const handlePoliciesChange = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>) => {
             if (!confirmedPlatformControls.current) return;
-            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            const operation = { id: nextPolicyOperationId.current, changes };
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
             rebuildEffectivePlatformControls();
@@ -102,7 +103,7 @@ export const SuperAdminPermissionsSettings = ({
                 const next = withoutCalendar(
                     withStoredScopeOnly({
                         ...confirmed,
-                        permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
+                        permissionPolicies: { ...confirmed.permissionPolicies, ...changes },
                     }),
                 );
                 try {
@@ -119,6 +120,10 @@ export const SuperAdminPermissionsSettings = ({
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
         [rebuildEffectivePlatformControls, updateTenantAdminControls],
+    );
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => handlePoliciesChange({ [fieldKey]: policy }),
+        [handlePoliciesChange],
     );
 
     // Same queue as the switches, so a scope save and a switch save never overtake each other.
@@ -196,6 +201,8 @@ export const SuperAdminPermissionsSettings = ({
         [allowedPermissionToggles, persistPlatformControls],
     );
 
+    // No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
+    // that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value.
     return (
         <PermissionsSettingsView
             tenantId={tenantId}
@@ -210,6 +217,7 @@ export const SuperAdminPermissionsSettings = ({
             permissionPolicies={effectivePlatformControls?.permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             onPolicyChange={handlePolicyChange}
+            onPoliciesChange={handlePoliciesChange}
             recipientScope={{
                 policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
                 onSave: handleRecipientScopeSave,

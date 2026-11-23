@@ -6,6 +6,21 @@
     line-height: 24px;
 }
 
+.adminList {
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+}
+
+.adminRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+}
+
 .tenantInfoCard,
 .createCard {
     width: 100%;

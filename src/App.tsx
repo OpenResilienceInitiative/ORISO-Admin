@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, type ReactElement } from 'react';
 import i18next from 'i18next';
 import 'antd/dist/reset.css';
 import './styles/App.less';
@@ -86,7 +86,9 @@ import { hasMandatoryTwoFactorRole, requiresMandatoryTwoFactor } from './utils/a
 import { MandatoryTwoFactorSetup } from './pages/Profile/MandatoryTwoFactorSetup';
 import { StatisticsReaderRoutes } from './router/StatisticsReaderRoutes';
 
-const tenantLegalSettingsPath = `${routePathNames.themeSettings}/legal`;
+const accessDenied = <Navigate to="/admin/access-denied" replace />;
+
+const requireRouteAccess = (allowed: boolean, page: ReactElement) => (allowed ? page : accessDenied);
 
 const AgencyInitialMeetingRedirect = () => {
     const { id } = useParams();
@@ -126,7 +128,6 @@ export const App = () => {
         shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled: isReleaseEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
-        multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     });
 
     useEffect(() => {
@@ -140,6 +141,52 @@ export const App = () => {
 
     const canReadTenant = can(PermissionAction.Read, Resource.Tenant);
     const canReadLegalText = canOpenTenantLegalSettings(can(PermissionAction.Read, Resource.LegalText), hasRole);
+    const canManageTenant = can(PermissionAction.Create, Resource.Tenant);
+    const canManageGlobalSettings = isSuperAdmin && can(PermissionAction.Update, Resource.Tenant);
+    const canReadTopics = can(PermissionAction.Read, Resource.Topic);
+    const canEditTopics = can([PermissionAction.Update, PermissionAction.Create], Resource.Topic);
+    const topicsAvailable = canReadTopics || canEditTopics || Boolean(data?.settings?.featureTopicsEnabled);
+    const canOpenSettings = canReadTenant || canReadLegalText;
+    const settingsRoutes = [
+        {
+            path: `${routePathNames.themeSettings}/global-config`,
+            allowed: canManageGlobalSettings,
+            page: <LazyGlobalLoginSettingsPage />,
+        },
+        {
+            path: `${routePathNames.themeSettings}/master-data`,
+            allowed: canReadTenant,
+            page: <LazyGeneralSettingsPage section="masterData" />,
+        },
+        {
+            path: `${routePathNames.themeSettings}/general`,
+            allowed: canReadTenant,
+            page: <LazyGeneralSettingsPage section="appearance" />,
+        },
+        { path: `${routePathNames.themeSettings}/legal`, allowed: canReadLegalText, page: <LazyLegalSettingsPage /> },
+        {
+            path: `${routePathNames.themeSettings}/erstantwort`,
+            allowed: !isSuperAdmin && canReadTenant,
+            page: <LazyErstantwortSettingsPage />,
+        },
+        {
+            path: `${routePathNames.themeSettings}/topics`,
+            allowed: isSuperAdmin && can(PermissionAction.Update, Resource.Topic),
+            page: <LazyTopicSettingsPage />,
+        },
+        {
+            path: `${routePathNames.themeSettings}/app-settings`,
+            allowed: canReadTenant,
+            page: <LazyAppSettingsPage />,
+        },
+        { path: `${routePathNames.themeSettings}/smtp`, allowed: canReadTenant, page: <LazyUnifiedSmtpSettingsPage /> },
+        {
+            path: `${routePathNames.themeSettings}/permissions`,
+            allowed: canReadTenant,
+            page: <LazyPermissionsSettingsPage />,
+        },
+        { path: routePathNames.serviceNotices, allowed: canManageServiceNotices, page: <LazyServiceNoticesPage /> },
+    ];
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
@@ -218,8 +265,7 @@ export const App = () => {
 
     return (
         <FeatureProvider tenantData={data} publicTenantData={publicTenantData}>
-            {/* The signed-in admin's OWN tenant icon overrides the platform default that
-                the globally mounted <TenantFavicon /> (index.tsx) already applied. */}
+            {/* The signed-in admin's tenant icon takes precedence over the platform default. */}
             <TenantFavicon tenantFavicon={data?.theming?.favicon} />
             {/* TEN-INV-U10 (#572): global non-bypassable DPA blocker. Wraps the WHOLE
                 protected tree, so every direct URL renders the blocker instead of the
@@ -231,78 +277,24 @@ export const App = () => {
                     <ErrorBoundary scope="page" resetKeys={[location.pathname]}>
                         <Suspense fallback={<PageLoader />}>
                             <Routes>
-                                {(canReadTenant || canReadLegalText) && (
+                                {canOpenSettings ? (
                                     <Route path={routePathNames.themeSettings} element={<LazyTenantSettingsLayout />}>
-                                        {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/global-config`}
-                                                element={<LazyGlobalLoginSettingsPage />}
-                                            />
-                                        )}
-                                        {can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/master-data`}
-                                                element={<LazyGeneralSettingsPage section="masterData" />}
-                                            />
-                                        )}
-                                        {can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/general`}
-                                                element={<LazyGeneralSettingsPage section="appearance" />}
-                                            />
-                                        )}
-                                        {canReadLegalText && (
-                                            <Route path={tenantLegalSettingsPath} element={<LazyLegalSettingsPage />} />
-                                        )}
-                                        {!isSuperAdmin && can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/erstantwort`}
-                                                element={<LazyErstantwortSettingsPage />}
-                                            />
-                                        )}
-                                        {isSuperAdmin && can(PermissionAction.Update, Resource.Topic) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/topics`}
-                                                element={<LazyTopicSettingsPage />}
-                                            />
-                                        )}
-                                        {can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/app-settings`}
-                                                element={<LazyAppSettingsPage />}
-                                            />
-                                        )}
-                                        {can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/smtp`}
-                                                element={<LazyUnifiedSmtpSettingsPage />}
-                                            />
-                                        )}
-                                        {can(PermissionAction.Read, Resource.Tenant) && (
-                                            <Route
-                                                path={`${routePathNames.themeSettings}/permissions`}
-                                                element={<LazyPermissionsSettingsPage />}
-                                            />
-                                        )}
-                                        <Route
-                                            path={routePathNames.serviceNotices}
-                                            element={
-                                                canManageServiceNotices ? (
-                                                    <LazyServiceNoticesPage />
-                                                ) : (
-                                                    <Navigate to="/admin/access-denied" replace />
-                                                )
-                                            }
-                                        />
+                                        {settingsRoutes
+                                            .filter(({ allowed }) => allowed)
+                                            .map(({ path, page }) => (
+                                                <Route key={path} path={path} element={page} />
+                                            ))}
                                         <Route index element={<Navigate to={defaultSettingsPath} replace />} />
                                     </Route>
+                                ) : (
+                                    <Route path={routePathNames.themeSettings} element={accessDenied} />
                                 )}
-                                {!canReadLegalText && (
-                                    <Route
-                                        path={tenantLegalSettingsPath}
-                                        element={<Navigate to="/admin/access-denied" replace />}
-                                    />
-                                )}
+                                {/* Denied settings URLs stay outside the layout so they do not load its data. */}
+                                {settingsRoutes
+                                    .filter(({ allowed }) => !canOpenSettings || !allowed)
+                                    .map(({ path }) => (
+                                        <Route key={path} path={path} element={accessDenied} />
+                                    ))}
                                 <Route path={routePathNames.agency} element={<LazyAgencyList />} />
                                 <Route path={`${routePathNames.agency}/:id/setup`} element={<LazyAgencySetupPage />} />
                                 <Route
@@ -322,21 +314,25 @@ export const App = () => {
                                     path={`${routePathNames.agency}/:id/initial-meeting`}
                                     element={<AgencyInitialMeetingRedirect />}
                                 />
-                                {can(PermissionAction.Read, Resource.Topic) && (
-                                    <Route
-                                        path={routePathNames.topics}
-                                        element={
-                                            isSuperAdmin ? (
-                                                // The platform admin keeps the catalogue under Settings → Themen.
-                                                <Navigate to={`${routePathNames.themeSettings}/topics`} replace />
-                                            ) : (
-                                                <LazyTopicList />
-                                            )
-                                        }
-                                    />
-                                )}
-                                {can([PermissionAction.Update, PermissionAction.Create], Resource.Topic) && (
-                                    <Route path={`${routePathNames.topics}/:id`} element={<LazyTopicEditOrAdd />} />
+                                {topicsAvailable && (
+                                    <>
+                                        <Route
+                                            path={routePathNames.topics}
+                                            element={requireRouteAccess(
+                                                canReadTopics,
+                                                isSuperAdmin ? (
+                                                    // The platform admin keeps the catalogue under Settings → Themen.
+                                                    <Navigate to={`${routePathNames.themeSettings}/topics`} replace />
+                                                ) : (
+                                                    <LazyTopicList />
+                                                ),
+                                            )}
+                                        />
+                                        <Route
+                                            path={`${routePathNames.topics}/:id`}
+                                            element={requireRouteAccess(canEditTopics, <LazyTopicEditOrAdd />)}
+                                        />
+                                    </>
                                 )}
                                 {/* Start page for every role (ORISO-Admin#1323). */}
                                 <Route path={routePathNames.home} element={<LazyHomePage />} />
@@ -383,102 +379,100 @@ export const App = () => {
                                             )
                                         }
                                     />
-                                    {isSuperAdmin && (
-                                        <Route
-                                            path={routePathNames.inactiveAccountAuditLogs}
-                                            element={<LazyInactiveAccountAuditLogsPage />}
-                                        />
-                                    )}
-                                    {canSeeDeletionAuditLogs && (
-                                        <Route
-                                            path={routePathNames.deletionAuditLogs}
-                                            element={<LazyDeletionAuditLogsPage />}
-                                        />
-                                    )}
-                                    {showCaseHandoverLogs && (
-                                        <Route
-                                            path={routePathNames.caseHandoverLogs}
-                                            element={<LazyCaseHandoverLogsPage />}
-                                        />
-                                    )}
-                                    {showAddons && (
-                                        <Route
-                                            path={routePathNames.addonAuditLogs}
-                                            element={<LazyAddonAuditLogsPage />}
-                                        />
-                                    )}
+                                    <Route
+                                        path={routePathNames.inactiveAccountAuditLogs}
+                                        element={requireRouteAccess(isSuperAdmin, <LazyInactiveAccountAuditLogsPage />)}
+                                    />
+                                    <Route
+                                        path={routePathNames.deletionAuditLogs}
+                                        element={requireRouteAccess(
+                                            canSeeDeletionAuditLogs,
+                                            <LazyDeletionAuditLogsPage />,
+                                        )}
+                                    />
+                                    <Route
+                                        path={routePathNames.caseHandoverLogs}
+                                        element={requireRouteAccess(showCaseHandoverLogs, <LazyCaseHandoverLogsPage />)}
+                                    />
+                                    <Route
+                                        path={routePathNames.addonAuditLogs}
+                                        element={requireRouteAccess(showAddons, <LazyAddonAuditLogsPage />)}
+                                    />
                                 </Route>
                                 <Route path={routePathNames.userProfile} element={<LazyUserProfile />} />
-                                {isSuperAdmin && can(PermissionAction.Update, Resource.Tenant) && (
-                                    <>
-                                        <Route
-                                            path={routePathNames.globalSettings}
-                                            element={
-                                                <Navigate
-                                                    to={`${routePathNames.themeSettings}/global-config`}
-                                                    replace
-                                                />
-                                            }
-                                        />
-                                        <Route
-                                            path={`${routePathNames.globalSettings}/login`}
-                                            element={
-                                                <Navigate
-                                                    to={`${routePathNames.themeSettings}/global-config`}
-                                                    replace
-                                                />
-                                            }
-                                        />
-                                        <Route
-                                            path={`${routePathNames.globalSettings}/smtp`}
-                                            element={<Navigate to={`${routePathNames.themeSettings}/smtp`} replace />}
-                                        />
-                                    </>
+                                <Route
+                                    path={routePathNames.globalSettings}
+                                    element={requireRouteAccess(
+                                        canManageGlobalSettings,
+                                        <Navigate to={`${routePathNames.themeSettings}/global-config`} replace />,
+                                    )}
+                                />
+                                <Route
+                                    path={`${routePathNames.globalSettings}/login`}
+                                    element={requireRouteAccess(
+                                        canManageGlobalSettings,
+                                        <Navigate to={`${routePathNames.themeSettings}/global-config`} replace />,
+                                    )}
+                                />
+                                <Route
+                                    path={`${routePathNames.globalSettings}/smtp`}
+                                    element={requireRouteAccess(
+                                        canManageGlobalSettings,
+                                        <Navigate to={`${routePathNames.themeSettings}/smtp`} replace />,
+                                    )}
+                                />
+                                <Route
+                                    path={routePathNames.tenants}
+                                    element={requireRouteAccess(canManageTenant, <LazyTenantsList />)}
+                                />
+                                {/* Tenant readers use the users tab; platform admins open the dedicated tenant page. */}
+                                {(canManageTenant || !canReadTenant) && (
+                                    <Route
+                                        path={routePathNames.usersTenants}
+                                        element={requireRouteAccess(
+                                            canManageTenant,
+                                            <Navigate to={routePathNames.tenants} replace />,
+                                        )}
+                                    />
                                 )}
-                                {can(PermissionAction.Create, Resource.Tenant) && (
-                                    <>
-                                        <Route path={routePathNames.tenants} element={<LazyTenantsList />} />
-                                        <Route
-                                            path={routePathNames.usersTenants}
-                                            element={<Navigate to={routePathNames.tenants} replace />}
-                                        />
-                                        <Route path={`${routePathNames.tenants}/:id`} element={<LazyTenantEditOrAdd />}>
-                                            <Route index element={<Navigate to="./general" />} />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/general`}
-                                                element={<LazyGeneralTenantSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/theme-settings`}
-                                                element={<LazyTenantThemeSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/legal-settings`}
-                                                element={<LazySingleLegalSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/erstantwort`}
-                                                element={<LazyTenantErstantwortSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/smtp`}
-                                                element={<LazyTenantSmtpSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/functionalities`}
-                                                element={<LazyTenantAppSettings />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/app-settings`}
-                                                element={<LegacyAppSettingsRedirect />}
-                                            />
-                                            <Route
-                                                path={`${routePathNames.tenants}/:id/global-settings`}
-                                                element={<LazyTenantGlobalSettings />}
-                                            />
-                                        </Route>
-                                    </>
-                                )}
+                                <Route
+                                    path={`${routePathNames.tenants}/:id`}
+                                    element={requireRouteAccess(canManageTenant, <LazyTenantEditOrAdd />)}
+                                >
+                                    <Route index element={<Navigate to="./general" />} />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/general`}
+                                        element={<LazyGeneralTenantSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/theme-settings`}
+                                        element={<LazyTenantThemeSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/legal-settings`}
+                                        element={<LazySingleLegalSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/erstantwort`}
+                                        element={<LazyTenantErstantwortSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/smtp`}
+                                        element={<LazyTenantSmtpSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/functionalities`}
+                                        element={<LazyTenantAppSettings />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/app-settings`}
+                                        element={<LegacyAppSettingsRedirect />}
+                                    />
+                                    <Route
+                                        path={`${routePathNames.tenants}/:id/global-settings`}
+                                        element={<LazyTenantGlobalSettings />}
+                                    />
+                                </Route>
                                 <Route path="/admin/users" element={<LazyUsersList />} />
                                 <Route path="/admin/users/:typeOfUsers" element={<LazyUsersList />} />
                                 <Route path="/admin/users/tenant-admins/:id" element={<LazyTenantAdminEditOrAdd />} />
@@ -488,13 +482,16 @@ export const App = () => {
                                     element={<LazyStatisticsReaderEditOrAdd />}
                                 />
                                 <Route path="/admin/users/:typeOfUsers/:id" element={<LazyUserEditOrAdd />} />
-                                {showAddons && (
-                                    <Route path={routePathNames.addons} element={<LazyAddonsLayout />}>
-                                        <Route index element={<LazyAddonsOverview />} />
-                                        <Route path="apps/:addonName/:appId" element={<LazyAddonAdminPage />} />
+                                <Route
+                                    path={routePathNames.addons}
+                                    element={requireRouteAccess(showAddons, <LazyAddonsLayout />)}
+                                >
+                                    <Route index element={<LazyAddonsOverview />} />
+                                    <Route path="apps/:addonName/:appId" element={<LazyAddonAdminPage />} />
+                                    {showAddons && (
                                         <Route path="*" element={<Navigate to={routePathNames.addons} replace />} />
-                                    </Route>
-                                )}
+                                    )}
+                                </Route>
                                 {visibleLinksTabs.length > 0 && (
                                     <Route path="/admin/links" element={<LazyLinksPage />}>
                                         <Route index element={<LazyLinksIndexRedirect />} />

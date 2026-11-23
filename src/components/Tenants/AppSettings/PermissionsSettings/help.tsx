@@ -1,6 +1,9 @@
 import { TilePicture } from '../../../TileFill';
-import type { TileHelpTopic } from '../../../TileHelp';
+import type { TileHelpSlide, TileHelpTopic } from '../../../TileHelp';
 import type { ChatTypeCardKey } from './types';
+import otherFunctionsSupervisionPicture from '../../../../resources/img/tile-help/other-functions/supervision.webp';
+import otherFunctionsTeamPicture from '../../../../resources/img/tile-help/other-functions/team.webp';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import seekerAccountPicture from '../../../../resources/img/tile-help/seeker-account.webp';
 import handoverPicture from '../../../../resources/img/tile-help/handover.webp';
 import conversationPicture from '../../../../resources/img/tile-help/conversation.webp';
@@ -247,3 +250,26 @@ export const CHAT_TYPE_HELP: Record<ChatTypeCardKey, TileHelpTopic> = {
     group: circleHelp,
     groupInternal: internalHelp,
 };
+
+/**
+ * ORISO-Admin#1577: the help of the functions that moved from the former "Funktionalitäten" tab
+ * (now "Weitere") into Funktionszugriff. One topic each, with the pictures and texts the old tile already had.
+ */
+const functionTopic = (id: string, titleKey: string, bodyKey: string, picture: string): TileHelpTopic => {
+    const slide: TileHelpSlide = { id, titleKey, bodyKey, visual: <TilePicture src={picture} /> };
+    return { id: `functions.${id}`, titleKey, essenceKey: bodyKey, slides: [slide] };
+};
+
+export const SUPERVISION_HELP = functionTopic(
+    'supervision',
+    'tileHelp.otherFunctions.supervision.title',
+    'tileHelp.otherFunctions.supervision.body',
+    otherFunctionsSupervisionPicture,
+);
+
+export const TEAM_CHAT_HELP = functionTopic(
+    'teamChat',
+    TEAM_FUNCTIONS.chat.nameKey,
+    TEAM_FUNCTIONS.chat.descriptionKey,
+    otherFunctionsTeamPicture,
+);

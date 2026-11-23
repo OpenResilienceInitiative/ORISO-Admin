@@ -26,6 +26,8 @@ export interface AppRuntimeConfig {
      */
     MEDIA_AI_SCAN_AVAILABLE?: string;
     OTEL_METRICS_URL?: string;
+    /** ORISO Understand (feature pages); unset hides the "Mehr erfahren" links (#1558). */
+    UNDERSTAND_URL?: string;
     OTEL_EXPORT_INTERVAL_MS?: string;
     PLATFORM_VERSION?: string;
 }
