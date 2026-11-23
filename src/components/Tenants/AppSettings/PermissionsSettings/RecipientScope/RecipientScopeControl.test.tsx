@@ -309,3 +309,16 @@ describe('German', () => {
         }
     });
 });
+
+// Code review (#1559): the white panel is only for the conversation-type tile; the calendar card keeps its divider.
+describe('look', () => {
+    it('is a plain block with a divider unless drawn as a panel', () => {
+        const { container, rerender } = render(
+            <RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={vi.fn()} />,
+        );
+        expect(container.querySelector('section')?.className).not.toMatch(/panel/);
+
+        rerender(<RecipientScopeControl level="platform" policy={SERVED_DEFAULT} onSave={vi.fn()} asPanel />);
+        expect(container.querySelector('section')?.className).toMatch(/panel/);
+    });
+});

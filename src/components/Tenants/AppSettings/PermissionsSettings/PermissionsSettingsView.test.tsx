@@ -55,7 +55,8 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
     it('orders the title before the activated control, with the explanation behind the help button', () => {
         renderOneOnOne();
 
-        const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
+        // #1558: the folding header also carries the summary chip.
+        const title = screen.getByRole('heading', { name: /^tenants\.permissions\.card\.oneOnOne\.title/ });
         const activated = screen.getByRole('button', {
             name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
         });
@@ -210,12 +211,13 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
 
     // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
     // Caritas Berlin case: raw false + inherited suggestion on -> stays OFF, hint "Vorschlag: an".
+    // #1558: only that conflict is said; otherwise the card says what the feature does.
     it.each([
-        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', 'own'],
+        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', null],
         [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'deactivated', 'ownSuggestedOn'],
-        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', 'suggested'],
-        [undefined, false, 'deactivated', 'own'],
-    ] as const)('policy %o with raw %s shows %s with source %s', (videoPolicy, own, state, source) => {
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', null],
+        [undefined, false, 'deactivated', null],
+    ] as const)('policy %o with raw %s shows %s with conflict hint %s', (videoPolicy, own, state, source) => {
         renderOneOnOne(vi.fn(), {
             permissionPolicies: {
                 featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
@@ -229,7 +231,13 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         expect(
             within(control).getByRole('button', { name: new RegExp(`tenants.permissions.policy.${state}`) }),
         ).toBeInTheDocument();
-        expect(within(control).getByText(`tenants.permissions.policy.source.${source}`)).toBeInTheDocument();
+        expect(
+            within(control).getByText(
+                source
+                    ? `tenants.permissions.policy.source.${source}`
+                    : 'tenants.permissions.featureDescription.videoCalls',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('uses false form values when an asker policy is absent from a partial response', () => {
@@ -288,15 +296,31 @@ describe('PermissionsSettingsView tiles', () => {
         renderOneOnOne();
 
         // The page's own wrapper card shares the heading level but is not a tile.
-        const tiles = screen
+        const cardTiles = screen
             .getAllByRole('heading', { level: 5 })
             .filter((heading) => heading.textContent !== 'tenants.permissions.title');
-        expect(tiles.map((heading) => heading.textContent)).toContain('tenants.permissions.asker.title');
-        expect(tiles.length).toBeGreaterThan(1);
-        tiles.forEach((heading) => {
+        // #1558: the asker account is a section of the Mailberatung tile, not a tile of its own.
+        expect(cardTiles.map((heading) => heading.textContent)).not.toContain('tenants.permissions.asker.title');
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', {
+                name: 'tenants.permissions.asker.title',
+            }),
+        ).toBeInTheDocument();
+        cardTiles.forEach((heading) => {
             expect(heading.parentElement?.querySelector('[class*="headerIcon"]')).toBeTruthy();
         });
-        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ })).toHaveLength(tiles.length);
+        // #1558: conversation-type tiles fold up; their header button carries the icon.
+        const foldingTiles = screen
+            .getAllByRole('heading', { level: 3 })
+            .filter((heading) => heading.querySelector('button[aria-expanded]'));
+        expect(foldingTiles.length).toBeGreaterThan(0);
+        foldingTiles.forEach((heading) => {
+            expect(heading.querySelector('[class*="icon"][aria-hidden]')).toBeTruthy();
+        });
+        // Every tile has its explanation; sections inside a tile can add their own (#1558).
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ }).length).toBeGreaterThanOrEqual(
+            cardTiles.length + foldingTiles.length,
+        );
     });
 
     it('shows direct invitations inside the one-on-one tile, independent of its master switch', () => {
@@ -317,10 +341,11 @@ describe('PermissionsSettingsView tiles', () => {
 
 // ORISO-UserService#1662: guest account modes per chat type, next to the direct invitations.
 describe('PermissionsSettingsView guest account modes', () => {
+    // #1560: one choice per medium, from a menu.
     const permanentVideo = () =>
         screen
             .getByTestId('chat-type-card-oneOnOne')
-            .querySelector('[data-feature-policy="featureGuestAccountPermanentVideoEnabled"]') as HTMLElement | null;
+            .querySelector('[data-feature-policy="guestAccount-video"]') as HTMLElement | null;
 
     it('shows the guest account modes in the one-on-one tile and writes a Träger choice as a policy', async () => {
         const onPolicyChange = vi.fn();
@@ -329,8 +354,17 @@ describe('PermissionsSettingsView guest account modes', () => {
         expect(screen.getByText('tenants.permissions.guestAccountModes.title')).toBeTruthy();
         const row = permanentVideo();
         expect(row).toBeTruthy();
-        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.deactivate$/ }));
+        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.openMenu/ }));
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: /^tenants\.permissions\.guestAccountModes\.choice\.permanent\.SUGGESTED/,
+            }),
+        );
         expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
+            value: true,
+            mode: 'SUGGESTED',
+        });
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountTemporaryVideoEnabled', {
             value: false,
             mode: 'SUGGESTED',
         });
