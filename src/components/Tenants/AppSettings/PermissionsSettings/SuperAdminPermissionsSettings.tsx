@@ -14,6 +14,7 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import {
     toRecipientScopeWrite,
     withStoredScopeOnly,
@@ -30,6 +31,7 @@ export const SuperAdminPermissionsSettings = ({
     liveChatLinks,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
+    const journeys = useJourneysInTiles({ level: 'platform' });
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
     const [effectivePlatformControls, setEffectivePlatformControls] = useState<TenantAdminControls | undefined>(
@@ -204,28 +206,32 @@ export const SuperAdminPermissionsSettings = ({
     // No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
     // that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value.
     return (
-        <PermissionsSettingsView
-            tenantId={tenantId}
-            excludeCardKeys={excludeCardKeys}
-            liveChatLinks={liveChatLinks}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            formStateKey="platform"
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            policyLevel="platform"
-            permissionPolicies={effectivePlatformControls?.permissionPolicies}
-            pendingPolicyFields={pendingPolicyFields}
-            onPolicyChange={handlePolicyChange}
-            onPoliciesChange={handlePoliciesChange}
-            recipientScope={{
-                policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
-                onSave: handleRecipientScopeSave,
-            }}
-            calendar={{
-                policies: (effectivePlatformControls ?? platformControls)?.calendar,
-                onSave: handleCalendarSave,
-            }}
-        />
+        <>
+            <PermissionsSettingsView
+                tenantId={tenantId}
+                excludeCardKeys={excludeCardKeys}
+                liveChatLinks={liveChatLinks}
+                renderJourneys={journeys.renderJourneys}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                formStateKey="platform"
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                policyLevel="platform"
+                permissionPolicies={effectivePlatformControls?.permissionPolicies}
+                pendingPolicyFields={pendingPolicyFields}
+                onPolicyChange={handlePolicyChange}
+                onPoliciesChange={handlePoliciesChange}
+                recipientScope={{
+                    policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
+                    onSave: handleRecipientScopeSave,
+                }}
+                calendar={{
+                    policies: (effectivePlatformControls ?? platformControls)?.calendar,
+                    onSave: handleCalendarSave,
+                }}
+            />
+            {journeys.dialog}
+        </>
     );
 };

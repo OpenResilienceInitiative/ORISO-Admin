@@ -26,6 +26,10 @@ RUN npm run build-storybook
 # Production stage - serve static files
 FROM nginx:alpine
 
+# The floating Alpine tag can ship a library the image scan rejects.
+# Upgrade at build time, the same way the application image does.
+RUN apk upgrade --no-cache
+
 ARG PORT=80
 
 RUN apk add --no-cache 'libxml2>=2.13.9-r3'

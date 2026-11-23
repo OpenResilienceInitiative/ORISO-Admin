@@ -18,6 +18,7 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 
@@ -45,6 +46,8 @@ export const AgencyPermissionsSettings = ({
     // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
     // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
     const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
+    // The centre's journeys: the platform's with its Träger's layer and its own (ADR-036 decision 29).
+    const journeys = useJourneysInTiles({ level: 'agency', tenantId: traegerId, agencyId });
     const {
         data: traegerPolicies,
         status: traegerPoliciesQueryStatus,
@@ -148,6 +151,7 @@ export const AgencyPermissionsSettings = ({
                 traegerDirectInvitePolicies={traegerPolicies?.policies}
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
+                renderJourneys={journeys.renderJourneys}
                 traegerSettings={traegerSettings}
                 isLoading={isLoading}
                 initialValues={initialValues}
@@ -159,6 +163,7 @@ export const AgencyPermissionsSettings = ({
                 onPolicyChange={changePolicy}
                 pendingPolicyFields={pendingFields}
             />
+            {journeys.dialog}
         </>
     );
 };

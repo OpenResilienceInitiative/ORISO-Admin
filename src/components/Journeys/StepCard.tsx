@@ -1,0 +1,287 @@
+import type { DragEvent, KeyboardEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import classNames from 'classnames';
+import DragIndicator from '@mui/icons-material/DragIndicator';
+import LockOutlined from '@mui/icons-material/LockOutlined';
+import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import Add from '@mui/icons-material/Add';
+import LinkOutlined from '@mui/icons-material/LinkOutlined';
+import BadgeOutlined from '@mui/icons-material/BadgeOutlined';
+import SearchOutlined from '@mui/icons-material/SearchOutlined';
+import ArrowUpward from '@mui/icons-material/ArrowUpward';
+import ArrowDownward from '@mui/icons-material/ArrowDownward';
+import DeleteOutline from '@mui/icons-material/DeleteOutlineOutlined';
+import { RowMenu } from '../UserTable/RowMenu';
+import { canMoveStep, canRemoveStep, isMustStep, type JourneyPhase, type JourneyStep } from './journey';
+import { stepSummary, stepTitle } from './stepText';
+import { TranslationPill } from './TranslationPill';
+import { SearchPill } from './SearchPill';
+import type { ProfileView } from './ProfileDialog';
+import styles from './styles.module.scss';
+
+export interface StepCardProps {
+    step: JourneyStep;
+    /** Check-in steps are screens; on board and at arrival each step is one chat message. */
+    phase: JourneyPhase;
+    /** Funktionszugriff switched this building block off: it stays here and is skipped. */
+    skipped?: boolean;
+    /** 1-based position in the phase. */
+    position: number;
+    total: number;
+    language: string;
+    dragging: boolean;
+    /** Where the dragged step would land relative to this one. */
+    dropLine?: 'before' | 'after';
+    onOpen: () => void;
+    onAddBelow: () => void;
+    onMove: (direction: -1 | 1) => void;
+    onRemove: () => void;
+    /** Opens the block's profile card or its search terms. */
+    onOpenProfile?: (view: ProfileView) => void;
+    /** The plus line under the card: a new step right below this one. */
+    onInsertBelow?: () => void;
+    /** Its add-step dialog is open: the plus line stays open. */
+    insertActive?: boolean;
+    /** "Choose a topic" only: preselect the topic (journeys reached by one-topic links only). */
+    topicPreselect?: { on: boolean; allowed: boolean; onToggle: (on: boolean) => void };
+    /** The phase belongs to a higher level: the card only opens, nothing changes. */
+    readOnly?: boolean;
+    /** Whether the rules let the step go one place up or down (not only the list edges). */
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
+    onTranslate?: () => void;
+    /** A translation of this step is running. */
+    translating?: boolean;
+    onMarkChecked?: (language: string) => void;
+    onDragStart: (event: DragEvent<HTMLLIElement>) => void;
+    onDragOver: (event: DragEvent<HTMLLIElement>) => void;
+    onDragEnd: () => void;
+    onDrop: (event: DragEvent<HTMLLIElement>) => void;
+}
+
+const preselectLabel = ({ on, allowed }: { on: boolean; allowed: boolean }) => {
+    if (on) return 'journeys.topic.unpreselect';
+    return allowed ? 'journeys.topic.preselect' : 'journeys.topic.preselectNotAllowed';
+};
+
+/**
+ * One step of a phase. The handle on the left drags it (arrow keys move it, too); a must step
+ * shows a lock there instead. The card opens the step; the menu holds everything else.
+ */
+export const StepCard = ({
+    step,
+    phase,
+    skipped = false,
+    position,
+    total,
+    language,
+    dragging,
+    dropLine,
+    onOpen,
+    onAddBelow,
+    onMove,
+    onRemove,
+    onOpenProfile,
+    onInsertBelow,
+    insertActive = false,
+    topicPreselect,
+    readOnly = false,
+    canMoveUp = true,
+    canMoveDown = true,
+    onTranslate,
+    translating = false,
+    onMarkChecked,
+    onDragStart,
+    onDragOver,
+    onDragEnd,
+    onDrop,
+}: StepCardProps) => {
+    const { t } = useTranslation();
+    const title = stepTitle(step, language, t);
+    const summary = stepSummary(step, language, t);
+    const must = isMustStep(step);
+    const movable = !readOnly && canMoveStep(step);
+    const removable = !readOnly && canRemoveStep(step);
+    let removeLabel = 'journeys.step.removeLocked';
+    if (removable) removeLabel = 'journeys.step.remove';
+    else if (readOnly) removeLabel = 'journeys.step.removeOfHigherLevel';
+
+    const onHandleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        onMove(event.key === 'ArrowUp' ? -1 : 1);
+    };
+
+    const badge = must ? (
+        <span className={classNames(styles.chip, styles.chipMust)}>
+            <LockOutlined aria-hidden />
+            {t('journeys.kind.must')}
+        </span>
+    ) : (
+        <span className={classNames(styles.chip, { [styles.chipCore]: step.kind === 'core' })}>
+            {t(`journeys.kind.${step.kind}`)}
+        </span>
+    );
+
+    return (
+        <li
+            className={styles.stepItem}
+            draggable={movable}
+            onDragStart={onDragStart}
+            onDragOver={onDragOver}
+            onDragEnd={onDragEnd}
+            onDrop={onDrop}
+            data-testid={`journey-step-${step.core ?? step.addon ?? step.id}`}
+        >
+            {dropLine && (
+                <span
+                    className={classNames(styles.dropLine, { [styles.dropLineAfter]: dropLine === 'after' })}
+                    aria-hidden
+                />
+            )}
+            <span className={styles.stepLabel}>
+                {t('journeys.step.number', { number: position })}
+                {' · '}
+                {t(phase === 'departure' ? 'journeys.step.screen' : 'journeys.step.message')}
+            </span>
+            {movable ? (
+                <button
+                    type="button"
+                    className={styles.handle}
+                    aria-label={t('journeys.step.handle', { name: title })}
+                    aria-roledescription={t('journeys.step.handleRole')}
+                    title={t('journeys.step.handleHint')}
+                    onKeyDown={onHandleKeyDown}
+                >
+                    <DragIndicator aria-hidden />
+                </button>
+            ) : (
+                <span
+                    className={styles.lock}
+                    role="img"
+                    aria-label={t('journeys.step.locked')}
+                    title={t('journeys.step.locked')}
+                >
+                    <LockOutlined aria-hidden />
+                </span>
+            )}
+            <div className={classNames(styles.step, { [styles.stepMust]: must, [styles.stepDragging]: dragging })}>
+                <div className={styles.stepTop}>
+                    <span className={styles.chips}>
+                        <TranslationPill
+                            step={step}
+                            onTranslate={onTranslate}
+                            busy={translating}
+                            onMarkChecked={readOnly ? undefined : onMarkChecked}
+                        />
+                        <SearchPill profile={step.profile} onOpen={onOpenProfile && (() => onOpenProfile('terms'))} />
+                    </span>
+                    <span className={styles.chips}>
+                        {topicPreselect?.on && (
+                            <span className={styles.chip}>
+                                <LinkOutlined aria-hidden />
+                                {t('journeys.topic.preselected')}
+                            </span>
+                        )}
+                        {skipped && (
+                            <span className={classNames(styles.chip, styles.chipUsed)}>
+                                {t('journeys.permission.skipped')}
+                            </span>
+                        )}
+                        {badge}
+                    </span>
+                </div>
+                <div className={styles.stepMain}>
+                    <button type="button" className={styles.stepOpen} onClick={onOpen}>
+                        <span className={styles.stepTitle}>{title}</span>
+                        {summary && <span className={styles.stepDescription}>{summary}</span>}
+                    </button>
+                    <RowMenu
+                        ariaLabel={t('journeys.step.menu', { name: title })}
+                        items={[
+                            ...(topicPreselect
+                                ? [
+                                      {
+                                          key: 'preselect',
+                                          label: t(preselectLabel(topicPreselect)),
+                                          icon: <LinkOutlined />,
+                                          disabled: !topicPreselect.on && !topicPreselect.allowed,
+                                          onSelect: () => topicPreselect.onToggle(!topicPreselect.on),
+                                      },
+                                  ]
+                                : []),
+                            {
+                                key: 'settings',
+                                label: t('journeys.step.settings'),
+                                icon: <SettingsOutlined />,
+                                onSelect: onOpen,
+                            },
+                            ...(onOpenProfile
+                                ? [
+                                      {
+                                          key: 'profile',
+                                          label: t('journeys.profileDialog.open'),
+                                          icon: <BadgeOutlined />,
+                                          onSelect: () => onOpenProfile('card'),
+                                      },
+                                      {
+                                          key: 'search',
+                                          label: t('journeys.keywordsDialog.open'),
+                                          icon: <SearchOutlined />,
+                                          onSelect: () => onOpenProfile('terms'),
+                                      },
+                                  ]
+                                : []),
+                            ...(readOnly
+                                ? []
+                                : [
+                                      {
+                                          key: 'add',
+                                          label: t('journeys.step.addBelow'),
+                                          icon: <Add />,
+                                          onSelect: onAddBelow,
+                                      },
+                                  ]),
+                            {
+                                key: 'up',
+                                label: t('journeys.step.moveUp'),
+                                icon: <ArrowUpward />,
+                                disabled: !movable || position === 1 || !canMoveUp,
+                                onSelect: () => onMove(-1),
+                            },
+                            {
+                                key: 'down',
+                                label: t('journeys.step.moveDown'),
+                                icon: <ArrowDownward />,
+                                disabled: !movable || position === total || !canMoveDown,
+                                onSelect: () => onMove(1),
+                            },
+                            {
+                                key: 'remove',
+                                label: t(removeLabel),
+                                icon: <DeleteOutline />,
+                                tone: 'error',
+                                disabled: !removable,
+                                onSelect: onRemove,
+                            },
+                        ]}
+                    />
+                </div>
+            </div>
+            {onInsertBelow && (
+                <button
+                    type="button"
+                    className={classNames(styles.insertLine, { [styles.insertLineActive]: insertActive })}
+                    aria-expanded={insertActive}
+                    aria-label={t('journeys.insert.after', { name: title })}
+                    title={t('journeys.insert.after', { name: title })}
+                    onClick={onInsertBelow}
+                >
+                    <span className={styles.insertPlus} aria-hidden>
+                        <Add />
+                    </span>
+                </button>
+            )}
+        </li>
+    );
+};

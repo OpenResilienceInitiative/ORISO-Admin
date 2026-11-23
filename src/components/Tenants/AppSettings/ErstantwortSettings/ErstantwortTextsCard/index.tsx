@@ -9,6 +9,7 @@ import { M3RichTextEditor, type EditorVersionSection } from '../../../../FormPlu
 import {
     DEFAULT_RESPONSE_DEADLINE_DAYS,
     ERSTANTWORT_BAUSTEINE,
+    ErstantwortBausteinDefinition,
     ErstantwortBausteinKey,
     germanVariantFor,
 } from '../erstantwortBausteine';
@@ -76,6 +77,16 @@ export interface ErstantwortTextsCardProps {
         texts?: Partial<Record<ErstantwortBausteinKey, string>>;
         emergencyNumbers?: string;
     };
+    /** The Bausteine this level authors; a Beratungsstelle has fewer than a Träger. */
+    bausteine?: ErstantwortBausteinDefinition[];
+    /** The Antwortfrist is a Träger setting; a Beratungsstelle does not see the field. */
+    hideDeadline?: boolean;
+    /** Card title; the Beratungsstelle says whose text it overrides. */
+    titleKey?: string;
+    /** Shown above the Bausteine, e.g. how this level relates to the Träger. */
+    intro?: ReactNode;
+    /** Label of the read-only "applies while empty" preview; a Beratungsstelle inherits the Träger. */
+    previewLabelKey?: string;
 }
 
 const escapeHtml = (text: string) =>
@@ -107,12 +118,17 @@ export const ErstantwortTextsCard = ({
     footer,
     platformDefaults,
     openRequest,
+    bausteine = ERSTANTWORT_BAUSTEINE,
+    hideDeadline = false,
+    titleKey = 'tenants.erstantwort.title',
+    intro,
+    previewLabelKey = 'tenants.erstantwort.platformText.label',
 }: ErstantwortTextsCardProps) => {
     const { t } = useTranslation();
     const variant = germanVariantFor(languageFormal);
     /* The first Baustein is open by default so the card never presents itself as
        an empty list of headings. */
-    const [openKey, setOpenKey] = useState<ErstantwortBausteinKey>(ERSTANTWORT_BAUSTEINE[0].key);
+    const [openKey, setOpenKey] = useState<ErstantwortBausteinKey>(bausteine[0].key);
     useEffect(() => {
         if (openRequest) setOpenKey(openRequest.key);
     }, [openRequest]);
@@ -160,7 +176,7 @@ export const ErstantwortTextsCard = ({
     return (
         <Card
             headerIcon={<ChatOutlined />}
-            titleKey="tenants.erstantwort.title"
+            titleKey={titleKey}
             variant="dialog"
             autoHeight
             className={styles.card}
@@ -169,25 +185,28 @@ export const ErstantwortTextsCard = ({
             help={firstMessageHelp}
         >
             <div className={styles.body}>
-                <section className={styles.section}>
-                    {/* Placeholder, not a value: a pre-filled 2 would make a Träger
+                {intro && <section className={styles.section}>{intro}</section>}
+                {!hideDeadline && (
+                    <section className={styles.section}>
+                        {/* Placeholder, not a value: a pre-filled 2 would make a Träger
                         that never chose indistinguishable from one that chose 2. */}
-                    <M3NumberField
-                        className={styles.deadlineField}
-                        label={t('tenants.erstantwort.deadline.label')}
-                        value={responseDeadlineDays}
-                        min={1}
-                        max={30}
-                        step={1}
-                        variant="outlined"
-                        disabled={disabled}
-                        inputProps={{ placeholder: String(DEFAULT_RESPONSE_DEADLINE_DAYS) }}
-                        onChange={handleDeadline}
-                    />
-                    <p className={styles.help}>{t('tenants.erstantwort.deadline.help')}</p>
-                </section>
+                        <M3NumberField
+                            className={styles.deadlineField}
+                            label={t('tenants.erstantwort.deadline.label')}
+                            value={responseDeadlineDays}
+                            min={1}
+                            max={30}
+                            step={1}
+                            variant="outlined"
+                            disabled={disabled}
+                            inputProps={{ placeholder: String(DEFAULT_RESPONSE_DEADLINE_DAYS) }}
+                            onChange={handleDeadline}
+                        />
+                        <p className={styles.help}>{t('tenants.erstantwort.deadline.help')}</p>
+                    </section>
+                )}
 
-                {ERSTANTWORT_BAUSTEINE.map((baustein) => {
+                {bausteine.map((baustein) => {
                     const open = openKey === baustein.key;
                     const panelId = `erstantwort-panel-${baustein.key}`;
                     const platformText = platformDefaults?.texts?.[baustein.key];
@@ -245,9 +264,7 @@ export const ErstantwortTextsCard = ({
                                         </p>
                                     )}
                                     {platformText && (
-                                        <PlatformPreview label={t('tenants.erstantwort.platformText.label')}>
-                                            {platformText}
-                                        </PlatformPreview>
+                                        <PlatformPreview label={t(previewLabelKey)}>{platformText}</PlatformPreview>
                                     )}
                                     {emergency && (
                                         <PlatformPreview label={t('tenants.erstantwort.emergencyNumbers.label')}>

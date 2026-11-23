@@ -87,22 +87,25 @@ export const InputChipPicker = ({
                 </span>
             ))}
             {remaining.length > 0 && (
-                <Dropdown
-                    trigger={['click']}
-                    disabled={addingDisabled}
-                    menu={{
-                        items: menuItems,
-                        onClick: ({ key }) => {
-                            if (!addingDisabled) onChange([...value, Number(key)]);
-                        },
-                    }}
-                    overlayClassName={styles.menu}
-                >
-                    <button type="button" className={styles.add} aria-haspopup="menu" disabled={addingDisabled}>
-                        <PlusIcon />
-                        <span className={styles.label}>{addLabel}</span>
-                    </button>
-                </Dropdown>
+                // A list may only hold list items, so the "+" chip is one, too.
+                <span role="listitem" className={styles.addItem}>
+                    <Dropdown
+                        trigger={['click']}
+                        disabled={addingDisabled}
+                        menu={{
+                            items: menuItems,
+                            onClick: ({ key }) => {
+                                if (!addingDisabled) onChange([...value, Number(key)]);
+                            },
+                        }}
+                        overlayClassName={styles.menu}
+                    >
+                        <button type="button" className={styles.add} aria-haspopup="menu" disabled={addingDisabled}>
+                            <PlusIcon />
+                            <span className={styles.label}>{addLabel}</span>
+                        </button>
+                    </Dropdown>
+                </span>
             )}
         </div>
     );

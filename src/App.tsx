@@ -46,6 +46,7 @@ import {
     LazyCaseHandoverLogsPage,
     LazyCounsellorInvitesTab,
     LazyErstantwortSettingsPage,
+    LazyGreetingSettingsPage,
     LazyGeneralSettingsPage,
     LazyGeneralTenantSettings,
     LazyGlobalLoginSettingsPage,
@@ -170,6 +171,11 @@ export const App = () => {
             page: <LazyGeneralSettingsPage section="appearance" />,
         },
         { path: `${routePathNames.themeSettings}/legal`, allowed: canReadLegalText, page: <LazyLegalSettingsPage /> },
+        {
+            path: `${routePathNames.themeSettings}/greeting`,
+            allowed: isSuperAdmin && can(PermissionAction.Update, Resource.Tenant),
+            page: <LazyGreetingSettingsPage />,
+        },
         {
             path: `${routePathNames.themeSettings}/erstantwort`,
             allowed: !isSuperAdmin && canReadTenant,
@@ -311,6 +317,10 @@ export const App = () => {
                                 <Route
                                     path={`${routePathNames.agency}/:id/legal-settings`}
                                     element={<LazyAgencyPageEdit section="legal" />}
+                                />
+                                <Route
+                                    path={`${routePathNames.agency}/:id/erstantwort`}
+                                    element={<LazyAgencyPageEdit section="erstantwort" />}
                                 />
                                 <Route
                                     path={`${routePathNames.agency}/:id/functionalities`}

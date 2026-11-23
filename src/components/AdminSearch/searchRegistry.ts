@@ -341,6 +341,19 @@ export const SEARCH_TILES: RegistryTile[] = [
 
     // ── Introduction for advice seekers, e-mail, notices ─────────────────────
     tile(
+        'greeting:platform',
+        'settings.greeting.title',
+        ['settings:greeting'],
+        'src/components/Tenants/AppSettings/ErstantwortSettings/PlatformGreeting/index.tsx',
+        {
+            fieldKeys: [
+                'settings.greeting.greeting.label',
+                'settings.greeting.closing.label',
+                'settings.greeting.emergencyNumbers.label',
+            ],
+        },
+    ),
+    tile(
         'erstantwort:texts',
         'tenants.erstantwort.title',
         ['settings:erstantwort', 'tenant:erstantwort'],

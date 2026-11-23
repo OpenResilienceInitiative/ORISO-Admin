@@ -52,6 +52,8 @@ const config = {
     // Opt-in: set only where a content scanner runs and the AI sub-processor
     // agreement is signed (ADR-019, ORISO-Admin#734).
     MEDIA_AI_SCAN_AVAILABLE: pick('VITE_MEDIA_AI_SCAN_AVAILABLE', 'REACT_APP_MEDIA_AI_SCAN_AVAILABLE'),
+    // Journeys in Funktionszugriff (ADR-036 part E, ORISO-Admin#1571); off unless "true".
+    JOURNEYS_ENABLED: pick('VITE_JOURNEYS_ENABLED', 'REACT_APP_JOURNEYS_ENABLED'),
     OTEL_METRICS_URL: pick('VITE_OTEL_METRICS_URL', 'REACT_APP_OTEL_METRICS_URL'),
     UNDERSTAND_URL: pick('VITE_UNDERSTAND_URL', 'REACT_APP_UNDERSTAND_URL'),
     OTEL_EXPORT_INTERVAL_MS: pick('VITE_OTEL_EXPORT_INTERVAL_MS', 'REACT_APP_OTEL_EXPORT_INTERVAL_MS'),

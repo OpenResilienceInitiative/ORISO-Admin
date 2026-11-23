@@ -1,7 +1,7 @@
 import { Modal as AntModal } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import styles from './styles.module.scss';
 
 import { DialogButton } from './DialogButton';
@@ -116,6 +116,18 @@ export const Modal = ({
     scrollableBody = false,
 }: ModalProps) => {
     const { t } = useTranslation();
+
+    // The dialog is always open and goes away when its parent removes it, so antd never restores
+    // focus. Give it back to whatever opened the dialog, unless focus has moved on by itself.
+    useEffect(() => {
+        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        return () => {
+            window.setTimeout(() => {
+                const now = document.activeElement;
+                if (opener?.isConnected && (now === null || now === document.body)) opener.focus();
+            });
+        };
+    }, []);
 
     const hasStandardActions = Boolean(cancelLabelKey || okLabelKey);
 
