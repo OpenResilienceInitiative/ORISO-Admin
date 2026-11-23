@@ -30,6 +30,16 @@ describe('Admin image payload', () => {
     it('keeps the two BFF modules outside the document root', () => {
         const dockerfile = fs.readFileSync(path.resolve(path.dirname(entrypoint), '../Dockerfile'), 'utf8');
         expect(dockerfile).not.toMatch(/^COPY\s+scripts\/?\s/m);
+        const publicScriptCopies = dockerfile
+            .replace(/\\\r?\n/g, ' ')
+            .split(/\r?\n/)
+            .filter(
+                (line) =>
+                    /^\s*(?:COPY|ADD)\s/i.test(line) &&
+                    /(?:^|[\s",])(?:\.\/)?scripts(?:[\/\s",]|$)/.test(line) &&
+                    /\/usr\/share\/nginx\/html(?:[\/\s",]|$)/.test(line),
+            );
+        expect(publicScriptCopies).toEqual([]);
         expect(dockerfile).toContain(
             'COPY scripts/auth-bff-server.mjs scripts/auth-bff-handlers.mjs /opt/oriso/admin-auth-bff/',
         );
