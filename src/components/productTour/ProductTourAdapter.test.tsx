@@ -238,4 +238,16 @@ describe('ProductTourAdapter', () => {
         await waitFor(() => expect(onTerminal).toHaveBeenCalledWith(expect.objectContaining({ status: 'skipped' })));
         expect(joyrideProps!.run).toBe(false);
     });
+
+    it('reports an abort when no step of the tour can be presented', async () => {
+        const onAbort = vi.fn();
+        const unreachableTour: TourDefinition = {
+            ...tour,
+            steps: [{ id: 'gone', target: 'never-rendered', titleKey: 't0', contentKey: 'c0' }],
+        };
+        const { onTerminal } = renderAdapter({ tour: unreachableTour, onAbort });
+
+        await waitFor(() => expect(onAbort).toHaveBeenCalledTimes(1));
+        expect(onTerminal).not.toHaveBeenCalled();
+    });
 });

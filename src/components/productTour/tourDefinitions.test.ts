@@ -4,8 +4,8 @@ import translationEn from '../../locales/en/translation.json';
 import { adminDemoTour, adminTours } from './tourDefinitions';
 
 describe('admin tour definitions', () => {
-    it('ships no production tour in this delivery package', () => {
-        expect(adminTours).toEqual([]);
+    it('ships the admin introduction as the only production tour', () => {
+        expect(adminTours.map((tour) => tour.id)).toEqual(['admin-introduction']);
     });
 
     it('provides a representative demo tour for Storybook review only', () => {

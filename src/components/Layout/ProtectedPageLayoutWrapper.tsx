@@ -20,6 +20,8 @@ import { useAppConfigContext } from '../../context/useAppConfig';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import styles from './styles.module.scss';
 import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
+import { TourHost } from '../productTour/TourHost';
+import { TourLauncher } from '../productTour/TourLauncher';
 
 const { Content } = Layout;
 
@@ -139,6 +141,14 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
                     </Layout>
                 </Layout>
             </AdminSearchProvider>
+            {/* One tour host and "?" launcher for every page, so a tour survives its own
+            navigation. Not behind the 2FA gate (#891): no tour destination resolves there. */}
+            {!restricted && (
+                <>
+                    <TourHost />
+                    <TourLauncher />
+                </>
+            )}
             {isEnabled(FeatureFlag.Developer) && <ReactQueryDevtools />}
         </MobileNavProvider>
     );

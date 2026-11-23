@@ -145,6 +145,32 @@ describe('buildTutorialStatisticRows', () => {
         expect(rows.find((row) => row.tourId === 'unknown-tour')?.audiences).toEqual([]);
     });
 
+    it.each([
+        ['consultant-mail-counselling', 'frontend', ['consultant']],
+        ['consultant-case-handover', 'frontend', ['consultant']],
+        ['consultant-calendar', 'frontend', ['consultant']],
+        ['consultant-group-circle', 'frontend', ['consultant']],
+        ['consultant-profile', 'frontend', ['consultant']],
+        ['consultant-live-chat', 'frontend', ['consultant']],
+        ['consultant-timeline', 'frontend', ['consultant']],
+        ['consultant-video-call', 'frontend', ['consultant']],
+        ['consultant-practice-accept', 'frontend', ['consultant']],
+        ['consultant-practice-supervision', 'frontend', ['consultant']],
+        ['asker-first-steps', 'frontend', ['asker']],
+        ['asker-settings', 'frontend', ['asker']],
+        ['admin-introduction', 'admin', ['agency_admin', 'tenant_admin', 'platform_admin']],
+    ])('knows the audience of %s', (tourId, surface, audiences) => {
+        const rows = buildTutorialStatisticRows(
+            response({
+                tenants: [
+                    { tenantId: 2, counts: [{ surface, tourId, tourVersion: 1, status: 'completed', total: 1 }] },
+                ],
+            }),
+        );
+
+        expect(rows[0]?.audiences).toEqual(audiences);
+    });
+
     it('reports a zero completion percentage without dividing by zero', () => {
         const rows = buildTutorialStatisticRows(
             response({
