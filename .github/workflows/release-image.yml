@@ -12,16 +12,22 @@ env:
     STORYBOOK_IMAGE_NAME: oriso-admin-storybook
     RELEASE_PREFIX: release/admin-
 
-permissions:
-    contents: write
-    packages: write
+permissions: {}
 
 jobs:
-    release:
-        name: validate, tag and publish release images
+    build:
+        name: Validate, scan and publish release images
         if: ${{ github.event.deleted == false }}
         runs-on: ubuntu-latest
         timeout-minutes: 45
+        permissions:
+            contents: read
+            packages: write
+
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+            app_digest: ${{ steps.publish_app.outputs.digest }}
+            storybook_digest: ${{ steps.publish_storybook.outputs.digest }}
 
         steps:
             - name: Checkout release branch
@@ -30,6 +36,7 @@ jobs:
                   fetch-depth: 0
 
             - name: Validate release branch
+              id: version
               shell: bash
               run: |
                   set -euo pipefail
@@ -53,6 +60,7 @@ jobs:
                   fi
 
                   echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+                  echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
                   echo "APP_IMAGE=${REGISTRY}/${ORG}/${APP_IMAGE_NAME}:${VERSION}" >> "${GITHUB_ENV}"
                   echo "STORYBOOK_IMAGE=${REGISTRY}/${ORG}/${STORYBOOK_IMAGE_NAME}:${VERSION}" >> "${GITHUB_ENV}"
 
@@ -93,6 +101,7 @@ jobs:
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Publish the scanned Admin image
+              id: publish_app
               shell: bash
               env:
                   IMAGE_ARCHIVE: ${{ steps.app_archive.outputs.archive }}
@@ -102,6 +111,7 @@ jobs:
               run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
 
             - name: Publish the scanned Storybook image
+              id: publish_storybook
               shell: bash
               env:
                   IMAGE_ARCHIVE: ${{ steps.storybook_archive.outputs.archive }}
@@ -109,6 +119,55 @@ jobs:
                   EXPECTED_DIGEST: ${{ steps.storybook_archive.outputs.archive_digest }}
                   EXPECTED_ARCHIVE_SHA256: ${{ steps.storybook_archive.outputs.archive_sha256 }}
               run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
+
+    attest:
+        name: Sign the published release images
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+            id-token: write
+            attestations: write
+
+        steps:
+            - name: Login for release attestation
+              uses: docker/login-action@v4
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Attest the published Admin image
+              uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}
+                  subject-digest: ${{ needs.build.outputs.app_digest }}
+                  push-to-registry: true
+                  create-storage-record: false
+
+            - name: Attest the published Storybook image
+              uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}
+                  subject-digest: ${{ needs.build.outputs.storybook_digest }}
+                  push-to-registry: true
+                  create-storage-record: false
+
+    release:
+        name: Tag and create the GitHub Release
+        needs: [build, attest]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        env:
+            VERSION: ${{ needs.build.outputs.version }}
+
+        steps:
+            - name: Check out the source to tag
+              uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Create and push release tag
               shell: bash
@@ -127,8 +186,8 @@ jobs:
                   generate_release_notes: true
                   body: |
                       Docker images:
-                      `${{ env.APP_IMAGE }}`
-                      `${{ env.STORYBOOK_IMAGE }}`
+                      `${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}:${{ env.VERSION }}`
+                      `${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}:${{ env.VERSION }}`
 
                       Source branch:
                       `${{ github.ref_name }}`

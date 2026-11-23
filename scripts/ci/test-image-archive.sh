@@ -33,15 +33,20 @@ done
   fail 'Both versioned images must be scanned without publishing'
 app_scan_line=$(line_number "$release" 'id: app_archive')
 storybook_scan_line=$(line_number "$release" 'id: storybook_archive')
-release_login_line=$(line_number "$release" 'docker/login-action')
+release_login_line=$(line_number "$release" 'name: Login to GitHub Container Registry')
 app_publish_line=$(line_number "$release" 'name: Publish the scanned Admin image')
 storybook_publish_line=$(line_number "$release" 'name: Publish the scanned Storybook image')
+require_line "$release" 'name: Attest the published Admin image'
+require_line "$release" 'name: Attest the published Storybook image'
+app_attest_line=$(line_number "$release" 'name: Attest the published Admin image')
+storybook_attest_line=$(line_number "$release" 'name: Attest the published Storybook image')
 tag_line=$(line_number "$release" 'name: Create and push release tag')
 release_line=$(line_number "$release" 'name: Create GitHub Release')
 ((app_scan_line < storybook_scan_line && storybook_scan_line < release_login_line &&
   release_login_line < app_publish_line && app_publish_line < storybook_publish_line &&
-  storybook_publish_line < tag_line && tag_line < release_line)) ||
-  fail 'Both scans must succeed before registry login and both uploads before tagging'
+  storybook_publish_line < app_attest_line && app_attest_line < storybook_attest_line &&
+  storybook_attest_line < tag_line && tag_line < release_line)) ||
+  fail 'Both scans must succeed before either upload, and both signatures before tagging'
 for archive_step in app_archive storybook_archive; do
   for output in archive archive_digest archive_sha256; do
     require_line "$release" "steps.${archive_step}.outputs.${output} }}"
@@ -49,6 +54,13 @@ for archive_step in app_archive storybook_archive; do
 done
 [[ "$(grep -Fc 'publish-image-archive.sh' "$release")" == 2 ]] ||
   fail 'The versioned images must be published from their scanned archives'
+for setting in 'needs: [build, attest]' \
+    'app_digest: ${{ steps.publish_app.outputs.digest }}' \
+    'storybook_digest: ${{ steps.publish_storybook.outputs.digest }}' \
+    'subject-digest: ${{ needs.build.outputs.app_digest }}' \
+    'subject-digest: ${{ needs.build.outputs.storybook_digest }}'; do
+  require_line "$release" "$setting"
+done
 for filename in ci-main.yml ci-storybook-main.yml; do
   require_line "$workflow_dir/$filename" 'push_to_ghcr: true'
 done
@@ -57,13 +69,19 @@ for filename in ci-pull-request.yml ci-storybook-pull-request.yml; do
   for setting in 'contents: read' 'persist-credentials: false' 'push_to_ghcr: false'; do
     require_line "$workflow" "$setting"
   done
-  if grep -Eq 'packages: write|github_token:|push_to_ghcr: true|docker/login-action' "$workflow"; then
+  if grep -Eq 'packages: write|id-token: write|attestations: write|github_token:|push_to_ghcr: true|docker/login-action|actions/attest@' "$workflow"; then
     fail "$filename must not have publishing operations or credentials"
   fi
 done
 for workflow in "$workflow_dir"/ci-main.yml "$workflow_dir"/ci-storybook-main.yml; do
-  if grep -Eq 'docker/build-push-action|docker/login-action' "$workflow"; then
-    fail "$workflow must use the shared archive gate for image operations"
+  for setting in 'digest: ${{ steps.publish.outputs.digest }}' '    attest-dev:' \
+      "if: github.ref == 'refs/heads/dev'" 'needs: build' \
+      'subject-digest: ${{ needs.build.outputs.digest }}'; do
+    require_line "$workflow" "$setting"
+  done
+  build=$(sed -n '1,/^    attest-dev:/p' "$workflow")
+  if grep -Eq 'docker/build-push-action|docker/login-action|id-token: write|attestations: write' <<< "$build"; then
+    fail "$workflow build must use the shared archive gate and leave signing privileges to the signing job"
   fi
 done
 require_line "$action" 'platforms: linux/amd64'
