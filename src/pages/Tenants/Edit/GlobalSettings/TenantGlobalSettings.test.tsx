@@ -241,8 +241,12 @@ describe('Settings that moved here from the former Funktionalitäten tab (ORISO-
         expect(tenantPuts()).toHaveLength(0);
     });
 
-    it('saves Team-Chat on the Mail Beratung tile as a Träger setting', async () => {
-        serve({ traegerSettings: { featureTeamDiscussionEnabled: true } });
+    // ORISO-Frontend#2491: the Team-Chat is a permission policy like supervision, never a raw setting.
+    it('saves Team-Chat on the Mail Beratung tile as a Träger policy', async () => {
+        serve({
+            traegerSettings: { featureTeamDiscussionEnabled: true },
+            policies: { featureTeamDiscussionEnabled: policy(true) },
+        });
         mocks.routes.set('PUT /service/tenantadmin/7', () => ({}));
         const user = userEvent.setup();
         renderPage();
@@ -255,13 +259,14 @@ describe('Settings that moved here from the former Funktionalitäten tab (ORISO-
         });
         await user.click(within(teamChat).getByRole('button', { name: /: Active – Deactivate$/ }));
 
-        await waitFor(() => expect(tenantPuts()).toHaveLength(1));
-        expect(JSON.parse(tenantPuts()[0].bodyData ?? '{}').settings).toMatchObject({
-            featureTeamDiscussionEnabled: false,
+        const puts = () =>
+            requestsTo('/service/tenantadmin/7/permission-policies').filter(({ method }) => method === 'PUT');
+        await waitFor(() => expect(puts()).toHaveLength(1));
+        expect(JSON.parse(puts()[0].bodyData ?? '{}')).toMatchObject({
+            tenantId: 7,
+            policies: { featureTeamDiscussionEnabled: policy(false) },
         });
-        expect(
-            requestsTo('/service/tenantadmin/7/permission-policies').filter(({ method }) => method === 'PUT'),
-        ).toHaveLength(0);
+        expect(tenantPuts()).toHaveLength(0);
     });
 });
 

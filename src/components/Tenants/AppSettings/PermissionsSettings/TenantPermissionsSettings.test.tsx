@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { CallsPermission } from './derivedLegacySettings';
-import type { TraegerOnlySettings } from './traegerFunctions';
 import { useAppConfigContext } from '../../../../context/useAppConfig';
 import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 import { TenantPermissionsSettings } from './TenantPermissionsSettings';
@@ -26,13 +25,11 @@ vi.mock('./PermissionsSettingsView', () => ({
         permissionPolicies,
         recipientScope,
         callsPermission,
-        traegerSettings,
     }: {
         onPolicyChange: (field: string, value: unknown) => void;
         permissionPolicies?: Record<string, PolicyValue<boolean>>;
         recipientScope?: { onSave: (value: { value: string; mode: string }) => Promise<void> };
         callsPermission?: CallsPermission;
-        traegerSettings?: TraegerOnlySettings;
     }) => (
         <>
             <output data-testid="calls-permission">{callsPermission ? 'writable' : 'none'}</output>
@@ -50,9 +47,6 @@ vi.mock('./PermissionsSettingsView', () => ({
             </button>
             <button type="button" onClick={() => callsPermission?.follow(true)}>
                 align calls
-            </button>
-            <button type="button" onClick={() => traegerSettings?.onChange?.('featureTeamDiscussionEnabled', true)}>
-                team chat
             </button>
             <button
                 type="button"
@@ -432,25 +426,6 @@ describe('TenantPermissionsSettings writes beside the policies', () => {
 
         await waitFor(() => expect(tenantWrite).toHaveBeenCalledTimes(1));
         expect(tenantWrite).toHaveBeenCalledWith({ settings: { extendedSettings: { isVideoCallAllowed: true } } });
-    });
-
-    it('saves Team-Chat only after the policy write queued before it', async () => {
-        const save = deferred();
-        savePolicies(vi.fn().mockReturnValueOnce(save.promise));
-        render(<TenantPermissionsSettings tenantId="7" />);
-
-        click('first');
-        click('team chat');
-        await act(async () => undefined);
-        expect(tenantWrite).not.toHaveBeenCalled();
-
-        await act(async () => {
-            save.resolve(basePolicies);
-            await save.promise;
-        });
-        await waitFor(() =>
-            expect(tenantWrite).toHaveBeenCalledWith({ settings: { featureTeamDiscussionEnabled: true } }),
-        );
     });
 
     it('offers the call permission only where the former "Anrufe" switch was offered', () => {

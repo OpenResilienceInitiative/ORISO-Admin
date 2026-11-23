@@ -6,8 +6,6 @@ import { Notify } from '../../../Notify';
 import { useAgencyData } from '../../../../hooks/useAgencyData';
 import { useAgencyUpdate } from '../../../../hooks/useAgencyUpdate';
 import { useTenantPermissionPolicies } from '../../../../hooks/useTenantPermissionPolicies';
-import { usePublicTenantData } from '../../../../hooks/usePublicTenantData.hook';
-import type { TraegerOnlySettings } from './traegerFunctions';
 import { stripAgencyAdminControls } from '../../../../api/agency/stripAgencyAdminControls';
 import { useQueuedPermissionPolicies } from '../../../../hooks/useQueuedPermissionPolicies';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
@@ -56,16 +54,6 @@ export const AgencyPermissionsSettings = ({
     let traegerPoliciesStatus = traegerPoliciesQueryStatus;
     if (isPending) traegerPoliciesStatus = 'pending';
     else if (!traegerId) traegerPoliciesStatus = 'error';
-
-    // ORISO-Admin#1577: Team-Chat, topics and statistics are stored per Träger only; show its values.
-    const { data: traegerData, status: traegerDataStatus } = usePublicTenantData(traegerId);
-    const traegerSettings = useMemo<TraegerOnlySettings>(() => {
-        let status: TraegerOnlySettings['status'] = traegerDataStatus;
-        if (isPending) status = 'pending';
-        // The public read turns a failure into an empty tenant: one without an id is no Träger value.
-        else if (!traegerId || (traegerDataStatus === 'success' && traegerData?.id == null)) status = 'error';
-        return { source: 'traeger', values: traegerData?.settings as TraegerOnlySettings['values'], status };
-    }, [isPending, traegerData?.id, traegerData?.settings, traegerDataStatus, traegerId]);
 
     const allowedPermissionToggles = agencyData?.settings?.agencyAdminControls?.allowedPermissionToggles;
     const enforcedPermissionToggles = agencyData?.settings?.agencyAdminControls?.enforcedPermissionToggles;
@@ -152,7 +140,6 @@ export const AgencyPermissionsSettings = ({
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
                 renderJourneys={journeys.renderJourneys}
-                traegerSettings={traegerSettings}
                 isLoading={isLoading}
                 initialValues={initialValues}
                 formStateKey={formStateKey}

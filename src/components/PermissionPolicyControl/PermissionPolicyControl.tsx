@@ -19,7 +19,7 @@ type PermissionPolicyControlProps = {
     /** Smaller button and label, for settings laid out as compact cards. */
     compact?: boolean;
     /**
-     * A setting only one level stores (ORISO-Admin#1577: e.g. Team-Chat per Träger): no lock, because
+     * A setting only one level stores (ORISO-Admin#1577): no lock, because
      * there is no level below to require it from and none above to inherit it from.
      */
     withoutRule?: boolean;
