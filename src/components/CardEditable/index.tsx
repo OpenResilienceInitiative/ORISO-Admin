@@ -13,6 +13,7 @@ import { Card, CardVariant } from '../Card';
 import { TileNote } from '../TileFill';
 import { EditButton } from '../EditButton';
 import { M3Tooltip } from '../M3Tooltip';
+import { UnconfirmedFormSaveError } from '../../utils/UnconfirmedFormSaveError';
 
 interface CardEditableProps {
     className?: string;
@@ -34,7 +35,7 @@ interface CardEditableProps {
               editing: boolean;
               startEditing: () => void;
           }) => React.ReactElement<any> | React.ReactElement<any>[]);
-    onSave?: <T>(formData: T, options?: { onError?: () => void; form?: FormInstance }) => void;
+    onSave?: <T>(formData: T, options?: { onError?: (error?: unknown) => void; form?: FormInstance }) => void;
     formProp?: FormInstance;
     editMode?: boolean;
     hideSaveButton?: boolean;
@@ -109,6 +110,12 @@ const pressedLockedField = (target: EventTarget, root: HTMLElement) => {
 const prefersReducedMotion = () =>
     typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+const getFormValue = (values: Record<string, unknown>, name: (string | number)[]) =>
+    name.reduce<unknown>(
+        (value, key) => (value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined),
+        values,
+    );
+
 export const CardEditable = ({
     allowUnsavedChanges,
     className,
@@ -147,6 +154,7 @@ export const CardEditable = ({
     const [hasChanges, setHasChanges] = useState(false);
     const [showUnsavedChangesModal, setShowUnsavedChangesModal] = useState(false);
     const latestSubmission = useRef(0);
+    const editRevision = useRef(0);
     const [nudging, setNudging] = useState(false);
     const nudgeTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -169,16 +177,33 @@ export const CardEditable = ({
             // reopen the card on top of a later one the user has already sent.
             const submission = latestSubmission.current + 1;
             latestSubmission.current = submission;
+            const submittedRevision = editRevision.current;
             // Close optimistically first, so a synchronous onError still wins the race
             // and reopens the card rather than being overwritten by this reset.
             setEditing(editMode);
             setHasChanges(false);
             onSave(formData, {
-                // A failed save must not be indistinguishable from a successful one:
-                // reopen the card with the entered values still in the form so the user
-                // can retry, instead of silently dropping the change on the floor.
-                onError: () => {
+                // Reopen with verified current values after recovery, or preserve the
+                // submitted draft if there was no authoritative readback.
+                onError: (error) => {
                     if (submission !== latestSubmission.current) {
+                        return;
+                    }
+                    if (error instanceof UnconfirmedFormSaveError && error.currentValues) {
+                        if (submittedRevision !== editRevision.current) return;
+
+                        const { currentValues } = error;
+                        form.setFields(
+                            form.getFieldsError().map(({ name }) => ({
+                                name,
+                                value: getFormValue(currentValues, name),
+                                touched: false,
+                                errors: [],
+                                warnings: [],
+                            })),
+                        );
+                        setEditing(true);
+                        setHasChanges(false);
                         return;
                     }
                     setEditing(true);
@@ -196,6 +221,7 @@ export const CardEditable = ({
         [styles.dialogFooterActions]: variant === 'dialog',
     });
     const startEditing = useCallback(() => {
+        editRevision.current += 1;
         clearTimeout(nudgeTimer.current);
         setNudging(false);
         if (onEdit) {
@@ -292,7 +318,10 @@ export const CardEditable = ({
                     layout="vertical"
                     form={form}
                     size="large"
-                    onValuesChange={() => setHasChanges(true)}
+                    onValuesChange={() => {
+                        editRevision.current += 1;
+                        setHasChanges(true);
+                    }}
                     onFinish={onFormSubmit}
                     onPointerDown={onFormPointerDown}
                     onKeyDown={onFormKeyDown}

@@ -1,0 +1,32 @@
+/* Frank, 2026-11-20 — licence and sender of a Träger in "Weitere": the field rhythm of the Stammdaten tile. */
+.card {
+    width: 100%;
+    min-width: 0;
+
+    :global {
+        .MuiFormControl-root,
+        .MuiTextField-root,
+        .MuiInputBase-root {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+    }
+}
+
+.fields {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+}
+
+.fieldGroup {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+
+    &:has(:global(.Mui-error)) {
+        padding-bottom: 12px;
+    }
+}

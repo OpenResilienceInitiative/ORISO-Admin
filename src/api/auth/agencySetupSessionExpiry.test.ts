@@ -52,7 +52,7 @@ const accessTokenExpiringAt = (validUntilMs: number): string =>
 // These tests run the real expiry timer, 401 retry and logout cleanup together.
 // Only the BFF transport and session effects are replaced.
 describe('mounted centre setup session expiry', () => {
-    let location: { pathname: string; href: string };
+    let location: { pathname: string; href: string; replace: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
         vi.resetModules();
@@ -66,7 +66,7 @@ describe('mounted centre setup session expiry', () => {
             accessTokenValidUntilTime: Date.now() + 60_000,
             refreshTokenValidUntilTime: Date.now() + 120_000,
         };
-        location = { pathname: '/admin/agency/5/setup', href: '/admin/agency/5/setup' };
+        location = { pathname: '/admin/agency/5/setup', href: '/admin/agency/5/setup', replace: vi.fn() };
         vi.stubGlobal('window', { location, setInterval, clearInterval, setTimeout, clearTimeout });
         vi.stubGlobal('sessionStorage', { clear: vi.fn() });
     });
@@ -75,6 +75,17 @@ describe('mounted centre setup session expiry', () => {
         vi.clearAllTimers();
         vi.useRealTimers();
         vi.unstubAllGlobals();
+    });
+
+    it('replaces the denied location after logout has cleared the session', async () => {
+        const { default: logout } = await import('./logout');
+        logout(true, { url: '/admin/login', replace: true });
+        await vi.advanceTimersByTimeAsync(99);
+        expect(mocks.invalidate).toHaveBeenCalledTimes(1);
+        expect(location.replace).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(location.replace).toHaveBeenCalledExactlyOnceWith('/admin/login');
+        expect(location.href).toBe('/admin/agency/5/setup');
     });
 
     it('returns to the same setup after the refresh-token expiry timer fires on an already mounted route', async () => {

@@ -1,0 +1,24 @@
+// "?" tour launcher: the classic FAB corner, outside the page flow (plan 3.5/3.7).
+// M3FabMenu itself sits in page flow, so this wrapper pins it to the viewport.
+.launcher {
+    position: fixed;
+    // Above sticky page headers (900), below the phone bottom bar (950): its
+    // open "Mehr" sheet and scrim must cover the launcher. Modals (1000) and
+    // the pop-up stack (2100) stay on top.
+    z-index: 940;
+    right: 24px;
+    bottom: 24px;
+    // The wrapper spans only the FAB; the menu stack is absolutely positioned.
+    pointer-events: none;
+
+    > * {
+        pointer-events: auto;
+    }
+
+    // Phones: the floating bottom bar (6px inset) owns the bottom edge. Lift the
+    // FAB above the measured bar height and align it with the bar's inset.
+    @media (max-width: 767.98px) {
+        right: 6px;
+        bottom: calc(var(--tour-launcher-nav-inset, 84px) + 12px);
+    }
+}

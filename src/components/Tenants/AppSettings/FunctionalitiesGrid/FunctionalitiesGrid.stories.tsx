@@ -7,31 +7,27 @@ import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/ad
 import { FunctionalitiesGrid } from './index';
 
 /**
- * The Träger "Funktionalitäten" tab as production shows it: no email server tile (both callers hide it, the email
- * server has its own tab), so the remaining tiles sit in the raster, other functions two columns wide.
+ * The Träger "Weitere" tab (formerly Funktionalitäten) as production shows it (ORISO-Admin#1577): one
+ * full-width tile with the folding section "Themen und Statistik".
  */
 const tenant = {
     id: 7,
     name: 'Träger Süd',
-    settings: { extendedSettings: { isVideoCallAllowed: true }, featureGroupChatV2Enabled: true },
+    legalName: 'Caritasverband Süd e.V.',
+    contactEmail: 'beratung@caritas-sued.de',
+    licensing: { allowedNumberOfUsers: 40 },
+    settings: { featureTopicsEnabled: true, featureStatisticsEnabled: true },
 };
 
 const meta = {
-    title: 'Settings/Einstellungen/Funktionalitäten/FunctionalitiesGrid',
+    title: 'Settings/Einstellungen/Weitere/FunctionalitiesGrid',
     id: 'organisms-appsettings-functionalitiesgrid',
     component: FunctionalitiesGrid,
-    args: { tenantId: '7', hideSmtp: true },
+    args: { tenantId: '7' },
     parameters: {
         layout: 'padded',
         msw: {
             handlers: [
-                // OtherFunctionsSettings reads the Träger's policies (ORISO-TenantService#363).
-                http.get('*/service/tenantadmin/:id/permission-policies', () =>
-                    HttpResponse.json({ tenantId: 7, policies: {} }),
-                ),
-                http.put('*/service/tenantadmin/:id/permission-policies', () =>
-                    HttpResponse.json({ tenantId: 7, policies: {} }),
-                ),
                 http.get('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.put('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
                 http.get('*/service/tenant/public/*', () => HttpResponse.json({ id: 7, settings: {} })),
@@ -54,13 +50,32 @@ const PHONE_WIDTH = 390;
 
 const noSidewaysScroll: NonNullable<Story['play']> = async ({ canvasElement }) => {
     const items = () => canvasElement.querySelectorAll('[data-admin-card-grid-item]');
-    // At least communication and other functions; the number of tiles is not fixed here.
-    await waitFor(() => expect(items().length).toBeGreaterThanOrEqual(2));
+    // The functionalities tile; the number of tiles is not fixed here.
+    await waitFor(() => expect(items().length).toBeGreaterThanOrEqual(1));
     const page = canvasElement.ownerDocument.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
 };
 
 export const InTheRaster: Story = { play: noSidewaysScroll };
+
+/**
+ * The Träger page of a platform admin (Frank, 2026-11-20): licence and sender moved here from Stammdaten,
+ * as a second tile with its own save.
+ */
+export const OnTheTraegerPage: Story = {
+    args: { withLicenceAndSender: true },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin], 0);
+            return withAdminProviders(Story);
+        },
+    ],
+    play: async (context) => {
+        const items = () => context.canvasElement.querySelectorAll('[data-admin-card-grid-item]');
+        await waitFor(() => expect(items()).toHaveLength(2), { timeout: 8000 });
+        await noSidewaysScroll(context);
+    },
+};
 
 /**
  * The same page in a phone-wide host (the raster follows the width of its host, not of the window): one column,
@@ -85,7 +100,7 @@ export const Phone: Story = {
         );
 
         await expect(hostWidth).toBe(PHONE_WIDTH);
-        await expect(tiles.length).toBeGreaterThanOrEqual(2);
+        await expect(tiles.length).toBeGreaterThanOrEqual(1);
         tiles.forEach((tile, index) => {
             expect(Math.abs(tile.width - hostWidth)).toBeLessThanOrEqual(1);
             // A tile that is as wide as the host but shifted sideways would still reach outside it.

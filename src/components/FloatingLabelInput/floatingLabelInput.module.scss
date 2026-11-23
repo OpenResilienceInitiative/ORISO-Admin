@@ -7,6 +7,7 @@
  */
 
 .field {
+    position: relative;
     display: flex;
     min-width: 0;
     flex-direction: column;
@@ -102,8 +103,10 @@
 }
 
 .label {
+    /* The floated label masks the outline; it must paint above the later sibling. */
     position: absolute;
-    top: 50%;
+    z-index: 1;
+    top: 28px;
     left: 12px;
     padding: 0 4px;
     color: var(--m3-on-surface-variant, #444748);
@@ -128,6 +131,41 @@
     font-size: 12px;
     letter-spacing: 0.4px;
     line-height: 16px;
+}
+
+/* Measure at resting size even while the real label floats. */
+.measurement {
+    position: absolute;
+    left: 12px;
+    max-width: calc(100% - 24px);
+    overflow: hidden;
+    padding: 0 4px;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 24px;
+    visibility: hidden;
+    white-space: nowrap;
+}
+
+/* Keep the password visibility control clear of the resting label. */
+.fieldPassword .measurement {
+    max-width: calc(100% - 60px);
+}
+
+/* Long labels remain fully readable, including required markers, at any width. */
+.fieldLongLabel .label,
+.fieldMultiline.fieldLongLabel .label {
+    /* The label sits outside the input, so taps must activate its htmlFor target. */
+    position: static;
+    margin-bottom: 8px;
+    padding: 0;
+    background: transparent;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+    pointer-events: auto;
+    transform: none;
 }
 
 .fieldFocused .label {

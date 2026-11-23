@@ -32,6 +32,8 @@ RUN apk upgrade --no-cache
 
 ARG PORT=80
 
+RUN apk add --no-cache 'libxml2>=2.13.9-r3'
+
 # Copy Storybook build output to nginx html directory
 COPY --from=storybookbuild /app/storybook-static /usr/share/nginx/html
 

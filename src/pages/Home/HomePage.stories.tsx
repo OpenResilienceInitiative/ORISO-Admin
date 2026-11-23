@@ -104,7 +104,7 @@ export const PlatformAdminFirstLogin: Story = {
             'href',
             '/admin/links/tenants',
         );
-        // No admin tour ships yet (adminTours is empty), so Home offers none.
+        // Home offers no tour entry: tours start from the "?" launcher or Mein Account.
         await expect(hero).not.toHaveTextContent(/Rundgang|tour/i);
         const current = canvas.getByRole('link', { current: 'step' });
         await expect(current).toHaveAccessibleName(/^(Ersten Träger einladen|Invite your first organisation)/);

@@ -57,6 +57,11 @@ export type CaseHandoverCardViewProps = {
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /**
+     * ORISO-Admin#1558: rendered inside the Mailberatung tile's case-sharing choice. No tile of its
+     * own, and no master switch: choosing "Fallübergabe" there is the switch.
+     */
+    embedded?: boolean;
 };
 
 const ConfigureIcon = () => (
@@ -88,6 +93,7 @@ export const CaseHandoverCardView = ({
     openPolicyMenu,
     onOpenPolicyMenu,
     onFeaturePolicyChange,
+    embedded = false,
 }: CaseHandoverCardViewProps) => {
     const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
@@ -133,14 +139,9 @@ export const CaseHandoverCardView = ({
             ? { value: moduleEnabled, mode: 'SUGGESTED' as const, inherited: true }
             : undefined);
 
-    return (
-        <Card
-            dataTestId="case-handover-card"
-            headerIcon={<CaseHandoverIcon width={40} height={40} />}
-            titleKey="tenants.permissions.card.caseHandover.title"
-            help={CASE_HANDOVER_HELP}
-        >
-            {masterPolicy && (Boolean(canonicalMaster) || !isLoading || noTenant) && (
+    const body = (
+        <>
+            {!embedded && masterPolicy && (Boolean(canonicalMaster) || !isLoading || noTenant) && (
                 <div className={styles.featureRow}>
                     <PermissionPolicyControl
                         featureKey="caseHandoverEnabled"
@@ -387,6 +388,25 @@ export const CaseHandoverCardView = ({
                     </div>
                 </>
             )}
+        </>
+    );
+
+    if (embedded) {
+        return (
+            <div className={styles.embedded} data-testid="case-handover-settings">
+                {body}
+            </div>
+        );
+    }
+
+    return (
+        <Card
+            dataTestId="case-handover-card"
+            headerIcon={<CaseHandoverIcon width={40} height={40} />}
+            titleKey="tenants.permissions.card.caseHandover.title"
+            help={CASE_HANDOVER_HELP}
+        >
+            {body}
         </Card>
     );
 };

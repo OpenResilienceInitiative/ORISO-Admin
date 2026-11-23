@@ -398,7 +398,8 @@ export const AdminMobileNav = ({
             )}
 
             <div className={styles.bar}>
-                <nav className={styles.tabBar} aria-label={labels.navigation}>
+                {/* The admin introduction points here on phones, where the sidebar is absent. */}
+                <nav className={styles.tabBar} aria-label={labels.navigation} data-tour-target="admin-navigation">
                     {tabs.map((tab) => {
                         const active = !menuOpen && tab.key === activeSectionKey;
 

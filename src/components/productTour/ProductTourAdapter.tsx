@@ -9,6 +9,7 @@ import {
     initialTourRunState,
     mapStepsToJoyride,
     reduceTourCallback,
+    targetWaitMs,
     tourTargetSelector,
     TourRunState,
 } from './tourEngine';
@@ -27,6 +28,12 @@ export interface ProductTourAdapterProps {
     /** Called exactly once when the tour reaches completed or skipped. */
     onTerminalStatus?: (progress: TourProgress) => void | Promise<void>;
     tooltipComponent?: React.ComponentType<any>;
+    /**
+     * Called when the tour closes WITHOUT a terminal status because no
+     * presentable step is left (every remaining target is missing). The host
+     * releases itself; nothing is persisted, so the tour stays resumable.
+     */
+    onAbort?: () => void;
 }
 
 const DEFAULT_TARGET_TIMEOUT_MS = 4000;
@@ -39,6 +46,7 @@ export const ProductTourAdapter = ({
     onEvent,
     onTerminalStatus,
     tooltipComponent,
+    onAbort,
 }: ProductTourAdapterProps) => {
     const { t: translate } = useTranslation();
     const navigate = useNavigate();
@@ -121,14 +129,18 @@ export const ProductTourAdapter = ({
             /* eslint-disable no-await-in-loop, no-continue -- steps are prepared strictly sequentially; a skipped target falls through to the neighboring step */
             for (let i = index; i >= 0 && i < steps.length; i += direction) {
                 const step = steps[i];
+                let navigated = false;
                 if (step.route) {
                     const current = locationRef.current.pathname + locationRef.current.search;
                     if (current !== step.route) {
                         navigate(step.route);
+                        navigated = true;
                     }
                 }
                 if (step.target) {
-                    const found = await waitForTarget(tourTargetSelector(step.target), { timeoutMs: targetTimeoutMs });
+                    const found = await waitForTarget(tourTargetSelector(step.target), {
+                        timeoutMs: targetWaitMs(step, navigated, targetTimeoutMs),
+                    });
                     if (prepareTokenRef.current !== token) {
                         return false;
                     }
@@ -154,9 +166,10 @@ export const ProductTourAdapter = ({
             /* eslint-enable no-await-in-loop, no-continue */
             // No presentable step left: close without recording completion.
             applyRunState({ ...runStateRef.current, run: false });
+            onAbort?.();
             return false;
         },
-        [applyRunState, emit, navigate, steps, targetTimeoutMs],
+        [applyRunState, emit, navigate, onAbort, steps, targetTimeoutMs],
     );
 
     // Gate the initial run: prepare step 0 (route + target) before Joyride
@@ -211,8 +224,12 @@ export const ProductTourAdapter = ({
                 return;
             }
             applyRunState(state);
+            if (prev.run && !state.run && state.status !== 'completed' && state.status !== 'skipped') {
+                // Joyride lost the last target: closed without a terminal status.
+                onAbort?.();
+            }
         },
-        [applyRunState, emit, prepareStep, reportTerminal, steps],
+        [applyRunState, emit, onAbort, prepareStep, reportTerminal, steps],
     );
 
     if (!active) {

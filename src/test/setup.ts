@@ -26,6 +26,10 @@ if (typeof window !== 'undefined') {
         Element.prototype.scrollTo = vi.fn() as unknown as Element['scrollTo'];
     }
 
+    // jsdom has no range layout. ProseMirror reads the range when scrolling the caret into view.
+    Range.prototype.getClientRects ??= () => Object.assign([], { item: () => null });
+    Range.prototype.getBoundingClientRect ??= () => new DOMRect();
+
     // antd/rc-util call getComputedStyle with a pseudo-element to measure scrollbars.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
     window.getComputedStyle = ((element: Element, pseudoElt?: string | null) => {

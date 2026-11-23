@@ -9,8 +9,8 @@ import i18n from '../../../../i18n';
  * ORISO-Admin#988 — Frank's 2026-09-16 correction: "Internal group chats" and "Conversation
  * circles" are two separate CARDS (conversation types), not two rows inside one "group formats"
  * card. Supervision is a feature inside conversation types, not a conversation type of its own, so
- * it must never appear wired to either card — it moved to OtherFunctionsSettings (see
- * OtherFunctionsSettings.test.tsx).
+ * it must never appear wired to either card — it has a tile of its own (SupervisionTile,
+ * ORISO-Admin#1577).
  *
  * Reads and writes are mocked at the request boundary (`fetchData`); the agency write goes through
  * `useAgencyUpdate`, whose PUT fans out into several agency endpoints, so it is captured there.
@@ -88,9 +88,15 @@ const lastBody = (method: string, suffix: string) => {
     return match?.bodyData ? JSON.parse(match.bodyData) : undefined;
 };
 
-/** Neither card may render a supervision field — that wiring was the bug being fixed. */
+/** Neither group card may render a supervision field — that wiring was the bug being fixed. */
 const expectNoSupervisionFieldRendered = () => {
-    SUPERVISION_FIELDS.forEach((field) => expect(row(field)).toBeNull());
+    ['group', 'groupInternal'].forEach((key) => {
+        const card = document.querySelector(`[data-testid="chat-type-card-${key}"]`) as HTMLElement;
+        expect(card).not.toBeNull();
+        SUPERVISION_FIELDS.forEach((field) =>
+            expect(card.querySelector(`[data-feature-policy="${field}"]`)).toBeNull(),
+        );
+    });
 };
 
 const expectReadOnly = (field: string) => {

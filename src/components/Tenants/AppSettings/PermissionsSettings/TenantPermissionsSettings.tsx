@@ -22,15 +22,23 @@ import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarP
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 import { Notify } from '../../../Notify';
+import type { TraegerOnlySetting, TraegerOnlySettings } from './traegerFunctions';
+import type { CallsPermission } from './derivedLegacySettings';
+import type { TenantAdminData } from '../../../../types/TenantAdminData';
+import { useAppConfigContext } from '../../../../context/useAppConfig';
+import { useUserRoles } from '../../../../hooks/useUserRoles.hook';
 
 export const TenantPermissionsSettings = ({
     tenantId,
     excludeCardKeys,
     liveChatLinks,
+    introScopeNote,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     // The Träger's journeys: the platform's with its own layer for An Bord and Ankunft (ADR-036 decision 29).
     const journeys = useJourneysInTiles({ level: 'tenant', tenantId });
+    const { settings: appSettings } = useAppConfigContext();
+    const { isSuperAdmin } = useUserRoles();
     const { data: tenantData, isLoading } = useSingleTenantData({ id: tenantId });
     const {
         data: permissionPolicyData,
@@ -46,22 +54,35 @@ export const TenantPermissionsSettings = ({
     );
     const confirmedPolicyData = useRef<TenantPermissionPolicies | undefined>(permissionPolicyData);
     const pendingPolicyOperations = useRef<
-        { id: number; tenantId: string; fieldKey: string; policy: PolicyValue<boolean> }[]
+        { id: number; tenantId: string; changes: Record<string, PolicyValue<boolean>> }[]
     >([]);
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
+    // Whether the latest queued save of a field went through; what follows a tile waits for it.
+    const policySaveOutcomes = useRef(new Map<string, Promise<boolean>>());
     const activeTenantId = useRef(tenantId);
     const tenantGeneration = useRef(0);
-    const { mutate: updateTenantSettings } = useTenantAdminDataMutation({
+    const { mutate: updateTenantSettings, mutateAsync: saveTenantSettings } = useTenantAdminDataMutation({
         id: tenantId,
         successMessageKey: 'tenants.message.settingsUpdate',
     });
+    // ORISO-Admin#1577: follows the tiles in the background; the tile change already said "saved".
+    const { mutateAsync: writeCallsAllowed } = useTenantAdminDataMutation({ id: tenantId, successMessageKey: null });
+    const [pendingTraegerFields, setPendingTraegerFields] = useState<ReadonlySet<string>>(new Set());
+    const [callsPermissionPending, setCallsPermissionPending] = useState(false);
+    // The stored call permission as of now, not as of the render that queued a write (#1578 review).
+    const storedCallsAllowed = tenantData?.settings?.extendedSettings?.isVideoCallAllowed;
+    const currentCallsAllowed = useRef(storedCallsAllowed);
+    useEffect(() => {
+        currentCallsAllowed.current = storedCallsAllowed;
+    }, [storedCallsAllowed]);
 
     useEffect(() => {
         tenantGeneration.current += 1;
         activeTenantId.current = tenantId;
         pendingPolicyOperations.current = [];
         policyMutationQueue.current = Promise.resolve();
+        policySaveOutcomes.current = new Map();
         const matchingPolicyData =
             permissionPolicyData && String(permissionPolicyData.tenantId) === tenantId
                 ? permissionPolicyData
@@ -89,11 +110,11 @@ export const TenantPermissionsSettings = ({
         const confirmed = confirmedPolicyData.current;
         if (!confirmed) return;
         const policies = pendingPolicyOperations.current.reduce(
-            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            (current, operation) => ({ ...current, ...operation.changes }),
             { ...confirmed.policies },
         );
         setEffectivePolicyData({ ...confirmed, policies });
-        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.flatMap(({ changes }) => Object.keys(changes))));
     }, []);
 
     const allowedPermissionToggles = tenantData?.settings?.tenantAdminControls?.allowedPermissionToggles;
@@ -152,23 +173,26 @@ export const TenantPermissionsSettings = ({
         [tenantData, updateTenantSettings, allowedPermissionToggles, enforcedPermissionToggles],
     );
 
-    const handlePolicyChange = useCallback(
-        (fieldKey: string, policy: PolicyValue<boolean>) => {
+    // Several fields in one operation are one request: they are saved, or rolled back, together (#1560).
+    const handlePoliciesChange = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>) => {
+            // No stale outcome may stand in for a change that is never queued.
+            Object.keys(changes).forEach((field) => policySaveOutcomes.current.delete(field));
             if (!confirmedPolicyData.current) return;
             if (String(confirmedPolicyData.current.tenantId) !== tenantId) return;
-            const operation = { id: nextPolicyOperationId.current, tenantId, fieldKey, policy };
+            const operation = { id: nextPolicyOperationId.current, tenantId, changes };
             const operationGeneration = tenantGeneration.current;
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
             rebuildEffectivePolicyData();
-            const run = async () => {
+            const run = async (): Promise<boolean> => {
                 if (activeTenantId.current !== operation.tenantId || tenantGeneration.current !== operationGeneration)
-                    return;
+                    return false;
                 const confirmed = confirmedPolicyData.current;
-                if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return;
+                if (!confirmed || String(confirmed.tenantId) !== operation.tenantId) return false;
                 const next = {
                     tenantId: confirmed.tenantId,
-                    policies: { [fieldKey]: policy },
+                    policies: changes,
                 };
                 try {
                     const saved = await updatePermissionPolicies.mutateAsync(next);
@@ -178,8 +202,10 @@ export const TenantPermissionsSettings = ({
                     ) {
                         confirmedPolicyData.current = saved;
                     }
+                    return true;
                 } catch {
                     // The mutation hook reports the error. Only confirmed server data is retained here.
+                    return false;
                 } finally {
                     if (
                         activeTenantId.current === operation.tenantId &&
@@ -192,9 +218,15 @@ export const TenantPermissionsSettings = ({
                     }
                 }
             };
-            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
+            const outcome = policyMutationQueue.current.then(run, run);
+            Object.keys(changes).forEach((field) => policySaveOutcomes.current.set(field, outcome));
+            policyMutationQueue.current = outcome.then(() => undefined);
         },
         [rebuildEffectivePolicyData, tenantId, updatePermissionPolicies],
+    );
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => handlePoliciesChange({ [fieldKey]: policy }),
+        [handlePoliciesChange],
     );
 
     // Same queue as the switches, so a scope save and a switch save never overtake each other.
@@ -266,6 +298,85 @@ export const TenantPermissionsSettings = ({
         [rebuildEffectivePolicyData, t, tenantId, updateCalendar],
     );
 
+    /**
+     * Runs `write` after every queued policy save: a tenant PUT carries the whole tenant, so it must
+     * not overtake, or be overtaken by, a policy write (#1578 review). Skipped after a tenant switch.
+     */
+    const enqueueTenantWrite = useCallback(
+        (write: () => Promise<void>) => {
+            const operationGeneration = tenantGeneration.current;
+            const run = async () => {
+                if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
+                try {
+                    await write();
+                } catch {
+                    // The mutation hook reports the error.
+                }
+            };
+            policyMutationQueue.current = policyMutationQueue.current.then(run, run);
+        },
+        [tenantId],
+    );
+
+    // Team-Chat: a plain Träger setting (no policy), saved like every other Träger setting.
+    const changeTraegerSetting = useCallback(
+        (field: TraegerOnlySetting, value: boolean) => {
+            setPendingTraegerFields((current) => new Set([...current, field]));
+            enqueueTenantWrite(async () => {
+                try {
+                    await saveTenantSettings({ settings: { [field]: value } } as Partial<TenantAdminData>);
+                } finally {
+                    setPendingTraegerFields((current) => new Set([...current].filter((f) => f !== field)));
+                }
+            });
+        },
+        [enqueueTenantWrite, saveTenantSettings],
+    );
+    const traegerSettings = useMemo<TraegerOnlySettings>(
+        () => ({
+            source: 'own',
+            values: tenantData?.settings as TraegerOnlySettings['values'],
+            pendingFields: pendingTraegerFields,
+            onChange: changeTraegerSetting,
+        }),
+        [changeTraegerSetting, pendingTraegerFields, tenantData?.settings],
+    );
+
+    /**
+     * ORISO-Admin#1577: the counselling app shows call buttons only while the Träger's
+     * `extendedSettings.isVideoCallAllowed` is on, so it follows the tiles: in the same queue, after
+     * the tile's own save and only if that save went through, compared with the value stored by then.
+     */
+    const followCallsAllowed = useCallback(
+        (allowed: boolean, afterField?: string) => {
+            const saved = afterField
+                ? policySaveOutcomes.current.get(afterField) ?? Promise.resolve(false)
+                : Promise.resolve(true);
+            enqueueTenantWrite(async () => {
+                if (!(await saved) || currentCallsAllowed.current === allowed) return;
+                setCallsPermissionPending(true);
+                try {
+                    await writeCallsAllowed({
+                        settings: { extendedSettings: { isVideoCallAllowed: allowed } },
+                    } as Partial<TenantAdminData>);
+                    currentCallsAllowed.current = allowed;
+                } finally {
+                    setCallsPermissionPending(false);
+                }
+            });
+        },
+        [enqueueTenantWrite, writeCallsAllowed],
+    );
+    // Only where the former "Anrufe" switch was offered: not to a Träger admin on the single domain.
+    const callsPermissionWritable = isSuperAdmin || !appSettings.multitenancyWithSingleDomainEnabled;
+    const callsPermission = useMemo<CallsPermission | undefined>(
+        () =>
+            callsPermissionWritable
+                ? { stored: storedCallsAllowed, pending: callsPermissionPending, follow: followCallsAllowed }
+                : undefined,
+        [callsPermissionPending, callsPermissionWritable, followCallsAllowed, storedCallsAllowed],
+    );
+
     if (policiesError) {
         return (
             <Notify retry quietText={t('notify.tile.notLoaded')} title={t('notify.title.permissions')} severity="error">
@@ -281,6 +392,9 @@ export const TenantPermissionsSettings = ({
                 caseHandoverTenantId={Number(tenantId) || undefined}
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
+                introScopeNote={introScopeNote}
+                traegerSettings={traegerSettings}
+                callsPermission={callsPermission}
                 renderJourneys={journeys.renderJourneys}
                 isLoading={isLoading || policiesLoading}
                 initialValues={initialValues}
@@ -292,6 +406,7 @@ export const TenantPermissionsSettings = ({
                 ownSettings={tenantData?.settings as Record<string, unknown> | undefined}
                 pendingPolicyFields={pendingPolicyFields}
                 onPolicyChange={handlePolicyChange}
+                onPoliciesChange={handlePoliciesChange}
                 recipientScope={{
                     // Until the effect above has copied the loaded data over, read the query result: an
                     // absent field means "backend too old", and must not flash while loading.

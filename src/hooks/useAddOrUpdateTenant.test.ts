@@ -108,3 +108,28 @@ describe('buildTenantRequestBody — stored settings', () => {
         expect(body.settings).toEqual({ featureStatisticsEnabled: false, smtp: { enabled: true } });
     });
 });
+
+/**
+ * Frank, 2026-11-20: the licence moved from Stammdaten to the Träger tab "Weitere". The Stammdaten
+ * form no longer carries it, and its save must not reset the stored number.
+ */
+describe('buildTenantRequestBody — licence', () => {
+    it('keeps the stored licence when the saving form does not carry it', () => {
+        const { licensing, ...withoutLicence } = form() as unknown as Record<string, unknown>;
+        expect(licensing).toBeDefined();
+
+        const body = buildTenantRequestBody(STORED, withoutLicence as unknown as TenantAdminData, 'musterstadt');
+
+        expect(body.licensing).toEqual({ allowedNumberOfUsers: 5 });
+    });
+
+    it('sends the licence the form carries (create dialog)', () => {
+        const body = buildTenantRequestBody(
+            undefined,
+            form({ licensing: { allowedNumberOfUsers: 12 } }),
+            'musterstadt',
+        );
+
+        expect(body.licensing).toEqual({ allowedNumberOfUsers: 12 });
+    });
+});

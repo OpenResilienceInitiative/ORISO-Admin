@@ -2021,7 +2021,9 @@
         "exportNames": [],
         "usageFiles": [
             "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
-            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx"
+            "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseSharingSection/index.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/GuestAccountModeSection/index.tsx"
         ],
         "usage": "app-used"
     },
@@ -2340,7 +2342,8 @@
         "exportNames": [],
         "usageFiles": [
             "src/components/Card/styles.module.scss",
-            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverCardView.tsx"
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverCardView.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseSharingSection/index.tsx"
         ],
         "usage": "app-used"
     },
@@ -3115,6 +3118,8 @@
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/components/Snackbar/Snackbar.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseSharingSection/index.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/GuestAccountModeSection/index.tsx",
             "src/pages/ErrorPages/AdminNotFound.tsx",
             "src/pages/Links/index.tsx",
             "src/pages/Links/InviteBar.tsx",

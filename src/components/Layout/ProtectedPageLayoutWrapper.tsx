@@ -14,11 +14,14 @@ import AdminMobileNavBar from './AdminMobileNavBar';
 import { MobileNavProvider } from '../AdminMobileNav/MobileNavContext';
 import { AdminSearchButton, AdminSearchProvider } from '../AdminSearch';
 import { useAdminNavigation } from './useAdminNavigation';
+import { SectionTabIdentity } from './sectionTab/SectionTabIdentity';
 import { FeatureFlag } from '../../enums/FeatureFlag';
 import { useAppConfigContext } from '../../context/useAppConfig';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import styles from './styles.module.scss';
 import { clearStuckOverlays } from '../../utils/clearStuckOverlays';
+import { TourHost } from '../productTour/TourHost';
+import { TourLauncher } from '../productTour/TourLauncher';
 
 const { Content } = Layout;
 
@@ -89,6 +92,9 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
 
     return (
         <MobileNavProvider>
+            {/* Browser tab shows the active section's name and sidebar icon. Not on the
+            2FA-gated (restricted) layout, which has no sections. */}
+            {!restricted && <SectionTabIdentity navItems={upperNavItems} accountItem={accountNavItem} />}
             <AdminSearchProvider
                 navItems={upperNavItems}
                 account={accountNavItem}
@@ -135,6 +141,14 @@ const ProtectedPageLayoutWrapper = ({ children, restricted = false }: any) => {
                     </Layout>
                 </Layout>
             </AdminSearchProvider>
+            {/* One tour host and "?" launcher for every page, so a tour survives its own
+            navigation. Not behind the 2FA gate (#891): no tour destination resolves there. */}
+            {!restricted && (
+                <>
+                    <TourHost />
+                    <TourLauncher />
+                </>
+            )}
             {isEnabled(FeatureFlag.Developer) && <ReactQueryDevtools />}
         </MobileNavProvider>
     );
