@@ -7,6 +7,7 @@ import { TemplateSplitButton } from '../PlaceholderTemplate';
 import { legalTextTokensFor, PlaceholderTokenDef } from '../PlaceholderTemplate/placeholderTokens';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { EditorSnackbarQueue } from './EditorSnackbarQueue';
+import { ensureHeadingAnchorIds } from './headingAnchors';
 import { M3RichTextEditor } from './M3RichTextEditor';
 import { SplitDropdown } from './SplitDropdown';
 
@@ -202,7 +203,7 @@ export const WithAnchorNavigation: Story = {
     render: (args) => <ControlledEditor {...args} />,
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: anchoredContent,
+        value: ensureHeadingAnchorIds(anchoredContent),
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
     },
@@ -211,6 +212,24 @@ export const WithAnchorNavigation: Story = {
         await waitFor(() => {
             expect(canvas.getByRole('navigation')).toBeInTheDocument();
             expect(canvas.getAllByText('Geltungsbereich').length).toBeGreaterThan(0);
+        });
+
+        await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
+        const editor = await canvas.findByRole('textbox');
+        const paragraph = editor.querySelector('p');
+        const text = paragraph?.firstChild;
+        if (!paragraph || !text) throw new Error('Missing anchored editor paragraph');
+
+        editor.focus();
+        document.getSelection()?.setBaseAndExtent(text, 0, text, 'Dieser Vertrag'.length);
+        await userEvent.click(await canvas.findByRole('button', { name: /Mit Abschnitt verknüpfen|Link to section/ }));
+        await userEvent.click(await canvas.findByRole('menuitem', { name: 'Unterauftragsverhältnisse' }));
+
+        await waitFor(() => {
+            expect(within(paragraph).getByRole('link', { name: 'Dieser Vertrag' })).toHaveAttribute(
+                'href',
+                '#unterauftragsverhaltnisse',
+            );
         });
     },
 };
@@ -885,13 +904,16 @@ export const AgencyFooterWithConsentTemplate: Story = {
         const bar = await waitFor(() => canvas.getByTestId('m3-editor-function-bar'));
 
         // Left to right: language, consent template, topic, version.
-        const positions = ['Sprache wählen', 'Vorlagenmenü öffnen', 'Fachbereich wählen', 'Versionsverlauf'].map(
-            (name) => {
-                const control = canvas.getByRole('button', { name });
-                expect(bar).toContainElement(control);
-                return Array.from(bar.children).findIndex((child) => child.contains(control));
-            },
-        );
+        const positions = [
+            'DE Sprache wählen',
+            'Vorlagenmenü öffnen',
+            'Sucht Fachbereich wählen',
+            'Variante #3 Versionsverlauf',
+        ].map((name) => {
+            const control = canvas.getByRole('button', { name });
+            expect(bar).toContainElement(control);
+            return Array.from(bar.children).findIndex((child) => child.contains(control));
+        });
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
         // A narrow card inside a wide Storybook viewport still acts like mobile.

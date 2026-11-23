@@ -16,6 +16,7 @@ interface LegalDocumentTileProps {
     /** Text above the editor, next to the explanation button: the publication state and the role-based help. */
     intro?: ReactNode;
     defaultOpen?: boolean;
+    open?: boolean;
     /** Reports every toggle, so a parent that rebuilds the tile can keep it open. */
     onOpenChange?: (open: boolean) => void;
     children: ReactNode;
@@ -33,6 +34,7 @@ export const LegalDocumentTile = ({
     help,
     intro,
     defaultOpen,
+    open,
     onOpenChange,
     children,
 }: LegalDocumentTileProps) => {
@@ -43,6 +45,7 @@ export const LegalDocumentTile = ({
             status={status?.label}
             statusTone={status?.tone}
             defaultOpen={defaultOpen}
+            open={open}
             onOpenChange={onOpenChange}
         >
             <div className={styles.document}>

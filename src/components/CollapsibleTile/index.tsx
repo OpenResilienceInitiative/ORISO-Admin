@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
 import EditIcon from '@mui/icons-material/Edit';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -12,8 +12,9 @@ export interface CollapsibleTileProps {
     status?: string;
     /** Marks the chip as something that needs attention instead of a plain state. */
     statusTone?: 'neutral' | 'attention';
-    /** Open on first render. */
+    /** Open on first render, or controlled by an owning surface. */
     defaultOpen?: boolean;
+    open?: boolean;
     /** Called with the new state when the header is toggled, so a parent that rebuilds the tile can keep it open. */
     onOpenChange?: (open: boolean) => void;
     children: ReactNode;
@@ -38,15 +39,20 @@ export const CollapsibleTile = ({
     status,
     statusTone = 'neutral',
     defaultOpen = false,
+    open: controlledOpen,
     onOpenChange,
     children,
     className,
     onIconClick,
     iconLabel,
 }: CollapsibleTileProps) => {
-    const [open, setOpen] = useState(defaultOpen);
-    const [mounted, setMounted] = useState(defaultOpen);
+    const [internalOpen, setOpen] = useState(defaultOpen);
+    const open = controlledOpen ?? internalOpen;
+    const [mounted, setMounted] = useState(defaultOpen || !!controlledOpen);
     const bodyId = useId();
+    useEffect(() => {
+        if (open) setMounted(true);
+    }, [open]);
 
     const toggle = () => {
         const next = !open;
@@ -90,7 +96,7 @@ export const CollapsibleTile = ({
                 </button>
             </h3>
             <div id={bodyId} className={styles.body} hidden={!open} data-collapsible-tile-body>
-                {mounted && children}
+                {(mounted || open) && children}
             </div>
         </section>
     );

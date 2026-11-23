@@ -55,7 +55,13 @@ type Story = StoryObj<typeof meta>;
  *  Sub-toggles disable when their card master is switched off. */
 export const TenantView: Story = {
     args: {
+        policyLevel: 'tenant',
         initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        await expect(within(row as HTMLElement).getAllByRole('button')).toHaveLength(2);
     },
 };
 
@@ -91,7 +97,46 @@ export const PlatformForcedVideoOff: Story = {
 /** Super-admin (platform) view with every chat-type master enabled. */
 export const SuperAdminView: Story = {
     args: {
+        policyLevel: 'platform',
         initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        await expect(within(row as HTMLElement).getAllByRole('button')).toHaveLength(2);
+    },
+};
+
+/** A centre uses the same cards, while its inherited channel settings remain read-only.
+ *  It cannot set a requirement for another level, because none lies below it. */
+export const AgencyView: Story = {
+    args: {
+        tenantId: 'agency-55',
+        caseHandoverTenantId: 7,
+        policyLevel: 'agency',
+        channelsSetOnTraeger: true,
+        traegerChannelPoliciesStatus: 'success',
+        traegerChannelPolicies: {
+            featureDisplayNameEditable: { value: true, mode: 'SUGGESTED' },
+            featureAskerEmailAgencyCounsellingEnabled: { value: true, mode: 'ENFORCED', inherited: true },
+        },
+        permissionPolicies: {
+            featureCallsEnabled: { value: true, mode: 'SUGGESTED', inherited: true },
+        },
+        initialValues: { settings: filledSettings },
+    },
+    play: async ({ canvasElement }) => {
+        const row = canvasElement.querySelector('[data-feature-policy="featureCallsEnabled"]');
+        await expect(row).not.toBeNull();
+        // The agency may change its own switch but has no rule-setting button.
+        const buttons = within(row as HTMLElement).getAllByRole('button');
+        await expect(buttons).toHaveLength(1);
+        await expect(buttons[0]).toBeEnabled();
+        const inheritedChannel = canvasElement.querySelector(
+            '[data-feature-policy="featureAskerEmailAgencyCounsellingEnabled"]',
+        );
+        await expect(inheritedChannel).not.toBeNull();
+        await expect(within(inheritedChannel as HTMLElement).getByRole('button')).toBeDisabled();
     },
 };
 

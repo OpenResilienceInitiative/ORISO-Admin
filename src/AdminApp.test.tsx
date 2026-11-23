@@ -16,6 +16,7 @@ const PLATFORM_ICON = 'data:image/vnd.microsoft.icon;base64,AAABAAEAICAA';
 const mocks = vi.hoisted(() => ({
     getPublicTenantData: vi.fn(),
     apiServerSettings: vi.fn(),
+    protectedRouteReady: true,
 }));
 
 vi.mock('./api/tenant/getPublicTenantData', () => ({ default: mocks.getPublicTenantData }));
@@ -49,7 +50,7 @@ vi.mock('./pages/Login/Login', async () => {
 // Skip the real session bootstrap and shell, while keeping both production
 // route tables, the role permission check and the real denial page mounted.
 vi.mock('./router/ProtectedRoute', () => ({
-    ProtectedRoute: ({ children }: PropsWithChildren) => children,
+    ProtectedRoute: ({ children }: PropsWithChildren) => (mocks.protectedRouteReady ? children : null),
 }));
 vi.mock('./components/Layout/ProtectedPageLayoutWrapper', () => ({
     default: ({ children }: PropsWithChildren) => children,
@@ -83,6 +84,7 @@ describe('AdminApp', () => {
         await queryClient.cancelQueries();
         queryClient.clear();
         mocks.getPublicTenantData.mockReset();
+        mocks.protectedRouteReady = true;
         mocks.apiServerSettings.mockReset();
         mocks.apiServerSettings.mockResolvedValue({
             multitenancyWithSingleDomainEnabled: { value: true, readOnly: true },
@@ -135,6 +137,21 @@ describe('AdminApp', () => {
         render(<AdminApp />);
 
         await waitFor(() => expect(iconHrefs()).toEqual([PLATFORM_ICON, PLATFORM_ICON]));
+        expect(mocks.getPublicTenantData).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for the protected route to admit the document before fetching branding', async () => {
+        mocks.protectedRouteReady = false;
+        mocks.getPublicTenantData.mockResolvedValue({ theming: { favicon: PLATFORM_ICON } });
+        window.history.replaceState({}, '', '/admin/');
+
+        await act(async () => {
+            render(<AdminApp />);
+        });
+
+        expect(mocks.apiServerSettings).toHaveBeenCalledTimes(1);
+        expect(mocks.getPublicTenantData).not.toHaveBeenCalled();
+        expect(iconHrefs()).toEqual(['/admin/favicon.ico', '/admin/favicon-32x32.png']);
     });
 
     describe('tenant legal settings deep link', () => {

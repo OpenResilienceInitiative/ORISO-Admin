@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -68,7 +69,7 @@ import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { EditorJumpContext } from './EditorJumpContext';
 import { EditorSnackbarQueue, editorSnackbarItems } from './EditorSnackbarQueue';
 import AnchorChips from './AnchorChips';
-import { useHeadingAnchorNav } from './useHeadingAnchorNav';
+import { anchorBubbleOptions, useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
 
 /** A saved, published version the editor can look back at (read-only). */
@@ -378,7 +379,7 @@ export const EDITOR_FULLSCREEN_Z_INDEX = 1400;
  * viewport around it carries the labelled `region` instead.
  */
 const editorSurfaceAttributes = (readOnly: boolean | undefined, title: string) =>
-    readOnly ? {} : { 'aria-label': title, role: 'textbox' };
+    readOnly ? { role: 'presentation' } : { 'aria-label': title, role: 'textbox' };
 
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
 export const parseVersionDate = (id: string): Date | null => {
@@ -543,7 +544,15 @@ const Toolbar = ({
                 mobile fullscreen) — only the rest of the bar scrolls sideways. */}
             {leading}
             {leading && <span className={styles.vDivider} />}
-            <div className={styles.toolbarScroll}>
+            {/* The disabled toolbar has no focusable descendants; its named scroll region must remain
+                keyboard reachable. This is the documented scroll-region exception to the lint rule. */}
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- scrollable region with disabled controls */}
+            <div
+                className={styles.toolbarScroll}
+                tabIndex={disabled ? 0 : undefined}
+                role="region"
+                aria-label={t('editor.toolbar.label', 'Formatting toolbar')}
+            >
                 {/* A disabled fieldset natively disables every formatting control inside
                 (read mode / version look-back) without touching each button. */}
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
@@ -847,6 +856,7 @@ const Toolbar = ({
                     )}
                 </fieldset>
             </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
         </div>
     );
 };
@@ -1024,6 +1034,7 @@ export const M3RichTextEditor = ({
     });
 
     const editor = useEditor({
+        shouldRerenderOnTransaction: true,
         enableInputRules: !plainText,
         enablePasteRules: !plainText,
         extensions: plainText
@@ -1041,11 +1052,15 @@ export const M3RichTextEditor = ({
                       blockquote: false,
                       horizontalRule: false,
                       hardBreak: false,
+                      link: false,
+                      underline: false,
+                      listKeymap: false,
+                      trailingNode: false,
                   }),
                   Placeholder.configure({ placeholder }),
               ]
             : [
-                  StarterKit,
+                  StarterKit.configure({ link: false, underline: false, listKeymap: false, trailingNode: false }),
                   Underline,
                   Link.configure({ openOnClick: false, autolink: false }),
                   ResolvingImage,
@@ -1117,7 +1132,7 @@ export const M3RichTextEditor = ({
     }, [editor, anchorsEnabled, autoChapters]);
 
     // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
-    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+    const { anchors, shouldShowAnchorMenu, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
         useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: editorEditable });
 
     useEffect(() => {
@@ -1131,7 +1146,7 @@ export const M3RichTextEditor = ({
             syncingContentRef.current = true;
             try {
                 if (syncedVersionIdRef.current !== viewingVersionId || !editorEditable) editor.setEditable(false);
-                editor.commands.setContent(incoming, false);
+                editor.commands.setContent(incoming, { emitUpdate: false });
             } finally {
                 syncingContentRef.current = false;
             }
@@ -1468,16 +1483,13 @@ export const M3RichTextEditor = ({
             </div>
 
             {anchorsEnabled && editorEditable && (
-                // Stable host div: the BubbleMenu plugin detaches its element
-                // from the React tree (tippy re-parents it), so it must not be
-                // a direct sibling that React repositions or removes.
                 <div className={styles.anchorBubbleHost}>
                     <BubbleMenu
                         editor={editor}
                         pluginKey="anchorLinkBubble"
                         updateDelay={150}
-                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
-                        shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
+                        options={anchorBubbleOptions}
+                        shouldShow={shouldShowAnchorMenu}
                     >
                         <div className={styles.anchorBubble}>
                             <Dropdown

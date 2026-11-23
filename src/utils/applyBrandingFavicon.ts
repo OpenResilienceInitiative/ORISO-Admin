@@ -1,3 +1,12 @@
+import {
+    ABSENT,
+    DEFAULT_HREF_ATTR,
+    DEFAULT_SIZES_ATTR,
+    DEFAULT_TYPE_ATTR,
+    SECTION_ICON_ATTR,
+    SECTION_ICON_PNG_ATTR,
+} from '../components/Layout/sectionTab/tabIconLinks';
+
 /**
  * Point every declared tab icon at the tenant/platform branding favicon.
  *
@@ -15,6 +24,15 @@
  */
 export const applyBrandingFavicon = (favicon: string): void => {
     document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']").forEach((link) => {
+        // A section tab icon is showing (Layout/sectionTab/tabIconLinks): the branding becomes
+        // the default it returns to, and the section icon stays.
+        if (link.hasAttribute(SECTION_ICON_ATTR)) {
+            link.setAttribute(DEFAULT_HREF_ATTR, favicon);
+            link.setAttribute(DEFAULT_TYPE_ATTR, ABSENT);
+            link.setAttribute(DEFAULT_SIZES_ATTR, ABSENT);
+            return;
+        }
+        if (link.hasAttribute(SECTION_ICON_PNG_ATTR)) return;
         link.setAttribute('href', favicon);
         link.removeAttribute('sizes');
         link.removeAttribute('type');
