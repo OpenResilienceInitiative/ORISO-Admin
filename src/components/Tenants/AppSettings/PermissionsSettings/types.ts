@@ -17,6 +17,8 @@ export type PermissionsSettingsCommonArgs = {
     excludeCardKeys?: Array<ChatTypeCardKey>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
+    /** What the page applies to, said in the page intro (ORISO-Admin#1577). */
+    introScopeNote?: ReactNode;
 };
 
 /**

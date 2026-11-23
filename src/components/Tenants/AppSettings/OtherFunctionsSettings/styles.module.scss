@@ -7,28 +7,10 @@
     }
 }
 
-.column {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 16px;
-
-    > section:last-child {
-        flex: 1 1 auto;
-    }
-}
-
 .checkInfo {
     width: calc(100% - 71px);
     font-weight: 400;
     font-size: 14px;
     line-height: 20px;
     color: var(--black-60);
-}
-
-/* ORISO-Admin#988 / Frank 2026-09-16: the supervision feature toggles sit indented under their
-   own master switch, inside the "Other functions" card next to "Allow group chat". */
-
-.supervisionChild {
-    margin-left: 24px;
 }

@@ -236,15 +236,16 @@ export const NAV_KEYWORDS: Record<string, string[]> = {
         'advice seekers',
         'onboarding',
     ],
+    // "Weitere" / "More" (ORISO-Admin#1577); found by its former names too.
     'settings:app-settings': [
-        'app einstellungen',
-        'funktionen',
-        'schalter',
-        'features',
-        'app settings',
-        'toggles',
-        'feature flags',
-        'global settings',
+        'funktionalitäten',
+        'weitere funktionen',
+        'themen',
+        'statistik',
+        'functionalities',
+        'more functions',
+        'topics',
+        'statistics',
     ],
 
     // Accounts

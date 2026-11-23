@@ -82,13 +82,12 @@ describe('search registry drift', () => {
         expect(card).toContain('isTechnicalAccount');
     });
 
-    it('keeps the live-chat tile off the Träger page that excludes that card', () => {
+    it('keeps the live-chat tile on the Träger page, which shows that card (ORISO-Admin#1577)', () => {
         const page = readFileSync(resolve(root, 'src/pages/Tenants/Edit/GlobalSettings/index.tsx'), 'utf8');
         const tile = SEARCH_TILES.find((entry) => entry.id === 'access:live-chat');
 
-        expect(page).toContain("excludeCardKeys={['liveChat']}");
-        expect(tile?.parents).not.toContain('tenant:global-settings');
-        expect(tile?.parents.length).toBeGreaterThan(0);
+        expect(page).not.toContain('excludeCardKeys');
+        expect(tile?.parents).toContain('tenant:global-settings');
     });
 
     it('gates the documentation tile with the setting the profile page uses', () => {

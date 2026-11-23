@@ -134,7 +134,6 @@ export const App = () => {
         shouldShowThemeSettings,
         can,
         isTenantSettingsEditEnabled: isReleaseEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
-        multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
     });
 
     useEffect(() => {

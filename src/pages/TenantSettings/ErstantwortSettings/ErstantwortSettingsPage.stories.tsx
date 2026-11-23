@@ -33,7 +33,6 @@ const tabs = getSettingsTabs({
     shouldShowThemeSettings: true,
     can: () => true,
     isTenantSettingsEditEnabled: true,
-    multitenancyWithSingleDomainEnabled: false,
 });
 
 /** The global MemoryRouter starts at "/"; move it to the Erstantwort route so its tab is highlighted. */

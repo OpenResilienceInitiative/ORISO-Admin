@@ -2,64 +2,52 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { spanOf } from '../../../CardGrid/cardGridTestUtils';
 
-vi.mock('../SmtpSettings', () => ({
-    SmtpSettings: ({ tenantId }: { tenantId: string }) => <div data-testid="smtp">{tenantId}</div>,
-}));
-vi.mock('../CommunicationSettings', () => ({
-    CommunicationSettings: ({ tenantId }: { tenantId: string }) => <div data-testid="communication">{tenantId}</div>,
-}));
 vi.mock('../OtherFunctionsSettings', () => ({
     OtherFunctionsSettings: (props: Record<string, unknown>) => (
         <div data-testid="other-functions">{JSON.stringify(props)}</div>
     ),
 }));
 
+vi.mock('../TraegerLicenceSenderSettings', () => ({
+    TraegerLicenceSenderSettings: (props: Record<string, unknown>) => (
+        <div data-testid="licence-sender">{JSON.stringify(props)}</div>
+    ),
+}));
+
 // eslint-disable-next-line import/first
 import { FunctionalitiesGrid } from './index';
 
-const tileCount = (container: HTMLElement) => container.querySelectorAll('[data-admin-card-grid-item]').length;
-
-describe('FunctionalitiesGrid', () => {
-    it('lays every tile into the settings raster, one grid item each', () => {
+describe('FunctionalitiesGrid ("Weitere")', () => {
+    it('lays one full-width tile into the settings raster', () => {
         const { container } = render(<FunctionalitiesGrid tenantId="7" />);
+        const items = container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]');
 
-        expect(screen.getByTestId('smtp')).toHaveTextContent('7');
-        expect(screen.getByTestId('communication')).toHaveTextContent('7');
+        expect(items).toHaveLength(1);
+        expect(spanOf(items[0])).toBe(3);
         expect(screen.getByTestId('other-functions')).toBeInTheDocument();
-        expect(tileCount(container)).toBe(3);
+        expect(screen.queryByTestId('licence-sender')).toBeNull();
         // The old layout was an antd Row/Col stack; the raster must not fall back to it.
         expect(container.querySelector('.ant-row')).toBeNull();
     });
 
-    it('keeps the email server, communication and other-functions tiles in reading order and spans', () => {
-        const { container } = render(<FunctionalitiesGrid tenantId="7" />);
-        const spanByTile: Record<string, number> = { smtp: 3, communication: 1, 'other-functions': 2 };
-        // Only these three tiles are looked at, so a tile that is added or removed elsewhere in the tab does not
-        // change this test.
-        const tiles = [...container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]')]
-            .map((item) => ({ id: item.querySelector('[data-testid]')?.getAttribute('data-testid') ?? '', item }))
-            .filter(({ id }) => id in spanByTile);
-
-        expect(tiles.map(({ id }) => id)).toEqual(['smtp', 'communication', 'other-functions']);
-        expect(Object.fromEntries(tiles.map(({ id, item }) => [id, spanOf(item)]))).toEqual(spanByTile);
-    });
-
-    it('drops the tiles a level hides', () => {
-        const { container } = render(<FunctionalitiesGrid tenantId="7" hideSmtp hideCommunication />);
-
-        expect(screen.queryByTestId('smtp')).toBeNull();
-        expect(screen.queryByTestId('communication')).toBeNull();
-        expect(tileCount(container)).toBe(1);
-    });
-
-    it('passes the hide flags on to the other-functions tile unchanged', () => {
-        render(<FunctionalitiesGrid tenantId="7" hideTopicsToggle hideStatistics hideGroupChatToggle />);
+    it('passes the statistics flag on to the tile unchanged', () => {
+        render(<FunctionalitiesGrid tenantId="7" hideStatistics />);
 
         expect(JSON.parse(screen.getByTestId('other-functions').textContent ?? '{}')).toEqual({
             tenantId: '7',
-            hideTopics: true,
             hideStatistics: true,
-            hideGroupChatToggle: true,
         });
+    });
+
+    // Frank, 2026-11-20: on the Träger page, licence and sender moved here from Stammdaten.
+    it('adds the licence and sender tile after the other functions when the page asks for it', () => {
+        const { container } = render(<FunctionalitiesGrid tenantId="7" withLicenceAndSender />);
+        const items = container.querySelectorAll<HTMLElement>('[data-admin-card-grid-item]');
+
+        expect(items).toHaveLength(2);
+        expect(items[0]).toContainElement(screen.getByTestId('other-functions'));
+        expect(items[1]).toContainElement(screen.getByTestId('licence-sender'));
+        expect(spanOf(items[1])).toBe(3);
+        expect(JSON.parse(screen.getByTestId('licence-sender').textContent ?? '{}')).toEqual({ tenantId: '7' });
     });
 });

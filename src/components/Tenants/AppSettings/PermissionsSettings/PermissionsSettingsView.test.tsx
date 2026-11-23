@@ -57,7 +57,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
 
         // #1558: the folding header also carries the summary chip.
         const title = screen.getByRole('heading', { name: /^tenants\.permissions\.card\.oneOnOne\.title/ });
-        const activated = screen.getByRole('button', {
+        const activated = within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
             name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
         });
 
@@ -69,7 +69,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         renderOneOnOne();
 
         expect(
-            screen.getByRole('button', {
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
                 name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
             }),
         ).toBeTruthy();
@@ -198,7 +198,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
             />,
         );
 
-        const inherited = screen.getByRole('button', {
+        const inherited = within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
             name: /tenants.permissions.card.activated: tenants.permissions.policy.activated$/,
         });
         expect(inherited).toBeDisabled();
@@ -283,7 +283,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
             .getAllByRole('button')
             .forEach((button) => expect(button).toBeDisabled());
         expect(
-            screen.getByRole('button', {
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
                 name: /tenants.permissions.card.activated: tenants.permissions.policy.activated – /,
             }),
         ).toBeEnabled();

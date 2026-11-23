@@ -12,13 +12,27 @@ import { CaseSharingSection } from './CaseSharingSection';
 import { TileSections } from '../../../TileSections';
 import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
+import { SupervisionTile } from './SupervisionTile';
+import { TeamChatSection } from './TeamChatSection';
+import type { TraegerOnlySettings } from './traegerFunctions';
+import {
+    GROUP_CHAT_UMBRELLA,
+    affectsCalls,
+    callsAllowed,
+    groupChatUmbrellaUpdate,
+    isGroupChatMaster,
+    tileOffersCalls,
+    type CallsPermission,
+} from './derivedLegacySettings';
+import { HintText } from '../../../HintText';
+import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
 import { ASKER_HELP, CONVERSATION_HELP, GUEST_ACCOUNT_HELP } from './tileHelpTopics';
-import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp } from './help';
+import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp, TEAM_CHAT_HELP } from './help';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
@@ -136,6 +150,19 @@ export type PermissionsSettingsViewProps = {
     calendar?: Omit<CalendarCardProps, 'level'>;
     /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
     liveChatLinks?: ReactNode;
+    /** What this page applies to, said in the page intro (e.g. one Träger, ORISO-Admin#1577). */
+    introScopeNote?: ReactNode;
+    /**
+     * ORISO-Admin#1577: Team-Chat, stored per Träger only. Without it the page says it is set per
+     * Träger (platform).
+     */
+    traegerSettings?: TraegerOnlySettings;
+    /**
+     * Träger page only, where the former "Anrufe" switch was offered: the Träger's
+     * `isVideoCallAllowed`, which follows the call switches of the tiles. Without it the page cannot
+     * write the value and says nothing about it (ORISO-TenantService#380).
+     */
+    callsPermission?: CallsPermission;
 };
 
 export const PermissionsSettingsView = ({
@@ -164,6 +191,9 @@ export const PermissionsSettingsView = ({
     calendar,
     traegerDirectInvitePolicies,
     liveChatLinks,
+    introScopeNote,
+    traegerSettings = { source: 'none' },
+    callsPermission,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
     const cardsToRender = excludeCardKeys?.length
@@ -206,7 +236,7 @@ export const PermissionsSettingsView = ({
         [pendingPolicyFields],
     );
 
-    const changePolicy = useCallback(
+    const applyPolicy = useCallback(
         (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
             const fieldPath = ['settings', fieldKey];
             form.setFieldValue(fieldPath, next.value);
@@ -221,20 +251,124 @@ export const PermissionsSettingsView = ({
         [onPolicyChange, onToggleUpdate],
     );
 
-    // Fields that belong together go out as one request where the page can save them so (#1560).
+    /**
+     * ORISO-Admin#1577: a tile change also keeps the two older switches the counselling app still
+     * reads in step (see derivedLegacySettings.ts): the group-chat umbrella on every level, and the
+     * Träger's call permission where the page can write it.
+     */
+    const policiesAfter = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>, form: FormInstance) =>
+            (field: string): PolicyValue<boolean> =>
+                changes[field] ?? policyFor(field, form.getFieldValue(['settings', field])),
+        [policyFor],
+    );
+    const umbrellaUpdate = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>, form: FormInstance) =>
+            Object.keys(changes).some(isGroupChatMaster) && !(GROUP_CHAT_UMBRELLA in changes)
+                ? groupChatUmbrellaUpdate(policiesAfter(changes, form), {
+                      level: policyLevel,
+                      restricted: restrictedFields.has(GROUP_CHAT_UMBRELLA),
+                  })
+                : null,
+        [policiesAfter, policyLevel, restrictedFields],
+    );
+    // Called after the change was queued, so the call permission waits for that save.
+    const followCalls = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>, form: FormInstance) => {
+            const callField = Object.keys(changes).find(affectsCalls);
+            if (!callsPermission || !callField) return;
+            const policyOf = policiesAfter(changes, form);
+            callsPermission.follow(
+                callsAllowed((field) => policyOf(field).value),
+                callField,
+            );
+        },
+        [callsPermission, policiesAfter],
+    );
+
+    const changePolicy = useCallback(
+        (fieldKey: string, next: PolicyValue<boolean>, form: FormInstance) => {
+            const changes = { [fieldKey]: next };
+            const umbrella = umbrellaUpdate(changes, form);
+            applyPolicy(fieldKey, next, form);
+            if (umbrella) applyPolicy(GROUP_CHAT_UMBRELLA, umbrella, form);
+            followCalls(changes, form);
+        },
+        [applyPolicy, followCalls, umbrellaUpdate],
+    );
+
+    // Fields that belong together go out as one request where the page can save them so (#1560); the
+    // umbrella they call for goes in the same request.
     const changePolicies = useCallback(
         (changes: Record<string, PolicyValue<boolean>>, form: FormInstance) => {
             if (!onPoliciesChange) {
                 Object.entries(changes).forEach(([fieldKey, next]) => changePolicy(fieldKey, next, form));
                 return;
             }
-            Object.entries(changes).forEach(([fieldKey, next]) => {
+            const umbrella = umbrellaUpdate(changes, form);
+            const all = umbrella ? { ...changes, [GROUP_CHAT_UMBRELLA]: umbrella } : changes;
+            Object.entries(all).forEach(([fieldKey, next]) => {
                 form.setFieldValue(['settings', fieldKey], next.value);
             });
-            onPoliciesChange(changes);
+            onPoliciesChange(all);
+            followCalls(changes, form);
         },
-        [changePolicy, onPoliciesChange],
+        [changePolicy, followCalls, onPoliciesChange, umbrellaUpdate],
     );
+
+    /**
+     * Data stored before the tiles drove the two older switches can contradict them. Saying so where
+     * it shows, with one explicit write to align it, never a silent write on load. The call permission
+     * is only said where this page can write it (Träger); platform and Beratungsstelle pages cannot,
+     * until ORISO-TenantService#380 retires the value.
+     */
+    const legacyNotices = (form: FormInstance, card: ChatTypeCardDef, getFieldValue: FormInstance['getFieldValue']) => {
+        const master = card.masterField?.[1];
+        if (!master) return null;
+        const policyOf = (field: string) => policyFor(field, getFieldValue(['settings', field]));
+        if (!policyOf(master).value) return null;
+        const notices: ReactNode[] = [];
+        if (isGroupChatMaster(master) && policyOf(GROUP_CHAT_UMBRELLA).value === false) {
+            const umbrella = umbrellaUpdate({ [master]: policyOf(master) }, form);
+            if (umbrella?.value) {
+                notices.push(
+                    <HintText
+                        key="groupChat"
+                        data-legacy-notice="groupChat"
+                        title={t('tenants.permissions.legacyNotice.groupChat.title')}
+                        actions={[
+                            {
+                                label: t('tenants.permissions.legacyNotice.groupChat.action'),
+                                disabled: policyPending(GROUP_CHAT_UMBRELLA),
+                                onClick: () => applyPolicy(GROUP_CHAT_UMBRELLA, umbrella, form),
+                            },
+                        ]}
+                    >
+                        {t('tenants.permissions.legacyNotice.groupChat.body')}
+                    </HintText>,
+                );
+            }
+        }
+        if (callsPermission?.stored === false && tileOffersCalls(master, (field) => policyOf(field).value)) {
+            notices.push(
+                <HintText
+                    key="calls"
+                    data-legacy-notice="calls"
+                    title={t('tenants.permissions.legacyNotice.calls.title')}
+                    actions={[
+                        {
+                            label: t('tenants.permissions.legacyNotice.calls.action'),
+                            disabled: callsPermission.pending,
+                            onClick: () => callsPermission.follow(true),
+                        },
+                    ]}
+                >
+                    {t('tenants.permissions.legacyNotice.calls.body')}
+                </HintText>,
+            );
+        }
+        return notices.length ? <div role="status">{notices}</div> : null;
+    };
 
     // One row for every switch on a tile: feature toggles and notification channels alike.
     const supportingTextFor = (row: {
@@ -470,6 +604,7 @@ export const PermissionsSettingsView = ({
                         {masterRow(form, card, getFieldValue)}
                         {help && <TileHelpButton topic={help} tileTitle={title} tileIcon={<CardIcon />} />}
                     </div>
+                    {legacyNotices(form, card, getFieldValue)}
                     <div className={showLinks ? styles.tileColumns : styles.tileSections}>
                         {(showLinks ||
                             (card.key === 'groupInternal' && recipientScope && policyLevel !== 'agency')) && (
@@ -524,6 +659,27 @@ export const PermissionsSettingsView = ({
                                         />
                                     }
                                 />
+                            )}
+
+                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here; Frank,
+                                2026-11-20: with "Konfigurieren" like supervision. */}
+                            {card.key === 'oneOnOne' && (
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-teamChat`}
+                                    title={t(TEAM_FUNCTIONS.chat.nameKey)}
+                                    note={t('tenants.permissions.teamChat.note')}
+                                    titleAction={<SectionHelp topic={TEAM_CHAT_HELP} />}
+                                    collapsible
+                                >
+                                    <TeamChatSection
+                                        level={policyLevel}
+                                        settings={traegerSettings}
+                                        policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                        pending={policyPending}
+                                        onChange={(changes) => changePolicies(changes, form)}
+                                    />
+                                </TileSections.Section>
                             )}
 
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
@@ -637,6 +793,7 @@ export const PermissionsSettingsView = ({
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
                     <PermissionsIntro
+                        scopeNote={introScopeNote}
                         cards={cardsToRender.map((card) => ({
                             key: card.key,
                             name: typeNames?.[card.key] ?? t(card.titleKey),
@@ -691,6 +848,15 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardGrid.Item>
                         ))}
+                        {/* ORISO-Admin#1577: supervision chats, after the conversation types. */}
+                        <CardGrid.Item span={3}>
+                            <SupervisionTile
+                                level={policyLevel}
+                                policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                pending={policyPending}
+                                onChange={(changes) => changePolicies(changes, form)}
+                            />
+                        </CardGrid.Item>
                         {calendar && policyLevel !== 'agency' && (
                             <CardGrid.Item span={2}>
                                 <CalendarCard {...calendar} level={policyLevel} />
