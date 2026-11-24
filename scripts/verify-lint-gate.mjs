@@ -1,7 +1,36 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
+import { compareLegacyButtonUsage, countLegacyButtons, readLegacyButtonUsage } from './verify-legacy-buttons.mjs';
+
+const legacyFile = 'src/components/CreateAgencyModal/index.tsx';
+const legacyForm = "import { Form, Button as LegacyButton } from 'antd';\n";
+const oldAction = 'export const Action = () => <LegacyButton />;\n';
+assert.equal(countLegacyButtons(legacyForm + oldAction, legacyFile), 2);
+assert.equal(countLegacyButtons('/* eslint-disable */\n' + legacyForm + oldAction, legacyFile), 2);
+assert.equal(
+    countLegacyButtons(legacyForm + 'export const Action = () => <LegacyButton>Action</LegacyButton>;', legacyFile),
+    2,
+);
+const moreLegacy = countLegacyButtons(
+    legacyForm + oldAction + 'export const Extra = () => <LegacyButton />;',
+    legacyFile,
+);
+assert.deepEqual(compareLegacyButtonUsage({ [legacyFile]: moreLegacy }, { [legacyFile]: 2 }), [
+    { file: legacyFile, allowed: 2, found: 3 },
+]);
+assert.deepEqual(compareLegacyButtonUsage({ [legacyFile]: 2 }, { [legacyFile]: 2 }), []);
+assert.deepEqual(compareLegacyButtonUsage({}, { [legacyFile]: 2 }), [{ file: legacyFile, allowed: 2, found: 0 }]);
+assert.equal(countLegacyButtons("export { default as OldAction } from 'antd/es/button';", legacyFile), 1);
+assert.equal(
+    countLegacyButtons(
+        "import { Form } from 'antd';\nimport { M3Button } from '../M3Button';\nexport { Form, M3Button };",
+        legacyFile,
+    ),
+    0,
+);
 
 const controls = [
     {
@@ -72,4 +101,31 @@ for (const control of controls) {
         `${control.name} did not trigger ${control.rule}`,
     );
 }
-console.log('Lint gate verified: accessibility, Storybook, asynchronous queries and shared slider controls.');
+const buttonUsage = readLegacyButtonUsage('src');
+const budgetFile = 'scripts/legacy-button-usage.json';
+const allowedButtonUsage = JSON.parse(readFileSync(budgetFile, 'utf8'));
+const buttonViolations = compareLegacyButtonUsage(buttonUsage, allowedButtonUsage);
+const baseSha = process.env.VERIFICATION_LINT_BASE_SHA;
+let baselineIncreases = [];
+if (baseSha) {
+    assert.match(baseSha, /^[a-f0-9]{40}$/, 'Expected the PR base commit for legacy button verification');
+    const git = (...args) => execFileSync('git', args, { encoding: 'utf8' });
+    // On the first rollout the baseline file does not exist on the base branch.
+    if (git('ls-tree', baseSha, '--', budgetFile).trim()) {
+        const previous = JSON.parse(git('show', `${baseSha}:${budgetFile}`));
+        baselineIncreases = compareLegacyButtonUsage(allowedButtonUsage, previous).filter(
+            ({ allowed, found }) => found > allowed,
+        );
+    }
+}
+writeFileSync(
+    path.join(artifacts, 'legacy-buttons.json'),
+    JSON.stringify({ buttonUsage, buttonViolations, baselineIncreases }),
+);
+assert.deepEqual(baselineIncreases, [], 'The legacy Ant Design button count may only decrease. Use M3Button.');
+assert.deepEqual(
+    buttonViolations,
+    [],
+    'Use M3Button from src/components/M3Button for Admin actions. See https://dev.oriso.org/storybook-admin/?path=/story/atoms-m3button--filled. Lower the legacy count when migrating an existing action.',
+);
+console.log('Lint gate verified: accessibility, Storybook, asynchronous queries, sliders and legacy buttons.');
