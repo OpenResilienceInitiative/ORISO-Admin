@@ -1,5 +1,6 @@
 import { settlePendingRequests } from './pendingRequests';
-import { storyRenderCleanup } from './storyRenderCleanup';
+import { storyRenderCleanup, type NativeStoryRenderer } from './storyRenderCleanup';
+import { renderToCanvas as nativeRenderToCanvas } from '@storybook/react/entry-preview';
 import * as React from 'react';
 // antd's static APIs (message/notification/Modal.confirm) are silent no-ops
 // under React 19 without this patch — the app imports it in src/index.tsx,
@@ -90,62 +91,6 @@ const preview: Preview = {
                 desktop: { name: 'Desktop 1440', styles: { width: '1440px', height: '900px' } },
             },
         },
-        options: {
-            storySort: {
-                order: [
-                    'Settings',
-                    [
-                        'Einstellungen',
-                        [
-                            'Globale Konfigurationen',
-                            'Stammdaten & Mehr',
-                            'Erscheinungsbild',
-                            'Rechtliches',
-                            'Einführung Ratsuchende',
-                            'Email Server',
-                            'Systemhinweise',
-                            'Funktionszugriff',
-                            'Funktionalitäten',
-                            '*',
-                        ],
-                        'Träger',
-                        [
-                            'Stammdaten & Mehr',
-                            'Erscheinungsbild',
-                            'Rechtliches',
-                            'Einführung Ratsuchende',
-                            'Email Server',
-                            'Funktionszugriff',
-                            'Funktionalitäten',
-                            '*',
-                        ],
-                        'Beratungsstellen',
-                        ['Stammdaten & Mehr', 'Rechtliches', 'Funktionszugriff', '*'],
-                        'Mein Account',
-                        [
-                            'UserProfile',
-                            'PrivateData',
-                            'RolesAndAssignment',
-                            'SelfConsultantIdentity',
-                            'PasswordChange',
-                            'PasswordChangeCounsellorNotice',
-                            'TwoFactorCard',
-                            'LanguageSettings',
-                            'Absence',
-                            'TourOverviewSection',
-                            'Documentation',
-                            '*',
-                        ],
-                        '*',
-                    ],
-                    'Atoms',
-                    'Molecules',
-                    'Organisms',
-                    'Pages',
-                    '*',
-                ],
-            },
-        },
     },
     loaders: [mswLoader(startStoryWorker)],
     async beforeEach(context) {
@@ -198,5 +143,17 @@ const preview: Preview = {
         ),
     ],
 };
+
+// Vitest only: retain the renderer's ACT-wrapped teardown so each story test can
+// finish its own cleanup. The normal Storybook UI keeps the native renderer.
+// Storybook 11 no longer allows setProjectAnnotations in the Vitest setup file.
+if (import.meta.env.MODE === 'test') {
+    const capturedNativeRenderer: NativeStoryRenderer = async (context, canvas) => {
+        const teardown = await nativeRenderToCanvas(context, canvas);
+        if (typeof teardown !== 'function') throw new Error('Native Storybook renderer returned no teardown');
+        return storyRenderCleanup.retain(teardown);
+    };
+    preview.renderToCanvas = capturedNativeRenderer;
+}
 
 export default preview;
