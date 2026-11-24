@@ -12,7 +12,7 @@ import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 import { applyAdminInvertedTheme, clearAdminInvertedThemeTokens } from '../../utils/applyAdminTheme';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
-import { TeamChatSection } from '../Tenants/AppSettings/PermissionsSettings/TeamChatSection';
+import { TeamChatTile } from '../Tenants/AppSettings/PermissionsSettings/TeamChatTile';
 
 type Language = 'de' | 'en';
 type Scheme = 'light' | 'inverted';
@@ -104,7 +104,7 @@ const TeamFunctionsEverywhere = ({ language }: StoryArgs) => (
         }}
     >
         <Panel caption={CAPTIONS[language].tenant}>
-            <TeamChatSection
+            <TeamChatTile
                 level="tenant"
                 policyOf={() => ({ value: true, mode: 'SUGGESTED', inherited: false })}
                 pending={() => false}
@@ -176,8 +176,10 @@ export const AllPlaces: Story = {
         const canvas = within(canvasElement);
         const counselling = await canvas.findAllByRole('switch', { name: 'Teamberatung' });
         await expect(counselling).toHaveLength(2);
-        // The Team-Chat policy: one switch and one lock ("Anpassbar"/"Vorgabe"), ORISO-Frontend#2491.
-        await expect(await canvas.findAllByRole('button', { name: /^Team-Chat: / })).toHaveLength(2);
+        // The Team-Chat tile carries the shared name; its master is one switch and one lock, ORISO-Frontend#2491.
+        const teamChat = within(await canvas.findByTestId('team-chat-tile'));
+        await expect(teamChat.getByText(String(i18n.t('teamFunctions.chat.name')))).toBeVisible();
+        await expect(teamChat.getAllByRole('button', { name: /^Aktiviert: / })).toHaveLength(2);
         // Read from the locale, not typed again here: the check is "both places show the SAME text".
         await expect(canvas.getAllByText(String(i18n.t('teamFunctions.counselling.description')))).toHaveLength(2);
     },
@@ -188,6 +190,8 @@ export const AllPlacesEnglish: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(await canvas.findAllByRole('switch', { name: 'Team counselling' })).toHaveLength(2);
-        await expect(await canvas.findAllByRole('button', { name: /^Team chat: / })).toHaveLength(2);
+        const teamChat = within(await canvas.findByTestId('team-chat-tile'));
+        await expect(teamChat.getByText('Team chat')).toBeVisible();
+        await expect(teamChat.getAllByRole('button', { name: /^Enabled: / })).toHaveLength(2);
     },
 };
