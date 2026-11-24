@@ -4,16 +4,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { CardGrid } from '../../../components/CardGrid';
 import { snackbar } from '../../../components/Snackbar';
 import { TopicCatalogue, type CatalogueLanguage } from '../../../components/TopicCatalogue';
-import { TopicCatalogueDialog } from '../../../components/TopicCatalogueDialog';
+import { TopicCatalogueEditor } from '../../../components/TopicCatalogueDialog';
 import { TopicRegistrationSwitch } from '../../Topics/List/TopicRegistrationSwitch';
 import { TOPIC_CATALOGUE_KEY, useSaveTopicCatalogue, useTopicCatalogue } from '../../../hooks/useTopicCatalogue';
 import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
-import { withUnplacedTopics } from '../../../components/TopicCatalogue/topicLayout';
 import type { TopicCatalogueDto } from '../../../types/TopicCatalogue';
-import { SOURCE_LANGUAGE, catalogueLanguageCodes, toCatalogueLayout, toCatalogueTopics } from './topicCatalogueMapping';
-
-const UNPLACED_GROUP_ID = 'without-category';
+import { SOURCE_LANGUAGE, catalogueLanguageCodes, toCatalogueTopics } from './topicCatalogueMapping';
 
 const languageLabel = (code: string, uiLanguage: string) => {
     try {
@@ -39,16 +36,6 @@ export const TopicSettingsPage = () => {
     const topics = useMemo(() => toCatalogueTopics(catalogue), [catalogue]);
     const { data: tenantData } = useTenantData();
     const configuredLanguages = tenantData?.settings?.activeLanguages;
-    // Topics in no category stay reachable (and switchable) in a display-only group that is never saved.
-    const layout = useMemo(
-        () =>
-            withUnplacedTopics(
-                toCatalogueLayout(catalogue),
-                topics.map((topic) => topic.id),
-                { id: UNPLACED_GROUP_ID, name: t('topicCatalogue.withoutCategory') },
-            ),
-        [catalogue, topics, t],
-    );
     const languages: CatalogueLanguage[] = useMemo(
         () =>
             catalogueLanguageCodes(catalogue, configuredLanguages).map((code) => ({
@@ -89,29 +76,31 @@ export const TopicSettingsPage = () => {
             {/* /admin/topics sends the platform admin here, so the registration switch must live here too. */}
             <TopicRegistrationSwitch />
             <CardGrid.Item span={3}>
-                <TopicCatalogue
-                    topics={topics}
-                    layout={layout}
-                    isLoading={isLoading}
-                    loadError={isError}
-                    onRetry={() => refetch()}
-                    onEdit={() => setEditing(true)}
-                    onToggleActive={onToggleActive}
-                    pendingTopicIds={pendingTopicIds}
-                    onOpenTopic={() => setEditing(true)}
-                    onAddTopic={() => setEditing(true)}
-                    languages={languages}
-                    sourceLanguage={SOURCE_LANGUAGE}
-                />
-                {/* A running visibility change ends with a reload; the editor waits for it, or its
-                    snapshot would carry the old status and undo the change on save. */}
-                {editing && catalogue && pendingTopicIds.length === 0 && (
-                    <TopicCatalogueDialog
+                {catalogue ? (
+                    // One view: "Bearbeiten" turns on the editing affordances in place, no second layer.
+                    // A running visibility change ends with a reload; edit mode waits for it, or its
+                    // snapshot would carry the old status and undo the change on save.
+                    <TopicCatalogueEditor
+                        variant="inline"
                         catalogue={catalogue}
                         languages={languages}
                         sourceLanguage={SOURCE_LANGUAGE}
+                        editing={editing}
+                        onEdit={() => setEditing(true)}
+                        onCancel={() => setEditing(false)}
                         onSave={onSave}
-                        onClose={() => setEditing(false)}
+                        onToggleActive={onToggleActive}
+                        pendingTopicIds={pendingTopicIds}
+                    />
+                ) : (
+                    <TopicCatalogue
+                        topics={[]}
+                        layout={[]}
+                        isLoading={isLoading}
+                        loadError={isError}
+                        onRetry={() => refetch()}
+                        languages={languages}
+                        sourceLanguage={SOURCE_LANGUAGE}
                     />
                 )}
             </CardGrid.Item>

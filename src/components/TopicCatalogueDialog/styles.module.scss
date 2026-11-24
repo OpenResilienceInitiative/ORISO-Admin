@@ -600,3 +600,24 @@ $amberSoft: #fff3dc;
         padding: 12px;
     }
 }
+
+// Inline on the Settings page: the same sheet, a little taller, in read or edit mode.
+.sheetInline {
+    height: min(78vh, 880px);
+}
+
+.tileStatic {
+    cursor: default;
+}
+
+.categoryName {
+    margin: 0;
+    padding: 4px 0;
+    color: $ink;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.rowReadOnly {
+    padding-left: 20px;
+}
