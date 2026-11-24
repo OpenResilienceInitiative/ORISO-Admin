@@ -90,7 +90,7 @@
     "lint:js": "eslint",
     "lint:oxlint": "node scripts/oxlint-ratchet.mjs",
     "lint:oxlint:update": "node scripts/oxlint-ratchet.mjs --update",
-    "test:oxlint-ratchet": "node --test scripts/oxlint-ratchet.test.mjs",
+    "test:oxlint-ratchet": "node --test scripts/oxlint-ratchet.node-test.mjs",
     "lint:formatting": "prettier . --check --ignore-unknown",
     "lint:formatting:fix": "prettier . --write --ignore-unknown",
     "prettier:css": "prettier **/*.scss --write ",
