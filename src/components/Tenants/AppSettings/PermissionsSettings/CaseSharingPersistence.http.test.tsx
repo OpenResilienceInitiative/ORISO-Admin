@@ -242,3 +242,74 @@ describe('agency case sharing at the HTTP boundary', () => {
         expect(writes.bodies).toHaveLength(0);
     });
 });
+
+describe('case sharing saves keep their own scope', () => {
+    it('leaves the calendar preset out of the platform save', async () => {
+        const bodies: Array<Record<string, unknown>> = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => {
+                const { pathname } = new URL(request.url);
+                if (pathname.endsWith('/controls')) {
+                    if (request.method === 'PUT') bodies.push(await request.json());
+                    return Response.json({
+                        permissionsPageEnabled: true,
+                        permissionPolicies: {},
+                        calendar: { visibility: { value: 'OWN', mode: 'SUGGESTED' } },
+                        caseSharing: { mode: { value: 'CASE_HANDOVER', mode: 'SUGGESTED', inherited: false } },
+                    });
+                }
+                return Response.json({ id: 7, name: 'Synthetic case sharing tenant', settings: {} });
+            }),
+        );
+        mount(<SuperAdminPermissionsSettings tenantId="platform" />);
+        await expectChosen('caseHandover');
+
+        await userEvent.click(await optionSwitch('none'));
+
+        await waitFor(() => expect(bodies).toHaveLength(1));
+        expect(bodies[0]).not.toHaveProperty('calendar');
+        expect(bodies[0]).toHaveProperty('caseSharing');
+    });
+
+    it('does not show a choice queued for one Träger on the next one', async () => {
+        const writes = heldWrites<string>();
+        const stored: Record<string, ApiPolicy> = {
+            '7': { value: 'CASE_HANDOVER', mode: 'SUGGESTED', inherited: false },
+            '8': { value: 'NONE', mode: 'ENFORCED', inherited: true },
+        };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => {
+                const { pathname } = new URL(request.url);
+                const id = pathname.match(/tenantadmin\/(\d+)/)?.[1] ?? '7';
+                if (pathname.endsWith('/permission-policies')) {
+                    const answer = () =>
+                        Response.json({ tenantId: Number(id), policies: {}, caseSharing: { mode: stored[id] } });
+                    if (request.method === 'PUT') return writes.hold(id, answer);
+                    return answer();
+                }
+                return Response.json({ id: Number(id), name: `Synthetic tenant ${id}`, settings: {} });
+            }),
+        );
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        const view = render(
+            <QueryClientProvider client={client}>
+                <TenantPermissionsSettings tenantId="7" />
+            </QueryClientProvider>,
+        );
+        await expectChosen('caseHandover');
+        await userEvent.click(await optionSwitch('teamCounselling'));
+        await waitFor(() => expect(writes.bodies).toEqual(['7']));
+        await expectChosen('teamCounselling');
+
+        view.rerender(
+            <QueryClientProvider client={client}>
+                <TenantPermissionsSettings tenantId="8" />
+            </QueryClientProvider>,
+        );
+
+        await expectChosen('none');
+        expect(await optionSwitch('teamCounselling')).toBeDisabled();
+    });
+});

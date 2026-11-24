@@ -113,7 +113,7 @@ export const AgencyPermissionsSettings = ({
     );
     // ORISO-TenantService#374: the centre's own choice; the AgencyService refuses it against a
     // requirement and answers with the effective mode.
-    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing();
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing(agencyId);
     const handleCaseSharingChange = useCallback(
         (next: PolicyValue<CaseSharingMode>) => {
             // the agency mutation queue keeps the saves in click order

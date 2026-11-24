@@ -304,7 +304,7 @@ export const TenantPermissionsSettings = ({
 
     // Same queue again (ORISO-TenantService#374). Only `caseSharing` goes out; the backend derives
     // caseHandoverEnabled from it, so the switches are read back from the saved answer.
-    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing();
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing(tenantId);
     const handleCaseSharingSave = useCallback(
         (next: PolicyValue<CaseSharingMode>) => {
             const operationGeneration = tenantGeneration.current;

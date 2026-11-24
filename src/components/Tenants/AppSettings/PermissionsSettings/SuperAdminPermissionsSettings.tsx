@@ -188,17 +188,20 @@ export const SuperAdminPermissionsSettings = ({
 
     // Same queue again (ORISO-TenantService#374). The group-chat scope is left out and kept as stored;
     // caseHandoverEnabled follows the mode on the server and is read back from the answer.
-    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing();
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing('platform');
     const handleCaseSharingSave = useCallback(
         (next: PolicyValue<CaseSharingMode>) => {
             const save = policyMutationQueue.current.then(async () => {
                 const confirmed = confirmedPlatformControls.current;
                 if (!confirmed) throw new Error('Platform controls are not loaded');
                 confirmedPlatformControls.current = await updateCalendar.mutateAsync(
-                    withoutInternalGroupChat({
-                        ...confirmed,
-                        caseSharing: { mode: caseSharingPolicyToApi(next) },
-                    }),
+                    // the calendar and group-chat presets are left out and kept as stored
+                    withoutCalendar(
+                        withoutInternalGroupChat({
+                            ...confirmed,
+                            caseSharing: { mode: caseSharingPolicyToApi(next) },
+                        }),
+                    ),
                 );
                 rebuildEffectivePlatformControls();
                 snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 });
