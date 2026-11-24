@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     addStep,
     canMoveBy,
+    moveStep,
     canPreselectTopic,
     duplicateJourney,
     fixLinkSlugs,
@@ -159,13 +160,13 @@ describe('order, kinds and copies (#1566)', () => {
     const idOf = (journey: Journey, core: string) =>
         journey.phases.departure.find((step) => step.core === core)?.id as string;
 
-    it('does not move the postcode below the Beratungsstelle', () => {
+    it('moves the postcode down only together with the Beratungsstelle (Frank, 2026-11-24)', () => {
         const journey = mail();
         const postcode = idOf(journey, 'postcode');
-        const steps = journey.phases.departure;
-        const below = steps[steps.findIndex((step) => step.id === postcode) + 1];
-        expect(below.core).toBe('agency');
-        expect(canMoveBy(journey, 'departure', postcode, 1)).toBe(false);
+        expect(canMoveBy(journey, 'departure', postcode, 1)).toBe(true);
+        const steps = moveStep(journey, 'departure', postcode, 2).phases.departure;
+        const at = steps.findIndex((step) => step.id === postcode);
+        expect(steps[at + 1].core).toBe('agency');
     });
 
     it('does not offer "move up" for the step right after the topic', () => {
