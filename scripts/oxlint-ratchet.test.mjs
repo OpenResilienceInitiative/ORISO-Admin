@@ -1,7 +1,13 @@
 // Regression tests for the Oxlint ratchet gate. Run: npm run test:oxlint-ratchet
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { compareToBaseline, countByFileAndRule, formatBaseline, parseReport } from './oxlint-ratchet.mjs';
+import {
+    compareToBaseline,
+    countByFileAndRule,
+    formatBaseline,
+    parseReport,
+    supportsTypeScriptPlugins,
+} from './oxlint-ratchet.mjs';
 
 const root = '/repo';
 const finding = (file, code) => ({ filename: `${root}/${file}`, code });
@@ -100,5 +106,15 @@ describe('parseReport', () => {
 
     it('throws when Oxlint checked no files', () => {
         assert.throws(() => parseReport(JSON.stringify({ diagnostics: [], number_of_files: 0 })), /checked no files/);
+    });
+});
+
+describe('supportsTypeScriptPlugins', () => {
+    it('accepts Node 22.18 and later, rejects older 22.x', () => {
+        assert.equal(supportsTypeScriptPlugins('22.17.1'), false);
+        assert.equal(supportsTypeScriptPlugins('22.18.0'), true);
+        assert.equal(supportsTypeScriptPlugins('22.23.3'), true);
+        assert.equal(supportsTypeScriptPlugins('24.1.0'), true);
+        assert.equal(supportsTypeScriptPlugins('20.19.0'), false);
     });
 });

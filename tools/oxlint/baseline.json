@@ -62,6 +62,9 @@
 		"anti-slop(no-unknown-parameters)": 1,
 		"anti-slop(no-unsafe-dictionary-type)": 1
 	},
+	"src/api/agency/agencyDeletion.ts": {
+		"anti-slop(require-safety-comment-for-type-assertion)": 1
+	},
 	"src/api/agency/agencyNames.ts": {
 		"anti-slop(no-runtime-typeof)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
@@ -231,6 +234,9 @@
 	"src/api/tenant/createDpaSignInvite.ts": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
 	},
+	"src/api/tenant/deleteTenantData.ts": {
+		"anti-slop(no-unknown-parameters)": 1
+	},
 	"src/api/tenant/getDpaGate.ts": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
 	},
@@ -271,6 +277,15 @@
 	},
 	"src/api/tenant/signDpaAdmin.ts": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
+	},
+	"src/api/tenant/tenantDeletionBlockers.ts": {
+		"anti-slop(no-array-filter-map)": 1,
+		"anti-slop(no-chained-type-assertions)": 1,
+		"anti-slop(no-runtime-typeof)": 2,
+		"anti-slop(no-unknown-parameters)": 2,
+		"anti-slop(no-unknown-returns)": 1,
+		"anti-slop(no-unsafe-dictionary-type)": 1,
+		"anti-slop(require-safety-comment-for-type-assertion)": 3
 	},
 	"src/api/tenant/tenantPermissionPolicies.ts": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 2
@@ -879,6 +894,7 @@
 		"anti-slop(no-unsafe-dictionary-type)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 1,
 		"oxc(no-accumulating-spread)": 1,
+		"promise(no-callback-in-promise)": 1,
 		"react-hooks(exhaustive-deps)": 1,
 		"unicorn(no-useless-fallback-in-spread)": 1
 	},
@@ -886,6 +902,7 @@
 		"anti-slop(no-unsafe-dictionary-type)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 3,
 		"oxc(no-accumulating-spread)": 1,
+		"promise(no-callback-in-promise)": 1,
 		"react(set-state-in-effect)": 1,
 		"react-hooks(exhaustive-deps)": 1,
 		"unicorn(no-useless-fallback-in-spread)": 1
@@ -952,6 +969,9 @@
 		"anti-slop(no-known-value-widening)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 1,
 		"jsx-a11y(prefer-tag-over-role)": 1
+	},
+	"src/components/Tenants/GeneralSettings/components/Languages/index.tsx": {
+		"anti-slop(no-unsafe-dictionary-type)": 1
 	},
 	"src/components/Tenants/GeneralSettings/components/LogoAndFavicon/index.tsx": {
 		"unicorn(no-useless-fallback-in-spread)": 1
@@ -1451,6 +1471,11 @@
 		"react(jsx-key)": 2,
 		"react(set-state-in-effect)": 2
 	},
+	"src/pages/Agency/List/AgencyDeletionModal/index.tsx": {
+		"anti-slop(require-safety-comment-for-type-assertion)": 1,
+		"jsx-a11y(prefer-tag-over-role)": 2,
+		"react(set-state-in-effect)": 1
+	},
 	"src/pages/Agency/List/agencySort.ts": {
 		"anti-slop(no-known-value-widening)": 1
 	},
@@ -1742,6 +1767,9 @@
 		"jsx-a11y(prefer-tag-over-role)": 1,
 		"react(jsx-key)": 2,
 		"react(set-state-in-effect)": 2
+	},
+	"src/pages/Tenants/List/TenantDeleteErrorMessage.tsx": {
+		"jsx-a11y(prefer-tag-over-role)": 2
 	},
 	"src/pages/Tenants/List/index.tsx": {
 		"react-hooks(exhaustive-deps)": 1
