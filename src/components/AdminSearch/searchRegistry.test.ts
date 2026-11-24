@@ -145,3 +145,17 @@ describe('search registry drift', () => {
         expect(bare).toEqual([]);
     });
 });
+
+describe('Team-Chat tile (ORISO-Frontend#2491)', () => {
+    it('indexes the features its dialog offers, so "voice message" also finds it', () => {
+        const teamChat = SEARCH_TILES.find((tile) => tile.id === 'access:team-chat');
+        expect(teamChat?.fieldKeys).toEqual(
+            expect.arrayContaining([
+                'tenants.permissions.feature.voiceMessages',
+                'tenants.permissions.feature.videoCalls',
+                'tenants.permissions.feature.mediaAiScan',
+            ]),
+        );
+        expect(teamChat?.fieldKeys).not.toContain('tenants.permissions.feature.supervision');
+    });
+});

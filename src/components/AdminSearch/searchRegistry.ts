@@ -495,6 +495,8 @@ export const SEARCH_TILES: RegistryTile[] = [
             'tenants.permissions.teamChat.configure',
             'tenants.permissions.teamChat.configureDialogTitle',
             'tenants.permissions.teamChat.afterAccept.label',
+            // The dialog offers the chat features without supervision (TEAM_CHAT_FEATURES).
+            ...WITHOUT_SUPERVISION,
         ],
     }),
 

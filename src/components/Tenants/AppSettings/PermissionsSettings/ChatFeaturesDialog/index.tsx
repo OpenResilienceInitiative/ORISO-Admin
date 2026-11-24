@@ -109,6 +109,8 @@ export const ChatFeaturesDialog = ({
 }: ChatFeaturesDialogProps) => {
     const { t } = useTranslation();
     const [drafts, setDrafts] = useState<Record<string, PolicyValue<boolean>>>({});
+    // Fields whose switching on went through `confirmEnable` in this dialog.
+    const [confirmed, setConfirmed] = useState<ReadonlySet<string>>(new Set());
     const switchable = (feature: ChatFeature) => feature.stored !== false && !unavailableReason(feature);
     // A requirement inherited from above (also one that arrives while the dialog is open) wins over a draft.
     const lockedFromAbove = (field: string) => {
@@ -128,6 +130,8 @@ export const ChatFeaturesDialog = ({
                 .map((feature) => [feature.field, drafts[feature.field]] as const)
                 .filter(([field, next]) => {
                     const current = policyOf(field);
+                    // Never switch on, unconfirmed, what the current policy (also one refreshed while open) has off.
+                    if (confirmEnable[field] && next.value && !current.value && !confirmed.has(field)) return false;
                     return current.value !== next.value || current.mode !== next.mode;
                 }),
         );
@@ -173,8 +177,12 @@ export const ChatFeaturesDialog = ({
                                         [feature.field]: { ...next, inherited: false },
                                     }));
                                 const ask = confirmEnable[feature.field];
-                                if (ask && next.value && !policyFor(feature).value) ask(apply);
-                                else apply();
+                                if (ask && next.value && !policyFor(feature).value) {
+                                    ask(() => {
+                                        setConfirmed((current) => new Set(current).add(feature.field));
+                                        apply();
+                                    });
+                                } else apply();
                             }}
                         />
                     );
