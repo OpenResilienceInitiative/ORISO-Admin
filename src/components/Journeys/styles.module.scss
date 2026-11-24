@@ -467,6 +467,21 @@ ul.tileList {
     color: $error;
 }
 
+/* The greeting step's own words (ORISO-Admin#1660): the level's greeting editor, inline. */
+.greetingTexts {
+    display: flex;
+    flex-direction: column;
+    padding-top: mui.$mui-unit * 2;
+    border-top: 1px solid $outline;
+    gap: mui.$mui-unit;
+
+    h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 24px;
+    }
+}
+
 /* ---- the steps of a phase ---- */
 .steps {
     display: flex;
