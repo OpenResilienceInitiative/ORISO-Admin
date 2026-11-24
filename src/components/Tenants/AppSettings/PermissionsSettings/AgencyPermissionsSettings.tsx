@@ -11,6 +11,12 @@ import { useQueuedPermissionPolicies } from '../../../../hooks/useQueuedPermissi
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { agencyPermissionPolicies } from './agencyPermissionPolicies';
 import {
+    type CaseSharingMode,
+    caseSharingModeToApi,
+    caseSharingPolicyFromApi,
+} from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
+import {
     applyPermissionConstraintsToSettings,
     getRestrictedFields,
     platformPresetValues,
@@ -105,6 +111,22 @@ export const AgencyPermissionsSettings = ({
         confirmedPolicies,
         savePolicy,
     );
+    // ORISO-TenantService#374: the centre's own choice; the AgencyService refuses it against a
+    // requirement and answers with the effective mode.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing(agencyId);
+    const handleCaseSharingChange = useCallback(
+        (next: PolicyValue<CaseSharingMode>) => {
+            // the agency mutation queue keeps the saves in click order
+            const save = updateAgency({ settings: { caseSharingMode: caseSharingModeToApi(next.value) } });
+            trackCaseSharing(next, save);
+            save.then(() =>
+                snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 }),
+            ).catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
+        },
+        [t, trackCaseSharing, updateAgency],
+    );
+    const caseSharingPolicy = agencyData?.settings?.caseSharing;
+
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value) => {
             const field = Array.isArray(fieldPath) ? fieldPath.at(-1) : fieldPath;
@@ -149,6 +171,14 @@ export const AgencyPermissionsSettings = ({
                 permissionPolicies={policies}
                 onPolicyChange={changePolicy}
                 pendingPolicyFields={pendingFields}
+                caseSharing={
+                    caseSharingPolicy
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingChange,
+                          }
+                        : undefined
+                }
             />
             {journeys.dialog}
         </>

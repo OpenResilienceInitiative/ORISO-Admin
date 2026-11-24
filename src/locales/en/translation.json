@@ -4766,6 +4766,7 @@
     "journeys.tile.notLoaded": "The journeys could not be loaded. Reload the page.",
     "journeys.tile.platformFirst": "The platform has not stored its journeys yet. Once it has, you can adapt your steps here.",
     "tenants.permissions.caseSharing.title": "Sharing cases of advice seekers",
+    "tenants.permissions.caseSharing.saved": "Case sharing choice saved.",
     "tenants.permissions.caseSharing.description": "How counsellors look after a case together. Exactly one option applies. Platform and provider can make their choice a requirement; counselling centres then see the other options greyed out.",
     "tenants.permissions.caseSharing.option.caseHandover.label": "Case handover",
     "tenants.permissions.caseSharing.option.caseHandover.description": "A case belongs to one counsellor. For absence, end of responsibility or when advice is needed, it is handed over or shared for a limited time – with the advice seeker's consent, depending on the reason.",

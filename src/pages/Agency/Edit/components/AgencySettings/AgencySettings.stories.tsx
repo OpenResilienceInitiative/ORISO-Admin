@@ -37,7 +37,7 @@ const meta: Meta<typeof AgencySettings> = {
         ),
         withAdminProviders,
     ],
-    args: { isEditMode: true, asFields: true, persistedTeamAgency: false },
+    args: { isEditMode: true, asFields: true },
 };
 
 export default meta;
