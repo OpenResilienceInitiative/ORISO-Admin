@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { caseSharingModeOf, hasBothCaseSharingModes } from './caseSharingMode';
+import {
+    caseSharingModeOf,
+    caseSharingPolicyFromApi,
+    caseSharingPolicyToApi,
+    hasBothCaseSharingModes,
+} from './caseSharingMode';
 
 // ORISO-Admin#1558: team counselling (per Beratungsstelle) and case handover (per Träger) become one choice.
 describe('caseSharingModeOf', () => {
@@ -38,5 +43,29 @@ describe('hasBothCaseSharingModes', () => {
         expect(hasBothCaseSharingModes({ teamAgency: true, caseHandoverEnabled: false })).toBe(false);
         expect(hasBothCaseSharingModes({ teamAgency: false, caseHandoverEnabled: true })).toBe(false);
         expect(hasBothCaseSharingModes({ teamAgency: undefined, caseHandoverEnabled: true })).toBe(false);
+    });
+});
+
+describe('caseSharingPolicyFromApi / caseSharingPolicyToApi (ORISO-TenantService#374)', () => {
+    it('maps every stored mode to the section value and keeps mode and inheritance', () => {
+        expect(caseSharingPolicyFromApi({ value: 'TEAM_COUNSELLING', mode: 'ENFORCED', inherited: true })).toEqual({
+            value: 'teamCounselling',
+            mode: 'ENFORCED',
+            inherited: true,
+        });
+        expect(caseSharingPolicyFromApi({ value: 'CASE_HANDOVER', mode: 'SUGGESTED' })?.value).toBe('caseHandover');
+        expect(caseSharingPolicyFromApi({ value: 'NONE', mode: 'SUGGESTED' })?.value).toBe('none');
+    });
+
+    it('reads an absent or unknown value as not loaded', () => {
+        expect(caseSharingPolicyFromApi(undefined)).toBeUndefined();
+        expect(caseSharingPolicyFromApi({ value: 'SOMETHING_NEW' as never, mode: 'SUGGESTED' })).toBeUndefined();
+    });
+
+    it('never writes the read-only inheritance marker', () => {
+        expect(caseSharingPolicyToApi({ value: 'none', mode: 'ENFORCED', inherited: true })).toEqual({
+            value: 'NONE',
+            mode: 'ENFORCED',
+        });
     });
 });

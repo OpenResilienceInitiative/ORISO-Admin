@@ -4686,6 +4686,7 @@
     "journeys.tile.notLoaded": "Die Reisen konnten nicht geladen werden. Laden Sie die Seite neu.",
     "journeys.tile.platformFirst": "Die Plattform hat die Reisen noch nicht gespeichert. Sobald sie das tut, können Sie hier Ihre Schritte anpassen.",
     "tenants.permissions.caseSharing.title": "Fälle von Ratsuchenden teilen",
+    "tenants.permissions.caseSharing.saved": "Auswahl zum Teilen von Fällen gespeichert.",
     "tenants.permissions.caseSharing.description": "Wie Berater:innen einen Fall gemeinsam betreuen. Es gilt immer genau eine Variante. Plattform und Träger können ihre Wahl als Vorgabe festlegen; Beratungsstellen sehen die anderen Varianten dann ausgegraut.",
     "tenants.permissions.caseSharing.option.caseHandover.label": "Fallübergabe",
     "tenants.permissions.caseSharing.option.caseHandover.description": "Ein Fall gehört einer Berater:in. Bei Abwesenheit, Ende der Zuständigkeit oder wenn Rat gebraucht wird, wird er übergeben oder zeitlich begrenzt geteilt – je nach Grund mit Zustimmung der ratsuchenden Person.",
