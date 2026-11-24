@@ -83,6 +83,7 @@ const preview: Preview = {
         viewport: {
             options: {
                 phoneSmall: { name: 'Phone 360', styles: { width: '360px', height: '740px' } },
+                mobile1: { name: 'Mobile 320 (smallest)', styles: { width: '320px', height: '568px' } },
                 phone: { name: 'Phone 390', styles: { width: '390px', height: '844px' } },
                 tablet: { name: 'Tablet 768', styles: { width: '768px', height: '1024px' } },
                 responsive640: { name: 'Responsive 640', styles: { width: '640px', height: '900px' } },

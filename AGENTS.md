@@ -119,3 +119,7 @@ For every change to how the UI looks (you create, change, or delete a component,
 4. `ui-review`: publish a review that shows the user what changed, as your last step. Also when the user asks to see components or stories.
 
 <!-- END:storybook-skills -->
+
+Before opening a PR, the repository gate still applies: the `test-stories` step above is the
+per-change loop; `npm run test:storybook` and the other validation commands in this file are the
+final check.
