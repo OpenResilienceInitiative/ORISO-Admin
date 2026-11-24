@@ -85,6 +85,18 @@ const InlineHarness = ({ startEditing = false }: { startEditing?: boolean }) => 
                 onCancel={() => setEditing(false)}
                 onSave={async () => setEditing(false)}
                 onToggleActive={() => undefined}
+                onTranslate={async ({ targetLangs, texts }) => ({
+                    provider: 'story',
+                    model: 'story',
+                    translations: Object.fromEntries(
+                        targetLangs.map((code) => [
+                            code,
+                            Object.fromEntries(
+                                Object.entries(texts).map(([key, value]) => [key, `${value} [${code}]`]),
+                            ),
+                        ]),
+                    ),
+                })}
             />
         </div>
     );
@@ -111,5 +123,17 @@ export const OnThePageEditing: Story = {
         await expect(canvas.queryByRole('dialog')).toBeNull();
         await expect(canvas.getAllByRole('button', { name: 'Kategorie nach unten' }).length).toBeGreaterThan(0);
         await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    },
+};
+
+/** The AI button of the Journeys: fills every missing text, the translate mark shows which texts a machine wrote. */
+export const OnThePageTranslated: Story = {
+    render: () => <InlineHarness />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten|Edit/ }));
+        await userEvent.click(canvas.getByRole('button', { name: /KI|AI/ }));
+        await userEvent.click(canvas.getAllByRole('button', { name: /Englisch|English/ })[0]);
+        await expect((await canvas.findAllByRole('img', { name: /Maschinell|Machine/ })).length).toBeGreaterThan(0);
     },
 };

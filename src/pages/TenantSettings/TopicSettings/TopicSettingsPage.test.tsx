@@ -279,3 +279,56 @@ it('says the name is taken when the service rejects a rename with 409, and keeps
     expect(await screen.findByRole('alert')).toHaveTextContent('Diesen Namen hat schon ein anderes Thema');
     expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
 });
+
+it('fills missing translations with AI in edit mode, marks them and saves them', async () => {
+    let asked: { targetLangs: string[]; texts: Record<string, string> } | undefined;
+    server.use(
+        http.post('*/service/tenantadmin/translate', async ({ request }) => {
+            asked = (await request.json()) as typeof asked;
+            const fr = Object.fromEntries(Object.entries(asked!.texts).map(([key, value]) => [key, `${value} (fr)`]));
+            return HttpResponse.json({ translations: { fr }, provider: 'openrouter', model: 'm' });
+        }),
+    );
+    showTab(['de', 'en', 'fr']);
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    expect(screen.queryByRole('button', { name: 'Fehlende Texte mit KI übersetzen' })).toBeNull();
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+    await waitFor(() => expect(asked).toBeDefined());
+    expect(asked!.targetLangs).toEqual(['fr']);
+    expect(asked!.texts['topicName:14']).toBe('Schulden');
+    expect(await screen.findByText(/Texte übersetzt/)).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: /Französisch/ }));
+    expect(groupItems('1')[1]).toContain('Schulden (fr)');
+    expect(screen.getAllByRole('img', { name: 'Maschinell übersetzt, noch nicht geprüft' }).length).toBeGreaterThan(0);
+
+    await u.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(savedCatalogue).toBeDefined());
+    const saved = savedCatalogue as typeof catalogue;
+    expect(saved.topics.find((topic) => topic.id === 14)?.name).toEqual({
+        de: 'Schulden',
+        en: 'Debt',
+        fr: 'Schulden (fr)',
+    });
+    expect(saved.groups[0].name).toEqual({ de: 'Alter', en: 'Ageing, Older Adults', fr: 'Alter (fr)' });
+});
+
+it('says so when the AI translation has no API key', async () => {
+    server.use(
+        http.post('*/service/tenantadmin/translate', () =>
+            HttpResponse.json({ errorCode: 'TRANSLATION_NOT_CONFIGURED' }, { status: 400 }),
+        ),
+    );
+    showTab(['de', 'en', 'fr']);
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('API-Schlüssel fehlt');
+});

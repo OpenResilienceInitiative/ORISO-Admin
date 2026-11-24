@@ -621,3 +621,32 @@ $amberSoft: #fff3dc;
 .rowReadOnly {
     padding-left: 20px;
 }
+
+// The translate mark of the Journeys: a text a machine wrote and nobody has checked yet.
+.machineMark {
+    display: inline-flex;
+    margin-left: 6px;
+    color: $brand;
+    vertical-align: middle;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.languageMachine {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #fbe9ea;
+    color: $brand;
+    font-size: 11px;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+}

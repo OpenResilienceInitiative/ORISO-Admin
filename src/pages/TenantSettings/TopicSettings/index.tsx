@@ -5,6 +5,7 @@ import { CardGrid } from '../../../components/CardGrid';
 import { snackbar } from '../../../components/Snackbar';
 import { TopicCatalogue, type CatalogueLanguage } from '../../../components/TopicCatalogue';
 import { TopicCatalogueEditor } from '../../../components/TopicCatalogueDialog';
+import { adminTranslator } from '../../../components/Journeys/journeyTranslation';
 import { TopicRegistrationSwitch } from '../../Topics/List/TopicRegistrationSwitch';
 import { TOPIC_CATALOGUE_KEY, useSaveTopicCatalogue, useTopicCatalogue } from '../../../hooks/useTopicCatalogue';
 import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
@@ -91,6 +92,7 @@ export const TopicSettingsPage = () => {
                         onSave={onSave}
                         onToggleActive={onToggleActive}
                         pendingTopicIds={pendingTopicIds}
+                        onTranslate={adminTranslator}
                     />
                 ) : (
                     <TopicCatalogue

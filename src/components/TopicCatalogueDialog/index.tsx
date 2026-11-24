@@ -13,11 +13,14 @@ import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS } from '../../api/fetchData';
+import type { TranslateRequest, TranslateResponse } from '../../types/translation';
 import type { LocalizedText, TopicCatalogueDto, TopicCatalogueTopicDto } from '../../types/TopicCatalogue';
 import { Card } from '../Card';
 import { EditButton } from '../EditButton';
 import { M3Button } from '../M3Button';
 import { M3Switch } from '../M3Switch';
+import { TranslateIcon } from '../Journeys/TranslateIcon';
+import { plain } from '../Journeys/stepText';
 import { DialogButton, Modal } from '../Modal';
 import { ICON_MAX_BYTES, ICON_TYPES } from '../TopicCatalogue/TopicIconSlot';
 import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
@@ -47,7 +50,19 @@ export interface TopicCatalogueEditorProps extends Omit<TopicCatalogueDialogProp
     pendingTopicIds?: number[];
     /** `modal` (default) wraps the editor in a dialog; `inline` renders it as the page card. */
     variant?: 'modal' | 'inline';
+    /**
+     * Machine translation (POST /tenantadmin/translate). Edit mode then offers one button that fills
+     * every missing text in every language; machine texts carry the translate mark until someone
+     * types over them. Without it there is no AI button.
+     */
+    onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
 }
+
+/** Keys the translation service gets back unchanged, and the machine marks are built from. */
+const topicNameKey = (id: number) => `topicName:${id}`;
+const topicDescriptionKey = (id: number) => `topicDescription:${id}`;
+const groupNameKey = (key: string) => `group:${key}`;
+const mark = (lang: string, key: string) => `${lang}|${key}`;
 
 interface DraftGroup {
     key: string;
@@ -189,6 +204,7 @@ export const TopicCatalogueEditor = ({
     onToggleActive,
     pendingTopicIds = [],
     variant = 'modal',
+    onTranslate,
 }: TopicCatalogueEditorProps) => {
     const { t } = useTranslation();
     const [lang, setLang] = useState(sourceLanguage);
@@ -211,11 +227,23 @@ export const TopicCatalogueEditor = ({
     const drag = useRef<DragPayload | null>(null);
     const nextTempId = useRef(-1);
     const nextGroupKey = useRef(1);
+    // Machine texts as `lang|key`. The service does not store them, so they live as long as the page.
+    const [machine, setMachine] = useState<Set<string>>(() => new Set());
+    const savedMachine = useRef<Set<string>>(new Set());
+    const [translating, setTranslating] = useState(false);
+    const [note, setNote] = useState<string | null>(null);
+    // Each start or end of edit mode is a new session; a translation answering later belongs to the old one.
+    const session = useRef(0);
+    const latest = useRef({ topics, groups });
+    latest.current = { topics, groups };
 
     // Outside edit mode the view follows the saved catalogue: a new answer (a visibility switch,
     // a save) and a cancelled edit both replace the draft. Language and folded categories stay.
     useEffect(() => {
+        session.current += 1;
+        setNote(null);
         if (editing) return;
+        setMachine(new Set(savedMachine.current));
         setTopics(draftTopics(catalogue));
         setGroups(draftGroups(catalogue));
         setChangedTopicIds(new Set());
@@ -249,14 +277,114 @@ export const TopicCatalogueEditor = ({
         setDirty(true);
         setProblem(null);
     };
+    const isMachine = (key: string) => lang !== sourceLanguage && machine.has(mark(lang, key));
+    /** Someone wrote over a machine text: it is theirs now. */
+    const unmark = (key: string) =>
+        setMachine((marks) => {
+            if (!marks.has(mark(lang, key))) return marks;
+            const next = new Set(marks);
+            next.delete(mark(lang, key));
+            return next;
+        });
+    const machineMark = (key: string) =>
+        isMachine(key) && (
+            <span
+                className={styles.machineMark}
+                role="img"
+                aria-label={t('topicCatalogue.machineTranslated')}
+                title={t('topicCatalogue.machineTranslated')}
+            >
+                <TranslateIcon />
+            </span>
+        );
 
     const patchTopic = (id: number, patch: Partial<DraftTopic>) => {
         setTopics((all) => all.map((topic) => (topic.id === id ? { ...topic, ...patch } : topic)));
         setChangedTopicIds((ids) => new Set(ids).add(id));
         touch();
     };
-    const setTopicText = (topic: DraftTopic, field: 'name' | 'description', value: string) =>
+    const setTopicText = (topic: DraftTopic, field: 'name' | 'description', value: string) => {
+        unmark(field === 'name' ? topicNameKey(topic.id) : topicDescriptionKey(topic.id));
         patchTopic(topic.id, { [field]: { ...topic[field], [lang]: value } });
+    };
+
+    const translateMissing = async () => {
+        if (!onTranslate || translating) return;
+        const targets = languages.map(({ code }) => code).filter((code) => code !== sourceLanguage);
+        const texts: Record<string, string> = {};
+        const wanted: Record<string, string[]> = {};
+        const ask = (key: string, value: LocalizedText | undefined) => {
+            const source = text(value, sourceLanguage).trim();
+            const missing = targets.filter((code) => !text(value, code).trim());
+            if (!source || missing.length === 0) return;
+            texts[key] = source;
+            wanted[key] = missing;
+        };
+        topics.forEach((topic) => {
+            ask(topicNameKey(topic.id), topic.name);
+            ask(topicDescriptionKey(topic.id), topic.description);
+        });
+        groups.forEach((group) => ask(groupNameKey(group.key), group.name));
+        if (Object.keys(texts).length === 0) {
+            setNote(t('topicCatalogue.translateNothing'));
+            return;
+        }
+        const targetLangs = targets.filter((code) => Object.values(wanted).some((missing) => missing.includes(code)));
+        const started = session.current;
+        setTranslating(true);
+        setProblem(null);
+        setNote(null);
+        try {
+            const { translations } = await onTranslate({ sourceLang: sourceLanguage, targetLangs, texts });
+            if (started !== session.current) return;
+            // Fill only what is still empty, and only where the source text is still the one translated.
+            const marks: string[] = [];
+            const fill = (key: string, value: LocalizedText) => {
+                if (text(value, sourceLanguage).trim() !== texts[key]) return value;
+                let next = value;
+                (wanted[key] ?? []).forEach((code) => {
+                    const translated = plain(translations[code]?.[key]);
+                    if (!translated || text(next, code).trim()) return;
+                    next = { ...next, [code]: translated };
+                    marks.push(mark(code, key));
+                });
+                return next;
+            };
+            const { topics: nowTopics, groups: nowGroups } = latest.current;
+            const filledIds: number[] = [];
+            const nextTopics = nowTopics.map((topic) => {
+                const name = fill(topicNameKey(topic.id), topic.name);
+                const description = fill(topicDescriptionKey(topic.id), topic.description);
+                if (name === topic.name && description === topic.description) return topic;
+                filledIds.push(topic.id);
+                return { ...topic, name, description };
+            });
+            const nextGroups = nowGroups.map((group) => {
+                const name = fill(groupNameKey(group.key), group.name);
+                return name === group.name ? group : { ...group, name };
+            });
+            if (marks.length > 0) {
+                setTopics(nextTopics);
+                setGroups(nextGroups);
+                setChangedTopicIds((ids) => new Set([...ids, ...filledIds]));
+                setMachine((current) => new Set([...current, ...marks]));
+                touch();
+            }
+            setNote(t('topicDialog.translateDone', { count: marks.length }));
+        } catch (error) {
+            if (started !== session.current) return;
+            const code = (error as { errorCode?: string } | undefined)?.errorCode;
+            setProblem(
+                t(
+                    code === 'TRANSLATION_NOT_CONFIGURED'
+                        ? 'topicCatalogue.translateNotConfigured'
+                        : 'topicCatalogue.translateError',
+                ),
+            );
+        } finally {
+            setTranslating(false);
+        }
+    };
 
     const patchGroup = (key: string, patch: Partial<DraftGroup>) => {
         setGroups((all) => all.map((group) => (group.key === key ? { ...group, ...patch } : group)));
@@ -386,6 +514,7 @@ export const TopicCatalogueEditor = ({
         setProblem(null);
         try {
             await onSave(toSaveBody());
+            savedMachine.current = new Set(machine);
             setDirty(false);
         } catch (error) {
             const nameTaken = error instanceof Error && error.message === FETCH_ERRORS.CONFLICT;
@@ -423,6 +552,7 @@ export const TopicCatalogueEditor = ({
                             <span className={styles.fieldHead}>
                                 <span id={`topic-${topic.id}-name-label`}>{t('topicDialog.name')}</span>
                                 {lang !== sourceLanguage && !text(topic.name, lang) && missingTag}
+                                {machineMark(topicNameKey(topic.id))}
                             </span>
                             <input
                                 aria-labelledby={`topic-${topic.id}-name-label`}
@@ -438,6 +568,7 @@ export const TopicCatalogueEditor = ({
                                     {t('topicDialog.descriptionField')}
                                 </span>
                                 {lang !== sourceLanguage && !text(topic.description, lang) && missingTag}
+                                {machineMark(topicDescriptionKey(topic.id))}
                             </span>
                             <textarea
                                 aria-labelledby={`topic-${topic.id}-description-label`}
@@ -486,7 +617,10 @@ export const TopicCatalogueEditor = ({
         const tileContent = (
             <>
                 <IconSlot icon={topic.icon} size="medium" label={name} />
-                <span className={styles.tileName}>{name}</span>
+                <span className={styles.tileName}>
+                    {name}
+                    {machineMark(topicNameKey(topic.id))}
+                </span>
                 {lang !== sourceLanguage && (!text(topic.name, lang) || !text(topic.description, lang)) && (
                     <span className={styles.missingDot} title={t('topicDialog.translationMissing')} />
                 )}
@@ -611,18 +745,23 @@ export const TopicCatalogueEditor = ({
                                     value={text(group.name, lang)}
                                     placeholder={text(group.name, sourceLanguage) || t('topicDialog.categoryName')}
                                     maxLength={200}
-                                    onChange={(event) =>
-                                        patchGroup(group.key, { name: { ...group.name, [lang]: event.target.value } })
-                                    }
+                                    onChange={(event) => {
+                                        unmark(groupNameKey(group.key));
+                                        patchGroup(group.key, { name: { ...group.name, [lang]: event.target.value } });
+                                    }}
                                 />
                                 <EditOutlinedIcon aria-hidden className={styles.pen} />
                             </div>
                         ) : (
-                            <h3 className={styles.categoryName}>{name}</h3>
+                            <h3 className={styles.categoryName}>
+                                {name}
+                                {machineMark(groupNameKey(group.key))}
+                            </h3>
                         )}
                         <div className={styles.meta}>
                             {t('topicDialog.topicCount', { count: group.topicIds.length })}
                             {lang !== sourceLanguage && !text(group.name, lang) && missingTag}
+                            {editing && machineMark(groupNameKey(group.key))}
                         </div>
                     </div>
                     {editing && (
@@ -699,8 +838,14 @@ export const TopicCatalogueEditor = ({
                                     {editing && <DragIndicatorIcon aria-hidden className={styles.rowHandle} />}
                                     <IconSlot icon={topic.icon} size="large" label={topicName} />
                                     <div className={styles.rowText}>
-                                        <strong>{topicName}</strong>
-                                        <span>{shown(topic.description)}</span>
+                                        <strong>
+                                            {topicName}
+                                            {machineMark(topicNameKey(topic.id))}
+                                        </strong>
+                                        <span>
+                                            {shown(topic.description)}
+                                            {machineMark(topicDescriptionKey(topic.id))}
+                                        </span>
                                     </div>
                                     {!editing && visibilitySwitch(topic, topicName)}
                                     {editing && (
@@ -770,6 +915,7 @@ export const TopicCatalogueEditor = ({
                 <nav aria-label={t('topicDialog.language')} className={styles.languages}>
                     {languages.map(({ code, label }) => {
                         const missing = missingPerLanguage[code] ?? 0;
+                        const machineCount = [...machine].filter((entry) => entry.startsWith(`${code}|`)).length;
                         return (
                             <button
                                 key={code}
@@ -787,10 +933,30 @@ export const TopicCatalogueEditor = ({
                                         {missing}
                                     </span>
                                 )}
+                                {machineCount > 0 && (
+                                    <span
+                                        className={styles.languageMachine}
+                                        title={t('topicDialog.machineCount', { count: machineCount })}
+                                    >
+                                        <TranslateIcon />
+                                        {machineCount}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}
                 </nav>
+                {editing && onTranslate && (
+                    <M3Button
+                        variant="tonal"
+                        icon={<TranslateIcon />}
+                        loading={translating}
+                        disabled={saving}
+                        onClick={translateMissing}
+                    >
+                        {t('topicCatalogue.translate')}
+                    </M3Button>
+                )}
             </div>
             <div className={styles.columns}>
                 <aside className={styles.pool}>
@@ -852,7 +1018,9 @@ export const TopicCatalogueEditor = ({
             {problem}
         </span>
     ) : (
-        <span className={styles.footerHint}>{dirty ? t('topicDialog.unsaved') : ''}</span>
+        <span className={styles.footerHint} role="status">
+            {note ?? (dirty ? t('topicDialog.unsaved') : '')}
+        </span>
     );
 
     if (variant === 'inline') {
