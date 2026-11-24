@@ -18,6 +18,7 @@ import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
+import { TenantDeleteErrorMessage } from '../../Tenants/List/TenantDeleteErrorMessage';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
@@ -170,9 +171,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             notification.success({ message: t('tenants.list.deleteMessage.success') });
             refetch();
         },
-        onError: () => {
+        onError: (error) => {
             notification.error({
-                description: t('tenants.list.deleteMessage.error.description'),
+                description: <TenantDeleteErrorMessage error={error} />,
                 message: t('tenants.list.deleteMessage.error.title'),
             });
         },

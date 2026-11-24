@@ -625,7 +625,14 @@ export const PermissionsSettingsView = ({
                         )}
                         <div className={styles.tileSections}>
                             {renderJourneys && (
-                                <TileSections.Section wide id={`${card.key}-journeys`} title={t('journeys.title')}>
+                                // ORISO-Frontend#2494 (Frank, 2026-11-24): the journeys start folded; the admin opens them.
+                                <TileSections.Section
+                                    wide
+                                    id={`${card.key}-journeys`}
+                                    title={t('journeys.title')}
+                                    collapsible
+                                    defaultOpen={false}
+                                >
                                     {renderJourneys(card.key)}
                                 </TileSections.Section>
                             )}

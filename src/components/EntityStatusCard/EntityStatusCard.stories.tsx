@@ -13,6 +13,7 @@ import { AgencyPageEdit } from '../../pages/Agency/Edit';
 import { GeneralTenantSettings } from '../../pages/Tenants/Edit/General';
 import { TenantAdminEditOrAdd } from '../../pages/users/TenantAdminEdit';
 import { contactPersonReadHandlers } from '../../utils/storybook/contactPersonStoryHandlers';
+import { SUPPORTED_LANGUAGES } from '../../utils/language';
 
 const account = {
     accountId: 'account-1197',
@@ -659,7 +660,9 @@ export const CentreDetailsMobile: Story = {
             (client) => {
                 client.setQueryData(['AGENCY', '7'], centreFixture);
                 client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-                client.setQueryData(['ALL_TOPICS', true, 'fail-closed'], []);
+                SUPPORTED_LANGUAGES.forEach((language) =>
+                    client.setQueryData(['ALL_TOPICS', true, language, 'fail-closed'], []),
+                );
                 client.setQueryData(['TRAEGER_DPO', 1], null);
             },
         ),
@@ -847,7 +850,10 @@ const renderTopiclessCentre = (topicsLoaded = true) =>
         (client) => {
             client.setQueryData(['AGENCY', '7'], topiclessCentre);
             client.setQueryData(['AGENCY_POST_CODES', '7'], []);
-            if (topicsLoaded) client.setQueryData(['ALL_TOPICS', true, 'fail-closed'], [offeredTopic]);
+            if (topicsLoaded)
+                SUPPORTED_LANGUAGES.forEach((language) =>
+                    client.setQueryData(['ALL_TOPICS', true, language, 'fail-closed'], [offeredTopic]),
+                );
             client.setQueryData(['TRAEGER_DPO', 1], null);
         },
     );

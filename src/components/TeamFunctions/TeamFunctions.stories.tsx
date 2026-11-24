@@ -29,8 +29,8 @@ interface StoryArgs {
  *
  * | Function | Saved key | Set at |
  * | --- | --- | --- |
- * | Teamberatung / Team counselling | `teamAgency` | Beratungsstelle: create form and Stammdaten → Einstellungen |
- * | Team-Chat / Team chat | `featureTeamDiscussionEnabled` (policy) | Platform, Träger and Beratungsstelle: Funktionszugriff → Mail Beratung → Team-Chat (ORISO-Admin#1577, ORISO-Frontend#2491) |
+ * | Teamberatung / Team counselling | `caseSharing` mode | Platform, Träger and Beratungsstelle: Funktionszugriff → Mail Beratung → Fälle teilen (ORISO-Frontend#2494). No longer in the create form or Stammdaten (Frank, 2026-11-24); the two Beratungsstelle panels below prove that. |
+ * | Team-Chat / Team chat | `featureTeamDiscussionEnabled` (policy) | Platform, Träger and Beratungsstelle: Funktionszugriff → own Team-Chat tile (ORISO-Admin#1577, ORISO-Admin#1640, ORISO-Frontend#2491) |
  *
  * The `scheme` control (light / inverted) previews the experimental inverted scheme; it has no story of its
  * own because several existing Admin cards are not legible in it yet (the product has no dark mode).
@@ -113,12 +113,12 @@ const TeamFunctionsEverywhere = ({ language }: StoryArgs) => (
         </Panel>
         <Panel caption={CAPTIONS[language].agencyEdit}>
             <AgencyForm teamAgency>
-                <AgencySettings isEditMode persistedTeamAgency />
+                <AgencySettings isEditMode />
             </AgencyForm>
         </Panel>
         <Panel caption={CAPTIONS[language].agencyCreate}>
             <AgencyForm teamAgency={false}>
-                <AgencySettings isEditMode={false} persistedTeamAgency={false} />
+                <AgencySettings isEditMode={false} />
             </AgencyForm>
         </Panel>
     </div>
@@ -174,14 +174,12 @@ type Story = StoryObj<typeof meta>;
 export const AllPlaces: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const counselling = await canvas.findAllByRole('switch', { name: 'Teamberatung' });
-        await expect(counselling).toHaveLength(2);
+        // ORISO-Frontend#2494: Teamberatung is chosen in Funktionszugriff only, not in the centre's forms.
+        await expect(canvas.queryAllByRole('switch', { name: 'Teamberatung' })).toHaveLength(0);
         // The Team-Chat tile carries the shared name; its master is one switch and one lock, ORISO-Frontend#2491.
         const teamChat = within(await canvas.findByTestId('team-chat-tile'));
         await expect(teamChat.getByText(String(i18n.t('teamFunctions.chat.name')))).toBeVisible();
         await expect(teamChat.getAllByRole('button', { name: /^Aktiviert: / })).toHaveLength(2);
-        // Read from the locale, not typed again here: the check is "both places show the SAME text".
-        await expect(canvas.getAllByText(String(i18n.t('teamFunctions.counselling.description')))).toHaveLength(2);
     },
 };
 
@@ -189,9 +187,9 @@ export const AllPlacesEnglish: Story = {
     args: { language: 'en' },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findAllByRole('switch', { name: 'Team counselling' })).toHaveLength(2);
         const teamChat = within(await canvas.findByTestId('team-chat-tile'));
         await expect(teamChat.getByText('Team chat')).toBeVisible();
         await expect(teamChat.getAllByRole('button', { name: /^Enabled: / })).toHaveLength(2);
+        await expect(canvas.queryAllByRole('switch', { name: 'Team counselling' })).toHaveLength(0);
     },
 };

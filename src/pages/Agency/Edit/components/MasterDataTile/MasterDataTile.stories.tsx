@@ -43,7 +43,6 @@ const meta = {
         initialValues,
         onSave: () => undefined,
         departmentFieldRequest: 0,
-        persistedTeamAgency: false,
     },
     decorators: [
         (Story) => {
@@ -71,6 +70,16 @@ export const Editing: Story = {
         const canvas = within(canvasElement);
         await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten/ }));
         await expect(await canvas.findByRole('button', { name: /Speichern/ })).toBeVisible();
+    },
+};
+
+/** ORISO-Frontend#2494: no Teamberatung switch in master data; it is chosen in Funktionszugriff. */
+export const NoTeamCounsellingSwitch: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten/ }));
+        await expect(await canvas.findByRole('button', { name: /Speichern/ })).toBeVisible();
+        await expect(canvas.queryByRole('switch', { name: /Teamberatung/ })).toBeNull();
     },
 };
 

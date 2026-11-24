@@ -459,7 +459,14 @@ export const SEARCH_TILES: RegistryTile[] = [
         PERMISSIONS,
         `${CHAT}/chatTypeCards.ts`,
         {
-            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
+            fieldKeys: [
+                ...FEATURE_LABELS,
+                ...NOTIFICATION_LABELS,
+                // ORISO-Frontend#2494: Teamberatung is chosen here only, as one case sharing option.
+                // Team-Chat has its own tile since ORISO-Admin#1640.
+                'tenants.permissions.caseSharing.title',
+                'teamFunctions.counselling.name',
+            ],
         },
     ),
     tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
@@ -554,7 +561,6 @@ export const SEARCH_TILES: RegistryTile[] = [
                 'agency.form.registrationSettings.onlineDescription',
                 'agency.form.registrationSettings.postCodeTitle',
                 'agency.edit.settings.title',
-                'teamFunctions.counselling.name',
                 'agency.edit.general.more_settings.tenant.title',
                 'agency.edit.settings.departments',
                 'agency.form.settings.counsellorTopicPermission.title',

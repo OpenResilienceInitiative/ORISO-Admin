@@ -26,7 +26,7 @@ interface TileSectionProps {
     pictureBeside?: boolean;
     /** Spans every column of the tile, for a panel that reads better wide and short (e.g. a status). */
     wide?: boolean;
-    /** Folds up to its heading (open at first). For long tiles such as Funktionszugriff (ORISO-Admin#1558). */
+    /** Folds up to its heading, open at first unless `defaultOpen` is false. For long tiles such as Funktionszugriff (ORISO-Admin#1558). */
     collapsible?: boolean;
     defaultOpen?: boolean;
     /** A page that explains the topic (e.g. a feature page on ORISO Understand); opens in a new tab. */
@@ -75,8 +75,9 @@ const TileSection = ({
                                 aria-controls={bodyId}
                                 onClick={() => setOpen(!open)}
                             >
-                                <span id={headingId}>{title}</span>
+                                {/* ORISO-Frontend#2494 (Frank, 2026-11-24): the fold icon leads the heading. */}
                                 <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                                <span id={headingId}>{title}</span>
                             </button>
                         ) : (
                             <span id={headingId}>{title}</span>
