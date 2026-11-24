@@ -23,3 +23,7 @@ coverage
 # Generated verification evidence and local agent execution notes
 verification-artifacts
 .superpowers
+
+# Vendored anti-slop plugin and the generated Oxlint baseline.
+tools/oxlint/anti-slop
+tools/oxlint/baseline.json
