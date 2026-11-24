@@ -575,10 +575,6 @@ const withPhase = (journey: Journey, phase: JourneyPhase, steps: JourneyStep[]):
     phases: { ...journey.phases, [phase]: steps },
 });
 
-/**
- * Puts a step at `toIndex` of its phase. Must steps do not move, and because only the other steps
- * move, the must steps always keep their order among themselves.
- */
 /** Nothing goes before "choose a topic": in the registration the topic picks the journey. */
 export const firstFreeIndex = (steps: JourneyStep[]) => (steps[0]?.core === 'topic' ? 1 : 0);
 
@@ -594,16 +590,108 @@ export const hasValidOrder = (steps: JourneyStep[]) => {
     return postcode < 0 || agency < 0 || postcode < agency;
 };
 
-export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, toIndex: number): Journey => {
-    const steps = journey.phases[phase];
+/** Why a step cannot go where it was moved; `edge` is a move that changes nothing. */
+export type MoveRefusal = 'mustStep' | 'topicFirst' | 'pairTogether' | 'edge';
+
+type MovePlan = { ok: true; steps: JourneyStep[] } | { ok: false; reason: MoveRefusal };
+
+const isPairPart = (step: JourneyStep) => step.core === 'postcode' || step.core === 'agency';
+
+/** Postcode and Beratungsstelle, when the phase has both: they move as one block (Frank, 2026-11-24). */
+const pairOf = (steps: JourneyStep[]) => {
+    const postcode = steps.find((step) => step.core === 'postcode');
+    const agency = steps.find((step) => step.core === 'agency');
+    return postcode && agency ? { postcode, agency } : undefined;
+};
+
+const isPairAdjacent = (steps: JourneyStep[]) => {
+    const postcode = steps.findIndex((step) => step.core === 'postcode');
+    return postcode >= 0 && steps[postcode + 1]?.core === 'agency';
+};
+
+/** The ids that move when `stepId` moves: the pair together, every other step alone. */
+export const movesWith = (steps: JourneyStep[], stepId: string): string[] => {
+    const step = steps.find((candidate) => candidate.id === stepId);
+    const pair = pairOf(steps);
+    return step && pair && isPairPart(step) ? [pair.postcode.id, pair.agency.id] : [stepId];
+};
+
+const sameOrder = (a: JourneyStep[], b: JourneyStep[]) => a.every((step, index) => step.id === b[index]?.id);
+
+/**
+ * Moves postcode and Beratungsstelle together. `toIndex` is read like a single move: going up, the
+ * pair lands before the step now at `toIndex`; going down, after it. A target inside the pair
+ * itself (the arrow of the lower card going up) means the step next to the pair.
+ */
+const planPairMove = (
+    steps: JourneyStep[],
+    from: number,
+    toIndex: number,
+    pair: { postcode: JourneyStep; agency: JourneyStep },
+): MovePlan => {
+    const up = toIndex < from;
+    const blockStart = Math.min(steps.indexOf(pair.postcode), steps.indexOf(pair.agency));
+    const blockEnd = Math.max(steps.indexOf(pair.postcode), steps.indexOf(pair.agency));
+    let anchorIndex = toIndex;
+    if (steps[anchorIndex] && isPairPart(steps[anchorIndex])) anchorIndex = up ? blockStart - 1 : blockEnd + 1;
+    const rest = steps.filter((step) => !isPairPart(step));
+    const anchor = steps[anchorIndex];
+    let insertAt: number;
+    if (anchorIndex < 0) insertAt = 0;
+    else if (!anchor) insertAt = rest.length;
+    else insertAt = rest.indexOf(anchor) + (up ? 0 : 1);
+    const firstFree = firstFreeIndex(rest);
+    const wantedBeforeTopic = insertAt < firstFree;
+    const next = [...rest];
+    next.splice(Math.max(firstFree, insertAt), 0, pair.postcode, pair.agency);
+    if (sameOrder(next, steps)) return { ok: false, reason: wantedBeforeTopic ? 'topicFirst' : 'edge' };
+    return { ok: true, steps: next };
+};
+
+const planMove = (steps: JourneyStep[], stepId: string, toIndex: number): MovePlan => {
     const from = steps.findIndex((step) => step.id === stepId);
-    if (from < 0 || !canMoveStep(steps[from])) return journey;
-    const target = Math.max(firstFreeIndex(steps), Math.min(steps.length - 1, toIndex));
-    if (target === from) return journey;
+    if (from < 0 || toIndex === from) return { ok: false, reason: 'edge' };
+    if (!canMoveStep(steps[from])) return { ok: false, reason: 'mustStep' };
+    const pair = pairOf(steps);
+    if (pair && isPairPart(steps[from])) return planPairMove(steps, from, toIndex, pair);
+    const firstFree = firstFreeIndex(steps);
+    const target = Math.max(firstFree, Math.min(steps.length - 1, toIndex));
+    if (target === from) return { ok: false, reason: toIndex < firstFree ? 'topicFirst' : 'edge' };
     const next = [...steps];
     const [moved] = next.splice(from, 1);
     next.splice(target, 0, moved);
-    return hasValidOrder(next) ? withPhase(journey, phase, next) : journey;
+    if (!hasValidOrder(next)) return { ok: false, reason: 'topicFirst' };
+    // Nothing goes between the postcode and the Beratungsstelle it finds. One place up or down (the
+    // arrows) hops over the pair; a drop right between the two is refused.
+    if (isPairAdjacent(steps) && !isPairAdjacent(next)) {
+        if (Math.abs(toIndex - from) !== 1) return { ok: false, reason: 'pairTogether' };
+        const hopped = next.filter((step) => step.id !== moved.id);
+        const postcodeAt = hopped.findIndex((step) => step.core === 'postcode');
+        hopped.splice(toIndex < from ? postcodeAt : postcodeAt + 2, 0, moved);
+        return { ok: true, steps: hopped };
+    }
+    return { ok: true, steps: next };
+};
+
+/**
+ * Puts a step at `toIndex` of its phase. Must steps do not move, and because only the other steps
+ * move, the must steps always keep their order among themselves. Postcode and Beratungsstelle move
+ * together; a refused move returns the journey unchanged ({@link moveRefusal} says why).
+ */
+export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, toIndex: number): Journey => {
+    const plan = planMove(journey.phases[phase], stepId, toIndex);
+    return plan.ok ? withPhase(journey, phase, plan.steps) : journey;
+};
+
+/** Why {@link moveStep} would refuse this move, or `undefined` when it goes through. */
+export const moveRefusal = (
+    journey: Journey,
+    phase: JourneyPhase,
+    stepId: string,
+    toIndex: number,
+): MoveRefusal | undefined => {
+    const plan = planMove(journey.phases[phase], stepId, toIndex);
+    return plan.ok === false ? plan.reason : undefined;
 };
 
 /** Whether a step can go one place up or down; the order rules decide, not the list edges alone. */

@@ -116,6 +116,30 @@ type Story = StoryObj<typeof meta>;
 
 const mail = (open: Record<string, unknown> = {}) => ({ type: 'AGENCY_COUNSELLING' as const, ...open });
 
+const stepOrder = (body: ReturnType<typeof within>) =>
+    within(body.getByRole('list', { name: /Schritte der Phase/ }))
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('data-testid'));
+
+/** Drags one step card onto the upper or lower half of another, as the browser's drag and drop does. */
+const dragStep = async (from: HTMLElement, onto: HTMLElement, side: 'before' | 'after') => {
+    const dataTransfer = new DataTransfer();
+    const box = onto.getBoundingClientRect();
+    const clientY = side === 'before' ? box.top + 2 : box.bottom - 2;
+    // React renders between the events, as between real pointer moves.
+    const tick = () =>
+        new Promise((resolve) => {
+            setTimeout(resolve, 0);
+        });
+    from.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
+    await tick();
+    onto.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientY }));
+    await tick();
+    onto.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientY }));
+    await tick();
+    from.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }));
+};
+
 /** The Journeys section: one tile per conversation type with its journeys and destinations. */
 export const Tiles: Story = {
     play: async ({ canvasElement }) => {
@@ -175,17 +199,85 @@ export const StepMovedWithKeyboard: Story = {
             .getByRole('button', { name: /verschieben/ })
             .focus();
         await userEvent.keyboard('{ArrowUp}{ArrowUp}{ArrowUp}');
-        const order = within(body.getByRole('list', { name: /Schritte der Phase/ }))
-            .getAllByRole('listitem')
-            .map((item) => item.getAttribute('data-testid'));
-        await expect(order).toEqual([
+        // The third step up hops over postcode and Beratungsstelle: nothing goes between the two.
+        await expect(stepOrder(body)).toEqual([
             'journey-step-topic',
-            'journey-step-postcode',
             'journey-step-email',
+            'journey-step-postcode',
             'journey-step-agency',
             'journey-step-username',
             'journey-step-consent',
         ]);
+    },
+};
+
+/**
+ * Postcode and Beratungsstelle move as one pair (Frank, 2026-11-24): the postcode finds the centres
+ * nearby, so it stays right before the Beratungsstelle. Moving either one takes the other along.
+ */
+export const PostcodeAndCentreMoveTogether: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        // The dialog's list first: a cold start renders the step cards a moment later.
+        await body.findByRole('list', { name: /Schritte der Phase/ });
+        const postcode = await body.findByTestId('journey-step-postcode');
+        within(postcode)
+            .getByRole('button', { name: /verschieben/ })
+            .focus();
+        await userEvent.keyboard('{ArrowDown}');
+        await expect(stepOrder(body)).toEqual([
+            'journey-step-topic',
+            'journey-step-username',
+            'journey-step-postcode',
+            'journey-step-agency',
+            'journey-step-consent',
+            'journey-step-email',
+        ]);
+        await expect(
+            await body.findByText('Postleitzahl und Beratungsstelle sind jetzt Schritt 3 und 4 von 6.'),
+        ).toBeInTheDocument();
+        // Dragging the Beratungsstelle back above the user name brings the postcode along.
+        await dragStep(body.getByTestId('journey-step-agency'), body.getByTestId('journey-step-username'), 'before');
+        await waitFor(() =>
+            expect(stepOrder(body)).toEqual([
+                'journey-step-topic',
+                'journey-step-postcode',
+                'journey-step-agency',
+                'journey-step-username',
+                'journey-step-consent',
+                'journey-step-email',
+            ]),
+        );
+    },
+};
+
+/** A move the registration cannot run is refused with a short, visible reason, not silently. */
+export const RefusedMoveIsExplained: Story = {
+    args: { initiallyOpen: mail({ journeyId: 'standard', phase: 'departure' }) },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        // The dialog's list first: a cold start renders the step cards a moment later.
+        await body.findByRole('list', { name: /Schritte der Phase/ });
+        const postcode = await body.findByTestId('journey-step-postcode');
+        const before = stepOrder(body);
+        within(postcode)
+            .getByRole('button', { name: /verschieben/ })
+            .focus();
+        await userEvent.keyboard('{ArrowUp}');
+        const topicFirst = await body.findByTestId('journey-move-refused');
+        await expect(topicFirst).toHaveTextContent('Schritt nicht verschoben');
+        await expect(topicFirst).toHaveTextContent('„Thema wählen“ bleibt Schritt 1');
+        await expect(stepOrder(body)).toEqual(before);
+
+        // The e-mail dropped right between postcode and Beratungsstelle.
+        await dragStep(body.getByTestId('journey-step-email'), body.getByTestId('journey-step-agency'), 'before');
+        await waitFor(() =>
+            expect(body.getAllByTestId('journey-move-refused').at(-1)).toHaveTextContent(
+                'Postleitzahl und Beratungsstelle bleiben zusammen',
+            ),
+        );
+        await expect(stepOrder(body)).toEqual(before);
     },
 };
 

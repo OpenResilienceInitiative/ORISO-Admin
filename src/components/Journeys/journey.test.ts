@@ -26,6 +26,9 @@ import {
     missingSafetyAspects,
     moveItem,
     moveStep,
+    moveRefusal,
+    movesWith,
+    canMoveBy,
     newJourney,
     phasesOf,
     picksAgencyFromList,
@@ -161,6 +164,85 @@ describe('must steps', () => {
         const agency = stepOf(journey, 'agency');
         expect(canRemoveStep(agency)).toBe(false);
         expect(canMoveStep(agency)).toBe(true);
+    });
+});
+
+describe('postcode and Beratungsstelle move as one pair (Frank, 2026-11-24)', () => {
+    it('moves the Beratungsstelle along when the postcode goes down', () => {
+        const journey = mail();
+        const postcode = stepOf(journey, 'postcode');
+        const moved = moveStep(journey, 'departure', postcode.id, 2);
+        expect(coresOf(moved, 'departure')).toEqual(['topic', 'username', 'postcode', 'agency', 'consent', 'email']);
+    });
+
+    it('moves the postcode along when the Beratungsstelle goes down or up', () => {
+        const journey = mail();
+        const agency = stepOf(journey, 'agency');
+        const down = moveStep(journey, 'departure', agency.id, 3);
+        expect(coresOf(down, 'departure')).toEqual(['topic', 'username', 'postcode', 'agency', 'consent', 'email']);
+        const up = moveStep(down, 'departure', agency.id, 2);
+        expect(coresOf(up, 'departure')).toEqual(['topic', 'postcode', 'agency', 'username', 'consent', 'email']);
+    });
+
+    it('drags the pair below the last step', () => {
+        const journey = mail();
+        const moved = moveStep(journey, 'departure', stepOf(journey, 'postcode').id, 5);
+        expect(coresOf(moved, 'departure')).toEqual(['topic', 'username', 'consent', 'email', 'postcode', 'agency']);
+    });
+
+    it('offers the arrows the pair can really use', () => {
+        const journey = mail();
+        (['postcode', 'agency'] as const).forEach((core) => {
+            expect(canMoveBy(journey, 'departure', stepOf(journey, core).id, -1)).toBe(false);
+            expect(canMoveBy(journey, 'departure', stepOf(journey, core).id, 1)).toBe(true);
+        });
+    });
+
+    it('names the partner that moves along', () => {
+        const journey = mail();
+        expect(movesWith(journey.phases.departure, stepOf(journey, 'postcode').id)).toEqual([
+            stepOf(journey, 'postcode').id,
+            stepOf(journey, 'agency').id,
+        ]);
+        expect(movesWith(journey.phases.departure, stepOf(journey, 'email').id)).toEqual([stepOf(journey, 'email').id]);
+    });
+
+    it('says why a move is refused', () => {
+        const journey = mail();
+        const postcode = stepOf(journey, 'postcode');
+        expect(moveRefusal(journey, 'departure', postcode.id, 0)).toBe('topicFirst');
+        expect(moveRefusal(journey, 'departure', stepOf(journey, 'email').id, 2)).toBe('pairTogether');
+        expect(moveRefusal(journey, 'departure', stepOf(journey, 'username').id, 1)).toBe('mustStep');
+        expect(moveRefusal(journey, 'departure', postcode.id, 2)).toBeUndefined();
+    });
+
+    it('keeps another step from being dropped between the pair', () => {
+        const journey = mail();
+        expect(moveStep(journey, 'departure', stepOf(journey, 'email').id, 2)).toBe(journey);
+    });
+
+    it('lets a step moved one place by the arrows hop over the whole pair', () => {
+        const journey = mail();
+        const email = stepOf(journey, 'email').id;
+        const belowPair = moveStep(moveStep(journey, 'departure', email, 4), 'departure', email, 3);
+        expect(coresOf(belowPair, 'departure')).toEqual([
+            'topic',
+            'postcode',
+            'agency',
+            'email',
+            'username',
+            'consent',
+        ]);
+        const hopped = moveStep(belowPair, 'departure', email, 2);
+        expect(coresOf(hopped, 'departure')).toEqual(['topic', 'email', 'postcode', 'agency', 'username', 'consent']);
+        const back = moveStep(hopped, 'departure', email, 2);
+        expect(coresOf(back, 'departure')).toEqual(['topic', 'postcode', 'agency', 'email', 'username', 'consent']);
+    });
+
+    it('moves the Beratungsstelle alone once the postcode is removed', () => {
+        const without = removeStep(mail(), 'departure', stepOf(mail(), 'postcode').id);
+        const moved = moveStep(without, 'departure', stepOf(without, 'agency').id, 2);
+        expect(coresOf(moved, 'departure')).toEqual(['topic', 'username', 'agency', 'consent', 'email']);
     });
 });
 

@@ -13,6 +13,9 @@ import {
     isSkipped,
     markChecked,
     missingSafetyAspects,
+    moveRefusal,
+    movesWith,
+    type MoveRefusal,
     START_OF_PHASE,
     canPreselectTopic,
     firstFreeIndex,
@@ -41,6 +44,7 @@ import type { ProfileView } from './ProfileDialog';
 import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
 import { blockContext, journeyLabel, stepTitle } from './stepText';
 import { useDiscardGuard } from './useDiscardGuard';
+import { snackbar } from '../Snackbar';
 import styles from './styles.module.scss';
 
 export interface PhaseDialogProps {
@@ -113,20 +117,48 @@ export const PhaseDialog = ({
     const profileStep = profileOf && steps.find((step) => step.id === profileOf.id);
     const missingSafety = phase === 'flight' ? missingSafetyAspects(draft) : [];
 
+    /** A refused move says why, visibly (Frank, 2026-11-24): before, the card just did not move. */
+    const explainRefusal = (step: JourneyStep, reason: MoveRefusal | undefined) => {
+        const name = stepTitle(step, language, t);
+        const text =
+            reason && reason !== 'edge'
+                ? t(`journeys.step.cannotMove.${reason}`, { name })
+                : t('journeys.step.cannotMove', { name });
+        setAnnouncement(text);
+        if (reason === 'edge') return;
+        snackbar.info({
+            title: t('journeys.step.cannotMove.title'),
+            description: text,
+            causeKey: `journey-move-refused-${reason ?? 'other'}`,
+            testId: 'journey-move-refused',
+        });
+    };
+
     const moveTo = (step: JourneyStep, toIndex: number) => {
         const result = editJourney(draft, { type: 'moveStep', phase, stepId: step.id, toIndex }, context);
         if (result.ok === false) {
-            setAnnouncement(t('journeys.step.cannotMove', { name: stepTitle(step, language, t) }));
+            explainRefusal(
+                step,
+                result.reason === 'againstTheRules' ? moveRefusal(draft, phase, step.id, toIndex) : undefined,
+            );
             return;
         }
         const next = result.value;
         setDraft(next);
+        const together = movesWith(steps, step.id);
+        const position = (id: string) => next.phases[phase].findIndex((candidate) => candidate.id === id) + 1;
         setAnnouncement(
-            t('journeys.step.moved', {
-                name: stepTitle(step, language, t),
-                position: next.phases[phase].findIndex((candidate) => candidate.id === step.id) + 1,
-                total: steps.length,
-            }),
+            together.length > 1
+                ? t('journeys.step.movedPair', {
+                      position: position(together[0]),
+                      next: position(together[1]),
+                      total: steps.length,
+                  })
+                : t('journeys.step.moved', {
+                      name: stepTitle(step, language, t),
+                      position: position(step.id),
+                      total: steps.length,
+                  }),
         );
     };
 
@@ -144,7 +176,8 @@ export const PhaseDialog = ({
     };
 
     const onDragOver = (event: DragEvent<HTMLLIElement>, step: JourneyStep) => {
-        if (!draggedId || draggedId === step.id) return;
+        // The pair moves as one: its own partner is no drop target.
+        if (!draggedId || movesWith(steps, draggedId).includes(step.id)) return;
         event.preventDefault();
         const box = event.currentTarget.getBoundingClientRect();
         const side = event.clientY < box.top + box.height / 2 ? 'before' : 'after';
@@ -264,7 +297,9 @@ export const PhaseDialog = ({
                                         position={index + 1}
                                         total={steps.length}
                                         language={language}
-                                        dragging={draggedId === step.id}
+                                        dragging={
+                                            draggedId !== undefined && movesWith(steps, draggedId).includes(step.id)
+                                        }
                                         dropLine={drop?.stepId === step.id ? drop.side : undefined}
                                         onOpen={() => setEditingId(step.id)}
                                         onAddBelow={() => setAddingAfter(step.id)}
