@@ -53,9 +53,9 @@ runs:
           shell: bash
           run: npx eslint . --max-warnings=0
 
-        - name: Lint (Oxlint ratchet, no new findings)
+        - name: Lint (Oxlint ratchet tests + no new findings)
           shell: bash
-          run: npm run lint:oxlint
+          run: npm run test:oxlint-ratchet && npm run lint:oxlint
 
         - name: Lint (Stylelint)
           shell: bash
