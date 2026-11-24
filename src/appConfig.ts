@@ -36,6 +36,9 @@ export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agen
 export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin/agencyids/next-free`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
+/** What deleting a counselling centre takes with it (ORISO-Admin#1524). */
+export const agencyDeletionPreviewEndpoint = (agencyId: string | number) =>
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/deletion`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
 export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
