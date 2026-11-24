@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { CaseSharingSection, type CaseSharingSectionProps } from './index';
@@ -11,8 +11,9 @@ vi.mock('../../../../../resources/img/svg/permissions/case_handover.svg', () => 
 const K = 'tenants.permissions.caseSharing';
 const settings = <div data-testid="handover-settings">reasons</div>;
 
-const renderSection = (props: Partial<CaseSharingSectionProps> = {}) =>
-    render(
+// The section starts folded (Frank, 2026-11-24); the tests below look inside, so they open it first.
+const renderSection = (props: Partial<CaseSharingSectionProps> = {}) => {
+    const view = render(
         <CaseSharingSection
             policy={{ value: 'none', mode: 'SUGGESTED' }}
             level="tenant"
@@ -20,6 +21,9 @@ const renderSection = (props: Partial<CaseSharingSectionProps> = {}) =>
             {...props}
         />,
     );
+    fireEvent.click(screen.getByRole('button', { name: `${K}.title` }));
+    return view;
+};
 
 const option = (name: RegExp) => screen.getByRole('button', { name });
 const handover = () => option(new RegExp(`^${K}\\.option\\.caseHandover\\.label`));
@@ -28,6 +32,18 @@ const none = () => option(new RegExp(`^${K}\\.option\\.none\\.label`));
 
 // ORISO-Admin#1558, Frank 2026-11-18: one choice, cascading like every other setting.
 describe('CaseSharingSection', () => {
+    it('starts folded to its heading, like the other sections of the Mailberatung tile', () => {
+        render(<CaseSharingSection policy={{ value: 'none', mode: 'SUGGESTED' }} level="tenant" />);
+
+        const toggle = screen.getByRole('button', { name: `${K}.title` });
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('group', { name: `${K}.optionsLabel` })).not.toBeInTheDocument();
+
+        fireEvent.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('group', { name: `${K}.optionsLabel` })).toBeVisible();
+    });
+
     it('offers exactly three options as one choice, the chosen one pressed', () => {
         renderSection();
 

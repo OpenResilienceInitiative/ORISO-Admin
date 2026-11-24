@@ -103,6 +103,8 @@ export const CaseSharingSection = ({
             titleAction={<SectionHelp topic={CASE_HANDOVER_HELP} />}
             learnMoreHref={featurePage('caseHandover')}
             collapsible
+            // ORISO-Frontend#2494 (Frank, 2026-11-24): folded at first, like the other sections of the tile.
+            defaultOpen={false}
         >
             {bothActive && (
                 <p className={styles.warning} role="status">

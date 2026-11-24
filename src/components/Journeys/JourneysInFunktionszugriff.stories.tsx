@@ -104,6 +104,23 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The journeys section starts folded (Frank, 2026-11-24); the admin opens it with the fold icon
+ * on the left of its heading. Opens it on the Mailberatung tile and returns its entry.
+ */
+const openMailJourneys = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    const entry = await canvas.findByTestId('journeys-entry-AGENCY_COUNSELLING');
+    const toggle = canvasElement.querySelector<HTMLButtonElement>(
+        '[aria-controls="tile-section-oneOnOne-journeys-body"]',
+    );
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(entry).not.toBeVisible();
+    await userEvent.click(toggle as HTMLButtonElement);
+    await expect(entry).toBeVisible();
+    return entry;
+};
+
 /** Every conversation type's tile shows its journeys and destinations. */
 export const OnEveryTile: Story = {
     play: async ({ canvasElement }) => {
@@ -116,7 +133,7 @@ export const OnEveryTile: Story = {
 /** The plane on the Mailberatung tile opens the journeys of Mailberatung. */
 export const OpenedFromTheTile: Story = {
     play: async ({ canvasElement }) => {
-        const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        const entry = await openMailJourneys(canvasElement);
         await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
         const body = within(canvasElement.ownerDocument.body);
         await expect(await body.findByTestId('journeys-dialog')).toBeInTheDocument();
@@ -163,7 +180,7 @@ export const SavesToTheStore: Story = {
     parameters: mountedParameters,
     render: () => <MountedFunktionszugriff store={memoryJourneyStore()} scope={{ level: 'platform' }} />,
     play: async ({ canvasElement }) => {
-        const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        const entry = await openMailJourneys(canvasElement);
         await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
         const body = within(canvasElement.ownerDocument.body);
         await body.findByTestId('journeys-dialog');
@@ -186,7 +203,7 @@ export const ConflictWhenSaving: Story = {
         return <MountedFunktionszugriff store={quicker} scope={{ level: 'platform' }} />;
     },
     play: async ({ canvasElement }) => {
-        const entry = await within(canvasElement).findByTestId('journeys-entry-AGENCY_COUNSELLING');
+        const entry = await openMailJourneys(canvasElement);
         await userEvent.click(within(entry).getByRole('button', { name: 'Reisen bearbeiten' }));
         const body = within(canvasElement.ownerDocument.body);
         await body.findByTestId('journeys-dialog');
