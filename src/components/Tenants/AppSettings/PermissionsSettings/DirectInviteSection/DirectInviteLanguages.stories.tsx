@@ -72,8 +72,11 @@ const localized = (language: SupportedLanguage): Story => ({
         const action = t('tenants.permissions.policy.deactivate');
         await Promise.all(
             ['chat', 'audio', 'video'].map((medium) => {
-                const name = t(`tenants.permissions.directInvite.${medium}`);
-                return expect(controls.getByRole('button', { name: `${name}: ${state} – ${action}` })).toBeVisible();
+                const key = `tenants.permissions.directInvite.${medium}`;
+                return Promise.all([
+                    expect(controls.getByRole('button', { name: `${t(key)}: ${state} – ${action}` })).toBeVisible(),
+                    expect(controls.getByText(t(`${key}Description`))).toBeVisible(),
+                ]);
             }),
         );
         await expect(document.documentElement).toHaveAttribute('lang', toIntlLocale(language) ?? language);

@@ -5,7 +5,7 @@
     "tenants.permissions.directInvite.audio": "Appel audio",
     "tenants.permissions.directInvite.video": "Appel vidéo",
     "tenants.permissions.directInvite.chatDescription": "Ce lien permet de commencer un chat avec le conseiller sans passer par la recherche d’un centre pour s’inscrire.",
-    "tenants.permissions.directInvite.audioDescription": "Ce lien lance un appel audio. La caméra n’est pas demandée et ne peut pas être activée pendant cet appel.",
+    "tenants.permissions.directInvite.audioDescription": "Ce lien lance un appel audio. L’application ne demande pas l’accès à la caméra. La caméra ne peut pas être activée pendant cet appel.",
     "tenants.permissions.directInvite.videoDescription": "Ce lien lance un appel avec l’image et le son. La caméra peut être coupée pendant l’appel.",
     "tenants.permissions.directInvite.offOnTraeger": "Votre organisme a désactivé cette option. Le centre ne peut pas la réactiver ici.",
     "tenants.permissions.directInvite.enforcedOnTraeger": "Votre organisme a imposé ce réglage. Le centre ne peut pas le modifier ici.",
