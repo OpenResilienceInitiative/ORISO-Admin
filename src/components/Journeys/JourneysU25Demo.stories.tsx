@@ -103,7 +103,7 @@ const buildTheBox = async (canvasElement: HTMLElement) => {
     await waitFor(() => expect(within(phase).queryByTestId('journey-step-agencyGreeting')).not.toBeInTheDocument());
     // The editor is told that the platform adds its emergency numbers.
     await expect(await within(phase).findByTestId('journey-safety-warning')).toHaveTextContent(
-        'ergänzt die Plattform dann ihre Notfallnummern',
+        'In der ersten Antwort der Mailberatung ergänzt die Plattform ihre Notfallnummern',
     );
     return { body, phase };
 };
@@ -133,5 +133,28 @@ export const ReplaceTheGreetingWithABox: Story = {
             }),
         );
         await expect(flight.some((step) => step.core === 'agencyGreeting')).toBe(false);
+    },
+};
+
+const group: Journey = removeStep(
+    { ...standardJourney('SELF_HELP', 'group', 1), name: 'Gruppe' },
+    'flight',
+    'group:agencyGreeting',
+);
+
+/**
+ * Only the on-board phase of message counselling builds the first reply. A group journey without
+ * a safety section keeps the strict warning: nobody adds emergency numbers there.
+ */
+export const OtherConversationTypesKeepTheStrictWarning: Story = {
+    args: {
+        journeys: [group],
+        initiallyOpen: { type: 'SELF_HELP' as const, journeyId: 'group', phase: 'flight' },
+    },
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        const warning = await body.findByTestId('journey-safety-warning');
+        await expect(warning).toHaveTextContent('sehen dann keine Notfallnummern mehr');
+        await expect(warning).not.toHaveTextContent('ergänzt die Plattform');
     },
 };
