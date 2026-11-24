@@ -43,6 +43,7 @@ export const Filled: Story = {
         await expect(upload).toHaveFocus();
         await userEvent.keyboard('{Enter}');
         await expect(args.onClick).toHaveBeenCalledTimes(1);
+        upload.blur();
     },
 };
 export const Tonal: Story = { args: { variant: 'tonal', children: 'Batch Mode' } };

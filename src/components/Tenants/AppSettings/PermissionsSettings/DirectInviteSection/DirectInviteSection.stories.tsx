@@ -78,6 +78,9 @@ export const PlatformDefault: Story = {
             'aria-pressed',
             'false',
         );
+        await userEvent.keyboard('{Enter}');
+        await expect(chat).toHaveAttribute('aria-pressed', 'true');
+        chat.blur();
     },
 };
 

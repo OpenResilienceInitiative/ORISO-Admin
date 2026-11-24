@@ -36,6 +36,7 @@ export const Default: Story = {
         await expect(lowerLimit).toHaveFocus();
         await userEvent.tab();
         await expect(upperLimit).toHaveFocus();
+        upperLimit.blur();
     },
 };
 
