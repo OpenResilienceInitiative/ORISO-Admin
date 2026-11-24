@@ -76,7 +76,9 @@ describe('Supervision tile', () => {
         render(<PermissionsSettingsView {...baseProps()} />);
 
         const tiles = [
-            ...document.querySelectorAll('[data-testid^="chat-type-card-"], [data-testid="supervision-tile"]'),
+            ...document.querySelectorAll(
+                '[data-testid^="chat-type-card-"], [data-testid="supervision-tile"], [data-testid="team-chat-tile"]',
+            ),
         ];
         expect(tiles.map((tile) => tile.getAttribute('data-testid'))).toEqual([
             'chat-type-card-oneOnOne',
@@ -84,6 +86,7 @@ describe('Supervision tile', () => {
             'chat-type-card-group',
             'chat-type-card-groupInternal',
             'supervision-tile',
+            'team-chat-tile',
         ]);
         expect(within(supervisionTile()).getByText('tenants.permissions.supervision.description')).toBeVisible();
         // The per-type switch stays on Mail Beratung and Live Chat only (Frank, 2026-11-19).
@@ -209,13 +212,40 @@ describe('Supervision tile', () => {
 });
 
 /**
- * ORISO-Frontend#2491 (Frank, 2026-11-23): the Team-Chat on the Mail Beratung tile is controlled exactly
- * like supervision — the master is a permission policy on all three levels, and "Konfigurieren" opens what
- * the side chat on an open enquiry offers, each feature a stored policy saved on "Speichern".
+ * ORISO-Frontend#2491 (Frank, 2026-11-24): the Team-Chat is its own tile, built like the supervision tile —
+ * the master is a permission policy on all three levels, and "Konfigurieren" opens what the side chat on an
+ * open enquiry offers, each a stored policy saved on "Speichern".
  */
-describe('Team-Chat on the Mail Beratung tile (policy like supervision)', () => {
-    const teamChatSection = () =>
-        within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: 'teamFunctions.chat.name' });
+describe('Team-Chat tile (policy like supervision)', () => {
+    const teamChatSection = () => screen.getByTestId('team-chat-tile');
+
+    it('shows only the master switch, a status chip, and is no longer a section of Mail Beratung', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({ permissionPolicies: { [TEAM_CHAT]: policy(true, 'SUGGESTED', false) } })}
+            />,
+        );
+
+        const tile = teamChatSection();
+        expect(tile.querySelectorAll('[data-feature-policy]')).toHaveLength(1);
+        expect(wrapperOf(TEAM_CHAT, tile)).toBeTruthy();
+        expect(within(tile).getByText('tenants.permissions.teamChat.summary.on')).toBeVisible();
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).queryByRole('group', {
+                name: 'teamFunctions.chat.name',
+            }),
+        ).toBeNull();
+    });
+
+    it('says "Aus" in the chip while the master is off', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({ permissionPolicies: { [TEAM_CHAT]: policy(false, 'SUGGESTED', false) } })}
+            />,
+        );
+
+        expect(within(teamChatSection()).getByText('tenants.permissions.card.summary.off')).toBeVisible();
+    });
 
     it('Träger: switches its own value as a policy, with the requirement lock', async () => {
         const user = userEvent.setup();
@@ -292,8 +322,7 @@ describe('Team-Chat on the Mail Beratung tile (policy like supervision)', () => 
 });
 
 describe('Team-Chat: "Konfigurieren" dialog', () => {
-    const teamChatSection = () =>
-        within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: 'teamFunctions.chat.name' });
+    const teamChatSection = () => screen.getByTestId('team-chat-tile');
     const configure = () =>
         within(teamChatSection()).getByRole('button', { name: 'tenants.permissions.teamChat.configure' });
     const teamChatDialog = () => document.querySelector<HTMLElement>('[data-testid="team-chat-dialog"]');
@@ -316,13 +345,13 @@ describe('Team-Chat: "Konfigurieren" dialog', () => {
 
         await waitFor(() => expect(teamChatDialog()).not.toBeNull());
         const dialogEl = teamChatDialog() as HTMLElement;
-        expect(within(dialogEl).getByText('tenants.permissions.teamChat.dialogTitle')).toBeVisible();
+        expect(within(dialogEl).getByText('tenants.permissions.teamChat.configureDialogTitle')).toBeVisible();
         expect(dialogEl.querySelector('[data-planned-feature]')).toBeNull();
         expect(
             [...dialogEl.querySelectorAll<HTMLElement>('[data-feature-policy]')].map(
                 (card) => card.dataset.featurePolicy,
             ),
-        ).toEqual(FEATURES);
+        ).toEqual(['featureTeamDiscussionAfterAcceptEnabled', ...FEATURES]);
         expect(within(dialogEl).queryByText('tenants.permissions.teamChat.notStoredNote')).toBeNull();
     });
 
@@ -434,39 +463,51 @@ describe('Team-Chat: "Konfigurieren" dialog', () => {
 });
 
 /**
- * Frank, 2026-11-23: "Team-Chat läuft nach der Annahme weiter" — a second policy in the Team-Chat section,
- * the same controls as the master, needs the master, and asks about data protection before it goes on.
+ * Frank, 2026-11-23/24: "Team-Chat läuft nach der Annahme weiter" lives in the Team-Chat dialog, off by default,
+ * with the same "Anpassbar"/"Vorgabe" as the features, and asks about data protection before it goes on.
  */
 describe('Team-Chat continues after acceptance', () => {
     const AFTER = 'featureTeamDiscussionAfterAcceptEnabled';
     const CONFIRM = 'tenants.permissions.teamChat.afterAccept.confirm.confirm';
     const CANCEL = 'tenants.permissions.teamChat.afterAccept.confirm.cancel';
+    const SAVE = 'tenants.permissions.teamChat.save';
     // The pages seed every level with the platform preset, where this is off.
     const presetOff = { initialValues: { settings: { [AFTER]: false } } };
-    const section = () =>
-        within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: 'teamFunctions.chat.name' });
+    const tile = () => screen.getByTestId('team-chat-tile');
+    const teamChatDialog = () => document.querySelector<HTMLElement>('[data-testid="team-chat-dialog"]');
+    const openDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+        await user.click(within(tile()).getByRole('button', { name: 'tenants.permissions.teamChat.configure' }));
+        await waitFor(() => expect(teamChatDialog()).not.toBeNull());
+        return teamChatDialog() as HTMLElement;
+    };
 
-    it('is off by default and says the team chat closes at acceptance', () => {
+    it('is not in the tile, is off by default in the teamDialog and explains both states', async () => {
+        const user = userEvent.setup();
         render(<PermissionsSettingsView {...baseProps(presetOff)} />);
 
-        expect(valueButton(AFTER, section())).toHaveAttribute('aria-pressed', 'false');
-        expect(within(section()).getByText('tenants.permissions.teamChat.afterAccept.off')).toBeVisible();
+        expect(tile().querySelector(`[data-feature-policy="${AFTER}"]`)).toBeNull();
+        const teamDialog = await openDialog(user);
+        expect(valueButton(AFTER, teamDialog)).toHaveAttribute('aria-pressed', 'false');
+        expect(within(teamDialog).getByText('tenants.permissions.teamChat.afterAccept.description')).toBeVisible();
     });
 
     it.each<Level>(['platform', 'tenant', 'agency'])(
-        '%s: switching it on asks about data protection first, and only "confirm" saves',
+        '%s: switching it on asks about data protection first, and only "confirm" + "Speichern" saves',
         async (policyLevel) => {
             const user = userEvent.setup();
             const onPolicyChange = vi.fn();
             render(<PermissionsSettingsView {...baseProps({ ...presetOff, onPolicyChange, policyLevel })} />);
+            const teamDialog = await openDialog(user);
 
-            await user.click(valueButton(AFTER, section()));
-            expect(onPolicyChange).not.toHaveBeenCalled();
+            await user.click(valueButton(AFTER, teamDialog));
             await user.click(await screen.findByRole('button', { name: CANCEL }));
-            expect(onPolicyChange).not.toHaveBeenCalled();
+            expect(valueButton(AFTER, teamDialog)).toHaveAttribute('aria-pressed', 'false');
 
-            await user.click(valueButton(AFTER, section()));
+            await user.click(valueButton(AFTER, teamDialog));
             await user.click(await screen.findByRole('button', { name: CONFIRM }));
+            expect(valueButton(AFTER, teamDialog)).toHaveAttribute('aria-pressed', 'true');
+            expect(onPolicyChange).not.toHaveBeenCalled();
+            await user.click(within(document.body).getByRole('button', { name: SAVE }));
             expect(onPolicyChange).toHaveBeenCalledWith(AFTER, expect.objectContaining({ value: true }));
         },
     );
@@ -480,10 +521,11 @@ describe('Team-Chat continues after acceptance', () => {
             />,
         );
 
-        expect(within(section()).getByText('tenants.permissions.teamChat.afterAccept.on')).toBeVisible();
-        await user.click(valueButton(AFTER, section()));
+        const teamDialog = await openDialog(user);
+        await user.click(valueButton(AFTER, teamDialog));
         expect(screen.queryByRole('button', { name: CONFIRM })).toBeNull();
-        expect(onPolicyChange).toHaveBeenCalledWith(AFTER, { value: false, mode: 'SUGGESTED' });
+        await user.click(within(document.body).getByRole('button', { name: SAVE }));
+        expect(onPolicyChange).toHaveBeenCalledWith(AFTER, { value: false, mode: 'SUGGESTED', inherited: false });
     });
 
     it('platform: has the same requirement lock as the master', async () => {
@@ -499,22 +541,14 @@ describe('Team-Chat continues after acceptance', () => {
             />,
         );
 
-        await user.click(lockOrNull(AFTER, section()) as HTMLElement);
-        expect(onPolicyChange).toHaveBeenCalledWith(AFTER, { value: false, mode: 'ENFORCED' });
+        const teamDialog = await openDialog(user);
+        await user.click(lockOrNull(AFTER, teamDialog) as HTMLElement);
+        await user.click(within(document.body).getByRole('button', { name: SAVE }));
+        expect(onPolicyChange).toHaveBeenCalledWith(AFTER, { value: false, mode: 'ENFORCED', inherited: false });
     });
 
-    it('waits for the Team-Chat master and says so', () => {
-        render(
-            <PermissionsSettingsView
-                {...baseProps({ permissionPolicies: { [TEAM_CHAT]: policy(false, 'SUGGESTED', false) } })}
-            />,
-        );
-
-        expect(valueButton(AFTER, section())).toBeDisabled();
-        expect(within(section()).getByText('tenants.permissions.teamChat.afterAccept.needsMaster')).toBeVisible();
-    });
-
-    it('agency: a Träger requirement locks it', () => {
+    it('agency: a Träger requirement locks it', async () => {
+        const user = userEvent.setup();
         render(
             <PermissionsSettingsView
                 {...baseProps({
@@ -524,8 +558,9 @@ describe('Team-Chat continues after acceptance', () => {
             />,
         );
 
-        expect(valueButton(AFTER, section())).toBeDisabled();
-        expect(lockOrNull(AFTER, section())).toBeNull();
+        const teamDialog = await openDialog(user);
+        expect(valueButton(AFTER, teamDialog)).toBeDisabled();
+        expect(lockOrNull(AFTER, teamDialog)).toBeNull();
     });
 });
 

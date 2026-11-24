@@ -459,15 +459,7 @@ export const SEARCH_TILES: RegistryTile[] = [
         PERMISSIONS,
         `${CHAT}/chatTypeCards.ts`,
         {
-            // ORISO-Admin#1577: Team-Chat is a section of this tile; a policy like supervision with its
-            // dialog since ORISO-Frontend#2491.
-            fieldKeys: [
-                ...FEATURE_LABELS,
-                ...NOTIFICATION_LABELS,
-                'teamFunctions.chat.name',
-                'tenants.permissions.teamChat.dialogTitle',
-                'tenants.permissions.teamChat.afterAccept.label',
-            ],
+            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
         },
     ),
     tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
@@ -496,6 +488,17 @@ export const SEARCH_TILES: RegistryTile[] = [
             fieldKeys: ['tenants.permissions.supervision.configure', 'tenants.permissions.supervision.dialogTitle'],
         },
     ),
+
+    // ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat, its own tile after supervision, built the same way.
+    tile('access:team-chat', 'teamFunctions.chat.name', PERMISSIONS, `${CHAT}/TeamChatTile/index.tsx`, {
+        fieldKeys: [
+            'tenants.permissions.teamChat.configure',
+            'tenants.permissions.teamChat.configureDialogTitle',
+            'tenants.permissions.teamChat.afterAccept.label',
+            // The dialog offers the chat features without supervision (TEAM_CHAT_FEATURES).
+            ...WITHOUT_SUPERVISION,
+        ],
+    }),
 
     // ── Weitere (Träger; ORISO-Admin#1577, formerly Funktionalitäten) ───────────
     tile(

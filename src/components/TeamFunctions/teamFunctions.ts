@@ -16,7 +16,7 @@
  * the provider tab, the agency master data and the agency list.
  * The saved data keys (`field`) are unchanged API contract: only labels and rendering are shared. The
  * Team-Chat has no form field: it is written only as a permission policy by Funktionszugriff
- * (`TeamChatSection`, master `TEAM_CHAT_MASTER`).
+ * (`TeamChatTile`, master `TEAM_CHAT_MASTER`).
  */
 export type TeamFunctionId = 'counselling' | 'chat';
 
