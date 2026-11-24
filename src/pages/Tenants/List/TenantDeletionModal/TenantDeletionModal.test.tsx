@@ -1,7 +1,6 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite-plus/test';
-import { deleteTenant, getTenantDeletionPreview } from '../../../../api/tenant/tenantDeletion';
+import { getTenantDeletionPreview } from '../../../../api/tenant/tenantDeletionBlockers';
 import { TenantDeletionModal } from '.';
 
 vi.mock('react-i18next', () => ({
@@ -10,9 +9,8 @@ vi.mock('react-i18next', () => ({
             options && 'count' in options ? `${key}:${options.count}` : key,
     }),
 }));
-vi.mock('../../../../api/tenant/tenantDeletion', () => ({
+vi.mock('../../../../api/tenant/tenantDeletionBlockers', () => ({
     getTenantDeletionPreview: vi.fn(),
-    deleteTenant: vi.fn(),
 }));
 
 const tenant = { id: 21, name: 'Caritas Nord' };
@@ -25,15 +23,9 @@ const preview = {
     openInvites: 0,
 };
 
-const renderModal = (onClose = vi.fn()) => {
-    const client = new QueryClient();
-    const invalidate = vi.spyOn(client, 'invalidateQueries');
-    render(
-        <QueryClientProvider client={client}>
-            <TenantDeletionModal tenant={tenant} onClose={onClose} />
-        </QueryClientProvider>,
-    );
-    return { invalidate, onClose };
+const renderModal = (onConfirm = vi.fn(), onClose = vi.fn()) => {
+    render(<TenantDeletionModal tenant={tenant} onConfirm={onConfirm} onClose={onClose} />);
+    return { onConfirm, onClose };
 };
 
 const confirmButton = () => screen.getByRole('button', { name: 'tenants.list.deleteModal.confirm' });
@@ -59,54 +51,24 @@ describe('TenantDeletionModal', () => {
         expect(list.textContent).not.toContain('agencyAdmins');
         expect(list.textContent).not.toContain('openInvites');
         expect(getTenantDeletionPreview).toHaveBeenCalledWith(21);
-        expect(deleteTenant).not.toHaveBeenCalled();
     });
 
     it('offers no deletion while the preview is missing', async () => {
         (getTenantDeletionPreview as Mock).mockRejectedValue(new Error('CATCH_ALL_SILENT'));
 
-        renderModal();
+        const { onConfirm } = renderModal();
 
         expect(await screen.findByRole('alert')).toHaveTextContent('tenants.delete.previewFailed');
         expect(confirmButton()).toBeDisabled();
+        expect(onConfirm).not.toHaveBeenCalled();
     });
 
-    it('shows what could not be handled and refreshes the list on closing', async () => {
-        (deleteTenant as Mock).mockResolvedValue({
-            result: 'deleted',
-            details: {
-                complete: false,
-                invites: 2,
-                consultants: 6,
-                adviceSeekers: 40,
-                agencyAdmins: 0,
-                tenantAdmins: 1,
-                agencies: 3,
-                failures: [{ kind: 'CONSULTANT', id: 'c-9', reason: 'IllegalStateException' }],
-            },
-        });
-        const { invalidate, onClose } = renderModal();
+    it('runs the deletion of the chosen Träger once the preview is shown', async () => {
+        const { onConfirm } = renderModal();
         await screen.findByTestId('tenant-delete-preview');
 
         fireEvent.click(confirmButton());
 
-        const failures = await screen.findByTestId('tenant-delete-failures');
-        expect(failures.textContent).toContain('tenants.delete.failureKind.CONSULTANT');
-        expect(failures.textContent).toContain('c-9');
-        expect(screen.getByRole('status')).toHaveTextContent('tenants.delete.outcome.incomplete');
-        fireEvent.click(screen.getByRole('button', { name: 'tenants.delete.close' }));
-        await waitFor(() => expect(onClose).toHaveBeenCalled());
-        expect(invalidate).toHaveBeenCalled();
-        expect(deleteTenant).toHaveBeenCalledWith(21);
-    });
-
-    it('explains that the main Träger cannot be deleted', async () => {
-        (deleteTenant as Mock).mockResolvedValue({ result: 'mainTenant' });
-        renderModal();
-        await screen.findByTestId('tenant-delete-preview');
-
-        fireEvent.click(confirmButton());
-
-        expect(await screen.findByRole('alert')).toHaveTextContent('tenants.delete.outcome.mainTenant');
+        expect(onConfirm).toHaveBeenCalledWith(21);
     });
 });

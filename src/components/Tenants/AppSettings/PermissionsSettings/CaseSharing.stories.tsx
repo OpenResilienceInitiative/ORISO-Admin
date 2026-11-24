@@ -148,6 +148,19 @@ type Story = StoryObj<typeof meta>;
 
 const CHOICE = /^(Fälle von Ratsuchenden teilen|Sharing cases of advice seekers)$/;
 
+/**
+ * The case sharing section starts folded (Frank, 2026-11-24), like the other sections of the
+ * Mailberatung tile; the fold icon leads its heading. Opens it and returns the tile.
+ */
+const openCaseSharing = async (canvasElement: HTMLElement) => {
+    const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+    const toggle = mail.getByRole('button', { name: CHOICE });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(toggle);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    return mail;
+};
+
 /** Today (dev): the separate "Fallübergabe" tile above the conversation types. */
 export const Before: Story = {
     play: async ({ canvasElement }) => {
@@ -163,7 +176,7 @@ export const AfterCaseHandover: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await expect(canvas.queryByTestId('case-handover-card')).toBeNull();
-        const mail = within(canvas.getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('group', { name: CHOICE })).toBeVisible();
         await expect(await mail.findByTestId('case-handover-settings')).toBeVisible();
         await expect(await mail.findByRole('tablist', { name: /Gründe|reasons/i })).toBeVisible();
@@ -178,7 +191,7 @@ export const AfterCaseHandover: Story = {
 export const AfterTeamCounselling: Story = {
     args: { caseSharing: { policy: { value: 'teamCounselling', mode: 'SUGGESTED' } } },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('button', { name: /^(Teamberatung|Team counselling): / })).toHaveAttribute(
             'aria-pressed',
             'true',
@@ -191,7 +204,7 @@ export const AfterTeamCounselling: Story = {
 export const AfterSwitchToCaseHandover: Story = {
     args: { caseSharing: { policy: { value: 'teamCounselling', mode: 'SUGGESTED' } } },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.queryByTestId('case-handover-settings')).toBeNull();
         await userEvent.click(mail.getByRole('button', { name: /^(Fallübergabe|Case handover): / }));
         await waitFor(() => expect(mail.getByTestId('case-handover-settings')).toBeVisible());
@@ -202,7 +215,7 @@ export const AfterSwitchToCaseHandover: Story = {
 export const AfterBothActiveToday: Story = {
     args: { caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' }, bothActive: true } },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('status')).toHaveTextContent(/beide aktiv|both active/);
         await expect(
             mail.getByRole('button', { name: /Fallübergabe|Case handover/, pressed: true }),
@@ -253,7 +266,7 @@ export const AfterRequiredByTraeger: Story = {
         caseSharing: { policy: { value: 'caseHandover', mode: 'ENFORCED', inherited: true } },
     },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('button', { name: /^(Teamberatung|Team counselling): / })).toBeDisabled();
         await expect(mail.getByRole('button', { name: /^(Keine|None): / })).toBeDisabled();
         await expect(mail.getByRole('button', { name: /^(Fallübergabe|Case handover): / })).toHaveAttribute(
@@ -277,7 +290,7 @@ export const LevelPlatform: Story = {
         caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } },
     },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('group', { name: CHOICE })).toBeVisible();
         await expect(mail.getByRole('group', { name: /Gastkonten|guest accounts/i })).toBeVisible();
     },
@@ -290,7 +303,7 @@ export const LevelTraeger: Story = {
         caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED', inherited: true } },
     },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         const choice = within(mail.getByRole('group', { name: CHOICE }));
         await expect(
             choice.getByRole('button', { name: /^(Fälle von Ratsuchenden teilen|Sharing cases of advice seekers): / }),
@@ -309,7 +322,7 @@ export const LevelCentre: Story = {
         caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED', inherited: true } },
     },
     play: async ({ canvasElement }) => {
-        const mail = within(within(canvasElement).getByTestId('chat-type-card-oneOnOne'));
+        const mail = await openCaseSharing(canvasElement);
         await expect(mail.getByRole('button', { name: /^(Teamberatung|Team counselling): / })).toBeEnabled();
         await expect(mail.getByRole('group', { name: /Direkteinladung|direct invitations/i })).toBeVisible();
     },

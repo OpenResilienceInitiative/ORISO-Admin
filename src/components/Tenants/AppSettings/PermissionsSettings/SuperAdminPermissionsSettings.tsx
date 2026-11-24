@@ -21,6 +21,12 @@ import {
     withoutInternalGroupChat,
 } from './RecipientScope/recipientScopePolicy';
 import { type CalendarPolicyChange, toCalendarWrite, withoutCalendar } from './Calendar/calendarPolicy';
+import {
+    type CaseSharingMode,
+    caseSharingPolicyFromApi,
+    caseSharingPolicyToApi,
+} from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
@@ -180,6 +186,37 @@ export const SuperAdminPermissionsSettings = ({
         [rebuildEffectivePlatformControls, t, updateCalendar],
     );
 
+    // Same queue again (ORISO-TenantService#374). The group-chat scope is left out and kept as stored;
+    // caseHandoverEnabled follows the mode on the server and is read back from the answer.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing('platform');
+    const handleCaseSharingSave = useCallback(
+        (next: PolicyValue<CaseSharingMode>) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) throw new Error('Platform controls are not loaded');
+                confirmedPlatformControls.current = await updateCalendar.mutateAsync(
+                    // the calendar and group-chat presets are left out and kept as stored
+                    withoutCalendar(
+                        withoutInternalGroupChat({
+                            ...confirmed,
+                            caseSharing: { mode: caseSharingPolicyToApi(next) },
+                        }),
+                    ),
+                );
+                rebuildEffectivePlatformControls();
+                snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            trackCaseSharing(next, save);
+            save.catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
+        },
+        [rebuildEffectivePlatformControls, t, trackCaseSharing, updateCalendar],
+    );
+    const caseSharingPolicy = (effectivePlatformControls ?? platformControls)?.caseSharing?.mode;
+
     // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
     // policies), never from a hard-coded all-on default that would contradict a stored policy.
     const initialValues = useMemo(
@@ -230,6 +267,14 @@ export const SuperAdminPermissionsSettings = ({
                     policies: (effectivePlatformControls ?? platformControls)?.calendar,
                     onSave: handleCalendarSave,
                 }}
+                caseSharing={
+                    caseSharingPolicy
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingSave,
+                          }
+                        : undefined
+                }
             />
             {journeys.dialog}
         </>

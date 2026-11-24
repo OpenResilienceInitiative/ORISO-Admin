@@ -368,7 +368,7 @@ export const NoData: Story = {
     parameters: { msw: { handlers: handlers(() => HttpResponse.json(statistics('DAILY', []))) } },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeVisible();
+        await waitFor(() => expect(canvas.getByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeVisible());
         await expect(canvas.getByRole('button', { name: 'Beratende verwalten' })).toBeVisible();
         await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
         // all eight figures share one raster (#1374)

@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
 import { ListSearchBar } from '../../../components/ListSearchBar';
 import routePathNames from '../../../appConfig';
@@ -15,6 +16,8 @@ import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
+import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
+import { TenantDeleteErrorMessage } from '../../Tenants/List/TenantDeleteErrorMessage';
 import { TenantDeletionModal } from '../../Tenants/List/TenantDeletionModal';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
@@ -55,6 +58,7 @@ interface UserManagementTableProps {
 }
 
 export const UserManagementTable = ({ figmaTableHeader = false }: UserManagementTableProps) => {
+    const { notification } = useAdminFeedback();
     const screens = Grid.useBreakpoint();
     const { typeOfUsers } = useParams<{ typeOfUsers: TypeOfUser }>();
     const sectionId = typeOfUsers || TypeOfUser.Consultants;
@@ -160,6 +164,19 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const rejectedSort = (responseList as UserSearchResult | undefined)?.rejectedSort;
     const shownSortBy = rejectedSort ? USER_TABLE_API_SAFE_SORT : userQueryState.sortBy;
     const shownOrder = rejectedSort ? USER_TABLE_API_SAFE_ORDER : userQueryState.order;
+
+    const { mutate: deleteTenant } = useDeleteTenant({
+        onSuccess: () => {
+            notification.success({ message: t('tenants.list.deleteMessage.success') });
+            refetch();
+        },
+        onError: (error) => {
+            notification.error({
+                description: <TenantDeleteErrorMessage error={error} />,
+                message: t('tenants.list.deleteMessage.error.title'),
+            });
+        },
+    });
 
     const showTenantColumn = shouldShowTenantColumn(sectionId, isSuperAdmin);
     const showSubdomain = !settings.multitenancyWithSingleDomainEnabled && (isTenantAdmins || isTenants);
@@ -457,7 +474,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         sortBy={shownSortBy}
                         order={shownOrder}
                         onEdit={onEditTenant}
-                        // Only the platform administrator deletes a Träger (ORISO-Admin#1525).
+                        // Deleting a Träger is the platform administrator's act alone (ORISO-Admin#1525).
                         onDelete={isSuperAdmin ? onDeleteTenant : undefined}
                     />
                 )}
@@ -492,10 +509,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             {tenantToDelete !== null && (
                 <TenantDeletionModal
                     tenant={tenantToDelete}
-                    onClose={() => {
+                    onConfirm={(id) => {
+                        deleteTenant(id);
                         setTenantToDelete(null);
-                        refetch();
                     }}
+                    onClose={() => setTenantToDelete(null)}
                 />
             )}
         </div>

@@ -8,7 +8,6 @@ import { convertToOptions } from '../../../../../utils/convertToOptions';
 import { Option, MuiSelectField } from '../../../../../components/mui/MuiSelectField';
 import { Card } from '../../../../../components/Card';
 import { MuiSliderField } from '../../../../../components/mui/MuiSliderField';
-import { TEAM_FUNCTIONS, TeamFunctionSwitch } from '../../../../../components/TeamFunctions';
 import { useTenantTopics } from '../../../../../hooks/useTenantTopics';
 import styles from './styles.module.scss';
 import { CounsellingRelation } from '../../../../../enums/CounsellingRelation';
@@ -26,21 +25,10 @@ import { MuiSwitchField } from '../../../../../components/mui/MuiSwitchField';
 interface AgencySettingsProps {
     isEditMode: boolean;
     asFields?: boolean;
-    /**
-     * The currently persisted (server-side) teamAgency value, e.g. `Boolean(agencyData?.teamAgency)`.
-     * Used as the baseline the live form value is compared against below. Callers must pass the
-     * value straight from their fetched agency data (not a value captured once on mount) so that a
-     * successful save — which updates that fetched data via the query cache — immediately refreshes
-     * the baseline. Without this, a second edit in the same page load (flip, save, flip again) would
-     * compare against the pre-save baseline and show the conversion warning incorrectly.
-     */
-    persistedTeamAgency?: boolean;
 }
 
-export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: AgencySettingsProps) => {
+export const AgencySettings = ({ isEditMode, asFields }: AgencySettingsProps) => {
     const [t] = useTranslation();
-    const teamAgency = Form.useWatch('teamAgency');
-    const showTeamToSingleWarning = isEditMode && persistedTeamAgency === true && teamAgency === false;
 
     const genders = Form.useWatch<Option[]>(['demographics', 'genders']) || [];
     const counsellingRelations = Form.useWatch<Option[]>('counsellingRelations') || [];
@@ -85,15 +73,7 @@ export const AgencySettings = ({ isEditMode, asFields, persistedTeamAgency }: Ag
 
     const fields = (
         <>
-            <TeamFunctionSwitch fn="counselling" className={styles.teamFunction} />
-            {showTeamToSingleWarning && (
-                <HintText className={styles.warning}>
-                    {t('agency.form.settings.teamAdviceCenter.changeWarning', {
-                        name: t(TEAM_FUNCTIONS.counselling.nameKey),
-                    })}
-                </HintText>
-            )}
-
+            {/* ORISO-Frontend#2494: Teamberatung is chosen in Funktionszugriff only (Frank, 2026-11-24). */}
             {isSuperAdmin && (
                 <MuiSelectField
                     label="agency.edit.general.more_settings.tenant.title"

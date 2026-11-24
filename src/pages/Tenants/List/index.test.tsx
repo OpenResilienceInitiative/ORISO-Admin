@@ -1,7 +1,8 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantsList } from './index';
+import { TenantDeletionError } from '../../../api/tenant/tenantDeletionBlockers';
 
 const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
@@ -9,6 +10,8 @@ const mocks = vi.hoisted(() => ({
     query: '',
     setSearchParams: vi.fn(),
     isSuperAdmin: true,
+    deleteTenant: vi.fn(),
+    deleteOptions: undefined as { onSuccess?: () => void; onError?: (error: unknown) => void } | undefined,
     useTenantsData: vi.fn(),
     settings: {
         mainTenantSubdomainForSingleDomainMultitenancy: '',
@@ -40,6 +43,15 @@ const translations: Record<string, string> = {
     'tenants.list.details.show': 'Show details of {{name}}',
     'tenants.list.details.hide': 'Hide details of {{name}}',
     'userTable.status.IN_DELETION': 'Being deleted',
+    'tenants.list.deleteMessage.success': 'Tenant deleted.',
+    'tenants.list.deleteMessage.error.title': 'Tenant could not be deleted.',
+    'tenants.list.deleteMessage.error.description': 'Please try again later.',
+    'tenants.list.deleteMessage.error.unavailable': 'Could not check what is left. Nothing was deleted.',
+    'tenants.list.deleteMessage.blockers.intro': 'Remove first:',
+    'tenants.list.deleteMessage.blockers.unknown': 'Something is still left.',
+    'tenants.list.deleteMessage.blockers.agencies': '{{count}} agencies',
+    'tenants.list.deleteMessage.blockers.tenantAdmins': '{{count}} Träger admins',
+    'tenants.list.deleteMessage.blockers.openInvites': '{{count}} open invitations',
     'tenants.searchPlaceholder': 'Search by name or ID',
     'tenants.subTitle': 'Tenants',
     'tenants.title': 'Tenants',
@@ -75,13 +87,30 @@ vi.mock('../../../components/Page', () => {
 });
 
 vi.mock('./TenantDeletionModal', () => ({
-    TenantDeletionModal: ({ tenant }: { tenant: { id: number; name: string } }) => (
-        <div role="dialog" aria-label={`Delete ${tenant.name}?`} data-tenant-id={tenant.id} />
+    TenantDeletionModal: ({
+        tenant,
+        onConfirm,
+    }: {
+        tenant: { id: number; name: string };
+        onConfirm: (id: number) => void;
+    }) => (
+        <div role="dialog" aria-label={`Delete ${tenant.name}?`}>
+            <button type="button" onClick={() => onConfirm(tenant.id)}>
+                Confirm delete
+            </button>
+        </div>
     ),
 }));
 
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: mocks.settings }),
+}));
+
+vi.mock('../../../hooks/useDeleteTenant', () => ({
+    useDeleteTenant: (options: typeof mocks.deleteOptions) => {
+        mocks.deleteOptions = options;
+        return { mutate: mocks.deleteTenant };
+    },
 }));
 
 vi.mock('../../../hooks/useReleasesToggle.hook', () => ({
@@ -141,6 +170,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         mocks.query = '';
         mocks.setSearchParams.mockReset();
         mocks.navigate.mockReset();
+        mocks.deleteTenant.mockReset();
         mocks.isSuperAdmin = true;
         mocks.useTenantsData.mockReset();
         mocks.settings = {
@@ -288,16 +318,85 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/admin/tenants/21');
     });
 
-    it('opens the deletion dialog for the chosen Träger', () => {
+    it('asks before deleting and reports the result above the list', () => {
         withTenants([tenant()]);
 
         render(<TenantsList />);
         fireEvent.click(screen.getByRole('button', { name: 'Delete Caritas Nord' }));
+        fireEvent.click(
+            within(screen.getByRole('dialog', { name: 'Delete Caritas Nord?' })).getByText('Confirm delete'),
+        );
 
-        expect(screen.getByRole('dialog', { name: 'Delete Caritas Nord?' })).toHaveAttribute('data-tenant-id', '21');
+        expect(mocks.deleteTenant).toHaveBeenCalledWith(21);
+        act(() => mocks.deleteOptions?.onError?.(new Error('API call error: 500')));
+        expect(screen.getByRole('alert')).toHaveTextContent('Tenant could not be deleted.');
+        expect(screen.getByRole('alert')).toHaveTextContent('Please try again later.');
+        expect(screen.getByRole('alert')).not.toHaveTextContent(/chats/i);
     });
 
-    it('offers deletion to the platform administrator only (ORISO-Admin#1525)', () => {
+    // ORISO-UserService#1466: the refusal says what is still left in the Träger, not "active chats".
+    it('lists what is still left when TenantService refuses the deletion', () => {
+        withTenants([tenant()]);
+        render(<TenantsList />);
+
+        const blockers = {
+            agencies: 1,
+            consultants: 0,
+            adviceSeekers: 0,
+            agencyAdmins: 0,
+            tenantAdmins: 1,
+            openInvites: 1,
+        };
+        act(() => mocks.deleteOptions?.onError?.(new TenantDeletionError('blocked', blockers)));
+
+        const items = within(screen.getByRole('alert'))
+            .getAllByRole('listitem')
+            .map((item) => item.textContent);
+        expect(screen.getByRole('alert')).toHaveTextContent('Remove first:');
+        expect(items).toEqual(['1 agencies', '1 Träger admins', '1 open invitations']);
+    });
+
+    it('names a left-over invitation even when it is the only thing left', () => {
+        withTenants([tenant()]);
+        render(<TenantsList />);
+
+        const blockers = {
+            agencies: 0,
+            consultants: 0,
+            adviceSeekers: 0,
+            agencyAdmins: 0,
+            tenantAdmins: 0,
+            openInvites: 1,
+        };
+        act(() => mocks.deleteOptions?.onError?.(new TenantDeletionError('blocked', blockers)));
+
+        expect(
+            within(screen.getByRole('alert'))
+                .getAllByRole('listitem')
+                .map((item) => item.textContent),
+        ).toEqual(['1 open invitations']);
+    });
+
+    it('still refuses clearly when the 409 had no counts', () => {
+        withTenants([tenant()]);
+        render(<TenantsList />);
+
+        act(() => mocks.deleteOptions?.onError?.(new TenantDeletionError('blocked', null)));
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Something is still left.');
+    });
+
+    it('says that nothing was deleted when the check itself was unavailable', () => {
+        withTenants([tenant()]);
+        render(<TenantsList />);
+
+        act(() => mocks.deleteOptions?.onError?.(new TenantDeletionError('unavailable')));
+
+        expect(screen.getByRole('alert')).toHaveTextContent('Could not check what is left. Nothing was deleted.');
+    });
+
+    // ORISO-Admin#1525: only the platform administrator sees the delete action.
+    it('offers deletion to the platform administrator only', () => {
         withDesktopLayout();
         mocks.isSuperAdmin = false;
         withTenants([tenant()]);

@@ -3,7 +3,7 @@ import { CounsellingRelation } from '../enums/CounsellingRelation';
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
 import { TenantSettings } from './tenant';
 import { TopicData } from './topic';
-import type { PolicyValue } from './permissionPolicy';
+import type { CaseSharingApiMode, PolicyValue } from './permissionPolicy';
 
 /**
  * Platform-wide governance for agency-level toggles (a singleton, super-admin owned). The
@@ -26,6 +26,10 @@ export type AgencySettings = Omit<TenantSettings, 'smtp' | 'tenantAdminControls'
      * means off; not cascaded from the Träger. Only Träger and platform admins may change it.
      */
     featureLiveChatFurtherCounsellingEnabled?: boolean | null;
+    /** The centre's own case sharing choice (ORISO-TenantService#374); absent = none of its own. */
+    caseSharingMode?: CaseSharingApiMode | null;
+    /** Read-only effective case sharing mode of the centre, resolved by the AgencyService. */
+    caseSharing?: PolicyValue<CaseSharingApiMode>;
     /** Read-only effective policies; the agency's own overrides remain the boolean settings. */
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
 };

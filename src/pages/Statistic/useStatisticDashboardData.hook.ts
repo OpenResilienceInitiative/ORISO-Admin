@@ -10,6 +10,7 @@ import {
     topicAdminEndpoint,
     topicEndpoint,
 } from '../../appConfig';
+import { useLanguage } from '../../hooks/useLanguage';
 import removeEmbedded from '../../utils/removeEmbedded';
 import {
     buildStatisticData,
@@ -179,6 +180,8 @@ export const useStatisticDashboardData = ({
     /** A Statistik-Leser·in: names come from the names-only endpoints (ORISO-UserService#1666). */
     isStatisticsReader?: boolean;
 } = {}): StatisticDashboardDataResult => {
+    // Topic names are resolved server-side from Accept-Language (#564), so the UI language is part of the topic key.
+    const { language } = useLanguage();
     const lookupKey = isStatisticsReader ? 'statistics-reader' : 'admin';
     const dashboardQuery = useQuery({
         queryKey: ['ADMIN_STATISTICS_DASHBOARD'],
@@ -228,7 +231,7 @@ export const useStatisticDashboardData = ({
     });
 
     const topicsQuery = useQuery({
-        queryKey: ['ADMIN_STATISTICS_TOPIC_NAMES', lookupKey],
+        queryKey: ['ADMIN_STATISTICS_TOPIC_NAMES', lookupKey, language],
         queryFn: isStatisticsReader ? fetchReaderTopicNames : fetchTopicNames,
         enabled: Boolean(dashboardQuery.data),
         staleTime: 5 * 60 * 1000,

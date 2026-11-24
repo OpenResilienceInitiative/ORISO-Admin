@@ -11,9 +11,13 @@ import {
     topicEndpoint,
 } from '../../appConfig';
 
+const language = vi.hoisted(() => ({ current: 'de' }));
 const fetchData = vi.hoisted(() => vi.fn());
 const getDashboardStatistics = vi.hoisted(() => vi.fn());
 
+vi.mock('../../hooks/useLanguage', () => ({
+    useLanguage: () => ({ language: language.current, options: [], changeLanguage: vi.fn() }),
+}));
 vi.mock('../../api/fetchData', async (importOriginal) => ({
     ...(await importOriginal<typeof import('../../api/fetchData')>()),
     fetchData,
@@ -31,6 +35,13 @@ const wrapper = ({ children }: { children: ReactNode }) => (
         {children}
     </QueryClientProvider>
 );
+
+const sharedWrapper = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+};
 
 const counts = { today: 0, yesterday: 0, thisWeek: 0, total: 1, thisYear: 1, lastYear: 0 };
 const target = (targetType: 'PLATFORM' | 'TENANT', tenantId: number | null) => ({
@@ -55,6 +66,7 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
     });
 
     beforeEach(() => {
+        language.current = 'de';
         fetchData.mockReset();
         getDashboardStatistics.mockReset();
         getDashboardStatistics.mockResolvedValue({
@@ -101,5 +113,33 @@ describe('statistics name lookups for a Statistik-Leser·in (ORISO-UserService#1
         await waitFor(() => expect(urls().some((url) => url.startsWith(topicAdminEndpoint))).toBe(true));
         expect(urls()).not.toContain(statisticsTenantNamesEndpoint);
         expect(urls()).not.toContain(statisticsAgencyNamesEndpoint);
+    });
+
+    it('shows the topic name of the current UI language, also after a language switch (#564)', async () => {
+        const now = new Date();
+        const month = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}`;
+        getDashboardStatistics.mockResolvedValue({
+            generatedAt: '2026-11-17T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                { ...target('PLATFORM', null), monthlyTopTopics: [{ month, topicId: 7, sessionCount: 3 }] },
+                target('TENANT', 1),
+            ],
+        });
+        fetchData.mockImplementation(({ url }: { url: string }) =>
+            Promise.resolve(url === `${topicEndpoint}public` ? [{ id: 7, name: `Thema-${language.current}` }] : []),
+        );
+        const { result, rerender } = renderHook(() => useStatisticDashboardData({ isStatisticsReader: true }), {
+            wrapper: sharedWrapper(),
+        });
+        const shownNames = () => JSON.stringify(result.current.data);
+
+        await waitFor(() => expect(shownNames()).toContain('Thema-de'));
+
+        language.current = 'en';
+        rerender();
+
+        await waitFor(() => expect(shownNames()).toContain('Thema-en'));
+        expect(shownNames()).not.toContain('Thema-de');
     });
 });

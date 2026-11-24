@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import {
     getSessionAccessToken,
     getSessionRefreshToken,
@@ -13,9 +13,7 @@ import { TenantDeletionModal } from '.';
 
 const PREVIEW = { agencies: 3, consultants: 7, adviceSeekers: 40, agencyAdmins: 2, tenantAdmins: 1, openInvites: 1 };
 
-const previewOk = http.get('*/service/useradmin/tenants/:tenantId/deletion-blockers', () =>
-    HttpResponse.json({ deletable: false, ...PREVIEW }),
-);
+const previewOk = http.get('*/service/useradmin/tenants/:tenantId/deletion-blockers', () => HttpResponse.json(PREVIEW));
 
 /**
  * Deleting a Träger takes everything below it with it (ORISO-Admin#1525): the platform
@@ -24,7 +22,7 @@ const previewOk = http.get('*/service/useradmin/tenants/:tenantId/deletion-block
 const meta = {
     title: 'Pages/Tenants/TenantDeletionModal',
     component: TenantDeletionModal,
-    args: { tenant: { id: 21, name: 'Caritas Nord' }, onClose: () => undefined },
+    args: { tenant: { id: 21, name: 'Caritas Nord' }, onConfirm: () => undefined, onClose: () => undefined },
     decorators: [
         (Story) => (
             <QueryClientProvider client={new QueryClient()}>
@@ -79,59 +77,5 @@ export const PreviewFailed: Story = {
         const page = within(canvasElement.ownerDocument.body);
         await expect(await page.findByRole('alert')).toBeInTheDocument();
         await expect(page.getByRole('button', { name: 'Löschen' })).toBeDisabled();
-    },
-};
-
-/** One counsellor could not be marked: the result names it and says how to retry. */
-export const PartlyFailed: Story = {
-    parameters: {
-        msw: {
-            handlers: [
-                previewOk,
-                http.delete('*/service/tenant/:tenantId', () =>
-                    HttpResponse.json(
-                        {
-                            complete: false,
-                            invites: 1,
-                            agencies: 3,
-                            consultants: 0,
-                            adviceSeekers: 0,
-                            agencyAdmins: 2,
-                            tenantAdmins: 1,
-                            failures: [{ kind: 'CONSULTANT', id: 'b2f0c1d4', reason: 'IllegalStateException' }],
-                        },
-                        { status: 202 },
-                    ),
-                ),
-            ],
-        },
-    },
-    play: async ({ canvasElement }) => {
-        const page = within(canvasElement.ownerDocument.body);
-        await page.findByTestId('tenant-delete-preview');
-        await userEvent.click(page.getByRole('button', { name: 'Löschen' }));
-        const failures = await page.findByTestId('tenant-delete-failures');
-        await expect(failures).toHaveTextContent(/Berater\*in b2f0c1d4/);
-    },
-};
-
-/** The main tenant of a single-domain installation is refused with a clear message. */
-export const MainTenantRefused: Story = {
-    parameters: {
-        msw: {
-            handlers: [
-                previewOk,
-                http.delete(
-                    '*/service/tenant/:tenantId',
-                    () => new HttpResponse(null, { status: 409, headers: { 'X-Reason': 'MAIN_TENANT_NOT_DELETABLE' } }),
-                ),
-            ],
-        },
-    },
-    play: async ({ canvasElement }) => {
-        const page = within(canvasElement.ownerDocument.body);
-        await page.findByTestId('tenant-delete-preview');
-        await userEvent.click(page.getByRole('button', { name: 'Löschen' }));
-        await expect(await page.findByText(/Haupt-Träger/)).toBeInTheDocument();
     },
 };

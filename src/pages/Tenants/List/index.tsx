@@ -13,15 +13,20 @@ import { useAppConfigContext } from '../../../context/useAppConfig';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { ReleaseToggle } from '../../../enums/ReleaseToggle';
 import { Resource } from '../../../enums/Resource';
+import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TenantDataTable, type TenantRow } from './TenantDataTable';
-import { TenantDeletionModal } from './TenantDeletionModal';
 import { nextTenantSortState, tenantSortOf } from './tenantSort';
 import styles from './styles.module.scss';
 import { Notify } from '../../../components/Notify';
+import { TenantDeleteErrorMessage } from './TenantDeleteErrorMessage';
+import { TenantDeletionModal } from './TenantDeletionModal';
+
+/** The outcome of the last deletion; a failure keeps its error so the message can say what is left. */
+type DeleteResult = { kind: 'success' } | { kind: 'error'; error: unknown } | null;
 
 export const TenantsList = () => {
     const navigate = useNavigate();
@@ -35,6 +40,7 @@ export const TenantsList = () => {
         pageSize: 10,
     });
     const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
+    const [deleteResult, setDeleteResult] = useState<DeleteResult>(null);
     const { can } = useUserPermissions();
     const { isEnabled } = useReleasesToggle();
     const { isSuperAdmin } = useUserRoles();
@@ -45,6 +51,20 @@ export const TenantsList = () => {
         sort: tableState.sortBy,
         dir: tableState.order,
     });
+    const { mutate: deleteTenant } = useDeleteTenant({
+        onSuccess: () => setDeleteResult({ kind: 'success' }),
+        onError: (error) => setDeleteResult({ kind: 'error', error }),
+    });
+
+    const onDelete = useCallback(
+        (id: number) => {
+            setTenantToDelete(null);
+            setDeleteResult(null);
+            deleteTenant(id);
+        },
+        [deleteTenant],
+    );
+
     const onSortChange = useCallback((sort: DataTableSort | null) => {
         setTableState((state) => nextTenantSortState(state, sort));
     }, []);
@@ -81,6 +101,27 @@ export const TenantsList = () => {
                 <div className={styles.toolbar}>
                     <ListSearchBar query={search} onClear={clearSearch} />
                 </div>
+            )}
+
+            {deleteResult?.kind === 'success' && (
+                <Notify
+                    title={t('notify.title.tenants')}
+                    severity="success"
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
+                    {t('tenants.list.deleteMessage.success')}
+                </Notify>
+            )}
+            {deleteResult?.kind === 'error' && (
+                <Notify
+                    severity="error"
+                    title={t('tenants.list.deleteMessage.error.title')}
+                    jump="tenants-list-table"
+                    onClose={() => setDeleteResult(null)}
+                >
+                    <TenantDeleteErrorMessage error={deleteResult.error} />
+                </Notify>
             )}
 
             {isError && (
@@ -124,7 +165,11 @@ export const TenantsList = () => {
             </div>
 
             {tenantToDelete !== null && (
-                <TenantDeletionModal tenant={tenantToDelete} onClose={() => setTenantToDelete(null)} />
+                <TenantDeletionModal
+                    tenant={tenantToDelete}
+                    onConfirm={onDelete}
+                    onClose={() => setTenantToDelete(null)}
+                />
             )}
         </Page>
     );
