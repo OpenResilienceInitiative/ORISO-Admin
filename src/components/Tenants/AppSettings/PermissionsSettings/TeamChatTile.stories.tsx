@@ -211,50 +211,165 @@ export const Phone390English: Story = { beforeEach: english, globals: phone };
 export const Phone390ConfigureDialog: Story = { globals: phone, play: ConfigureDialog.play };
 
 /**
- * Option for Frank (separate decision): a small "Team-Chat" switch on the Mail Beratung tile, next to the small
- * "Supervision" switch there. Sketch only — today the Mail Beratung tile has no such switch.
+ * Option for Frank (separate decision, 2026-11-24): a small "Team-Chat" switch on the Mail Beratung tile, built
+ * exactly like the small "Supervision" switch there. Supervision today: the small switch on the Mail Beratung
+ * tile and the Supervision tile are two separate settings; neither locks the other, and supervision works in a
+ * mail conversation only while BOTH are on. The grey box under the tiles is story-only: it says what
+ * counsellors get with the current switches. Sketch — today the Mail Beratung tile has no Team-Chat switch and
+ * TenantService has no such setting.
  */
-const MailTileOption = ({ level }: { level: Level }) => {
-    const [teamChat, setTeamChat] = useState<PolicyValue<boolean>>(own(true));
-    const [supervision, setSupervision] = useState<PolicyValue<boolean>>(own(true));
+const MAIL_SUPERVISION = 'mailSupervisionSketch';
+const MAIL_TEAM_CHAT = 'mailTeamChatSketch';
+
+const resultStyle = {
+    margin: 0,
+    padding: '12px 16px',
+    borderRadius: 12,
+    background: 'var(--m3-surface-container, #f0eded)',
+    fontSize: 14,
+    lineHeight: '20px',
+} as const;
+
+const Effect = ({ label, parts }: { label: string; parts: Array<[string, boolean]> }) => {
+    const on = parts.every(([, value]) => value);
+    const missing = parts.filter(([, value]) => !value).map(([part]) => part);
     return (
-        <CollapsibleTile
-            icon={<MailOutlinedIcon />}
-            title={String(i18n.t('tenants.permissions.card.oneOnOne.title'))}
-            status={String(i18n.t('tenants.permissions.card.summary.onPlain'))}
-            defaultOpen
-        >
-            <div className={permissionStyles.togglesList}>
-                <PolicyOptionCard
-                    Icon={SupervisorAccountOutlinedIcon}
-                    featureKey="mailSupervisionSketch"
-                    label={String(i18n.t('tenants.permissions.feature.supervision'))}
-                    supportingText={String(i18n.t('tenants.permissions.featureDescription.supervision'))}
-                    level={level}
-                    policy={supervision}
-                    onChange={setSupervision}
-                />
-                <PolicyOptionCard
-                    Icon={ForumOutlinedIcon}
-                    featureKey="mailTeamChatSketch"
-                    label={name()}
-                    supportingText={String(i18n.t(TEAM_FUNCTIONS.chat.descriptionKey))}
-                    level={level}
-                    policy={teamChat}
-                    onChange={setTeamChat}
-                />
-            </div>
-        </CollapsibleTile>
+        <li>
+            <strong>{label}:</strong> {on ? 'verfügbar' : `nicht verfügbar – aus: ${missing.join(' und ')}`}
+        </li>
     );
 };
 
-export const OptionMailTileSwitch: StoryObj<typeof MailTileOption> = {
-    name: 'Option: Schalter auf Mail Beratung',
-    render: () => <MailTileOption level="tenant" />,
+const MailTileOption = ({ withTeamChatSwitch }: { withTeamChatSwitch: boolean }) => {
+    const [policies, setPolicies] = useState<Record<string, EffectivePolicy>>({
+        ...TEAM_CHAT_ON,
+        [SUPERVISION_MASTER]: own(true),
+        ...allOn(SUPERVISION_FEATURES.map((feature) => feature.field)),
+        [MAIL_SUPERVISION]: own(true),
+        [MAIL_TEAM_CHAT]: own(true),
+    });
+    const set = (changes: Record<string, PolicyValue<boolean>>) =>
+        setPolicies((current) => ({ ...current, ...changes }));
+    const tileProps = {
+        level: 'tenant' as const,
+        policyOf: (field: string) => policies[field] ?? own(false),
+        pending: () => false,
+        onChange: set,
+    };
+    const mailTile = String(i18n.t('tenants.permissions.card.oneOnOne.title'));
+    const supervisionTile = String(i18n.t('tenants.permissions.supervision.title'));
+    const value = (field: string) => Boolean(policies[field]?.value);
+    return (
+        <div style={{ display: 'grid', gap: 16, maxWidth: 1240 }}>
+            <CollapsibleTile
+                icon={<MailOutlinedIcon />}
+                title={mailTile}
+                status={String(i18n.t('tenants.permissions.card.summary.onPlain'))}
+                defaultOpen
+            >
+                <div className={permissionStyles.togglesList}>
+                    <PolicyOptionCard
+                        Icon={SupervisorAccountOutlinedIcon}
+                        featureKey={MAIL_SUPERVISION}
+                        label={String(i18n.t('tenants.permissions.feature.supervision'))}
+                        supportingText={String(i18n.t('tenants.permissions.featureDescription.supervision'))}
+                        level="tenant"
+                        policy={policies[MAIL_SUPERVISION]}
+                        onChange={(next) => set({ [MAIL_SUPERVISION]: next })}
+                    />
+                    {withTeamChatSwitch && (
+                        <PolicyOptionCard
+                            Icon={ForumOutlinedIcon}
+                            featureKey={MAIL_TEAM_CHAT}
+                            label={name()}
+                            supportingText="Beratende stimmen sich bei Anfragen in der Mail Beratung im Team ab."
+                            level="tenant"
+                            policy={policies[MAIL_TEAM_CHAT]}
+                            onChange={(next) => set({ [MAIL_TEAM_CHAT]: next })}
+                        />
+                    )}
+                </div>
+            </CollapsibleTile>
+            <SupervisionTile {...tileProps} />
+            <TeamChatTile {...tileProps} />
+            <div style={resultStyle} data-testid="mail-effect">
+                <p style={{ margin: '0 0 4px' }}>So wirkt es für Beratende in der {mailTile}:</p>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                    <Effect
+                        label={supervisionTile}
+                        parts={[
+                            [`Schalter auf „${mailTile}“`, value(MAIL_SUPERVISION)],
+                            [`Kachel „${supervisionTile}“`, value(SUPERVISION_MASTER)],
+                        ]}
+                    />
+                    <Effect
+                        label={name()}
+                        parts={[
+                            ...(withTeamChatSwitch
+                                ? ([[`Schalter auf „${mailTile}“`, value(MAIL_TEAM_CHAT)]] as Array<[string, boolean]>)
+                                : []),
+                            [`Kachel „${name()}“`, value(TEAM_CHAT_MASTER)],
+                        ]}
+                    />
+                    <Effect
+                        label={`${name()} nach der Annahme`}
+                        parts={[
+                            ...(withTeamChatSwitch
+                                ? ([[`Schalter auf „${mailTile}“`, value(MAIL_TEAM_CHAT)]] as Array<[string, boolean]>)
+                                : []),
+                            [`Kachel „${name()}“`, value(TEAM_CHAT_MASTER)],
+                            ['„läuft nach der Annahme weiter“', value(TEAM_CHAT_AFTER_ACCEPT)],
+                        ]}
+                    />
+                </ul>
+            </div>
+        </div>
+    );
 };
 
-export const OptionMailTileSwitchPhone: StoryObj<typeof MailTileOption> = {
-    name: 'Option: Schalter auf Mail Beratung (Phone 390)',
+type OptionStory = StoryObj<typeof MailTileOption>;
+const mailSwitch = (canvasElement: HTMLElement) =>
+    within(canvasElement).getByRole('button', {
+        name: `${name()}: ${String(i18n.t('tenants.permissions.policy.activated'))} – ${String(
+            i18n.t('tenants.permissions.policy.deactivate'),
+        )}`,
+    });
+
+/** Option A — with the small switch, like Supervision: both must be on; switching the small one off stops it. */
+export const OptionWithMailTileSwitch: OptionStory = {
+    name: 'Option A: mit Schalter auf Mail Beratung',
+    render: () => <MailTileOption withTeamChatSwitch />,
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getByTestId('mail-effect').textContent).toContain(`${name()}: verfügbar`);
+        await userEvent.click(mailSwitch(canvasElement));
+        await waitFor(() =>
+            expect(within(canvasElement).getByTestId('mail-effect').textContent).toContain(
+                `${name()}: nicht verfügbar – aus: Schalter auf`,
+            ),
+        );
+        // The Team-Chat tile itself does not change: like Supervision, neither switch locks the other.
+        await expect(within(tile(canvasElement)).getByText('An · läuft nach Annahme: aus')).toBeVisible();
+    },
+};
+
+/** Option B — without: only the Team-Chat tile decides. The Mail Beratung tile keeps only Supervision. */
+export const OptionWithoutMailTileSwitch: OptionStory = {
+    name: 'Option B: ohne Schalter (nur Kachel)',
+    render: () => <MailTileOption withTeamChatSwitch={false} />,
+    play: async ({ canvasElement }) => {
+        await expect(within(canvasElement).getAllByText(name()).length).toBeGreaterThan(0);
+        await expect(within(canvasElement).getByTestId('mail-effect').textContent).toContain(`${name()}: verfügbar`);
+    },
+};
+
+export const OptionWithMailTileSwitchPhone: OptionStory = {
+    name: 'Option A: mit Schalter (Phone 390)',
     globals: phone,
-    render: () => <MailTileOption level="tenant" />,
+    render: () => <MailTileOption withTeamChatSwitch />,
+};
+
+export const OptionWithoutMailTileSwitchPhone: OptionStory = {
+    name: 'Option B: ohne Schalter (Phone 390)',
+    globals: phone,
+    render: () => <MailTileOption withTeamChatSwitch={false} />,
 };
