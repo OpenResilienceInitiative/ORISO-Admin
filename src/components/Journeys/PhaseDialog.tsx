@@ -16,6 +16,7 @@ import {
     moveRefusal,
     movesWith,
     type MoveRefusal,
+    type MoveTarget,
     START_OF_PHASE,
     canPreselectTopic,
     firstFreeIndex,
@@ -134,7 +135,7 @@ export const PhaseDialog = ({
         });
     };
 
-    const moveTo = (step: JourneyStep, toIndex: number) => {
+    const moveTo = (step: JourneyStep, toIndex: MoveTarget) => {
         const result = editJourney(draft, { type: 'moveStep', phase, stepId: step.id, toIndex }, context);
         if (result.ok === false) {
             explainRefusal(
@@ -187,11 +188,8 @@ export const PhaseDialog = ({
     const onDrop = (event: DragEvent<HTMLLIElement>) => {
         event.preventDefault();
         const dragged = steps.find((step) => step.id === draggedId);
-        if (dragged && drop) {
-            const from = steps.indexOf(dragged);
-            const target = steps.findIndex((step) => step.id === drop.stepId) + (drop.side === 'after' ? 1 : 0);
-            moveTo(dragged, target > from ? target - 1 : target);
-        }
+        // Where the drop line was shown, not an index: the pair must land exactly there, too.
+        if (dragged && drop) moveTo(dragged, { targetId: drop.stepId, side: drop.side });
         endDrag();
     };
 

@@ -239,6 +239,58 @@ describe('postcode and Beratungsstelle move as one pair (Frank, 2026-11-24)', ()
         expect(coresOf(back, 'departure')).toEqual(['topic', 'postcode', 'agency', 'email', 'username', 'consent']);
     });
 
+    describe('drag and drop lands where the drop line was shown (review: drop sides around a must step)', () => {
+        const order = ['topic', 'postcode', 'agency', 'username', 'consent', 'email'];
+
+        it('dropping the postcode BEFORE Benutzername changes nothing: the pair is already there', () => {
+            const journey = mail();
+            const drop = { targetId: stepOf(journey, 'username').id, side: 'before' as const };
+            expect(moveStep(journey, 'departure', stepOf(journey, 'postcode').id, drop)).toBe(journey);
+            expect(moveStep(journey, 'departure', stepOf(journey, 'agency').id, drop)).toBe(journey);
+            expect(coresOf(journey, 'departure')).toEqual(order);
+        });
+
+        it('dropping either partner AFTER Benutzername puts the pair after it', () => {
+            const journey = mail();
+            const drop = { targetId: stepOf(journey, 'username').id, side: 'after' as const };
+            const expected = ['topic', 'username', 'postcode', 'agency', 'consent', 'email'];
+            expect(coresOf(moveStep(journey, 'departure', stepOf(journey, 'postcode').id, drop), 'departure')).toEqual(
+                expected,
+            );
+            expect(coresOf(moveStep(journey, 'departure', stepOf(journey, 'agency').id, drop), 'departure')).toEqual(
+                expected,
+            );
+        });
+
+        it('with the pair below Benutzername, dropping AFTER it changes nothing and BEFORE it moves the pair up', () => {
+            const journey = moveStep(mail(), 'departure', stepOf(mail(), 'postcode').id, 2);
+            const username = stepOf(journey, 'username').id;
+            (['postcode', 'agency'] as const).forEach((core) => {
+                const { id } = stepOf(journey, core);
+                expect(moveStep(journey, 'departure', id, { targetId: username, side: 'after' })).toBe(journey);
+                expect(
+                    coresOf(moveStep(journey, 'departure', id, { targetId: username, side: 'before' }), 'departure'),
+                ).toEqual(order);
+            });
+        });
+
+        it('refuses a drop before the topic and a drop between the pair, and says why', () => {
+            const journey = mail();
+            const topic = stepOf(journey, 'topic').id;
+            const email = stepOf(journey, 'email').id;
+            const agency = stepOf(journey, 'agency').id;
+            expect(
+                moveRefusal(journey, 'departure', stepOf(journey, 'postcode').id, { targetId: topic, side: 'before' }),
+            ).toBe('topicFirst');
+            expect(moveRefusal(journey, 'departure', email, { targetId: agency, side: 'before' })).toBe('pairTogether');
+            // A drop next to the pair, one place from the e-mail's slot, is never turned into a hop.
+            const below = moveStep(journey, 'departure', email, 3);
+            expect(
+                moveRefusal(below, 'departure', email, { targetId: stepOf(below, 'agency').id, side: 'before' }),
+            ).toBe('pairTogether');
+        });
+    });
+
     it('moves the Beratungsstelle alone once the postcode is removed', () => {
         const without = removeStep(mail(), 'departure', stepOf(mail(), 'postcode').id);
         const moved = moveStep(without, 'departure', stepOf(without, 'agency').id, 2);

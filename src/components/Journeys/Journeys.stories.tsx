@@ -249,6 +249,22 @@ export const PostcodeAndCentreMoveTogether: Story = {
                 'journey-step-email',
             ]),
         );
+        // Review finding: a drop right BEFORE Benutzername keeps the pair before it (it is already
+        // there); only a drop AFTER Benutzername moves the pair below it.
+        const atDefault = stepOrder(body);
+        await dragStep(body.getByTestId('journey-step-postcode'), body.getByTestId('journey-step-username'), 'before');
+        await expect(stepOrder(body)).toEqual(atDefault);
+        await dragStep(body.getByTestId('journey-step-postcode'), body.getByTestId('journey-step-username'), 'after');
+        await waitFor(() =>
+            expect(stepOrder(body)).toEqual([
+                'journey-step-topic',
+                'journey-step-username',
+                'journey-step-postcode',
+                'journey-step-agency',
+                'journey-step-consent',
+                'journey-step-email',
+            ]),
+        );
     },
 };
 

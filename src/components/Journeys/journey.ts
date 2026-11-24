@@ -648,7 +648,7 @@ const planPairMove = (
     return { ok: true, steps: next };
 };
 
-const planMove = (steps: JourneyStep[], stepId: string, toIndex: number): MovePlan => {
+const planIndexMove = (steps: JourneyStep[], stepId: string, toIndex: number): MovePlan => {
     const from = steps.findIndex((step) => step.id === stepId);
     if (from < 0 || toIndex === from) return { ok: false, reason: 'edge' };
     if (!canMoveStep(steps[from])) return { ok: false, reason: 'mustStep' };
@@ -674,12 +674,46 @@ const planMove = (steps: JourneyStep[], stepId: string, toIndex: number): MovePl
 };
 
 /**
- * Puts a step at `toIndex` of its phase. Must steps do not move, and because only the other steps
- * move, the must steps always keep their order among themselves. Postcode and Beratungsstelle move
- * together; a refused move returns the journey unchanged ({@link moveRefusal} says why).
+ * A drag and drop: the dragged step (with its partner, for the pair) goes right before or after the
+ * card the drop line was shown at. Unlike an index move, this is never read as "one step past".
  */
-export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, toIndex: number): Journey => {
-    const plan = planMove(journey.phases[phase], stepId, toIndex);
+export interface StepDrop {
+    targetId: string;
+    side: 'before' | 'after';
+}
+
+const planDrop = (steps: JourneyStep[], stepId: string, drop: StepDrop): MovePlan => {
+    const from = steps.findIndex((step) => step.id === stepId);
+    if (from < 0 || !steps.some((step) => step.id === drop.targetId)) return { ok: false, reason: 'edge' };
+    if (!canMoveStep(steps[from])) return { ok: false, reason: 'mustStep' };
+    const moving = movesWith(steps, stepId);
+    if (moving.includes(drop.targetId)) return { ok: false, reason: 'edge' };
+    const block = steps.filter((step) => moving.includes(step.id));
+    const rest = steps.filter((step) => !moving.includes(step.id));
+    const insertAt = rest.findIndex((step) => step.id === drop.targetId) + (drop.side === 'after' ? 1 : 0);
+    if (insertAt < firstFreeIndex(rest)) return { ok: false, reason: 'topicFirst' };
+    const next = [...rest];
+    next.splice(insertAt, 0, ...block);
+    if (sameOrder(next, steps)) return { ok: false, reason: 'edge' };
+    if (!hasValidOrder(next)) return { ok: false, reason: 'topicFirst' };
+    if (isPairAdjacent(steps) && !isPairAdjacent(next)) return { ok: false, reason: 'pairTogether' };
+    return { ok: true, steps: next };
+};
+
+/** An index (the arrows: one place up or down) or a drop at a card. */
+export type MoveTarget = number | StepDrop;
+
+const planMove = (steps: JourneyStep[], stepId: string, to: MoveTarget): MovePlan =>
+    typeof to === 'number' ? planIndexMove(steps, stepId, to) : planDrop(steps, stepId, to);
+
+/**
+ * Puts a step at index `to` of its phase, or right before/after the card it was dropped at. Must
+ * steps do not move, and because only the other steps move, the must steps always keep their order
+ * among themselves. Postcode and Beratungsstelle move together; a refused move returns the journey
+ * unchanged ({@link moveRefusal} says why).
+ */
+export const moveStep = (journey: Journey, phase: JourneyPhase, stepId: string, to: MoveTarget): Journey => {
+    const plan = planMove(journey.phases[phase], stepId, to);
     return plan.ok ? withPhase(journey, phase, plan.steps) : journey;
 };
 
@@ -688,9 +722,9 @@ export const moveRefusal = (
     journey: Journey,
     phase: JourneyPhase,
     stepId: string,
-    toIndex: number,
+    to: MoveTarget,
 ): MoveRefusal | undefined => {
-    const plan = planMove(journey.phases[phase], stepId, toIndex);
+    const plan = planMove(journey.phases[phase], stepId, to);
     return plan.ok === false ? plan.reason : undefined;
 };
 
