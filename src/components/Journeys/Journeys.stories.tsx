@@ -124,8 +124,6 @@ const stepOrder = (body: ReturnType<typeof within>) =>
 /** Drags one step card onto the upper or lower half of another, as the browser's drag and drop does. */
 const dragStep = async (from: HTMLElement, onto: HTMLElement, side: 'before' | 'after') => {
     const dataTransfer = new DataTransfer();
-    const box = onto.getBoundingClientRect();
-    const clientY = side === 'before' ? box.top + 2 : box.bottom - 2;
     // React renders between the events, as between real pointer moves.
     const tick = () =>
         new Promise((resolve) => {
@@ -133,6 +131,9 @@ const dragStep = async (from: HTMLElement, onto: HTMLElement, side: 'before' | '
         });
     from.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }));
     await tick();
+    // Measured after dragstart: the drag re-renders the list, and the target may have moved (CI viewport).
+    const box = onto.getBoundingClientRect();
+    const clientY = box.top + box.height * (side === 'before' ? 0.25 : 0.75);
     onto.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer, clientY }));
     await tick();
     onto.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer, clientY }));
