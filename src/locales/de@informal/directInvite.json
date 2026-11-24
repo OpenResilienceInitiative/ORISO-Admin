@@ -1,0 +1,9 @@
+{
+    "tenants.permissions.directInvite.description": "Wähle, welche Direktlinks Beratende erstellen dürfen. Über den Link gelangt eine Person direkt zur beratenden Person. Für erlaubte Arten sehen Beratende die Karte „Direktlink“.",
+    "tenants.permissions.directInvite.offOnTraeger": "Dein Träger hat das ausgeschaltet. Eine Beratungsstelle kann es hier nicht einschalten.",
+    "tenants.permissions.directInvite.enforcedOnTraeger": "Dein Träger hat diese Einstellung verbindlich festgelegt. Eine Beratungsstelle kann sie hier nicht ändern.",
+    "tenants.permissions.asker.restrictedReason": "Die Plattform hat diese Einstellung für deinen Träger festgelegt. Du kannst sie hier nicht ändern.",
+    "tileHelp.directInvite.essence": "Beratende können Links erstellen, über die eine Person direkt zu ihnen gelangt. Hier entscheidest du, ob das für Chat, Audioanruf oder Videoanruf erlaubt ist.",
+    "tileHelp.directInvite.visible.body": "Für nicht erlaubte Arten blendet die Beratungs-App das Erstellen von Links aus. Temporäre Direktlinks stellst du an anderer Stelle ein.",
+    "tileHelp.permissionLevels.essence": "Funktionen kannst du auf drei Ebenen einstellen: Plattform, Träger und Beratungsstelle. Jede obere Ebene entscheidet, welche Einstellungen die nächste ändern kann."
+}
