@@ -24,8 +24,10 @@ import { TenantDataTable, type TenantRow } from './TenantDataTable';
 import { nextTenantSortState, tenantSortOf } from './tenantSort';
 import styles from './styles.module.scss';
 import { Notify } from '../../../components/Notify';
+import { TenantDeleteErrorMessage } from './TenantDeleteErrorMessage';
 
-type DeleteResult = 'success' | 'error' | null;
+/** The outcome of the last deletion; a failure keeps its error so the message can say what is left. */
+type DeleteResult = { kind: 'success' } | { kind: 'error'; error: unknown } | null;
 
 export const TenantsList = () => {
     const navigate = useNavigate();
@@ -51,8 +53,8 @@ export const TenantsList = () => {
         dir: tableState.order,
     });
     const { mutate: deleteTenant } = useDeleteTenant({
-        onSuccess: () => setDeleteResult('success'),
-        onError: () => setDeleteResult('error'),
+        onSuccess: () => setDeleteResult({ kind: 'success' }),
+        onError: (error) => setDeleteResult({ kind: 'error', error }),
     });
 
     const onDelete = useCallback(
@@ -102,7 +104,7 @@ export const TenantsList = () => {
                 </div>
             )}
 
-            {deleteResult === 'success' && (
+            {deleteResult?.kind === 'success' && (
                 <Notify
                     title={t('notify.title.tenants')}
                     severity="success"
@@ -112,14 +114,14 @@ export const TenantsList = () => {
                     {t('tenants.list.deleteMessage.success')}
                 </Notify>
             )}
-            {deleteResult === 'error' && (
+            {deleteResult?.kind === 'error' && (
                 <Notify
                     severity="error"
                     title={t('tenants.list.deleteMessage.error.title')}
                     jump="tenants-list-table"
                     onClose={() => setDeleteResult(null)}
                 >
-                    {t('tenants.list.deleteMessage.error.description')}
+                    <TenantDeleteErrorMessage error={deleteResult.error} />
                 </Notify>
             )}
 

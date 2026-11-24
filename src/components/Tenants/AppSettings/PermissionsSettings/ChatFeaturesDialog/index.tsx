@@ -21,10 +21,16 @@ export type ChatFeature = {
      * so nothing is shown as saved that the server would drop.
      */
     stored?: boolean;
+    /** Own supporting text instead of `tenants.permissions.featureDescription.<last part of labelKey>`. */
+    descriptionKey?: string;
+    /** Interpolation values for label and supporting text, e.g. the shared name of a team function. */
+    textOptions?: Record<string, string>;
 };
 
 type ChatFeaturesDialogProps = {
     titleKey: string;
+    /** Interpolation values for title and description, e.g. the shared name of a team function. */
+    textOptions?: Record<string, string>;
     descriptionKey: string;
     saveKey: string;
     cancelKey: string;
@@ -38,6 +44,11 @@ type ChatFeaturesDialogProps = {
     unavailableReason?: (feature: ChatFeature) => string | null;
     /** Hints below the features. */
     notes?: ReactNode;
+    /**
+     * Per field: asked before a draft switches that feature on (a data-protection question). Only `proceed`
+     * changes the draft, so cancelling leaves it off; switching off never asks.
+     */
+    confirmEnable?: Partial<Record<string, (proceed: () => void) => void>>;
     /** Only the features changed in the dialog, once, on "Speichern". */
     onSave: (changes: Record<string, PolicyValue<boolean>>) => void;
     onClose: () => void;
@@ -46,7 +57,7 @@ type ChatFeaturesDialogProps = {
 const LOCKED_OFF: EffectivePolicy = { value: false, mode: 'ENFORCED', inherited: true };
 
 const descriptionKeyOf = (feature: ChatFeature) =>
-    `tenants.permissions.featureDescription.${feature.labelKey.split('.').at(-1)}`;
+    feature.descriptionKey ?? `tenants.permissions.featureDescription.${feature.labelKey.split('.').at(-1)}`;
 
 /**
  * A feature the server cannot store yet: named, marked as prepared, but without a switch. Why is said once
@@ -80,6 +91,7 @@ const PlannedFeatureCard = ({ feature }: { feature: ChatFeature }) => {
  */
 export const ChatFeaturesDialog = ({
     titleKey,
+    textOptions,
     descriptionKey,
     saveKey,
     cancelKey,
@@ -91,11 +103,14 @@ export const ChatFeaturesDialog = ({
     pending,
     unavailableReason = () => null,
     notes,
+    confirmEnable = {},
     onSave,
     onClose,
 }: ChatFeaturesDialogProps) => {
     const { t } = useTranslation();
     const [drafts, setDrafts] = useState<Record<string, PolicyValue<boolean>>>({});
+    // Fields whose switching on went through `confirmEnable` in this dialog.
+    const [confirmed, setConfirmed] = useState<ReadonlySet<string>>(new Set());
     const switchable = (feature: ChatFeature) => feature.stored !== false && !unavailableReason(feature);
     // A requirement inherited from above (also one that arrives while the dialog is open) wins over a draft.
     const lockedFromAbove = (field: string) => {
@@ -115,6 +130,8 @@ export const ChatFeaturesDialog = ({
                 .map((feature) => [feature.field, drafts[feature.field]] as const)
                 .filter(([field, next]) => {
                     const current = policyOf(field);
+                    // Never switch on, unconfirmed, what the current policy (also one refreshed while open) has off.
+                    if (confirmEnable[field] && next.value && !current.value && !confirmed.has(field)) return false;
                     return current.value !== next.value || current.mode !== next.mode;
                 }),
         );
@@ -124,8 +141,8 @@ export const ChatFeaturesDialog = ({
 
     return (
         <Modal
-            title={t(titleKey)}
-            description={t(descriptionKey)}
+            title={t(titleKey, textOptions)}
+            description={t(descriptionKey, textOptions)}
             icon={icon}
             okLabelKey={saveKey}
             cancelLabelKey={cancelKey}
@@ -147,15 +164,26 @@ export const ChatFeaturesDialog = ({
                             key={feature.field}
                             Icon={OPTION_ICONS[feature.labelKey]}
                             featureKey={feature.field}
-                            label={t(feature.labelKey)}
+                            label={t(feature.labelKey, feature.textOptions)}
                             level={level}
                             policy={policyFor(feature)}
                             pending={pending(feature.field)}
                             disabled={Boolean(reason)}
-                            supportingText={reason ?? t(descriptionKeyOf(feature))}
-                            onChange={(next) =>
-                                setDrafts((current) => ({ ...current, [feature.field]: { ...next, inherited: false } }))
-                            }
+                            supportingText={reason ?? t(descriptionKeyOf(feature), feature.textOptions)}
+                            onChange={(next) => {
+                                const apply = () =>
+                                    setDrafts((current) => ({
+                                        ...current,
+                                        [feature.field]: { ...next, inherited: false },
+                                    }));
+                                const ask = confirmEnable[feature.field];
+                                if (ask && next.value && !policyFor(feature).value) {
+                                    ask(() => {
+                                        setConfirmed((current) => new Set(current).add(feature.field));
+                                        apply();
+                                    });
+                                } else apply();
+                            }}
                         />
                     );
                 })}

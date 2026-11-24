@@ -219,8 +219,7 @@ const CASES: Case[] = [
     {
         options: TENANT_EN,
         query: 'team chat',
-        top: ['access:group-internal', 'access:mail-counselling'],
-        within: ['access:mail-counselling'],
+        top: 'access:team-chat',
     },
     { options: PLATFORM_EN, query: 'group chat', top: 'access:group-internal' },
     // Passwords and security, typed as a question, umlaut-free, or with the number

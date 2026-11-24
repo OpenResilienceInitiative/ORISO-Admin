@@ -64,7 +64,9 @@ describe('AgencySettings without the Teamberatung switch', () => {
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
 
         await waitFor(() => expect(onSave).toHaveBeenCalled());
-        expect(onSave.mock.calls[0][0]).not.toEqual(expect.objectContaining({ teamAgency: false }));
+        // No conversion: teamAgency is either left out or kept true. A falsy value ('false', 0, false) is a change.
+        const { teamAgency } = onSave.mock.calls[0][0] as { teamAgency?: unknown };
+        expect([undefined, null, true]).toContain(teamAgency);
     });
 });
 

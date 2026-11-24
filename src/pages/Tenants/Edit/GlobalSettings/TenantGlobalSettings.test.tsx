@@ -242,7 +242,7 @@ describe('Settings that moved here from the former Funktionalitäten tab (ORISO-
     });
 
     // ORISO-Frontend#2491: the Team-Chat is a permission policy like supervision, never a raw setting.
-    it('saves Team-Chat on the Mail Beratung tile as a Träger policy', async () => {
+    it('saves the Team-Chat tile as a Träger policy (ORISO-Frontend#2491)', async () => {
         serve({
             traegerSettings: { featureTeamDiscussionEnabled: true },
             policies: { featureTeamDiscussionEnabled: policy(true) },
@@ -251,9 +251,9 @@ describe('Settings that moved here from the former Funktionalitäten tab (ORISO-
         const user = userEvent.setup();
         renderPage();
 
-        const mail = await screen.findByTestId('chat-type-card-oneOnOne');
+        const tile = await screen.findByTestId('team-chat-tile');
         const teamChat = await waitFor(() => {
-            const control = mail.querySelector<HTMLElement>('[data-feature-policy="featureTeamDiscussionEnabled"]');
+            const control = tile.querySelector<HTMLElement>('[data-feature-policy="featureTeamDiscussionEnabled"]');
             expect(control).not.toBeNull();
             return control as HTMLElement;
         });

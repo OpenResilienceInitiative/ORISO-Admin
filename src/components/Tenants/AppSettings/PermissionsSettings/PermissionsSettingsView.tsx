@@ -13,7 +13,7 @@ import { TileSections } from '../../../TileSections';
 import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
 import { SupervisionTile } from './SupervisionTile';
-import { TeamChatSection } from './TeamChatSection';
+import { TeamChatTile } from './TeamChatTile';
 import {
     GROUP_CHAT_UMBRELLA,
     affectsCalls,
@@ -24,14 +24,13 @@ import {
     type CallsPermission,
 } from './derivedLegacySettings';
 import { HintText } from '../../../HintText';
-import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import type { CaseSharingMode } from './CaseSharingSection/caseSharingMode';
 import { DirectInviteSection } from './DirectInviteSection';
 import { GuestAccountModeSection } from './GuestAccountModeSection';
 import { OPTION_ICONS } from './optionIcons';
 import { PolicyOptionCard } from './PolicyOptionCard';
 import { ASKER_HELP, CONVERSATION_HELP, GUEST_ACCOUNT_HELP } from './tileHelpTopics';
-import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp, TEAM_CHAT_HELP } from './help';
+import { askerAccountHelp, CHAT_TYPE_HELP, directInviteHelp } from './help';
 import { PermissionPolicyControl } from '../../../PermissionPolicyControl/PermissionPolicyControl';
 import { RecipientScopeControl, type RecipientScopeControlProps } from './RecipientScope/RecipientScopeControl';
 import { CalendarCard, type CalendarCardProps } from './Calendar/CalendarCard';
@@ -663,26 +662,6 @@ export const PermissionsSettingsView = ({
                                 />
                             )}
 
-                            {/* ORISO-Admin#1577: Team-Chat coordinates an open enquiry, so it belongs here;
-                                ORISO-Frontend#2491: a policy with "Konfigurieren", governed like supervision. */}
-                            {card.key === 'oneOnOne' && (
-                                <TileSections.Section
-                                    wide
-                                    id={`${card.key}-teamChat`}
-                                    title={t(TEAM_FUNCTIONS.chat.nameKey)}
-                                    note={t('tenants.permissions.teamChat.note')}
-                                    titleAction={<SectionHelp topic={TEAM_CHAT_HELP} />}
-                                    collapsible
-                                >
-                                    <TeamChatSection
-                                        level={policyLevel}
-                                        policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
-                                        pending={policyPending}
-                                        onChange={(changes) => changePolicies(changes, form)}
-                                    />
-                                </TileSections.Section>
-                            )}
-
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                             {card.key === 'oneOnOne' && (
                                 <TileSections.Section
@@ -852,6 +831,15 @@ export const PermissionsSettingsView = ({
                         {/* ORISO-Admin#1577: supervision chats, after the conversation types. */}
                         <CardGrid.Item span={3}>
                             <SupervisionTile
+                                level={policyLevel}
+                                policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                pending={policyPending}
+                                onChange={(changes) => changePolicies(changes, form)}
+                            />
+                        </CardGrid.Item>
+                        {/* ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat as its own tile, built like supervision. */}
+                        <CardGrid.Item span={3}>
+                            <TeamChatTile
                                 level={policyLevel}
                                 policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
                                 pending={policyPending}
