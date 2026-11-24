@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- Storybook's exports map resolves for TypeScript and Vite.
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { Button as LegacyButton, BUTTON_TYPES } from '../button/Button';
 import { M3Button } from './index';
 
@@ -33,7 +35,16 @@ export const Text: Story = { args: { variant: 'text', children: 'Next' } };
 export const Outlined: Story = {
     args: { variant: 'outlined', icon: <PlusIcon />, children: 'additional postal code' },
 };
-export const Filled: Story = { args: { variant: 'filled', icon: <UploadIcon />, children: 'Upload' } };
+export const Filled: Story = {
+    args: { variant: 'filled', icon: <UploadIcon />, children: 'Upload', onClick: fn() },
+    play: async ({ args, canvasElement }) => {
+        const upload = within(canvasElement).getByRole('button', { name: 'Upload' });
+        await userEvent.tab();
+        await expect(upload).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        await expect(args.onClick).toHaveBeenCalledTimes(1);
+    },
+};
 export const Tonal: Story = { args: { variant: 'tonal', children: 'Batch Mode' } };
 export const Disabled: Story = { args: { variant: 'filled', disabled: true, children: 'Upload' } };
 export const DisabledText: Story = { args: { variant: 'text', disabled: true, children: 'Next' } };

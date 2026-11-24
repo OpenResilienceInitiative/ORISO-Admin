@@ -122,7 +122,8 @@ jobs:
                   if-no-files-found: warn
 
     # Functional evidence retains rendering/play and integrity gates.
-    # Compliance is DEFERRED/NOT_RUN here; strict diagnostics are independent.
+    # The full inventory defers compliance. The selected product stories below
+    # also get a strict audit in this required check; diagnostics stay separate.
     storybook-tests:
         name: Storybook functional verification (compliance deferred)
         runs-on: ubuntu-latest
@@ -170,6 +171,12 @@ jobs:
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
               run: npm run test:storybook:functional
+
+            - name: Enforce accessibility for selected product stories
+              if: ${{ !cancelled() && (steps.functional_controls.outcome == 'success' || steps.functional_controls.outcome == 'failure') }}
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:storybook:product-a11y
 
             - name: Upload Storybook verification evidence
               if: always()
