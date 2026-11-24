@@ -11,8 +11,8 @@ import { DEFAULT_PERMISSION_SETTINGS } from './permissionsSettingsUtils';
 import { TEAM_CHAT_AFTER_ACCEPT, TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from './traegerFunctions';
 
 /**
- * ORISO-Frontend#2491 (Frank, 2026-11-23): the Team-Chat (the counsellors' side chat on an open enquiry) is
- * controlled exactly like supervision. Its master is a permission policy on platform, Träger and
+ * ORISO-Frontend#2491 (Frank, 2026-11-23/24): the Team-Chat (the counsellors' side chat on an open enquiry) is
+ * controlled exactly like supervision, as its own tile after the supervision tile (`TeamChatTile`). Its master is a permission policy on platform, Träger and
  * Beratungsstelle (`PermissionPolicyControl`), and "Konfigurieren" opens what the side chat offers, each
  * feature with its own "Anpassbar"/"Vorgabe", saved together on "Speichern".
  */
@@ -48,7 +48,7 @@ const meta = {
     args: {
         tenantId: '7',
         isLoading: false,
-        // The Mail Beratung tile only: the Team-Chat is one of its sections.
+        // Only the Mail Beratung tile above the tiles that follow the conversation types (supervision, Team-Chat).
         excludeCardKeys: ['liveChat', 'group', 'groupInternal'],
         formStateKey: 'team-chat-story',
         restrictedFields: new Set<string>(),
@@ -71,33 +71,45 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const label = String(i18n.t('teamFunctions.chat.name'));
+/** The master in the tile is named like the supervision master: "Aktiviert". */
+const label = String(i18n.t('tenants.permissions.card.activated'));
 /** The round switch of a setting that is on, as `PermissionPolicyControl` names it. */
 const switchOff = (name: string) =>
     `${name}: ${String(i18n.t('tenants.permissions.policy.activated'))} – ${String(
         i18n.t('tenants.permissions.policy.deactivate'),
     )}`;
+const switchOn = (name: string) =>
+    `${name}: ${String(i18n.t('tenants.permissions.policy.deactivated'))} – ${String(
+        i18n.t('tenants.permissions.policy.activate'),
+    )}`;
 const configureName = () => String(i18n.t('tenants.permissions.teamChat.configure'));
+const withName = () => ({ name: String(i18n.t('teamFunctions.chat.name')) });
+const afterAcceptLabel = () => String(i18n.t('tenants.permissions.teamChat.afterAccept.label', withName()));
 
-const teamChatSection = async (canvasElement: HTMLElement) => {
-    const mail = await within(canvasElement).findByTestId('chat-type-card-oneOnOne', {}, { timeout: 8000 });
-    const section = within(mail).getByRole('group', { name: label });
-    section.scrollIntoView({ block: 'center' });
-    return within(section);
+const teamChatTile = async (canvasElement: HTMLElement) => {
+    const tile = await within(canvasElement).findByTestId('team-chat-tile', {}, { timeout: 8000 });
+    tile.scrollIntoView({ block: 'center' });
+    return within(tile);
+};
+const openDialog = async (canvasElement: HTMLElement) => {
+    const tile = await teamChatTile(canvasElement);
+    await userEvent.click(tile.getByRole('button', { name: configureName() }));
+    const dialog = await within(canvasElement.ownerDocument.body).findByTestId('team-chat-dialog');
+    await waitFor(() => expect(dialog).toBeVisible());
+    return within(dialog);
 };
 
 /** Platform: preset for every Träger; the lock turns it into a requirement, as for supervision. */
 export const Platform: Story = {
     args: { policyLevel: 'platform', permissionPolicies: { [TEAM_CHAT_MASTER]: own(true) } },
     play: async ({ canvasElement, args }) => {
-        const section = await teamChatSection(canvasElement);
+        const tile = await teamChatTile(canvasElement);
         // Switch and lock, as on the supervision tile.
-        await expect(section.getAllByRole('button', { name: new RegExp(`^${label}: `) })).toHaveLength(2);
-        // The lock makes it a requirement for every Träger.
+        await expect(tile.getAllByRole('button', { name: new RegExp(`^${label}: `) })).toHaveLength(2);
         const makeRequired = `${label}: ${String(i18n.t('tenants.permissions.policy.suggestion'))} – ${String(
             i18n.t('tenants.permissions.policy.makeRequired'),
         )}`;
-        await userEvent.click(section.getByRole('button', { name: makeRequired }));
+        await userEvent.click(tile.getByRole('button', { name: makeRequired }));
         await waitFor(() =>
             expect(args.onPoliciesChange).toHaveBeenCalledWith({
                 [TEAM_CHAT_MASTER]: expect.objectContaining({ value: true, mode: 'ENFORCED' }),
@@ -109,38 +121,33 @@ export const Platform: Story = {
 /** Träger: own value, adjustable for its Beratungsstellen; "Konfigurieren" is available while it is on. */
 export const Traeger: Story = {
     play: async ({ canvasElement }) => {
-        const section = await teamChatSection(canvasElement);
-        await expect(section.getByRole('button', { name: configureName() })).toBeEnabled();
+        const tile = await teamChatTile(canvasElement);
+        await expect(tile.getByRole('button', { name: configureName() })).toBeEnabled();
+        // Only the master is in the tile; "after acceptance" sits in the dialog.
+        await expect(tile.queryByRole('button', { name: new RegExp(`^${afterAcceptLabel()}: `) })).toBeNull();
     },
 };
 
-/** Träger: switching the master off saves the policy and leaves "Konfigurieren" disabled. */
+/** Träger: switched off, "Konfigurieren" waits for the switch. */
 export const TraegerSwitchedOff: Story = {
     args: { permissionPolicies: { [TEAM_CHAT_MASTER]: own(false) } },
     play: async ({ canvasElement }) => {
-        const section = await teamChatSection(canvasElement);
-        await expect(section.getByRole('button', { name: configureName() })).toBeDisabled();
-        await expect(
-            section.getByText(String(i18n.t('tenants.permissions.teamChat.configureNeedsMaster'))),
-        ).toBeVisible();
+        const tile = await teamChatTile(canvasElement);
+        await expect(tile.getByRole('button', { name: configureName() })).toBeDisabled();
+        await expect(tile.getByText(String(i18n.t('tenants.permissions.teamChat.configureNeedsMaster')))).toBeVisible();
     },
 };
 
 /** Träger: the dialog offers every feature as a stored policy and saves the changes together. */
 export const ConfigureDialog: Story = {
     play: async ({ canvasElement, args }) => {
-        const section = await teamChatSection(canvasElement);
-        await userEvent.click(section.getByRole('button', { name: configureName() }));
-        const body = within(canvasElement.ownerDocument.body);
-        const dialog = await body.findByTestId('team-chat-dialog');
-        await waitFor(() => expect(dialog).toBeVisible());
+        const dialog = await openDialog(canvasElement);
         // Nothing is "prepared" any more: TenantService stores every feature (TenantService#405).
-        await expect(dialog.querySelectorAll('[data-planned-feature]')).toHaveLength(0);
-        await expect(dialog.textContent).not.toContain(String(i18n.t('tenants.permissions.feature.planned')));
+        await expect(dialog.queryByText(String(i18n.t('tenants.permissions.feature.planned')))).toBeNull();
         const videoCalls = String(i18n.t(TEAM_CHAT_FEATURES[0].labelKey));
-        await userEvent.click(within(dialog).getByRole('button', { name: switchOff(videoCalls) }));
+        await userEvent.click(dialog.getByRole('button', { name: switchOff(videoCalls) }));
         await userEvent.click(
-            within(dialog).getByRole('button', { name: String(i18n.t('tenants.permissions.teamChat.save')) }),
+            dialog.getByRole('button', { name: String(i18n.t('tenants.permissions.teamChat.save')) }),
         );
         await waitFor(() =>
             expect(args.onPoliciesChange).toHaveBeenCalledWith(
@@ -157,9 +164,9 @@ export const Centre: Story = {
         permissionPolicies: { [TEAM_CHAT_MASTER]: { value: true, mode: 'SUGGESTED', inherited: true } },
     },
     play: async ({ canvasElement }) => {
-        const section = await teamChatSection(canvasElement);
-        await expect(section.getAllByRole('button', { name: new RegExp(`^${label}: `) })).toHaveLength(1);
-        await expect(section.getByRole('button', { name: configureName() })).toBeEnabled();
+        const tile = await teamChatTile(canvasElement);
+        await expect(tile.getAllByRole('button', { name: new RegExp(`^${label}: `) })).toHaveLength(1);
+        await expect(tile.getByRole('button', { name: configureName() })).toBeEnabled();
     },
 };
 
@@ -172,31 +179,20 @@ export const CentreRequiredByTraeger: Story = {
         permissionPolicies: { [TEAM_CHAT_MASTER]: { value: false, mode: 'ENFORCED', inherited: true } },
     },
     play: async ({ canvasElement }) => {
-        const section = await teamChatSection(canvasElement);
-        const master = section.getByRole('button', { name: new RegExp(`^${label}: `) });
-        await expect(master).toBeDisabled();
-        await expect(section.getByRole('button', { name: configureName() })).toBeDisabled();
+        const tile = await teamChatTile(canvasElement);
+        await expect(tile.getByRole('button', { name: new RegExp(`^${label}: `) })).toBeDisabled();
+        await expect(tile.getByRole('button', { name: configureName() })).toBeDisabled();
     },
 };
 
-const withName = () => ({ name: String(i18n.t('teamFunctions.chat.name')) });
-const afterAcceptLabel = () => String(i18n.t('tenants.permissions.teamChat.afterAccept.label', withName()));
-const switchOn = (name: string) =>
-    `${name}: ${String(i18n.t('tenants.permissions.policy.deactivated'))} – ${String(
-        i18n.t('tenants.permissions.policy.activate'),
-    )}`;
-
 /**
- * Träger, Frank 2026-11-23: "Team-Chat läuft nach der Annahme weiter". Switching it on first asks the same
- * data-protection question as supervision; the story stops with the question open.
+ * Träger, Frank 2026-11-23: "Team-Chat läuft nach der Annahme weiter", in the dialog. Switching it on first asks
+ * the same data-protection question as supervision; the story stops with the question open.
  */
 export const AfterAcceptConfirm: Story = {
     play: async ({ canvasElement, args }) => {
-        const section = await teamChatSection(canvasElement);
-        await expect(
-            section.getByText(String(i18n.t('tenants.permissions.teamChat.afterAccept.off', withName()))),
-        ).toBeVisible();
-        await userEvent.click(section.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
+        const dialog = await openDialog(canvasElement);
+        await userEvent.click(dialog.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
         const body = within(canvasElement.ownerDocument.body);
         const title = await body.findByText(
             String(i18n.t('tenants.permissions.teamChat.afterAccept.confirm.title', withName())),
@@ -206,29 +202,39 @@ export const AfterAcceptConfirm: Story = {
     },
 };
 
-/** Träger: confirmed — the team chat of a case stays open after acceptance, for counsellors only. */
+/** Träger: confirmed and saved — the chip says the team chat continues after acceptance. */
 export const AfterAcceptOn: Story = {
     play: async ({ canvasElement, args }) => {
-        const section = await teamChatSection(canvasElement);
-        await userEvent.click(section.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
+        const dialog = await openDialog(canvasElement);
+        await userEvent.click(dialog.getByRole('button', { name: switchOn(afterAcceptLabel()) }));
         const body = within(canvasElement.ownerDocument.body);
         await userEvent.click(
             await body.findByRole('button', {
                 name: String(i18n.t('tenants.permissions.teamChat.afterAccept.confirm.confirm')),
             }),
         );
+        await userEvent.click(
+            dialog.getByRole('button', { name: String(i18n.t('tenants.permissions.teamChat.save')) }),
+        );
         await waitFor(() =>
             expect(args.onPoliciesChange).toHaveBeenCalledWith({
                 [TEAM_CHAT_AFTER_ACCEPT]: expect.objectContaining({ value: true }),
             }),
         );
+        const tile = await teamChatTile(canvasElement);
         await expect(
-            section.getByText(String(i18n.t('tenants.permissions.teamChat.afterAccept.on', withName()))),
+            tile.getByText(
+                String(
+                    i18n.t('tenants.permissions.teamChat.summary.on', {
+                        afterAccept: i18n.t('tenants.permissions.teamChat.summary.afterAcceptOn'),
+                    }),
+                ),
+            ),
         ).toBeVisible();
     },
 };
 
-/** Beratungsstelle: the Träger requires it on; the centre sees it locked. */
+/** Beratungsstelle: the Träger requires "after acceptance"; the centre sees it locked in the dialog. */
 export const CentreAfterAcceptRequiredByTraeger: Story = {
     args: {
         policyLevel: 'agency',
@@ -238,7 +244,7 @@ export const CentreAfterAcceptRequiredByTraeger: Story = {
         },
     },
     play: async ({ canvasElement }) => {
-        const section = await teamChatSection(canvasElement);
-        await expect(section.getByRole('button', { name: new RegExp(`^${afterAcceptLabel()}: `) })).toBeDisabled();
+        const dialog = await openDialog(canvasElement);
+        await expect(dialog.getByRole('button', { name: new RegExp(`^${afterAcceptLabel()}: `) })).toBeDisabled();
     },
 };

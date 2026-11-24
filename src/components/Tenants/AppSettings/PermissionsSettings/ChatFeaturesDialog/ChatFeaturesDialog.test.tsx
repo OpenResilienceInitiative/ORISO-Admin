@@ -107,4 +107,69 @@ describe('ChatFeaturesDialog', () => {
         expect(within(planned).queryByRole('button')).toBeNull();
         expect(dialog().querySelector('[data-feature-policy="upload"]')).toBeNull();
     });
+
+    describe('confirmEnable (Team-Chat continues after acceptance, ORISO-Frontend#2491)', () => {
+        const OFF: EffectivePolicy = { value: false, mode: 'SUGGESTED' };
+        const renderConfirm = (policy: EffectivePolicy, confirm: (proceed: () => void) => void) => {
+            const onSave = vi.fn();
+            const props = {
+                titleKey: 'title',
+                descriptionKey: 'description',
+                saveKey: 'save',
+                cancelKey: 'cancel',
+                icon: <span />,
+                testId: 'features-dialog',
+                features: [FEATURES[0]],
+                level: 'tenant' as const,
+                pending: () => false,
+                confirmEnable: { video: confirm },
+                onSave,
+                onClose: vi.fn(),
+            };
+            const view = render(<ChatFeaturesDialog {...props} policyOf={() => policy} />);
+            const rerender = (next: EffectivePolicy) =>
+                view.rerender(<ChatFeaturesDialog {...props} policyOf={() => next} />);
+            const lock = () =>
+                within(
+                    screen
+                        .getByTestId('features-dialog')
+                        .querySelector<HTMLElement>('[data-feature-policy="video"]') as HTMLElement,
+                ).getByRole('button', { name: /tenants.permissions.policy.makeRequired/ });
+            return { onSave, rerender, lock };
+        };
+
+        it('saves an enabling value that was confirmed', async () => {
+            const user = userEvent.setup();
+            const { onSave } = renderConfirm(OFF, (proceed) => proceed());
+
+            await user.click(screen.getByRole('button', { name: /tenants.permissions.policy.deactivated/ }));
+            await user.click(screen.getByRole('button', { name: 'save' }));
+
+            expect(onSave).toHaveBeenCalledWith({ video: { value: true, mode: 'SUGGESTED', inherited: false } });
+        });
+
+        it('does not save an unconfirmed "on" after the policy turned off while the dialog was open', async () => {
+            const user = userEvent.setup();
+            const confirm = vi.fn();
+            const { onSave, rerender, lock } = renderConfirm(ON, confirm);
+
+            // A mode change while it is on needs no confirmation; it keeps the value on in the draft.
+            await user.click(lock());
+            rerender(OFF);
+            await user.click(screen.getByRole('button', { name: 'save' }));
+
+            expect(confirm).not.toHaveBeenCalled();
+            expect(onSave).not.toHaveBeenCalled();
+        });
+
+        it('still saves the same mode change while the policy stays on', async () => {
+            const user = userEvent.setup();
+            const { onSave, lock } = renderConfirm(ON, vi.fn());
+
+            await user.click(lock());
+            await user.click(screen.getByRole('button', { name: 'save' }));
+
+            expect(onSave).toHaveBeenCalledWith({ video: { value: true, mode: 'ENFORCED', inherited: false } });
+        });
+    });
 });

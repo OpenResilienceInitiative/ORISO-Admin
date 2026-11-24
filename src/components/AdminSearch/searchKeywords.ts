@@ -545,9 +545,6 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'ask for email',
     ],
     'access:mail-counselling': [
-        'teamdiskussion',
-        'team chat',
-        'team discussion',
         'videotelefonie',
         'jitsi',
         'telefonieren',
@@ -634,6 +631,14 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
     ],
 
     // ── Moved from the former Funktionalitäten tab (ORISO-Admin#1577) ─────────
+    'access:team-chat': [
+        'teamdiskussion',
+        'team chat',
+        'team discussion',
+        'teamchat',
+        'nach der annahme',
+        'after acceptance',
+    ],
     'access:supervision': ['supervision', 'supervisor', 'supervisorin', 'mitlesen', 'supervision chat', 'read along'],
 
     // ── Weitere (Träger) ─────────────────────────────────────────────────────
