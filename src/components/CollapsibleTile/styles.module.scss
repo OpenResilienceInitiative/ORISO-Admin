@@ -103,6 +103,7 @@
  * component slides icon and title between the two places (FLIP), and not at all with reduced motion.
  * A tile whose icon is its own button (#1558) keeps the row.
  */
+
 .open .heading:not(.withIconButton) .header {
     position: relative;
     display: flex;
