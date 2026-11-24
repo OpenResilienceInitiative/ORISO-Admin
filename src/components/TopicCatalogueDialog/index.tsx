@@ -12,10 +12,16 @@ import classNames from 'classnames';
 import { useCallback, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FETCH_ERRORS } from '../../api/fetchData';
+import type { TranslateRequest, TranslateResponse } from '../../types/translation';
 import type { LocalizedText, TopicCatalogueDto, TopicCatalogueTopicDto } from '../../types/TopicCatalogue';
 import { DialogButton, Modal } from '../Modal';
 import { ICON_MAX_BYTES, ICON_TYPES } from '../TopicCatalogue/TopicIconSlot';
 import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
+import { M3Button } from '../M3Button';
+import { TranslateIcon } from '../Journeys/TranslateIcon';
+import { snackbar } from '../Snackbar';
+import { getTranslationErrorKey } from '../Tenants/LegalSettings/utils/translationErrors';
+import { applyMachineTranslations, collectMissingTexts } from './dialogTranslations';
 import styles from './styles.module.scss';
 
 export interface TopicCatalogueDialogProps {
@@ -27,6 +33,8 @@ export interface TopicCatalogueDialogProps {
     /** Receives the body of PUT /topicadmin/catalogue; a rejection keeps the dialog open. */
     onSave: (body: TopicCatalogueDto) => Promise<void>;
     onClose: () => void;
+    /** Machine translation of the empty languages (POST /tenantadmin/translate). Without it there is no AI button. */
+    onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
 }
 
 interface DraftGroup {
@@ -150,6 +158,7 @@ export const TopicCatalogueDialog = ({
     sourceLanguage = 'de',
     onSave,
     onClose,
+    onTranslate,
 }: TopicCatalogueDialogProps) => {
     const { t } = useTranslation();
     const [lang, setLang] = useState(sourceLanguage);
@@ -180,9 +189,14 @@ export const TopicCatalogueDialog = ({
         [],
     );
     const [problem, setProblem] = useState<string | null>(null);
+    const [translating, setTranslating] = useState(false);
     const drag = useRef<DragPayload | null>(null);
     const nextTempId = useRef(-1);
     const nextGroupKey = useRef(1);
+
+    // The translation answers after the admin kept typing: merge into what is on screen then.
+    const latestTexts = useRef({ topics, groups });
+    latestTexts.current = { topics, groups };
 
     const byId = useMemo(() => new Map(topics.map((topic) => [topic.id, topic])), [topics]);
     const usage = useMemo(() => {
@@ -357,6 +371,64 @@ export const TopicCatalogueDialog = ({
     // edited after the request was captured can be lost or close a newer editor.
     const close = () => {
         if (!saving) onClose();
+    };
+
+    const untranslated = collectMissingTexts(
+        topics,
+        groups,
+        languages.map(({ code }) => code),
+        sourceLanguage,
+    );
+    const missingCount = Object.keys(untranslated.texts).length;
+
+    /** Fills every empty language with the machine; what the admin typed meanwhile stays. */
+    const translateMissing = async () => {
+        if (!onTranslate || translating || missingCount === 0) return;
+        setTranslating(true);
+        try {
+            const response = await onTranslate({
+                sourceLang: sourceLanguage,
+                targetLangs: untranslated.targets,
+                texts: untranslated.texts,
+            });
+            const sent = untranslated.texts;
+            // Only answers to texts that did not change while the request ran.
+            const stillCurrent = (current: { texts: Record<string, string> }) =>
+                Object.fromEntries(
+                    Object.entries(response.translations ?? {}).map(([code, byKey]) => [
+                        code,
+                        Object.fromEntries(Object.entries(byKey).filter(([key]) => current.texts[key] === sent[key])),
+                    ]),
+                );
+            const latest = latestTexts.current;
+            const merged = applyMachineTranslations(
+                latest.topics,
+                latest.groups,
+                stillCurrent(
+                    collectMissingTexts(
+                        latest.topics,
+                        latest.groups,
+                        languages.map(({ code }) => code),
+                        sourceLanguage,
+                    ),
+                ),
+                sourceLanguage,
+            );
+            setTopics(merged.topics);
+            setGroups(merged.groups);
+            if (merged.changedTopicIds.length > 0) {
+                setChangedTopicIds((ids) => new Set([...ids, ...merged.changedTopicIds]));
+            }
+            if (merged.filled > 0) touch();
+            snackbar.success(t('topicDialog.translate.done', { count: merged.filled }));
+        } catch (error) {
+            snackbar.error({
+                title: t('topicDialog.translate.failed'),
+                description: t(getTranslationErrorKey(error)),
+            });
+        } finally {
+            setTranslating(false);
+        }
     };
 
     const missingTag = <span className={styles.missing}>{t('topicDialog.translationMissing')}</span>;
@@ -691,6 +763,19 @@ export const TopicCatalogueDialog = ({
                             );
                         })}
                     </nav>
+                    {onTranslate && languages.length > 1 && (
+                        <div className={styles.translate} data-testid="topic-dialog-translate">
+                            <M3Button
+                                variant="text"
+                                icon={<TranslateIcon />}
+                                loading={translating}
+                                disabled={saving || missingCount === 0}
+                                onClick={translateMissing}
+                            >
+                                {t('topicDialog.translate.action', { count: missingCount })}
+                            </M3Button>
+                        </div>
+                    )}
                 </div>
                 <div className={styles.columns}>
                     <aside className={styles.pool}>
