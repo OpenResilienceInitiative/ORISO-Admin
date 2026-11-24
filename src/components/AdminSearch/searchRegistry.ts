@@ -465,6 +465,9 @@ export const SEARCH_TILES: RegistryTile[] = [
                 ...FEATURE_LABELS,
                 ...NOTIFICATION_LABELS,
                 'teamFunctions.chat.name',
+                // ORISO-Frontend#2494: Teamberatung is chosen here only, as one case sharing option.
+                'tenants.permissions.caseSharing.title',
+                'teamFunctions.counselling.name',
                 'tenants.permissions.teamChat.dialogTitle',
                 'tenants.permissions.teamChat.afterAccept.label',
             ],
@@ -551,7 +554,6 @@ export const SEARCH_TILES: RegistryTile[] = [
                 'agency.form.registrationSettings.onlineDescription',
                 'agency.form.registrationSettings.postCodeTitle',
                 'agency.edit.settings.title',
-                'teamFunctions.counselling.name',
                 'agency.edit.general.more_settings.tenant.title',
                 'agency.edit.settings.departments',
                 'agency.form.settings.counsellorTopicPermission.title',
