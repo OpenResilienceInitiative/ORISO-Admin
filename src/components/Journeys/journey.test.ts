@@ -291,6 +291,65 @@ describe('postcode and Beratungsstelle move as one pair (Frank, 2026-11-24)', ()
         });
     });
 
+    describe('nothing ever lands between postcode and Beratungsstelle (CodeRabbit on ORISO-Admin#1654)', () => {
+        const ids = (journey: ReturnType<typeof mail>) => journey.phases.departure.map((step) => step.core ?? step.id);
+        /** A journey stored before the pair rule: a question between postcode and Beratungsstelle. */
+        const withGap = () => {
+            const journey = mail();
+            const steps = [...journey.phases.departure];
+            const agencyAt = steps.findIndex((step) => step.core === 'agency');
+            const [question] = addStep(journey, 'departure', { kind: 'question' }, 'gap').phases.departure.filter(
+                (step) => step.id === 'gap',
+            );
+            steps.splice(agencyAt, 0, question);
+            return { ...journey, phases: { ...journey.phases, departure: steps } };
+        };
+
+        it('adds a step asked for below the postcode below the Beratungsstelle instead', () => {
+            const journey = mail();
+            const next = addStep(journey, 'departure', { kind: 'question' }, 'q1', stepOf(journey, 'postcode').id);
+            expect(ids(next)).toEqual(['topic', 'postcode', 'agency', 'q1', 'username', 'consent', 'email']);
+        });
+
+        it('refuses a drop or a jump into a gap left by an older journey, but lets the step in it leave', () => {
+            const journey = withGap();
+            const email = stepOf(journey, 'email').id;
+            const agency = stepOf(journey, 'agency').id;
+            expect(moveRefusal(journey, 'departure', email, { targetId: agency, side: 'before' })).toBe('pairTogether');
+            expect(moveRefusal(journey, 'departure', email, { targetId: 'gap', side: 'after' })).toBe('pairTogether');
+            expect(moveRefusal(journey, 'departure', email, 2)).toBe('pairTogether');
+            expect(ids(moveStep(journey, 'departure', 'gap', { targetId: email, side: 'after' }))).toEqual([
+                'topic',
+                'postcode',
+                'agency',
+                'username',
+                'consent',
+                'email',
+                'gap',
+            ]);
+        });
+
+        it('lets the arrow hop over a pair with a gap instead of landing inside it', () => {
+            const journey = withGap();
+            const email = stepOf(journey, 'email').id;
+            // The e-mail right below the Beratungsstelle, then one place up: over the whole pair.
+            const below = moveStep(journey, 'departure', email, {
+                targetId: stepOf(journey, 'agency').id,
+                side: 'after',
+            });
+            expect(ids(below)).toEqual(['topic', 'postcode', 'gap', 'agency', 'email', 'username', 'consent']);
+            expect(ids(moveStep(below, 'departure', email, 3))).toEqual([
+                'topic',
+                'email',
+                'postcode',
+                'gap',
+                'agency',
+                'username',
+                'consent',
+            ]);
+        });
+    });
+
     it('moves the Beratungsstelle alone once the postcode is removed', () => {
         const without = removeStep(mail(), 'departure', stepOf(mail(), 'postcode').id);
         const moved = moveStep(without, 'departure', stepOf(without, 'agency').id, 2);

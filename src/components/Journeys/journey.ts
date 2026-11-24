@@ -604,9 +604,12 @@ const pairOf = (steps: JourneyStep[]) => {
     return postcode && agency ? { postcode, agency } : undefined;
 };
 
-const isPairAdjacent = (steps: JourneyStep[]) => {
+/** True when `stepId` sits between the postcode and the Beratungsstelle, where nothing belongs. */
+const isBetweenPair = (steps: JourneyStep[], stepId: string) => {
     const postcode = steps.findIndex((step) => step.core === 'postcode');
-    return postcode >= 0 && steps[postcode + 1]?.core === 'agency';
+    const agency = steps.findIndex((step) => step.core === 'agency');
+    const at = steps.findIndex((step) => step.id === stepId);
+    return postcode >= 0 && agency > postcode && at > postcode && at < agency;
 };
 
 /** The ids that move when `stepId` moves: the pair together, every other step alone. */
@@ -661,13 +664,15 @@ const planIndexMove = (steps: JourneyStep[], stepId: string, toIndex: number): M
     const [moved] = next.splice(from, 1);
     next.splice(target, 0, moved);
     if (!hasValidOrder(next)) return { ok: false, reason: 'topicFirst' };
-    // Nothing goes between the postcode and the Beratungsstelle it finds. One place up or down (the
-    // arrows) hops over the pair; a drop right between the two is refused.
-    if (isPairAdjacent(steps) && !isPairAdjacent(next)) {
+    // Nothing goes between the postcode and the Beratungsstelle it finds, adjacent or not (a journey
+    // stored before this rule may still have a gap; a step already in it may leave). One place up or
+    // down (the arrows) hops over the pair; any other move into the gap is refused.
+    if (isBetweenPair(next, moved.id) && !isBetweenPair(steps, moved.id)) {
         if (Math.abs(toIndex - from) !== 1) return { ok: false, reason: 'pairTogether' };
         const hopped = next.filter((step) => step.id !== moved.id);
         const postcodeAt = hopped.findIndex((step) => step.core === 'postcode');
-        hopped.splice(toIndex < from ? postcodeAt : postcodeAt + 2, 0, moved);
+        const agencyAt = hopped.findIndex((step) => step.core === 'agency');
+        hopped.splice(toIndex < from ? postcodeAt : agencyAt + 1, 0, moved);
         return { ok: true, steps: hopped };
     }
     return { ok: true, steps: next };
@@ -696,7 +701,9 @@ const planDrop = (steps: JourneyStep[], stepId: string, drop: StepDrop): MovePla
     next.splice(insertAt, 0, ...block);
     if (sameOrder(next, steps)) return { ok: false, reason: 'edge' };
     if (!hasValidOrder(next)) return { ok: false, reason: 'topicFirst' };
-    if (isPairAdjacent(steps) && !isPairAdjacent(next)) return { ok: false, reason: 'pairTogether' };
+    if (moving.length === 1 && isBetweenPair(next, stepId) && !isBetweenPair(steps, stepId)) {
+        return { ok: false, reason: 'pairTogether' };
+    }
     return { ok: true, steps: next };
 };
 
@@ -908,6 +915,11 @@ export const addStep = (
     // A postcode added back goes before the Beratungsstelle it finds, wherever it was asked for.
     const agency = steps.findIndex((step) => step.core === 'agency');
     if (draft.kind === 'core' && draft.core === 'postcode' && agency >= 0 && at > agency) at = agency;
+    // Anything else asked for right below the postcode (or elsewhere inside the pair) goes below the
+    // Beratungsstelle: nothing is ever added between the two (CodeRabbit on ORISO-Admin#1654).
+    const postcode = steps.findIndex((step) => step.core === 'postcode');
+    const isPostcode = draft.kind === 'core' && draft.core === 'postcode';
+    if (!isPostcode && postcode >= 0 && agency > postcode && at > postcode && at <= agency) at = agency + 1;
     steps.splice(at, 0, blankStep(draft, phase, id));
     return withPhase(journey, phase, steps);
 };
