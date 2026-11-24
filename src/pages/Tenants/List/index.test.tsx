@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantsList } from './index';
 
@@ -8,8 +8,7 @@ const mocks = vi.hoisted(() => ({
     // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
     query: '',
     setSearchParams: vi.fn(),
-    deleteTenant: vi.fn(),
-    deleteOptions: undefined as { onSuccess?: () => void; onError?: () => void } | undefined,
+    isSuperAdmin: true,
     useTenantsData: vi.fn(),
     settings: {
         mainTenantSubdomainForSingleDomainMultitenancy: '',
@@ -40,8 +39,7 @@ const translations: Record<string, string> = {
     'tenants.list.noAdmins': 'No admin',
     'tenants.list.details.show': 'Show details of {{name}}',
     'tenants.list.details.hide': 'Hide details of {{name}}',
-    'tenants.list.deleteMessage.success': 'Tenant deleted.',
-    'tenants.list.deleteMessage.error.title': 'Tenant could not be deleted.',
+    'userTable.status.IN_DELETION': 'Being deleted',
     'tenants.searchPlaceholder': 'Search by name or ID',
     'tenants.subTitle': 'Tenants',
     'tenants.title': 'Tenants',
@@ -76,25 +74,14 @@ vi.mock('../../../components/Page', () => {
     return { Page };
 });
 
-vi.mock('../../../components/Modal', () => ({
-    Modal: ({ onConfirm, titleKeyOptions }: { onConfirm: () => void; titleKeyOptions: { name: string } }) => (
-        <div role="dialog" aria-label={`Delete ${titleKeyOptions.name}?`}>
-            <button type="button" onClick={onConfirm}>
-                Confirm delete
-            </button>
-        </div>
+vi.mock('./TenantDeletionModal', () => ({
+    TenantDeletionModal: ({ tenant }: { tenant: { id: number; name: string } }) => (
+        <div role="dialog" aria-label={`Delete ${tenant.name}?`} data-tenant-id={tenant.id} />
     ),
 }));
 
 vi.mock('../../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: mocks.settings }),
-}));
-
-vi.mock('../../../hooks/useDeleteTenant', () => ({
-    useDeleteTenant: (options: typeof mocks.deleteOptions) => {
-        mocks.deleteOptions = options;
-        return { mutate: mocks.deleteTenant };
-    },
 }));
 
 vi.mock('../../../hooks/useReleasesToggle.hook', () => ({
@@ -110,7 +97,7 @@ vi.mock('../../../hooks/useUserPermission', () => ({
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({ isSuperAdmin: true }),
+    useUserRoles: () => ({ isSuperAdmin: mocks.isSuperAdmin }),
 }));
 
 const tenant = (overrides: Record<string, unknown> = {}) => ({
@@ -154,7 +141,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         mocks.query = '';
         mocks.setSearchParams.mockReset();
         mocks.navigate.mockReset();
-        mocks.deleteTenant.mockReset();
+        mocks.isSuperAdmin = true;
         mocks.useTenantsData.mockReset();
         mocks.settings = {
             mainTenantSubdomainForSingleDomainMultitenancy: '',
@@ -301,18 +288,32 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         expect(mocks.navigate).toHaveBeenCalledWith('/admin/tenants/21');
     });
 
-    it('asks before deleting and reports the result above the list', () => {
+    it('opens the deletion dialog for the chosen Träger', () => {
         withTenants([tenant()]);
 
         render(<TenantsList />);
         fireEvent.click(screen.getByRole('button', { name: 'Delete Caritas Nord' }));
-        fireEvent.click(
-            within(screen.getByRole('dialog', { name: 'Delete Caritas Nord?' })).getByText('Confirm delete'),
-        );
 
-        expect(mocks.deleteTenant).toHaveBeenCalledWith(21);
-        act(() => mocks.deleteOptions?.onError?.());
-        expect(screen.getByRole('alert')).toHaveTextContent('Tenant could not be deleted.');
+        expect(screen.getByRole('dialog', { name: 'Delete Caritas Nord?' })).toHaveAttribute('data-tenant-id', '21');
+    });
+
+    it('offers deletion to the platform administrator only (ORISO-Admin#1525)', () => {
+        withDesktopLayout();
+        mocks.isSuperAdmin = false;
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('button', { name: 'Delete Caritas Nord' })).not.toBeInTheDocument();
+    });
+
+    it('shows a Träger in deletion as such', () => {
+        withDesktopLayout();
+        withTenants([tenant({ deleteDate: '2026-11-24T09:30' })]);
+
+        render(<TenantsList />);
+
+        expect(within(rowOf('Caritas Nord')).getByText('Being deleted')).toBeInTheDocument();
     });
 
     it('keeps the main Träger of a single-domain installation from being deleted', () => {

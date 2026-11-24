@@ -105,7 +105,7 @@ vi.mock('./UserScopeFilters', () => ({
     ),
     useScopeFilterAvailability: () => ({ tenant: false, agency: false, canListAgencies: false }),
 }));
-vi.mock('../../../hooks/useDeleteTenant', () => ({ useDeleteTenant: () => ({ mutate: vi.fn() }) }));
+vi.mock('../../Tenants/List/TenantDeletionModal', () => ({ TenantDeletionModal: () => null }));
 vi.mock('../../../components/GlobalSearch', () => ({
     GlobalSearchBar: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
 }));
