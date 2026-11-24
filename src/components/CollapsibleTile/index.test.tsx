@@ -75,4 +75,52 @@ describe('CollapsibleTile', () => {
         );
         expect(screen.getByRole('button', { name: 'Impressum' })).toBeInTheDocument();
     });
+
+    describe('icon slide when folding (Frank, 2026-11-24)', () => {
+        // jsdom draws nothing: the icon "moves" 100px between the open and the folded layout.
+        const fakeLayout = () =>
+            vi
+                .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+                .mockImplementation(function rect(this: HTMLElement) {
+                    const open = !!this.closest('section')?.className.includes('open');
+                    return { left: open ? 100 : 0, top: open ? 0 : 20, width: 32, height: 32 } as DOMRect;
+                });
+        const reducedMotion = (reduce: boolean) =>
+            vi
+                .spyOn(window, 'matchMedia')
+                .mockImplementation(
+                    (query: string) => ({ matches: reduce && query.includes('reduce') } as MediaQueryList),
+                );
+
+        it('slides icon and title from their old place', async () => {
+            const user = userEvent.setup();
+            fakeLayout();
+            reducedMotion(false);
+            const animate = vi.fn();
+            Object.defineProperty(HTMLElement.prototype, 'animate', { value: animate, configurable: true });
+            renderTile(true);
+
+            await user.click(screen.getByRole('button', { name: /Impressum/ }));
+
+            expect(animate).toHaveBeenCalledTimes(2);
+            expect(animate.mock.calls[0][0][0]).toEqual({ transform: 'translate(100px, -20px)' });
+            vi.restoreAllMocks();
+            delete (HTMLElement.prototype as { animate?: unknown }).animate;
+        });
+
+        it('just jumps with reduced motion', async () => {
+            const user = userEvent.setup();
+            fakeLayout();
+            reducedMotion(true);
+            const animate = vi.fn();
+            Object.defineProperty(HTMLElement.prototype, 'animate', { value: animate, configurable: true });
+            renderTile(true);
+
+            await user.click(screen.getByRole('button', { name: /Impressum/ }));
+
+            expect(animate).not.toHaveBeenCalled();
+            vi.restoreAllMocks();
+            delete (HTMLElement.prototype as { animate?: unknown }).animate;
+        });
+    });
 });
