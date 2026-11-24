@@ -4104,6 +4104,7 @@
     "topicDialog.translationMissing": "Übersetzung fehlt",
     "topicDialog.translate.action_one": "{{count}} fehlenden Text mit KI übersetzen",
     "topicDialog.translate.action_other": "{{count}} fehlende Texte mit KI übersetzen",
+    "topicDialog.translate.complete": "Alle Sprachen vollständig",
     "topicDialog.translate.done_one": "{{count}} Übersetzung eingetragen. Bitte prüfen und speichern.",
     "topicDialog.translate.done_other": "{{count}} Übersetzungen eingetragen. Bitte prüfen und speichern.",
     "topicDialog.translate.failed": "Die Übersetzung hat nicht geklappt.",

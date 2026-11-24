@@ -4104,6 +4104,7 @@
     "topicDialog.translationMissing": "Translation missing",
     "topicDialog.translate.action_one": "Translate {{count}} missing text with AI",
     "topicDialog.translate.action_other": "Translate {{count}} missing texts with AI",
+    "topicDialog.translate.complete": "All languages complete",
     "topicDialog.translate.done_one": "{{count}} translation filled in. Please check and save.",
     "topicDialog.translate.done_other": "{{count}} translations filled in. Please check and save.",
     "topicDialog.translate.failed": "The translation did not work.",

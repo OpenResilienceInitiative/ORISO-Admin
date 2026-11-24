@@ -772,7 +772,9 @@ export const TopicCatalogueDialog = ({
                                 disabled={saving || missingCount === 0}
                                 onClick={translateMissing}
                             >
-                                {t('topicDialog.translate.action', { count: missingCount })}
+                                {missingCount === 0
+                                    ? t('topicDialog.translate.complete')
+                                    : t('topicDialog.translate.action', { count: missingCount })}
                             </M3Button>
                         </div>
                     )}
