@@ -71,29 +71,18 @@ describe('user-list centre filter access', () => {
 });
 
 describe('unified account toolbar', () => {
-    it('keeps search and actions available on a tab with no scope filters', async () => {
-        const user = userEvent.setup();
-        const onSearch = vi.fn();
-        const onSearchChange = vi.fn();
+    it('has no search field of its own (the admin search, ⌘K, is the one place to type) and keeps actions', () => {
         render(
             <UserScopeFilters
                 sectionId={TypeOfUser.PlatformAdmins}
                 filters={{}}
                 onChange={vi.fn()}
-                search={{ searchPlaceholder: 'Search accounts', onSearch, onSearchChange }}
                 actions={<button type="button">New account</button>}
             />,
         );
-        expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Suche ausklappen' })).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'New account' })).toBeInTheDocument();
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        const input = screen.getByRole('textbox', { name: 'Search accounts' });
-        await user.type(input, 'Alex{Enter}');
-        expect(onSearch).toHaveBeenLastCalledWith('Alex');
-        expect(onSearchChange).toHaveBeenLastCalledWith('Alex');
-        await user.click(screen.getByRole('button', { name: 'Suche einklappen' }));
-        await user.click(screen.getByRole('button', { name: 'Suche ausklappen' }));
-        expect(screen.getByRole('textbox', { name: 'Search accounts' })).toHaveValue('Alex');
     });
 
     it('clears selected centres when switching Träger and offers only the new Träger centres', async () => {
@@ -115,13 +104,15 @@ describe('unified account toolbar', () => {
             );
         };
         render(<Toolbar />);
+        // Two filters are set, and the button says so; the pickers fold out behind it (Admin#1510).
+        await user.click(screen.getByRole('button', { name: /^Filter/ }));
         await user.click(screen.getByRole('combobox', { name: 'Träger' }));
         await user.clear(screen.getByRole('combobox', { name: 'Träger' }));
         await user.click(await screen.findByRole('option', { name: 'Diakonie Berlin' }));
         expect(onChange).toHaveBeenLastCalledWith({ tenantId: '7', agencyIds: [] });
         expect(screen.queryByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).not.toBeInTheDocument();
-        // One centre is deliberately not selectable without an active selection.
-        expect(screen.getByRole('combobox', { name: 'Beratungsstelle' })).toBeDisabled();
+        // A choice of one is no choice: the centre picker is not offered for a Träger with one centre.
+        expect(screen.queryByRole('combobox', { name: 'Beratungsstelle' })).not.toBeInTheDocument();
         await user.click(screen.getByRole('combobox', { name: 'Träger' }));
         await user.clear(screen.getByRole('combobox', { name: 'Träger' }));
         await user.click(await screen.findByRole('option', { name: 'Caritas Hamburg' }));

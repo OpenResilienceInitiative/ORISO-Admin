@@ -55,7 +55,7 @@ export const PasswordResetRequestForm = () => {
                     name="username"
                     label={t('passwordReset.identityLabel')}
                     autoComplete="username"
-                    rules={[{ required: true, message: t('passwordReset.identityRequired') }]}
+                    rules={[{ required: true, whitespace: true, message: t('passwordReset.identityRequired') }]}
                 />
                 {failed && (
                     <Notify title={t('notify.title.passwordReset')} severity="error">

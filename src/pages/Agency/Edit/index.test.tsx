@@ -467,6 +467,7 @@ describe('AgencyPageEdit create flow', () => {
         expect(screen.getByRole('heading', { name: 'Schade!' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('keeps an existing agency readable without the agency creation permission', async () => {
@@ -495,6 +496,7 @@ describe('AgencyPageEdit create flow', () => {
             await screen.findByText('Bitte füllen Sie das markierte Feld aus.', undefined, { timeout: 5000 }),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('names the missing required field in a notification when the save is blocked', async () => {
@@ -518,6 +520,7 @@ describe('AgencyPageEdit create flow', () => {
             { timeout: 5000 },
         );
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
         notificationSpy.mockRestore();
     });
 
@@ -748,6 +751,7 @@ const goLiveWithTopicsAvailable = async (user: ReturnType<typeof userEvent.setup
 describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () => {
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({
@@ -788,6 +792,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
             within(dialog).getByText('Sie haben kein Thema ausgewählt. Möchten Sie die Beratung trotzdem aktivieren?'),
         ).toBeInTheDocument();
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
     });
 
     it('keeps the form values and does not save when the no-topic dialog is cancelled', async () => {
@@ -800,6 +805,7 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
 
         await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
         expect(mocks.mutate).not.toHaveBeenCalled();
+        expect(mocks.mutateAsync).not.toHaveBeenCalled();
         expect(screen.getByLabelText('Name')).toHaveValue('Neue Beratungsstelle');
         expect(screen.getByRole('switch', { name: 'Sichtbar stellen' })).toBeChecked();
         expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
@@ -813,8 +819,8 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         const dialog = await screen.findByRole('dialog');
         fireEvent.click(within(dialog).getByRole('button', { name: 'Trotzdem aktivieren' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
     });
 
     it('saves without a dialog when going live with a topic selected', async () => {
@@ -825,9 +831,11 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         await user.click(await screen.findByRole('option', { name: 'Debt counselling' }));
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: ['7'] }));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(
+            expect.objectContaining({ offline: false, topicIds: ['7'] }),
+        );
     });
 
     it('does not warn when an already-online agency is saved without topics', async () => {
@@ -856,9 +864,9 @@ describe('AgencyPageEdit no-topic activation confirm', { timeout: 60_000 }, () =
         await user.click(toggle);
         fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
 
-        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-        expect(mocks.mutate.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
+        expect(mocks.mutateAsync.mock.calls[0][0]).toEqual(expect.objectContaining({ offline: false, topicIds: [] }));
     });
 
     const renderOfflineAgencyEdit = (topics: Array<{ id: number; name: string }> = []) => {
@@ -1057,6 +1065,7 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
 
     beforeEach(() => {
         mocks.mutate.mockReset();
+        mocks.mutateAsync.mockReset().mockResolvedValue(undefined);
         mocks.navigate.mockReset();
         mocks.searchTenantData.mockReset();
         mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
@@ -1244,8 +1253,8 @@ describe('AgencyPageEdit registration visibility needs a counsellor', () => {
             expect(mocks.consultantSearchFilters.at(-1)).toEqual({ tenantId: '8' });
 
             fireEvent.click(screen.getByRole('button', { name: 'Speichern' }));
-            await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
-            const saved = mocks.mutate.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
+            await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalledTimes(1));
+            const saved = mocks.mutateAsync.mock.calls[0][0] as { tenantId?: unknown; consultantIds?: unknown[] };
             expect(JSON.stringify(saved.tenantId)).toContain('8');
             // Nothing of Träger 7 may reach addAgencyData -> assignAgencyToConsultants for Träger 8.
             expect(saved.consultantIds ?? []).toEqual([]);
@@ -1448,5 +1457,78 @@ describe('AgencyPageEdit section menu', () => {
         renderWithClient(<AgencyPageEdit />);
 
         expect(tabTargets()).toEqual(['/admin/agency/add/general']);
+    });
+});
+
+// ORISO-Frontend#2251: the switch must survive the real Edit save and reload path, not only a local form.
+describe('AgencyPageEdit live-chat further counselling', () => {
+    const SWITCH_NAME = 'agency.form.settings.liveChatFurtherCounselling.title';
+    const FIELD = 'featureLiveChatFurtherCounsellingEnabled';
+    const roles = {
+        trägerAdmin: { isSuperAdmin: false, isTenantScopedAdmin: true, tenantId: 7 },
+        restrictedAdmin: { isSuperAdmin: false, isTenantScopedAdmin: false, tenantId: 7 },
+    };
+
+    const renderEdit = (settings: Record<string, unknown>, flags = roles.trägerAdmin) => {
+        mocks.userRoles = { ...mocks.userRoles, ...flags };
+        mocks.routeId = '282';
+        mocks.agencyData = {
+            id: 282,
+            name: 'Bestehende Stelle',
+            postcode: '10115',
+            city: 'Berlin',
+            offline: false,
+            topics: [TOPIC],
+            tenantId: 7,
+            settings,
+        };
+        return renderWithClient(<AgencyPageEdit />);
+    };
+    const save = () => fireEvent.click(screen.getByRole('button', { name: 'Allgemeine Informationen save' }));
+    const savedSettings = () => mocks.mutate.mock.calls[0][0].settings;
+
+    beforeEach(() => {
+        mocks.mutate.mockReset();
+        mocks.searchTenantData.mockReset();
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 7, name: 'Caritas Augsburg' }] });
+        mocks.dpaGate = { dpaPublished: true, dpaSigned: true };
+        mocks.tenantTopics = [TOPIC];
+        mocks.hasConsultants = true;
+    });
+
+    it.each([
+        ['enables', false, true],
+        ['disables', true, false],
+    ])('%s it through the update payload and shows the saved value after a reload', async (_label, stored, next) => {
+        const user = setupUser();
+        const view = renderEdit({ [FIELD]: stored });
+
+        await user.click(screen.getByRole('switch', { name: SWITCH_NAME }));
+        save();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(savedSettings()).toMatchObject({ [FIELD]: next });
+
+        // Reload with what the server now holds.
+        view.unmount();
+        renderEdit(savedSettings());
+        const reloaded = screen.getByRole('switch', { name: SWITCH_NAME });
+        if (next) expect(reloaded).toBeChecked();
+        else expect(reloaded).not.toBeChecked();
+    });
+
+    it('shows a stored null as off', () => {
+        renderEdit({ [FIELD]: null });
+
+        expect(screen.getByRole('switch', { name: SWITCH_NAME })).not.toBeChecked();
+    });
+
+    it("leaves a stored true out of a restricted admin's unrelated save", async () => {
+        renderEdit({ [FIELD]: true }, roles.restrictedAdmin);
+
+        expect(screen.queryByRole('switch', { name: SWITCH_NAME })).not.toBeInTheDocument();
+        save();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        // Not sent, so useAgencyUpdate keeps the stored value (see its test) instead of overwriting it.
+        expect(savedSettings()?.[FIELD]).toBeUndefined();
     });
 });

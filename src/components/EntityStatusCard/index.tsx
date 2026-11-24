@@ -14,6 +14,7 @@ import { TypeOfUser } from '../../enums/TypeOfUser';
 import styles from './styles.module.scss';
 import { statusValue as state, statusLabel } from './presentation';
 import { useStatusPermission } from './useStatusPermission';
+import { toIntlLocale } from '../../utils/language';
 
 const errorKey = (error: unknown, kind: EntityKind) => {
     if (kind === 'agency' && error instanceof Response && error.status === 400) {
@@ -82,7 +83,7 @@ export const EntityStatusCard = ({
     const account = loadError ? undefined : data?.account;
     const formatDate = (value?: string | null) => {
         if (!value || Number.isNaN(Date.parse(value))) return t('entityStatus.unknown');
-        return new Date(value).toLocaleString(i18n.language);
+        return new Date(value).toLocaleString(toIntlLocale(i18n.language));
     };
     const confirmed = (
         <output

@@ -1,4 +1,4 @@
-import { Button, Tag } from 'antd';
+import { Tag } from 'antd';
 import classNames from 'classnames';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,13 +12,14 @@ import {
     DataTableRow,
     type DataTableColumn,
 } from '../../../components/DataTable';
-import { GlobalSearchBar } from '../../../components/GlobalSearch';
 import { M3Tooltip } from '../../../components/M3Tooltip';
 import { useDeletionAuditLogsData } from '../../../hooks/useDeletionAuditLogsData';
 import { DeletionAuditLogEntry } from '../../../types/deletionAuditLogs';
 import { useDeletionLogLayout } from './useDeletionLogLayout';
+import { LogFilterBar } from '../LogFilterBar';
 import styles from './deletionAuditLogs.module.scss';
 import { Notify } from '../../../components/Notify';
+import { toIntlLocale } from '../../../utils/language';
 
 const TARGET_TYPES = ['CONSULTANT', 'AGENCY_ADMIN', 'TENANT_ADMIN', 'AGENCY', 'TENANT'];
 const OUTCOMES = ['SCHEDULED', 'EXECUTED', 'PARTIAL_FAILURE', 'CANCELLED'];
@@ -84,7 +85,7 @@ export const DeletionAuditLogsPage = () => {
             case 'createDate':
                 return (
                     <span className={styles.nowrap}>
-                        {row.createDate ? new Date(row.createDate).toLocaleString(i18n.language) : '-'}
+                        {row.createDate ? new Date(row.createDate).toLocaleString(toIntlLocale(i18n.language)) : '-'}
                     </span>
                 );
             case 'outcome': {
@@ -139,10 +140,24 @@ export const DeletionAuditLogsPage = () => {
                     {t('error.loading')}
                 </Notify>
             )}
-            {/* Chrome leaves a control that is only partly visible where it is; reveal it whole (and its outline). */}
-            <div
-                className={styles.toolbar}
-                onFocus={(event) => event.target.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })}
+            <LogFilterBar
+                search={{
+                    label: t('deletionAudit.filters.targetId'),
+                    value: targetIdInput,
+                    onChange: setTargetIdInput,
+                    onSearch: (value) => {
+                        setTargetIdFilter(value);
+                        setPage(1);
+                    },
+                }}
+                activeCount={[targetType, outcome, targetIdFilter].filter(Boolean).length}
+                onReset={() => {
+                    setTargetType(undefined);
+                    setOutcome(undefined);
+                    setTargetIdInput('');
+                    setTargetIdFilter('');
+                    setPage(1);
+                }}
             >
                 <M3Select
                     allowClear
@@ -171,30 +186,7 @@ export const DeletionAuditLogsPage = () => {
                     }}
                     options={OUTCOMES.map((value) => ({ value, label: t(`deletionAudit.outcome.${value}`) }))}
                 />
-                <GlobalSearchBar
-                    ariaLabel={t('deletionAudit.filters.targetId')}
-                    defaultExpanded
-                    expandedWidth={320}
-                    searchPlaceholder={t('deletionAudit.filters.targetId')}
-                    value={targetIdInput}
-                    onSearchChange={setTargetIdInput}
-                    onSearch={(value) => {
-                        setTargetIdFilter(value);
-                        setPage(1);
-                    }}
-                />
-                <Button
-                    onClick={() => {
-                        setTargetType(undefined);
-                        setOutcome(undefined);
-                        setTargetIdInput('');
-                        setTargetIdFilter('');
-                        setPage(1);
-                    }}
-                >
-                    {t('deletionAudit.filters.reset')}
-                </Button>
-            </div>
+            </LogFilterBar>
 
             <DataTable
                 ariaLabel={t('deletionAudit.title')}

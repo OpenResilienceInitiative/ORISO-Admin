@@ -67,7 +67,7 @@
        next field sits ~8px above its box, so the rows need room or a two-line hint runs into it. */
     display: grid;
     gap: 16px 0;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .colorField {

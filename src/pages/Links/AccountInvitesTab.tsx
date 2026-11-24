@@ -14,7 +14,7 @@ import {
     InviteEmailTemplateKind,
     listInviteEmailTemplates,
     resendAccountInvite,
-    revokeAccountInvite,
+    deleteAccountInvite,
     updateAccountInviteTopicPermission,
 } from '../../api/accountInvites/accountInvites';
 import { addConsultantRole, changeAccountInviteRole } from '../../api/accountInvites/inviteRoles';
@@ -31,6 +31,8 @@ import { resolveInviteViewerScope } from '../../constants/linksAccess';
 import { Modal } from '../../components/Modal';
 import { GlobalSearchBar } from '../../components/GlobalSearch/GlobalSearchBar';
 import { parseUserAuthInfo } from '../../utils/parseUserAuthInfo';
+import parseJwt from '../../utils/parseJWT';
+import { getAccessTokenForRequests } from '../../api/auth/auth';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import type { ParseInviteCsvResult } from './csv/parseInviteCsv';
 import { EmailTemplatesDialog } from './EmailTemplatesDialog';
@@ -46,6 +48,7 @@ import { findStoredCsvInvite, toCreateInviteRequest } from './inviteRequest';
 import { isBulkSelectable, type InviteTab } from './inviteRules';
 import { useInviteBulk } from './useInviteBulk';
 import { INITIAL_INVITE_QUERY, useInviteList, type InviteListQuery } from './useInviteList';
+import { useInviteTemplateRecents } from './inviteTemplateRecents';
 import type { IdUnitOption } from '../../components/IdAllocationField';
 import styles from './styles.module.scss';
 
@@ -94,6 +97,17 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const { t } = useTranslation();
     const [templates, setTemplates] = useState<InviteEmailTemplateDTO[]>([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
+    const auth = parseJwt(getAccessTokenForRequests() ?? '');
+    const { ids: recentTemplateIds, remember: rememberTemplate } = useInviteTemplateRecents(
+        typeof auth?.sub === 'string' && typeof auth?.iss === 'string'
+            ? { subject: auth.sub, issuer: auth.iss }
+            : undefined,
+        templateKind,
+    );
+    const selectTemplate = (id: number) => {
+        rememberTemplate(id);
+        setSelectedTemplateId(id);
+    };
     const [generatedLinks, setGeneratedLinks] = useState<Record<number, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const [templatesDialogView, setTemplatesDialogView] = useState<'list' | 'create' | null>(null);
@@ -181,14 +195,26 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
 
     const activeTemplates = useMemo(() => templates.filter((template) => template.active), [templates]);
 
+    const templateLoadGeneration = useRef(0);
     const loadTemplates = useCallback(() => {
+        templateLoadGeneration.current += 1;
+        const generation = templateLoadGeneration.current;
         listInviteEmailTemplates(templateKind)
-            .then(setTemplates)
-            .catch(() => message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates')));
+            .then((loadedTemplates) => {
+                if (generation === templateLoadGeneration.current) setTemplates(loadedTemplates);
+            })
+            .catch(() => {
+                if (generation === templateLoadGeneration.current)
+                    message.error(t('links.accountInvites.templatesLoadFailed', 'Could not load templates'));
+            });
     }, [templateKind, t]);
 
     useEffect(() => {
         loadTemplates();
+        return () => {
+            // Requests from a previous scope/unmounted tab cannot replace current templates.
+            templateLoadGeneration.current += 1;
+        };
     }, [loadTemplates]);
 
     // After a template is created/edited in the dialog, refresh the picker — and if it
@@ -208,6 +234,15 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
             loadTemplates();
         },
         [loadTemplates, templateKind],
+    );
+
+    const onTemplateDeleted = useCallback(
+        (id: number) => {
+            setTemplates((current) => current.filter((template) => template.id !== id));
+            setSelectedTemplateId((current) => (current === id ? undefined : current));
+            loadTemplates();
+        },
+        [loadTemplates],
     );
 
     useEffect(() => {
@@ -421,18 +456,29 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
     const onResendRef = useRef(onResend);
     onResendRef.current = onResend;
 
-    const onRevoke = useCallback(
-        async (invite: AccountInviteDTO) => {
-            try {
-                await revokeAccountInvite(invite.id);
-                message.success(t('links.accountInvites.revoked', 'Invite revoked'));
-                await loadInvites();
-            } catch {
-                message.error(t('links.accountInvites.revokeFailed', 'Could not revoke invite'));
-            }
-        },
-        [loadInvites, t],
-    );
+    // The search may change while a DELETE runs: the reload must load the list shown by then.
+    const loadInvitesRef = useRef(loadInvites);
+    loadInvitesRef.current = loadInvites;
+
+    // ORISO-Admin#1522: delete asks first; an open invite's link stops working at once.
+    const [deleteTarget, setDeleteTarget] = useState<AccountInviteDTO>();
+    const onDelete = useCallback((invite: AccountInviteDTO) => setDeleteTarget(invite), []);
+    const { setSelectedIds: setBulkSelectedIds } = bulk;
+    const deleteConfirmed = useCallback(async () => {
+        const invite = deleteTarget;
+        setDeleteTarget(undefined);
+        if (!invite) return;
+        try {
+            await deleteAccountInvite(invite.id);
+        } catch {
+            message.error(t('links.accountInvites.deleteFailed', 'Einladung konnte nicht gelöscht werden'));
+            return;
+        }
+        // A deleted invite is no bulk target any more; a failed delete keeps the selection.
+        setBulkSelectedIds((ids) => ids.filter((id) => id !== invite.id));
+        message.success(t('links.accountInvites.deleted', 'Einladung gelöscht'));
+        await loadInvitesRef.current();
+    }, [deleteTarget, setBulkSelectedIds, t]);
 
     const withRoleSaving = useCallback(async (inviteId: number, run: () => Promise<void>) => {
         setRoleSavingIds((ids) => [...ids, inviteId]);
@@ -532,7 +578,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
         requiresTemplate: bulk.requiresTemplate,
         onSend: () => bulk.send(selectedTemplateId),
         onClear: () => bulk.setSelectedIds([]),
-        onDeleteSelected: () => bulk.setConfirmRevokeOpen(true),
+        onDeleteSelected: () => bulk.setConfirmDeleteOpen(true),
     };
     const moreMenu = useInviteMoreMenu({
         tab,
@@ -583,7 +629,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         templates={{
                             list: templates,
                             selectedId: selectedTemplateId,
-                            onSelect: setSelectedTemplateId,
+                            recentIds: recentTemplateIds,
+                            onSelect: selectTemplate,
                             onManage: (intent) => {
                                 setCreateFromTemplateId(undefined);
                                 setTemplatesDialogView(intent === 'create' ? 'create' : 'list');
@@ -649,7 +696,7 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         selectionDisabled={bulk.running || loading}
                         onResend={onResend}
                         onCopyLink={(invite) => copyLink(generatedLinks[invite.id] ?? invite.acceptUrl)}
-                        onRevoke={onRevoke}
+                        onDelete={onDelete}
                         onInviteCta={isTenantInvite && isAgencyViewer ? undefined : focusComposer}
                         onTopicPermissionChange={isTenantInvite ? undefined : onTopicPermissionChange}
                         topicPermissionSavingIds={topicSavingIds}
@@ -670,7 +717,19 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     onAssigned={() => loadInvites()}
                 />
             )}
-            {bulk.confirmRevokeOpen && (
+            {deleteTarget && (
+                <Modal
+                    titleKey="links.accountInvites.deleteConfirmTitle"
+                    icon={<DeleteOutlineOutlinedIcon />}
+                    contentKey="links.accountInvites.deleteConfirmBody"
+                    contentKeyOptions={{ email: deleteTarget.recipientEmail }}
+                    okLabelKey="links.accountInvites.deleteConfirmOk"
+                    cancelLabelKey="links.bulk.deleteConfirmCancel"
+                    onConfirm={deleteConfirmed}
+                    onClose={() => setDeleteTarget(undefined)}
+                />
+            )}
+            {bulk.confirmDeleteOpen && (
                 <Modal
                     titleKey="links.bulk.deleteConfirmTitle"
                     icon={<DeleteOutlineOutlinedIcon />}
@@ -678,8 +737,8 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                     contentKeyOptions={{ count: bulk.selectedInvites.length }}
                     okLabelKey="links.bulk.deleteConfirmOk"
                     cancelLabelKey="links.bulk.deleteConfirmCancel"
-                    onConfirm={bulk.revokeConfirmed}
-                    onClose={() => bulk.setConfirmRevokeOpen(false)}
+                    onConfirm={bulk.deleteConfirmed}
+                    onClose={() => bulk.setConfirmDeleteOpen(false)}
                 />
             )}
             {csvImport && (
@@ -708,10 +767,11 @@ export const AccountInvitesTab = ({ targetRole, templateKind, includeAgencyField
                         setCreateFromTemplateId(undefined);
                     }}
                     onChanged={onTemplateChanged}
+                    onDeleted={onTemplateDeleted}
                     // Picking in the overview selects for the composer and closes
                     // the dialog; create/edit stay inside the dialog itself.
                     onSelect={(template) => {
-                        setSelectedTemplateId(template.id);
+                        selectTemplate(template.id);
                         setTemplatesDialogView(null);
                     }}
                 />

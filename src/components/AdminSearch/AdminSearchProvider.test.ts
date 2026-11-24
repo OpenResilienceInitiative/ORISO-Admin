@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { isSearchShortcut, isSlashShortcut } from './AdminSearchProvider';
+import { isSearchShortcut, isSlashShortcut, listPathFor } from './AdminSearchProvider';
+import { accountDocs, tenantDocs, type EntityLabels } from './searchEntities';
 
 const key = (init: Partial<KeyboardEvent> & { key: string }) =>
     ({
@@ -45,5 +46,37 @@ describe('search shortcuts', () => {
         expect(isSlashShortcut(key({ key: '/', target: editable }))).toBe(false);
         expect(isSlashShortcut(key({ key: '/', ctrlKey: true }))).toBe(false);
         expect(isSlashShortcut(key({ key: '/', defaultPrevented: true }))).toBe(false);
+    });
+});
+
+describe('"Show all matches in the list"', () => {
+    const labels: EntityLabels = {
+        tenants: 'Träger',
+        agencies: 'Beratungsstellen',
+        topics: 'Themen',
+        departments: 'Fachbereiche',
+        accounts: 'Konten',
+        accountLists: {},
+    };
+    const anna = [{ id: 'a1', firstname: 'Anna', lastname: 'Admin' }];
+
+    // Found in review (PR #1530): the Konten link always opened the Berater tab, so a Träger-Admin hit
+    // led to an empty Berater list.
+    it('opens the Konten tab that holds the hits', () => {
+        expect(listPathFor('accounts', accountDocs(anna, 'tenant-admins', labels))).toBe('/admin/users/tenant-admins');
+        expect(listPathFor('accounts', accountDocs(anna, 'agency-admins', labels))).toBe('/admin/users/agency-admins');
+        expect(listPathFor('accounts', accountDocs(anna, 'consultants', labels))).toBe('/admin/users/consultants');
+    });
+
+    it('takes the first tab with a hit when several have one, and the plain list without hits', () => {
+        const mixed = [
+            ...tenantDocs([{ id: 1, name: 'Anna e.V.' }], labels),
+            ...accountDocs(anna, 'agency-admins', labels),
+            ...accountDocs(anna, 'tenant-admins', labels),
+        ];
+
+        expect(listPathFor('accounts', mixed)).toBe('/admin/users/agency-admins');
+        expect(listPathFor('accounts', [])).toBe('/admin/users');
+        expect(listPathFor('tenants', mixed)).toBe('/admin/tenants');
     });
 });

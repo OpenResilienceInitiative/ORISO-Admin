@@ -141,36 +141,6 @@
     max-width: calc(100% - var(--admin-subnav-inset, 0%));
 }
 
-// 40px tonal icon button instead of the 88px dark pill.
-.backButton {
-    display: inline-flex;
-    width: 40px;
-    height: 40px;
-    flex: 0 0 40px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: var(--m3-surface-container-high, #eae7e8);
-    color: var(--m3-on-surface, #1b1b1c);
-    transition: background-color 160ms ease;
-
-    &:hover,
-    &:focus-visible {
-        background: var(--m3-surface-container-highest, #e4e2e2);
-        color: var(--m3-on-surface, #1b1b1c);
-    }
-
-    &:focus-visible {
-        outline: 2px solid var(--admin-focus-ring-color);
-        outline-offset: 2px;
-    }
-
-    > svg {
-        width: 24px;
-        height: 24px;
-    }
-}
-
 .backText {
     display: flex;
     min-width: 0;
@@ -233,11 +203,20 @@
 
 .actions {
     display: flex;
-    max-width: 100%;
+    max-width: calc(100% - var(--admin-subnav-inset, 0%));
+    box-sizing: border-box;
     flex: 0 0 auto;
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 16px;
+
+    /* The row wraps below the header bar, so it starts where the bar and the cards start — not in the arrow
+       gutter 24px further left (Cancel/Save/Edit on the create and edit forms, ORISO-Admin#1543). */
+    margin-inline-start: var(--admin-subnav-inset, 0%);
+
+    &:empty {
+        display: none;
+    }
 }
 
 .loading {
@@ -266,6 +245,14 @@
 
         .back {
             padding-bottom: 6px;
+
+            /* No header bar on a phone (the back button is in the bottom bar), so nothing to line up with. */
+            --admin-subnav-inset: 0px;
+
+            /* Below 650px the header is a centred column; the action row still starts at the card edge. */
+            .actions {
+                align-self: flex-start;
+            }
         }
     }
 }

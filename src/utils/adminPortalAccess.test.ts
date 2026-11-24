@@ -12,6 +12,10 @@ describe('hasAdminPortalRole', () => {
         expect(hasAdminPortalRole(['some-other', UserRole.TenantAdmin])).toBe(true);
     });
 
+    it('lets a Statistik-Leser·in into the admin portal (ORISO-UserService#1666)', () => {
+        expect(hasAdminPortalRole([UserRole.StatisticsReader])).toBe(true);
+    });
+
     it('returns false for non-admin roles, empty, or default', () => {
         expect(hasAdminPortalRole([UserRole.Technical])).toBe(false);
         expect(hasAdminPortalRole(['random-role'])).toBe(false);

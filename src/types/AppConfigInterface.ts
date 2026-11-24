@@ -39,12 +39,20 @@ export interface AppConfigInterface {
     globalFeatureSystemNotificationEmailsEnabled?: boolean;
     /** Platform policy (ADR-014 amendment 2026-09-25): every agency holds at most one topic. */
     oneTopicPerAgencyEnabled?: boolean;
+    /** ORISO-Admin#1497: platform-wide; true lets counsellors accept any waiting live-chat guest. */
+    liveChatFreeChoiceEnabled?: boolean;
     /** Fallback support e-mail shown to counsellors when a centre has no chat-reachable admin (ORISO-Frontend#1915). */
     supportEmail?: string;
     /** ORISO-Frontend#1876: postcode prefill when an asker requests further counselling. */
     furtherCounsellingPostcodeMode?: FurtherCounsellingPostcodeMode;
     /** ORISO-Frontend#1876: reaction to two accepted conversations on the same topic. */
     topicDuplicateMode?: TopicDuplicateMode;
+    /** Formats the chat composer does not offer on this platform: comma-separated keys, empty = all offered. */
+    chatComposerDisabledFormats?: string | string[];
+    /** Widest chat message on desktop, in pixels. */
+    chatMessageMaxWidthDesktop?: string | number;
+    /** Characters above which a chat message collapses behind "show more"; 0 = never. */
+    chatMessageCollapseThreshold?: string | number;
     globalSmtpEnabled?: boolean;
     globalSmtpHost?: string;
     globalSmtpPort?: string;

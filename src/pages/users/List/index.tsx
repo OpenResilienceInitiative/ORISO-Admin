@@ -3,13 +3,16 @@ import { Page } from '../../../components/Page';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { UserManagementTable } from '../management/UserManagementTable';
 import { UserSectionPills } from '../management/UserSectionPills';
+import { AdviceSeekersTable } from '../adviceSeekers/AdviceSeekersTable';
 import styles from './styles.module.scss';
 
 const USER_HUB_SECTIONS = new Set<string>([
     TypeOfUser.Consultants,
+    TypeOfUser.AdviceSeekers,
     TypeOfUser.AgencyAdmins,
     TypeOfUser.TenantAdmins,
     TypeOfUser.PlatformAdmins,
+    TypeOfUser.StatisticsReaders,
 ]);
 
 export const UsersList = () => {
@@ -27,7 +30,11 @@ export const UsersList = () => {
             ) : (
                 <Page.Title titleKey="users.title" />
             )}
-            <UserManagementTable key={`user-table-${typeOfUsers}`} figmaTableHeader={isUsersHub} />
+            {typeOfUsers === TypeOfUser.AdviceSeekers ? (
+                <AdviceSeekersTable />
+            ) : (
+                <UserManagementTable key={`user-table-${typeOfUsers}`} figmaTableHeader={isUsersHub} />
+            )}
         </Page>
     );
 };

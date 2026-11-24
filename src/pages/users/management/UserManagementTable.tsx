@@ -4,9 +4,10 @@ import classNames from 'classnames';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useDebouncedCallback } from 'use-debounce';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
+import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
+import { ListSearchBar } from '../../../components/ListSearchBar';
 import routePathNames from '../../../appConfig';
 import { Modal } from '../../../components/Modal';
 import { canSeeLinksSection } from '../../../constants/linksAccess';
@@ -21,6 +22,7 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
 import { usePlatformAdminsData } from '../../../hooks/usePlatformAdminsData';
+import { useStatisticsReadersData } from '../../../hooks/useStatisticsReaders';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { CounselorData } from '../../../types/counselor';
@@ -30,12 +32,13 @@ import decodeHTML from '../../../utils/decodeHTML';
 import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
+import { DeleteStatisticsReaderModal } from '../List/components/DeleteStatisticsReader';
 import { DeletionWindowModal, type DeletionWindowMode } from '../List/components/DeletionWindow';
 import { USER_TABLE_CONFIGS, shouldShowTenantColumn, canManageSectionActions } from './userTableConfigs';
 import { mapSorterToApiField } from './useUserTableColumns';
 import { TenantTable } from './TenantTable';
 import { UserDataTable } from './UserDataTable';
-import { UserScopeFilters, useScopeFilterAvailability } from './UserScopeFilters';
+import { UserScopeFilters } from './UserScopeFilters';
 import {
     normalizeTenantAdminSortField,
     USER_TABLE_API_SAFE_ORDER,
@@ -63,6 +66,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const isTenants = sectionId === TypeOfUser.Tenants;
     const isTenantAdmins = sectionId === TypeOfUser.TenantAdmins;
     const isPlatformAdmins = sectionId === TypeOfUser.PlatformAdmins;
+    const isStatisticsReaders = sectionId === TypeOfUser.StatisticsReaders;
     const isConsultants = sectionId === TypeOfUser.Consultants;
     const isAgencyAdmins = sectionId === TypeOfUser.AgencyAdmins;
     const isMobile = !screens.md;
@@ -78,13 +82,16 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const navigate = useNavigate();
     const allowedNumberOfUsers = tenantData?.licensing?.allowedNumberOfUsers || 0;
 
-    const [search, setSearch] = useState('');
+    // The admin search (⌘K) is the one place to type; it opens this list with ?q= (no second search field here).
+    const { query: search, clear: clearSearch } = useListQuery();
     const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
     const [deletionWindow, setDeletionWindow] = useState<{ mode: DeletionWindowMode; id: string } | null>(null);
     const [deleteTenantAdmin, setDeleteTenantAdmin] = useState<CounselorData | null>(null);
+    const [deleteStatisticsReader, setDeleteStatisticsReader] = useState<CounselorData | null>(null);
     const [tenantToDelete, setTenantToDelete] = useState<TenantData | null>(null);
 
-    const [tableState, setTableState] = useState<TableState>({
+    // A new search starts on page 1 (in the same render, so the old page is never asked for with it).
+    const [tableState, setTableState] = useListTableState<TableState>(search, {
         current: 1,
         sortBy: config.defaultSort.field,
         order: config.defaultSort.order,
@@ -93,7 +100,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     // The page remounts this table per tab (keyed by tab), so plain state is already per tab.
     const [pickedSort, setPickedSort] = useState<{ sortBy: string; order: 'ASC' | 'DESC' } | null>(null);
     const [filters, setFilters] = useState<UserSearchFilters>(NO_FILTERS);
-    const scopeFilters = useScopeFilterAvailability(sectionId);
 
     // Wait for the saved sort before the first search, so the list is fetched once and in the right order.
     const preferencesQuery = useAdminListPreferences({ enabled: !isTenants });
@@ -124,7 +130,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         filters,
         typeOfUser: consultantsSectionId,
         rethrowOnFailure: true,
-        enabled: !isTenantAdmins && !isPlatformAdmins && !isTenants && !preferencesPending,
+        enabled: !isTenantAdmins && !isPlatformAdmins && !isStatisticsReaders && !isTenants && !preferencesPending,
     });
 
     const tenantAdminsQuery = useTenantAdminsData({
@@ -140,10 +146,17 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         enabled: isPlatformAdmins && !preferencesPending,
     });
 
+    const statisticsReadersQuery = useStatisticsReadersData({
+        search,
+        ...userQueryState,
+        enabled: isStatisticsReaders && !preferencesPending,
+    });
+
     const activeQuery = (() => {
         if (isTenants) return tenantsQuery;
         if (isTenantAdmins) return tenantAdminsQuery;
         if (isPlatformAdmins) return platformAdminsQuery;
+        if (isStatisticsReaders) return statisticsReadersQuery;
         return consultantsQuery;
     })();
     const { data: responseList, isLoading, isError, refetch } = activeQuery;
@@ -188,13 +201,15 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
 
     const onDeleteUser = useCallback(
         (record: CounselorData) => {
-            if (isTenantAdmins || isPlatformAdmins) {
+            if (isStatisticsReaders) {
+                setDeleteStatisticsReader(record);
+            } else if (isTenantAdmins || isPlatformAdmins) {
                 setDeleteTenantAdmin(record);
             } else {
                 setDeleteUserId(record.id);
             }
         },
-        [isTenantAdmins, isPlatformAdmins],
+        [isTenantAdmins, isPlatformAdmins, isStatisticsReaders],
     );
 
     // Ending a running deletion is a consultant-list action; agency admins are a different record.
@@ -217,12 +232,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
         setTenantToDelete(record);
     }, []);
 
-    const updateSearch = useCallback((value: string) => {
-        setTableState((state) => ({ ...state, current: 1 }));
-        setSearch(value);
-    }, []);
-    const setSearchDebounced = useDebouncedCallback(updateSearch, 100);
-
     const handleTableAction = useCallback(
         (pagination: TablePaginationConfig, _: unknown, sorter: any) => {
             const { current, pageSize } = pagination;
@@ -230,7 +239,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 if (sorter?.field) {
                     const mappedField = mapSorterToApiField(String(sorter.field)) || String(sorter.field).toUpperCase();
                     const apiField =
-                        sectionId === TypeOfUser.TenantAdmins || sectionId === TypeOfUser.PlatformAdmins
+                        sectionId === TypeOfUser.TenantAdmins ||
+                        sectionId === TypeOfUser.PlatformAdmins ||
+                        sectionId === TypeOfUser.StatisticsReaders
                             ? normalizeTenantAdminSortField(mappedField)
                             : mappedField;
                     return {
@@ -272,6 +283,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
     const onCloseDelete = useCallback(() => {
         setDeleteUserId(null);
         setDeleteTenantAdmin(null);
+        setDeleteStatisticsReader(null);
         refetch();
     }, [refetch]);
 
@@ -365,11 +377,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     sectionId={sectionId}
                     filters={filters}
                     onChange={onFiltersChange}
-                    search={{
-                        onSearch: updateSearch,
-                        onSearchChange: setSearchDebounced,
-                        searchPlaceholder: t(config.searchPlaceholderKey),
-                    }}
                     actions={
                         (canCreate || canInvite) && (
                             <div className={styles.toolbarActions}>
@@ -384,6 +391,7 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         )
                     }
                 />
+                <ListSearchBar query={search} onClear={clearSearch} />
                 {countLicences && consultantCount != null && (
                     <span className={styles.sectionCount}>
                         {consultantCount}/{allowedNumberOfUsers} {t('counselor.title')}
@@ -397,6 +405,11 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 {isTenantAdmins && responseList?.total != null && (
                     <span className={styles.sectionCount}>
                         {t('tenantAdmins.title.text', { userCount: responseList.total })}
+                    </span>
+                )}
+                {isStatisticsReaders && responseList?.total != null && (
+                    <span className={styles.sectionCount}>
+                        {t('statisticsReaders.title.text', { userCount: responseList.total })}
                     </span>
                 )}
                 {isTenants && responseList?.total != null && (
@@ -443,14 +456,6 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         total={responseList?.total ?? 0}
                         onPageChange={(current) => setTableState((prev) => ({ ...prev, current }))}
                         onPageSizeChange={(pageSize) => setTableState((prev) => ({ ...prev, current: 1, pageSize }))}
-                        onTenantClick={
-                            scopeFilters.tenant ? (tenantId) => onFiltersChange({ tenantId, agencyIds: [] }) : undefined
-                        }
-                        onAgencyClick={
-                            scopeFilters.canListAgencies
-                                ? (agencyId) => onFiltersChange({ ...filters, agencyIds: [agencyId] })
-                                : undefined
-                        }
                         ariaLabel={t(config.searchPlaceholderKey)}
                     />
                 )}
@@ -473,13 +478,16 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     />
                 )}
             </div>
-            {deleteUserId && can(PermissionAction.Delete, config.updateResource) && !isTenantAdmins && (
-                <DeleteUserModal
-                    deleteUserId={deleteUserId}
-                    onClose={onCloseDelete}
-                    typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
-                />
-            )}
+            {deleteUserId &&
+                can(PermissionAction.Delete, config.updateResource) &&
+                !isTenantAdmins &&
+                !isStatisticsReaders && (
+                    <DeleteUserModal
+                        deleteUserId={deleteUserId}
+                        onClose={onCloseDelete}
+                        typeOfUser={sectionId === TypeOfUser.AgencyAdmins ? 'admins' : 'consultants'}
+                    />
+                )}
             {deletionWindow && canEndDeletion && (
                 <DeletionWindowModal
                     mode={deletionWindow.mode}
@@ -493,6 +501,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                     onClose={onCloseDelete}
                     isPlatformAdmin={isPlatformAdmins}
                 />
+            )}
+            {deleteStatisticsReader && canEditOrDelete && (
+                <DeleteStatisticsReaderModal user={deleteStatisticsReader} onClose={onCloseDelete} />
             )}
             {tenantToDelete !== null && (
                 <Modal

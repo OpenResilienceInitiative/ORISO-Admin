@@ -61,6 +61,12 @@ export type ChatTypeCardDef = {
          * disabled with a reason instead of pretending to control something.
          */
         requiresCapability?: PermissionToggleCapability;
+        /**
+         * Only the counselling app obeys this switch (ORISO-Helm#466): it hides the
+         * button, but the app uploads the encrypted file straight to the chat
+         * server, which cannot check it. The tile says so once.
+         */
+        appOnly?: boolean;
     }>;
     /** Tenant-owned name policy for advice-seeker entry in this conversation type. */
     askerNamePolicy?: ChatTypeParticipantToggle;

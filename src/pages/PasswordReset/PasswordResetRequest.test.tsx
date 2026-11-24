@@ -18,6 +18,23 @@ describe('PasswordResetRequestForm', () => {
         vi.mocked(requestAdminPasswordReset).mockReset();
     });
 
+    it('rejects a whitespace-only identity without sending a reset request', async () => {
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter>
+                <PasswordResetRequestForm />
+            </MemoryRouter>,
+        );
+
+        const identity = screen.getByLabelText('passwordReset.identityLabel');
+        await user.type(identity, '   {Enter}');
+
+        expect(await screen.findByText('passwordReset.identityRequired')).toBeInTheDocument();
+        expect(identity).toHaveAttribute('aria-invalid', 'true');
+        expect(identity).toHaveAccessibleDescription('passwordReset.identityRequired');
+        expect(requestAdminPasswordReset).not.toHaveBeenCalled();
+    });
+
     it('submits the admin identity and shows the enumeration-safe success state', async () => {
         vi.mocked(requestAdminPasswordReset).mockResolvedValue(new Response(null, { status: 204 }));
         const user = userEvent.setup();
@@ -30,7 +47,7 @@ describe('PasswordResetRequestForm', () => {
             </MemoryRouter>,
         );
 
-        await user.type(screen.getByLabelText('passwordReset.identityLabel'), 'admin@example.com');
+        await user.type(screen.getByLabelText('passwordReset.identityLabel'), '  admin@example.com  ');
         await user.click(screen.getByRole('button', { name: 'passwordReset.submit' }));
 
         await waitFor(() => {

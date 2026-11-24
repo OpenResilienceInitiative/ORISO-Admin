@@ -5,13 +5,14 @@ import { Resource } from '../../enums/Resource';
 import { TypeOfUser } from '../../enums/TypeOfUser';
 import { useSearchEntities } from './useSearchEntities';
 
-// The six list hooks are replaced by spies: this test is about which of them are switched on, and for whom.
+// The list hooks are replaced by spies: this test is about which of them are switched on, and for whom.
 const quiet = { data: undefined, isFetching: false, isError: false, dataUpdatedAt: 0 };
 const mocks = vi.hoisted(() => ({
     tenants: vi.fn(),
     agencies: vi.fn(),
     topics: vi.fn(),
     accounts: vi.fn(),
+    adviceSeekers: vi.fn(),
     denied: new Set<string>(),
     asked: [] as Array<[unknown, string]>,
     superAdmin: true,
@@ -21,6 +22,7 @@ vi.mock('../../hooks/useTenantsData', () => ({ useTenantsData: mocks.tenants }))
 vi.mock('../../hooks/useAgencysData', () => ({ useAgenciesData: mocks.agencies }));
 vi.mock('../../hooks/useTopicList', () => ({ useTopicList: mocks.topics }));
 vi.mock('../../hooks/useConsultantsOrAdminsData', () => ({ useConsultantsOrAdminsData: mocks.accounts }));
+vi.mock('../../hooks/useAdviceSeekersData', () => ({ useAdviceSeekersData: mocks.adviceSeekers }));
 vi.mock('../../hooks/useUserPermission', () => ({
     useUserPermissions: () => ({
         can: (action: unknown, resource: string) => {
@@ -45,6 +47,7 @@ const enabledFlags = () => ({
     consultants: lastEnabled(mocks.accounts, TypeOfUser.Consultants),
     agencyAdmins: lastEnabled(mocks.accounts, TypeOfUser.AgencyAdmins),
     tenantAdmins: lastEnabled(mocks.accounts, TypeOfUser.TenantAdmins),
+    adviceSeekers: lastEnabled(mocks.adviceSeekers),
 });
 
 const typed = async (text: string) => {
@@ -85,6 +88,7 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
             consultants: true,
             agencyAdmins: true,
             tenantAdmins: true,
+            adviceSeekers: true,
         });
     });
 
@@ -101,6 +105,7 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
         ['consultants', Resource.Consultant],
         ['agencyAdmins', Resource.AgencyAdminUser],
         ['tenantAdmins', Resource.TenantAdminUser],
+        ['adviceSeekers', Resource.AdviceSeeker],
     ] as const)('does not ask the %s list without its permission', async (list, resource) => {
         mocks.denied.add(resource);
 
@@ -137,6 +142,7 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
         expect(asked(Resource.Consultant)).toContain(PermissionAction.Read);
         expect(asked(Resource.AgencyAdminUser)).toContain(PermissionAction.Read);
         expect(asked(Resource.TenantAdminUser)).toContain(PermissionAction.Read);
+        expect(asked(Resource.AdviceSeeker)).toContain(PermissionAction.Read);
     });
 
     // The lists are fetched for the released text only: a query that is replaced within the debounce
@@ -174,6 +180,7 @@ describe('useSearchEntities: which lists are asked for what is typed', () => {
 
         expect(mocks.agencies.mock.calls.at(-1)?.[0].search).toBe('anna');
         expect(mocks.tenants.mock.calls.at(-1)?.[0].search).toBe('anna');
+        expect(mocks.adviceSeekers.mock.calls.at(-1)?.[0].username).toBe('anna');
     });
 });
 

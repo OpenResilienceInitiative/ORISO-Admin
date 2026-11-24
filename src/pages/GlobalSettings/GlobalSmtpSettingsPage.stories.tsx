@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
 import { findPopup } from '../../test/storyPopups';
+import { expectPanelsFitAtEveryWidth, PanelLayoutFrame } from '../../test/panelLayoutGuard';
 import { walkThroughTileHelp } from '../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
@@ -183,4 +184,19 @@ export const PendingAfterSave: Story = {
 export const HelpSlideshow: Story = {
     ...Configured,
     play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
+/** At every laptop and desktop width the switches stay in their panel and keep room for their label. */
+export const PanelsFitAtLaptopWidths: Story = {
+    parameters: { msw: { handlers: savedSettingsHandlers() } },
+    render: () => (
+        <PanelLayoutFrame>
+            <SavedSettingsExample />
+        </PanelLayoutFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        await within(canvasElement).findByRole('button', { name: 'Test-E-Mail senden' });
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Bearbeiten' }));
+        await expectPanelsFitAtEveryWidth(canvasElement);
+    },
 };

@@ -9,6 +9,7 @@ import {
     type HasRoleFn,
 } from '../../constants/caseHandoverAccess';
 import { canSeeLinksSection } from '../../constants/linksAccess';
+import { canSeeAddonsSection } from '../../constants/addonsAccess';
 import { PermissionAction } from '../../enums/PermissionAction';
 import { Resource } from '../../enums/Resource';
 import { AdminSidebarNavItem } from './AdminSidebar';
@@ -16,6 +17,7 @@ import { AdminSidebarNavItem } from './AdminSidebar';
 /** Resolved sidebar labels. Kept as plain strings so this module stays free of i18n/React. */
 export interface AdminNavLabels {
     account: string;
+    addons: string;
     agency: string;
     home: string;
     links: string;
@@ -28,6 +30,8 @@ export interface AdminNavLabels {
 
 export interface AdminNavContext {
     isSuperAdmin: boolean;
+    /** A pure Statistik-Leser·in (ORISO-UserService#1666): statistics is the only destination. */
+    isStatisticsReader?: boolean;
     hasRole: HasRoleFn;
     can: CanFn;
     labels: AdminNavLabels;
@@ -60,6 +64,7 @@ export const resolveLogsPage = (
     canReadCaseHandoverLogs: boolean,
     canReadInactiveAuditLogs: boolean,
     canReadDeletionAuditLogs = false,
+    canReadAddonAuditLogs = false,
 ): string | null => {
     if (canReadSupervisorLogs) {
         return routePathNames.logs;
@@ -72,6 +77,9 @@ export const resolveLogsPage = (
     }
     if (canReadDeletionAuditLogs) {
         return routePathNames.deletionAuditLogs;
+    }
+    if (canReadAddonAuditLogs) {
+        return routePathNames.addonAuditLogs;
     }
     return null;
 };
@@ -87,11 +95,25 @@ export const resolveLogsPage = (
  */
 export const buildAdminNavItems = ({
     isSuperAdmin,
+    isStatisticsReader = false,
     hasRole,
     can,
     labels,
     settingsPath,
 }: AdminNavContext): AdminSidebarNavItem[] => {
+    const statisticsItem: AdminSidebarNavItem = {
+        key: 'statistics',
+        to: routePathNames.statistic,
+        label: labels.statistics,
+        iconPath: routePathNames.statistic,
+    };
+
+    // A Statistik-Leser·in has no Home: every other route sends them to statistics
+    // (ORISO-UserService#1666), so a Home tile would only bounce.
+    if (isStatisticsReader) {
+        return can(PermissionAction.Read, Resource.Statistic) ? [statisticsItem] : [];
+    }
+
     // Home is the start page for every admin (ORISO-Admin#1323): an overview of
     // the areas below, so it needs no permission of its own.
     const items: AdminSidebarNavItem[] = [
@@ -109,6 +131,7 @@ export const buildAdminNavItems = ({
         canSeeCaseHandoverLogs,
         canSeeInactiveAuditLogs,
         canSeeDeletionAuditLogsFor(isSuperAdmin, can),
+        canSeeAddonsSection({ isSuperAdmin, can }),
     );
 
     if (canSeeSettingsMenu) {
@@ -156,12 +179,7 @@ export const buildAdminNavItems = ({
         });
     }
     if (can(PermissionAction.Read, Resource.Statistic)) {
-        items.push({
-            key: 'statistics',
-            to: routePathNames.statistic,
-            label: labels.statistics,
-            iconPath: routePathNames.statistic,
-        });
+        items.push(statisticsItem);
     }
     if (canSeeLinksSection({ isSuperAdmin, hasRole })) {
         items.push({
@@ -170,6 +188,15 @@ export const buildAdminNavItems = ({
             label: labels.links,
             iconPath: routePathNames.links,
             activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
+        });
+    }
+    if (canSeeAddonsSection({ isSuperAdmin, can })) {
+        items.push({
+            key: 'addons',
+            to: routePathNames.addons,
+            label: labels.addons,
+            iconPath: routePathNames.addons,
+            activeMatch: { paths: [routePathNames.addons], mode: 'startsWith' },
         });
     }
     // Every log view lives behind ONE "Logs" entry that opens a tabbed page (ORISO-Admin#84). The

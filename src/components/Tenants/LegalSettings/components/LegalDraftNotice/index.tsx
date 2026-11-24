@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { EditorStatusLine } from '../../../../FormPluginEditor/EditorStatusLine';
 import { HintText } from '../../../../HintText';
 import { Notify, type NotifyProps } from '../../../../Notify';
+import { toIntlLocale } from '../../../../../utils/language';
 
 interface LegalDraftStateProps {
     /** ISO timestamp of the last save; without it there is nothing to announce. */
@@ -35,7 +36,7 @@ const useSavedAtLabel = (savedAt: string | undefined) => {
     const parsed = new Date(savedAt);
     return Number.isNaN(parsed.getTime())
         ? savedAt
-        : parsed.toLocaleString(i18n?.language, { dateStyle: 'medium', timeStyle: 'short' });
+        : parsed.toLocaleString(toIntlLocale(i18n?.language), { dateStyle: 'medium', timeStyle: 'short' });
 };
 
 interface LegalDraftNoticeProps extends LegalDraftStateProps {

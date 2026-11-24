@@ -54,3 +54,6 @@ export const useRecipientScopeControlsMutation = () => {
         onMutate: () => queryClient.cancelQueries({ queryKey: [TENANT_ADMIN_CONTROLS_KEY] }),
     });
 };
+
+/** Saves the platform's calendar preset (ADR-032): same rules as the recipient scope above. */
+export const useCalendarControlsMutation = useRecipientScopeControlsMutation;

@@ -1,3 +1,4 @@
+import { listPathWithQuery } from '../../hooks/useListQuery';
 import routePathNames from '../../appConfig';
 import type { SearchDoc, SearchLevel } from './searchTypes';
 
@@ -135,8 +136,27 @@ export const accountDocs = (
                 description: row.email ?? row.username,
                 breadcrumb: [labels.accounts, labels.accountLists[list] ?? list, name],
                 to: `${routePathNames.users}/${list}/${row.id}`,
+                listPath: `${routePathNames.users}/${list}`,
                 level,
                 terms: entityTerms(name, row.email, row.username),
             };
         });
 };
+
+/**
+ * Advice seekers have no detail page: a hit opens their list narrowed to that username, where the
+ * admin can delete them (ORISO-Admin#1521). The server matches the complete username only.
+ */
+export const adviceSeekerDocs = (rows: Array<{ id?: string; username?: string }>, labels: EntityLabels): SearchDoc[] =>
+    rows
+        .filter((row): row is { id: string; username: string } => Boolean(row.id && row.username))
+        .map((row) => ({
+            id: `account:advice-seekers:${row.id}`,
+            kind: 'account' as const,
+            title: row.username,
+            description: labels.accountLists['advice-seekers'],
+            breadcrumb: [labels.accounts, labels.accountLists['advice-seekers'] ?? 'advice-seekers', row.username],
+            to: listPathWithQuery(routePathNames.adviceSeekers, row.username),
+            level: 'agency' as SearchLevel,
+            terms: entityTerms(row.username),
+        }));

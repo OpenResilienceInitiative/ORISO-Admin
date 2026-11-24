@@ -283,8 +283,59 @@ export const ResultsGrouped: Story = { args: { initialQuery: 'beratung' } };
 
 export const NoResults: Story = { args: { initialQuery: 'xqzvwk' } };
 
-export const FilteredByTypeAndLevel: Story = {
-    args: { initialQuery: 'beratung', initialFilters: { kinds: ['departments', 'agencies'], levels: ['agency'] } },
+/** One chip row ("Nur zeigen"): the second "level" row (Plattform/Träger/Beratungsstelle) is gone. */
+export const FilteredByType: Story = {
+    args: { initialQuery: 'beratung', initialFilters: { kinds: ['departments', 'agencies'] } },
+};
+
+/**
+ * The lists have no search field of their own any more (they used to sit beside this search). Träger,
+ * Beratungsstellen and Konten each end with "Alle Treffer in der Liste zeigen", which opens the list
+ * narrowed to the query, so nothing the old list search did is lost.
+ */
+const listLinksPlay: Story['play'] = async ({ canvas, userEvent, args }) => {
+    await expect(await canvas.findByText('Nur zeigen')).toBeVisible();
+    await expect(canvas.queryByText('Ebene')).toBeNull();
+    const listRow = (await canvas.findAllByRole('option', { name: 'Alle Treffer in der Liste zeigen' }))[0];
+    await userEvent.click(listRow);
+    await expect(args.onOpenList).toHaveBeenCalledWith('agencies', 'beratung');
+};
+
+export const ShowAllInTheList: Story = {
+    name: 'Show all matches in the list (desktop)',
+    args: {
+        initialQuery: 'beratung',
+        height: 820,
+        onOpenList: fn(),
+        fixture: { role: 'platform', language: 'de', singleDomain: false },
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 1440 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: listLinksPlay,
+};
+
+export const ShowAllInTheListPhone: Story = {
+    name: 'Show all matches in the list (phone 390)',
+    args: {
+        initialQuery: 'beratung',
+        height: 780,
+        onOpenList: fn(),
+        fixture: { role: 'platform', language: 'de', singleDomain: false },
+    },
+    globals: { viewport: { value: 'phone', isRotated: false } },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 390 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: listLinksPlay,
 };
 
 export const Phone390: Story = {

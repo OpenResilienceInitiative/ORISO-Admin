@@ -21,7 +21,8 @@ export const useAddOrUpdateTopicAdmin = ({ id, ...options }: UseAddOrUpdateTopic
             return fetchData({
                 url: id ? `${topicAdminEndpoint}/${id}` : topicAdminEndpoint,
                 method: id ? FETCH_METHODS.PUT : FETCH_METHODS.POST,
-                responseHandling: [FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
+                // 409: the topic name is already taken; the page says so.
+                responseHandling: [FETCH_ERRORS.CONFLICT, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
                 bodyData,
             });
         },

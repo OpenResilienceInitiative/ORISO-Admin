@@ -101,6 +101,12 @@ export const caseErrorDetails = (error, depth = 0, ancestors = new Set(), budget
     return detail;
 };
 
+// Vitest browser mode can deliver a case's `ready` event after its result.
+// That ordering is benign once the public module end confirms the same
+// terminal state. Expected-negative controls end FAILED, so FAILED must
+// resolve as well; SKIPPED never executed and stays an anomaly.
+const DELAYED_READY_TERMINAL_STATES = ['passed', 'failed'];
+
 // Append completed cases immediately. If a worker stalls or CI cancels the job,
 // the artifact still distinguishes executed tests from queued/unfinished work.
 export default class VerificationReporter {
@@ -396,7 +402,7 @@ export default class VerificationReporter {
                     (record) =>
                         record.anomalyIndex === index &&
                         record.phase === 'public-module-end' &&
-                        record.state === 'passed' &&
+                        DELAYED_READY_TERMINAL_STATES.includes(record.state) &&
                         this.sameTest(record, anomaly),
                 ),
         );
@@ -479,12 +485,14 @@ export default class VerificationReporter {
                 this.running.delete(test.id);
             }
             // A run-end aggregate is not the public module-end proof. Keep all raw
-            // anomalies; only an exact recorded PASS can be resolved here.
+            // anomalies; only an exact recorded terminal PASS or FAIL can be
+            // resolved here. The recorded state itself still counts, so a
+            // resolved FAIL keeps the run red.
             const recorded = this.completed.get(test.id);
             if (
                 !publicModuleEnd ||
-                state !== 'passed' ||
-                recorded?.state !== 'passed' ||
+                !DELAYED_READY_TERMINAL_STATES.includes(state) ||
+                recorded?.state !== state ||
                 !this.sameTest(recorded, snapshot) ||
                 this.readyCounts.get(JSON.stringify(snapshot)) !== 1
             )
@@ -492,7 +500,7 @@ export default class VerificationReporter {
             this.eventAnomalies.forEach((anomaly, anomalyIndex) => {
                 if (
                     !this.sameTest(anomaly, snapshot) ||
-                    anomaly.completedAtReady?.state !== 'passed' ||
+                    anomaly.completedAtReady?.state !== state ||
                     !this.sameTest(anomaly.completedAtReady, anomaly) ||
                     !this.sameTest(anomaly.completedAtReady, snapshot) ||
                     this.reconciled.some((item) => item.anomalyIndex === anomalyIndex)

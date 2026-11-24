@@ -15,6 +15,7 @@ const userServiceURL = runtimeConfig.userServiceOrigin;
 const agencyServiceURL = runtimeConfig.agencyServiceOrigin;
 export const tenantServiceURL = runtimeConfig.tenantServiceOrigin;
 const consultingTypeServiceURL = runtimeConfig.consultingTypeServiceOrigin;
+export const addonServiceURL = runtimeConfig.addonServiceOrigin;
 
 export const clusterFeatureFlags = {
     useApiClusterSettings: true, // Fetch server settings from /service/settings
@@ -40,6 +41,8 @@ export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
+/** Advice seekers for the admin interface: GET lists, DELETE /{id} marks one for deletion (ORISO-Admin#1521). */
+export const adviceSeekerAdminEndpoint = `${userServiceURL}/service/useradmin/askers`;
 // Unauthenticated client error intake (OBS-P3, ORISO-Helm#62): logs into
 // SigNoz via UserService's existing structured logger.
 export const errorReportEndpoint = `${userServiceURL}/service/error-reports`;
@@ -51,6 +54,13 @@ export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout'
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
+/**
+ * Names-only lookups for the statistics page (ORISO-UserService#1666): every Träger (without the
+ * platform, id 0) and every Beratungsstelle with its Träger. Open to platform admins and
+ * Statistik-Leser·innen, who may not read the admin lists.
+ */
+export const statisticsTenantNamesEndpoint = `${tenantServiceURL}/service/tenantadmin/statistics/names`;
+export const statisticsAgencyNamesEndpoint = `${agencyServiceURL}/service/agencies/statistics/names`;
 // See agencyIdNextFreeEndpoint above — tenant-ID space (U1).
 export const tenantIdNextFreeEndpoint = `${tenantServiceURL}/service/tenantadmin/tenant-ids/next-free`;
 // Aggregated tenant/agency ID live validation (UserService U3):
@@ -64,7 +74,16 @@ export const tenantPublicEndpoint = `${baseTenantPublicEndpoint}/${subdomain}`;
 export const topicEndpoint = `${consultingTypeServiceURL}/service/topic/`;
 export const topicAdminEndpoint = `${agencyServiceURL}/service/topicadmin`;
 export const tenantAdminsEndpoint = `${userServiceURL}/service/useradmin/tenantadmins`;
+// ORISO-Admin#1534: contact person per Beratungsstelle and the Träger default.
+export const agencyContactPersonEndpoint = (agencyId: number | string) =>
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/contactperson`;
+export const tenantContactPersonEndpoint = (tenantId: number | string) =>
+    `${userServiceURL}/service/useradmin/tenants/${tenantId}/contactperson`;
+export const agencyContactCoverageEndpoint = `${userServiceURL}/service/useradmin/agencycontacts/coverage`;
 export const tenantAdminsSearchEndpoint = `${userServiceURL}/service/useradmin/tenantadmins/search`;
+/** Statistik-Leser·innen (ORISO-UserService#1666): platform admin only, same DTOs as the tenant admins. */
+export const statisticsReadersEndpoint = `${userServiceURL}/service/useradmin/statisticsreaders`;
+export const statisticsReadersSearchEndpoint = `${statisticsReadersEndpoint}/search`;
 export const twoFactorAuth = `${userServiceURL}/service/users/2fa`;
 export const twoFactorAuthApp = `${userServiceURL}/service/users/2fa/app`;
 export const twoFactorAuthAppEmail = `${userServiceURL}/service/users/2fa/email`;
@@ -103,6 +122,7 @@ export const selfAssignmentsEndpoint = `${userServiceURL}/service/useradmin/self
 export const inviteEmailTemplatesEndpoint = `${userServiceURL}/service/useradmin/invite-email-templates`;
 export const dpaInviteEmailEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/email`;
 export const dpaInvitePreviewEndpoint = `${userServiceURL}/service/useradmin/dpa-invites/preview`;
+export const addonServiceEndpoint = `${addonServiceURL}/service/addons`;
 export const XHRheader = { AcceptLanguage: 'de' };
 
 /*
@@ -133,6 +153,7 @@ const routePathNames = {
     permissionsSettings: '/admin/theme-settings/permissions',
     users: '/admin/users',
     consultants: '/admin/users/consultants',
+    adviceSeekers: '/admin/users/advice-seekers',
     agency: '/admin/agency',
     agencyAdmins: '/admin/users/agency-admins',
     agencyEdit: '/admin/agency/edit',
@@ -140,11 +161,13 @@ const routePathNames = {
     agencyAddGeneral: '/admin/agency/add/general',
     topics: '/admin/topics',
     statistic: '/admin/statistic',
+    addons: '/admin/addons',
     statisticPreview: '/admin/statistic-preview',
     logs: '/admin/logs',
     caseHandoverLogs: '/admin/logs/case-handover',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     deletionAuditLogs: '/admin/logs/deletions',
+    addonAuditLogs: '/admin/logs/addons',
     userProfile: '/admin/profil/',
     termsAndConditions: '/admin/agb',
     imprint: '/impressum',
@@ -153,6 +176,7 @@ const routePathNames = {
     usersTenants: '/admin/users/tenants',
     tenantAdmins: '/admin/users/tenant-admins',
     platformAdmins: '/admin/users/platform-admins',
+    statisticsReaders: '/admin/users/statistics-readers',
     links: '/admin/links',
     linksTenants: '/admin/links/tenants',
     linksCounsellor: '/admin/links/counsellor',

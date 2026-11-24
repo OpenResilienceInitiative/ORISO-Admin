@@ -53,6 +53,7 @@ const all = [
     Resource.Consultant,
     Resource.AgencyAdminUser,
     Resource.TenantAdminUser,
+    Resource.StatisticsReaderUser,
     Resource.Topic,
     Resource.Statistic,
     Resource.LegalText,
@@ -138,6 +139,7 @@ export const buildFixtureContext = ({
         can,
         labels: {
             account: '',
+            addons: '',
             agency: '',
             home: '',
             links: '',

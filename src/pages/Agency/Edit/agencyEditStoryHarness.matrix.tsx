@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw';
 import { Route, Routes, useNavigate } from 'react-router-dom';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
+import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
 import { AgencyPageEdit } from './index';
 import type { AgencyTileLayout } from './AgencyTileGrid';
 
@@ -80,6 +81,8 @@ const storyTenant = {
 };
 
 export const agencyEditHandlers = [
+    // The master-data tab loads the centre's contact person on mount (ORISO-Admin#1534).
+    ...contactPersonReadHandlers(),
     http.get('*/service/users/data', () => HttpResponse.json({ id: 'storybook-admin', agencies: [{ id: 55 }] })),
     http.get('*/service/agencyadmin/agencies/:id/legal-versions', () => HttpResponse.json([])),
     http.get('*/service/agencyadmin/agencies/:id/topics/:topicId/legal-versions', () => HttpResponse.json([])),

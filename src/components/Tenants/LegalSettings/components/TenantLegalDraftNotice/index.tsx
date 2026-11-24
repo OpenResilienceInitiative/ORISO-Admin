@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Notify } from '../../../../Notify';
+import { toIntlLocale } from '../../../../../utils/language';
 
 export interface TenantLegalDraftNoticeProps {
     /** Element id of the editor card this notice is about; the pop-up offers "Ansehen" to go there. */
@@ -59,7 +60,7 @@ export const TenantLegalDraftNotice = ({
     const parsedSavedAt = rawSavedAt ? new Date(rawSavedAt) : undefined;
     const savedAtLabel =
         parsedSavedAt && !Number.isNaN(parsedSavedAt.getTime())
-            ? parsedSavedAt.toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' })
+            ? parsedSavedAt.toLocaleString(toIntlLocale(i18n.language), { dateStyle: 'medium', timeStyle: 'short' })
             : rawSavedAt;
     if (dismissed && (unavailable || conflict || collision)) return null;
     if (unavailable) {

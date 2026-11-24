@@ -2,13 +2,30 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useNavigate } from 'react-router-dom';
 import type { AdminSidebarNavItem } from '../Layout/AdminSidebar';
 import type { AdminNavSubsection } from '../Layout/adminNavTree';
-import { AdminSearchView } from './AdminSearchView';
+import { AdminSearchView, type ListGroup } from './AdminSearchView';
+import routePathNames from '../../appConfig';
+import { listPathWithQuery } from '../../hooks/useListQuery';
 import { rememberSearch } from './recentSearches';
 import type { SearchDoc } from './searchTypes';
 import { useAdminSearchIndex } from './useAdminSearchIndex';
 import { useSearchEntities } from './useSearchEntities';
 import { useTileTarget } from './useTileTarget';
 import { withTileTarget } from './tileTarget';
+
+/** Where "Show all matches in the list" goes for each group. */
+const LIST_PATHS: Record<ListGroup, string> = {
+    tenants: routePathNames.tenants,
+    agencies: routePathNames.agency,
+    accounts: routePathNames.users,
+};
+
+/**
+ * The list "Show all matches in the list" opens. Konten has three tabs (Berater, Beratungsstellen-Admins,
+ * Träger-Admins) and the plain users path shows the Berater tab, so accounts go to the tab of their
+ * hits: the first tab in that order that has one. `docs` are the entity hits for the typed query.
+ */
+export const listPathFor = (group: ListGroup, docs: SearchDoc[]): string =>
+    (group === 'accounts' && docs.find((doc) => doc.kind === 'account' && doc.listPath)?.listPath) || LIST_PATHS[group];
 
 interface AdminSearchContextValue {
     isOpen: boolean;
@@ -80,9 +97,10 @@ interface DialogProps {
     tree: Record<string, AdminNavSubsection[]>;
     origin: SearchOrigin;
     onClose: () => void;
+    onClosing: () => void;
 }
 
-const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogProps) => {
+const AdminSearchDialog = ({ navItems, account, tree, origin, onClose, onClosing }: DialogProps) => {
     const navigate = useNavigate();
     const index = useAdminSearchIndex({ navItems, account, tree });
     const [query, setQuery] = useState('');
@@ -96,6 +114,15 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
         },
         [navigate],
     );
+    const onOpenList = useCallback(
+        (group: ListGroup, typed: string) => {
+            rememberSearch(typed);
+            // Rows of an older query must not pick the tab.
+            const hits = forQuery === typed.trim() ? docs : [];
+            navigate(listPathWithQuery(listPathFor(group, hits), typed));
+        },
+        [navigate, docs, forQuery],
+    );
 
     return (
         <AdminSearchView
@@ -106,7 +133,9 @@ const AdminSearchDialog = ({ navItems, account, tree, origin, onClose }: DialogP
             entitiesFailed={hasError}
             onQueryChange={setQuery}
             onOpen={onOpen}
+            onOpenList={onOpenList}
             onClose={onClose}
+            onClosing={onClosing}
             origin={origin}
         />
     );
@@ -129,7 +158,12 @@ interface ProviderProps {
 export const AdminSearchProvider = ({ navItems, account, tree, disabled = false, children }: ProviderProps) => {
     const [isOpen, setIsOpen] = useState(false);
     const [origin, setOrigin] = useState<SearchOrigin>({ x: 0, y: 0 });
+    // "Open" in the sense of the shortcuts: false as soon as the view starts to leave, so a Ctrl/Cmd+K
+    // during its shrink animation opens a new search instead of being lost (Admin search on Statistics).
     const isOpenRef = useRef(false);
+    // Every open gets its own view; a view still shrinking away is replaced, not reused.
+    const [session, setSession] = useState(0);
+    const sessionRef = useRef(0);
     const returnFocus = useRef<HTMLElement | null>(null);
     useTileTarget();
 
@@ -140,17 +174,33 @@ export const AdminSearchProvider = ({ navItems, account, tree, disabled = false,
 
         isOpenRef.current = true;
         const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        const insideLeavingView = !!focused?.closest('[data-admin-search]');
 
-        returnFocus.current = trigger instanceof HTMLElement ? trigger : focused;
+        // Reopened while the last view was leaving: focus still sits in that view, so keep where the
+        // person came from before it.
+        if (!insideLeavingView || trigger instanceof HTMLElement) {
+            returnFocus.current = trigger instanceof HTMLElement ? trigger : focused;
+        }
+        sessionRef.current += 1;
+        setSession(sessionRef.current);
         setOrigin(resolveOrigin(trigger));
         setIsOpen(true);
     }, []);
-    const close = useCallback(() => {
+    const closeSession = useCallback((closingSession: number) => {
+        // A view replaced by a newer one must not close its successor.
+        if (closingSession !== sessionRef.current) {
+            return;
+        }
         isOpenRef.current = false;
         setIsOpen(false);
         // Back to where the person was, once the dialog is gone.
         window.setTimeout(() => returnFocus.current?.focus?.(), 0);
     }, []);
+    const close = useCallback(() => closeSession(sessionRef.current), [closeSession]);
+    const onClosing = useCallback(() => {
+        isOpenRef.current = false;
+    }, []);
+    const onDialogClose = useCallback(() => closeSession(session), [closeSession, session]);
 
     useEffect(() => {
         if (disabled) {
@@ -179,7 +229,15 @@ export const AdminSearchProvider = ({ navItems, account, tree, disabled = false,
         <AdminSearchContext.Provider value={value}>
             {children}
             {isOpen && !disabled && (
-                <AdminSearchDialog navItems={navItems} account={account} tree={tree} origin={origin} onClose={close} />
+                <AdminSearchDialog
+                    key={session}
+                    navItems={navItems}
+                    account={account}
+                    tree={tree}
+                    origin={origin}
+                    onClose={onDialogClose}
+                    onClosing={onClosing}
+                />
             )}
         </AdminSearchContext.Provider>
     );

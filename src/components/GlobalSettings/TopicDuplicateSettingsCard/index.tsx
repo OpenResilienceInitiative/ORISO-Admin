@@ -1,4 +1,4 @@
-import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import { Form } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { snackbar } from '../../Snackbar';
@@ -36,7 +36,7 @@ export const TopicDuplicateSettingsCard = ({
         <CardEditable
             className={styles.card}
             variant="dialog"
-            headerIcon={<ContentCopyOutlinedIcon />}
+            headerIcon={<ForumOutlinedIcon />}
             help={topicDuplicateHelp}
             titleKey="globalSettings.topicDuplicate.title"
             initialValues={{ topicDuplicateMode: mode }}

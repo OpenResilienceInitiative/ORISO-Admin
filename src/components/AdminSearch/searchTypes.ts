@@ -11,8 +11,6 @@ export type SearchKind = 'page' | 'tab' | 'setting' | 'topic' | 'department' | '
 /** Where a setting lives. `personal` is "My account". */
 export type SearchLevel = 'platform' | 'tenant' | 'agency' | 'personal';
 
-export const SEARCH_LEVELS: SearchLevel[] = ['platform', 'tenant', 'agency'];
-
 /** Groups in the order the view shows them. */
 export type SearchGroup = 'settings' | 'pages' | 'topics' | 'departments' | 'tenants' | 'agencies' | 'accounts';
 
@@ -68,12 +66,13 @@ export interface SearchDoc {
     readOnly?: boolean;
     /** The destination is a list: an entity still has to be picked there. */
     needsPick?: boolean;
+    /** The list (tab) this entity is listed in: where "Show all matches in the list" goes for it. */
+    listPath?: string;
     terms: SearchTerms;
 }
 
 export interface SearchFilters {
     kinds?: SearchGroup[];
-    levels?: SearchLevel[];
 }
 
 export type MatchedField = keyof SearchTerms;

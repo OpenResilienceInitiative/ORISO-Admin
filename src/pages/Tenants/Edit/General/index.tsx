@@ -29,6 +29,7 @@ import { SUBDOMAIN_PATTERN } from '../../../../utils/isValidSubdomain';
 import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../../../config/subdomainFeature';
 import { TraegerFieldSections } from './TraegerFieldSections';
 import { TenantInformationCard } from './TenantInformationCard';
+import { TraegerContactPersonTile } from './TraegerContactPersonTile';
 
 /** Which parts the create dialog shows (the edit tile lives in `TenantInformationCard`): with the topic. */
 const CREATE_SECTIONS = ['general', 'sender', 'description', 'topic'] as const;
@@ -176,27 +177,34 @@ export const GeneralTenantSettings = () => {
                     tenantId={id}
                     section="masterData"
                     leadingTiles={
-                        <CardGrid.Item span={3}>
-                            <TenantInformationCard
-                                form={form}
-                                initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
-                                isLoading={isLoading}
-                                shouldShowSubdomainField={shouldShowSubdomainField}
-                                requiredRule={requiredRule}
-                                onSave={handleSave}
-                                leading={
-                                    <TileSections.Section wide id="traeger-status" title={t('entityStatus.title')}>
-                                        <ManagedEntityStatus
-                                            embedded
-                                            entityKind="tenant"
-                                            entityName={data?.name}
-                                            entityId={id}
-                                            canManage
-                                        />
-                                    </TileSections.Section>
-                                }
-                            />
-                        </CardGrid.Item>
+                        <>
+                            <CardGrid.Item span={3}>
+                                <TenantInformationCard
+                                    form={form}
+                                    initialValues={data ? (data as unknown as Record<string, unknown>) : {}}
+                                    isLoading={isLoading}
+                                    shouldShowSubdomainField={shouldShowSubdomainField}
+                                    requiredRule={requiredRule}
+                                    onSave={handleSave}
+                                    leading={
+                                        <TileSections.Section wide id="traeger-status" title={t('entityStatus.title')}>
+                                            <ManagedEntityStatus
+                                                embedded
+                                                entityKind="tenant"
+                                                entityName={data?.name}
+                                                entityId={id}
+                                                canManage
+                                            />
+                                        </TileSections.Section>
+                                    }
+                                />
+                            </CardGrid.Item>
+                            {Number(id) > 0 && (
+                                <CardGrid.Item>
+                                    <TraegerContactPersonTile tenantId={Number(id)} />
+                                </CardGrid.Item>
+                            )}
+                        </>
                     }
                 />
             </ThemeProvider>
