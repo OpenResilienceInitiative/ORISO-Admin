@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
-import { expect } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { TileSections } from './index';
 
 /** The tile body of the Beratungsstelle and Träger edit pages at 1440px: 1264px minus the tile's own padding. */
@@ -127,5 +127,47 @@ export const PhoneStacksPanels: Story = {
         const [first, second] = panelWidths(canvasElement);
         await expect(second.top).toBeGreaterThan(first.top);
         await expect(Math.round(first.width)).toBe(Math.round(second.width));
+    },
+};
+
+/**
+ * Foldable sections as on the Mailberatung tile (Frank, 2026-11-24): the fold icon leads the heading;
+ * "Reisen" and "Fälle von Ratsuchenden teilen" start folded, the others start open.
+ */
+export const FoldableSections: Story = {
+    args: { children: null },
+    render: () => (
+        <Frame width={1216}>
+            <TileSections>
+                <TileSections.Section wide id="journeys" title="Reisen" collapsible defaultOpen={false}>
+                    Reisen und Ziele
+                </TileSections.Section>
+                <TileSections.Section wide id="features" title="konfigurierbare Zusatzfunktionen" collapsible>
+                    Videoanrufe, Audioanrufe
+                </TileSections.Section>
+                <TileSections.Section
+                    wide
+                    id="sharing"
+                    title="Fälle von Ratsuchenden teilen"
+                    collapsible
+                    defaultOpen={false}
+                >
+                    Fallübergabe, Teamberatung, Keine
+                </TileSections.Section>
+            </TileSections>
+        </Frame>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const journeys = canvas.getByRole('button', { name: 'Reisen' });
+        const features = canvas.getByRole('button', { name: 'konfigurierbare Zusatzfunktionen' });
+        await expect(journeys).toHaveAttribute('aria-expanded', 'false');
+        await expect(features).toHaveAttribute('aria-expanded', 'true');
+        await expect(canvas.queryByText('Reisen und Ziele')).not.toBeVisible();
+        // The icon sits left of the heading text.
+        const [icon, label] = Array.from(journeys.children).map((child) => child.getBoundingClientRect());
+        await expect(icon.right).toBeLessThanOrEqual(label.left);
+        await userEvent.click(journeys);
+        await expect(canvas.getByText('Reisen und Ziele')).toBeVisible();
     },
 };

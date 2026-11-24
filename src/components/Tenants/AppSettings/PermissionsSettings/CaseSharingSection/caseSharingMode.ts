@@ -1,4 +1,5 @@
 import { normalizeTeamAgency } from '../../../../../api/agency/updateAgencyType';
+import type { CaseSharingApiMode, PolicyValue } from '../../../../../types/permissionPolicy';
 
 /**
  * ORISO-Admin#1558: how counsellors of a Beratungsstelle share a Mailberatung case. One choice,
@@ -36,3 +37,32 @@ export const caseSharingModeOf = (stored: StoredCaseSharing): CaseSharingMode | 
     if (stored.caseHandoverEnabled) return 'caseHandover';
     return normalizeTeamAgency(stored.teamAgency) ? 'teamCounselling' : 'none';
 };
+
+const TO_API: Record<CaseSharingMode, CaseSharingApiMode> = {
+    caseHandover: 'CASE_HANDOVER',
+    teamCounselling: 'TEAM_COUNSELLING',
+    none: 'NONE',
+};
+
+const FROM_API: Record<CaseSharingApiMode, CaseSharingMode> = {
+    CASE_HANDOVER: 'caseHandover',
+    TEAM_COUNSELLING: 'teamCounselling',
+    NONE: 'none',
+};
+
+/** ORISO-TenantService#374: the stored policy as the section shows it; undefined for an unknown value. */
+export const caseSharingPolicyFromApi = (
+    policy: PolicyValue<CaseSharingApiMode> | undefined | null,
+): PolicyValue<CaseSharingMode> | undefined => {
+    const value = policy ? FROM_API[policy.value] : undefined;
+    if (!policy || !value) return undefined;
+    return { value, mode: policy.mode, inherited: policy.inherited };
+};
+
+/** The section's choice as the APIs write it; `inherited` is read-only and never sent. */
+export const caseSharingPolicyToApi = (policy: PolicyValue<CaseSharingMode>): PolicyValue<CaseSharingApiMode> => ({
+    value: TO_API[policy.value],
+    mode: policy.mode,
+});
+
+export const caseSharingModeToApi = (mode: CaseSharingMode): CaseSharingApiMode => TO_API[mode];
