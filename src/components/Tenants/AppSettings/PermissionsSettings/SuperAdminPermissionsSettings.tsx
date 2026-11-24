@@ -26,6 +26,7 @@ import {
     caseSharingPolicyFromApi,
     caseSharingPolicyToApi,
 } from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
@@ -187,6 +188,7 @@ export const SuperAdminPermissionsSettings = ({
 
     // Same queue again (ORISO-TenantService#374). The group-chat scope is left out and kept as stored;
     // caseHandoverEnabled follows the mode on the server and is read back from the answer.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing();
     const handleCaseSharingSave = useCallback(
         (next: PolicyValue<CaseSharingMode>) => {
             const save = policyMutationQueue.current.then(async () => {
@@ -205,9 +207,10 @@ export const SuperAdminPermissionsSettings = ({
                 () => undefined,
                 () => undefined,
             );
+            trackCaseSharing(next, save);
             save.catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
         },
-        [rebuildEffectivePlatformControls, t, updateCalendar],
+        [rebuildEffectivePlatformControls, t, trackCaseSharing, updateCalendar],
     );
     const caseSharingPolicy = (effectivePlatformControls ?? platformControls)?.caseSharing?.mode;
 
@@ -263,7 +266,10 @@ export const SuperAdminPermissionsSettings = ({
                 }}
                 caseSharing={
                     caseSharingPolicy
-                        ? { policy: caseSharingPolicyFromApi(caseSharingPolicy), onChange: handleCaseSharingSave }
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingSave,
+                          }
                         : undefined
                 }
             />

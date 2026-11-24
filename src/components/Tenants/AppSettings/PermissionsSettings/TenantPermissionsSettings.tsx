@@ -24,6 +24,7 @@ import {
     caseSharingPolicyFromApi,
     caseSharingPolicyToApi,
 } from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 import { Notify } from '../../../Notify';
@@ -303,6 +304,7 @@ export const TenantPermissionsSettings = ({
 
     // Same queue again (ORISO-TenantService#374). Only `caseSharing` goes out; the backend derives
     // caseHandoverEnabled from it, so the switches are read back from the saved answer.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing();
     const handleCaseSharingSave = useCallback(
         (next: PolicyValue<CaseSharingMode>) => {
             const operationGeneration = tenantGeneration.current;
@@ -330,9 +332,10 @@ export const TenantPermissionsSettings = ({
                 () => undefined,
                 () => undefined,
             );
+            trackCaseSharing(next, save);
             save.catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
         },
-        [rebuildEffectivePolicyData, t, tenantId, updateCalendar],
+        [rebuildEffectivePolicyData, t, tenantId, trackCaseSharing, updateCalendar],
     );
     const caseSharingPolicy = (effectivePolicyData ?? loadedPolicyData)?.caseSharing?.mode;
 
@@ -432,7 +435,10 @@ export const TenantPermissionsSettings = ({
                 }}
                 caseSharing={
                     caseSharingPolicy
-                        ? { policy: caseSharingPolicyFromApi(caseSharingPolicy), onChange: handleCaseSharingSave }
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingSave,
+                          }
                         : undefined
                 }
             />
