@@ -74,6 +74,17 @@
                         "importNames": ["default"],
                         "message": "Use M3Select for a shared select arrow."
                     }
+                ],
+                "patterns": [
+                    {
+                        "group": ["/antd", "/antd/es", "/antd/lib"],
+                        "importNames": ["Slider"],
+                        "message": "Use MuiSliderField from src/components/mui/MuiSliderField for Admin form ranges. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default"
+                    },
+                    {
+                        "group": ["/antd/es/slider", "/antd/lib/slider"],
+                        "message": "Use MuiSliderField from src/components/mui/MuiSliderField for Admin form ranges. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default"
+                    }
                 ]
             }
         ],

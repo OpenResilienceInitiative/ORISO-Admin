@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { ESLint } from 'eslint';
 
 const controls = [
     {
@@ -22,30 +22,54 @@ const controls = [
         source: "import { screen } from '@testing-library/react';\nscreen.findByRole('button');\n",
         rule: 'testing-library/await-async-queries',
     },
+    {
+        name: 'aliased AntD slider alongside a legacy form',
+        artifact: 'slider-named-import',
+        filename: 'src/pages/Agency/Edit/components/AgencySettings/index.tsx',
+        source: "import { Form, Slider as Range } from 'antd';\nexport { Form, Range };\n",
+        rule: 'no-restricted-imports',
+        message: 'MuiSliderField',
+    },
+    {
+        name: 'AntD slider re-export from a subpath',
+        artifact: 'slider-subpath-export',
+        filename: 'src/pages/Agency/Edit/components/AgencySettings/index.tsx',
+        source: "export { default as Range } from 'antd/es/slider';\n",
+        rule: 'no-restricted-imports',
+        message: 'MuiSliderField',
+    },
+    {
+        name: 'legacy form with the shared slider',
+        artifact: 'shared-slider',
+        filename: 'src/pages/Agency/Edit/components/AgencySettings/index.tsx',
+        source: "import { Form } from 'antd';\nimport { MuiSliderField } from '../../../../../components/mui/MuiSliderField';\nexport { Form, MuiSliderField };\n",
+        rule: 'no-restricted-imports',
+        allowed: true,
+    },
 ];
 const artifacts = path.resolve(process.env.VERIFICATION_ARTIFACTS_DIR || 'verification-artifacts', 'lint-controls');
 mkdirSync(artifacts, { recursive: true });
+const eslint = new ESLint();
 for (const control of controls) {
-    const result = spawnSync(
-        process.execPath,
-        [
-            path.resolve('node_modules/eslint/bin/eslint.js'),
-            '--stdin',
-            '--stdin-filename',
-            control.filename,
-            '--format',
-            'json',
-        ],
-        { input: control.source, encoding: 'utf8', maxBuffer: 5 * 1024 * 1024 },
+    const reports = await eslint.lintText(control.source, { filePath: control.filename });
+    writeFileSync(
+        path.join(artifacts, `${control.artifact ?? control.rule.replace('/', '-')}.json`),
+        JSON.stringify(reports),
     );
-    writeFileSync(path.join(artifacts, `${control.rule.replace('/', '-')}.json`), result.stdout);
-    assert.ifError(result.error);
-    const reports = JSON.parse(result.stdout);
+    assert.equal(reports.length, 1, `${control.name} did not produce a lint report`);
+    const messages = reports.flatMap((report) => report.messages);
     assert.ok(
-        reports.flatMap((report) => report.messages).some((message) => message.ruleId === control.rule),
-        `${control.name} did not trigger ${control.rule}; stderr: ${result.stderr}`,
+        messages.every((message) => !message.fatal),
+        `${control.name} did not parse`,
+    );
+    const violations = messages.filter((message) => message.ruleId === control.rule);
+    if (control.allowed) {
+        assert.deepEqual(violations, [], `${control.name} unexpectedly triggered ${control.rule}`);
+        continue;
+    }
+    assert.ok(
+        violations.some((message) => message.severity === 2 && message.message.includes(control.message || '')),
+        `${control.name} did not trigger ${control.rule}`,
     );
 }
-console.log(
-    'Lint gate verified: accessibility, Storybook discovery and asynchronous testing controls all fail for the intended rule.',
-);
+console.log('Lint gate verified: accessibility, Storybook, asynchronous queries and shared slider controls.');
