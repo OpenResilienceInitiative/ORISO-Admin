@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     // `?q=` of the page address: the admin search (⌘K) opens the list narrowed this way.
     query: '',
     setSearchParams: vi.fn(),
+    isSuperAdmin: true,
     deleteTenant: vi.fn(),
     deleteOptions: undefined as { onSuccess?: () => void; onError?: (error: unknown) => void } | undefined,
     useTenantsData: vi.fn(),
@@ -41,6 +42,7 @@ const translations: Record<string, string> = {
     'tenants.list.noAdmins': 'No admin',
     'tenants.list.details.show': 'Show details of {{name}}',
     'tenants.list.details.hide': 'Hide details of {{name}}',
+    'userTable.status.IN_DELETION': 'Being deleted',
     'tenants.list.deleteMessage.success': 'Tenant deleted.',
     'tenants.list.deleteMessage.error.title': 'Tenant could not be deleted.',
     'tenants.list.deleteMessage.error.description': 'Please try again later.',
@@ -84,10 +86,16 @@ vi.mock('../../../components/Page', () => {
     return { Page };
 });
 
-vi.mock('../../../components/Modal', () => ({
-    Modal: ({ onConfirm, titleKeyOptions }: { onConfirm: () => void; titleKeyOptions: { name: string } }) => (
-        <div role="dialog" aria-label={`Delete ${titleKeyOptions.name}?`}>
-            <button type="button" onClick={onConfirm}>
+vi.mock('./TenantDeletionModal', () => ({
+    TenantDeletionModal: ({
+        tenant,
+        onConfirm,
+    }: {
+        tenant: { id: number; name: string };
+        onConfirm: (id: number) => void;
+    }) => (
+        <div role="dialog" aria-label={`Delete ${tenant.name}?`}>
+            <button type="button" onClick={() => onConfirm(tenant.id)}>
                 Confirm delete
             </button>
         </div>
@@ -118,7 +126,7 @@ vi.mock('../../../hooks/useUserPermission', () => ({
 }));
 
 vi.mock('../../../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({ isSuperAdmin: true }),
+    useUserRoles: () => ({ isSuperAdmin: mocks.isSuperAdmin }),
 }));
 
 const tenant = (overrides: Record<string, unknown> = {}) => ({
@@ -163,6 +171,7 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         mocks.setSearchParams.mockReset();
         mocks.navigate.mockReset();
         mocks.deleteTenant.mockReset();
+        mocks.isSuperAdmin = true;
         mocks.useTenantsData.mockReset();
         mocks.settings = {
             mainTenantSubdomainForSingleDomainMultitenancy: '',
@@ -384,6 +393,26 @@ describe('TenantsList in the accounts-table design (#1184)', () => {
         act(() => mocks.deleteOptions?.onError?.(new TenantDeletionError('unavailable')));
 
         expect(screen.getByRole('alert')).toHaveTextContent('Could not check what is left. Nothing was deleted.');
+    });
+
+    // ORISO-Admin#1525: only the platform administrator sees the delete action.
+    it('offers deletion to the platform administrator only', () => {
+        withDesktopLayout();
+        mocks.isSuperAdmin = false;
+        withTenants([tenant()]);
+
+        render(<TenantsList />);
+
+        expect(screen.queryByRole('button', { name: 'Delete Caritas Nord' })).not.toBeInTheDocument();
+    });
+
+    it('shows a Träger in deletion as such', () => {
+        withDesktopLayout();
+        withTenants([tenant({ deleteDate: '2026-11-24T09:30' })]);
+
+        render(<TenantsList />);
+
+        expect(within(rowOf('Caritas Nord')).getByText('Being deleted')).toBeInTheDocument();
     });
 
     it('keeps the main Träger of a single-domain installation from being deleted', () => {

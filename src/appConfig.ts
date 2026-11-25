@@ -61,6 +61,9 @@ export const grantConsultantIdentityEndpoint = (adminId: string) =>
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
+/** What a Träger still holds, counted before it is deleted (ORISO-Admin#1525). */
+export const tenantDeletionPreviewEndpoint = (tenantId: number) =>
+    `${userServiceURL}/service/useradmin/tenants/${tenantId}/deletion-blockers`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
 /**

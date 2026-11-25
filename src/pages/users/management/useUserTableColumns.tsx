@@ -32,7 +32,8 @@ const getColumnSortOrder = (
 interface UseUserTableColumnsParams {
     showSubdomain: boolean;
     onEditTenant: (record: TenantData) => void;
-    onDeleteTenant: (record: TenantData) => void;
+    /** Absent unless the caller may delete a Träger (platform administrator, ORISO-Admin#1525). */
+    onDeleteTenant?: (record: TenantData) => void;
     canEditOrDelete: boolean;
     mainTenantSubdomain?: string;
     fixActionsColumn?: boolean;
@@ -113,9 +114,9 @@ export const useUserTableColumns = ({
                                 {canEditOrDelete && (
                                     <EditButtons
                                         handleEdit={() => onEditTenant(tenant)}
-                                        handleDelete={() => onDeleteTenant(tenant)}
+                                        handleDelete={() => onDeleteTenant?.(tenant)}
                                         record={tenant}
-                                        hide={[]}
+                                        hide={onDeleteTenant ? [] : ['delete']}
                                         disabled={{
                                             edit: false,
                                             delete: mainTenantSubdomain === tenant.subdomain,
