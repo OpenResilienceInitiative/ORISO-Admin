@@ -19,6 +19,12 @@ import { PermissionsSettingsView } from './PermissionsSettingsView';
 import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import { toRecipientScopeWrite } from './RecipientScope/recipientScopePolicy';
 import { type CalendarPolicyChange, toCalendarWrite } from './Calendar/calendarPolicy';
+import {
+    type CaseSharingMode,
+    caseSharingPolicyFromApi,
+    caseSharingPolicyToApi,
+} from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy, TenantPermissionPolicies } from '../../../../types/permissionPolicy';
 import { Notify } from '../../../Notify';
@@ -296,6 +302,43 @@ export const TenantPermissionsSettings = ({
         [rebuildEffectivePolicyData, t, tenantId, updateCalendar],
     );
 
+    // Same queue again (ORISO-TenantService#374). Only `caseSharing` goes out; the backend derives
+    // caseHandoverEnabled from it, so the switches are read back from the saved answer.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing(tenantId);
+    const handleCaseSharingSave = useCallback(
+        (next: PolicyValue<CaseSharingMode>) => {
+            const operationGeneration = tenantGeneration.current;
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPolicyData.current;
+                if (
+                    !confirmed ||
+                    String(confirmed.tenantId) !== tenantId ||
+                    activeTenantId.current !== tenantId ||
+                    tenantGeneration.current !== operationGeneration
+                ) {
+                    throw new Error('Permission policies of this Träger are not loaded');
+                }
+                const saved = await updateCalendar.mutateAsync({
+                    tenantId: confirmed.tenantId,
+                    policies: {},
+                    caseSharing: { mode: caseSharingPolicyToApi(next) },
+                });
+                if (activeTenantId.current !== tenantId || tenantGeneration.current !== operationGeneration) return;
+                confirmedPolicyData.current = saved;
+                rebuildEffectivePolicyData();
+                snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            trackCaseSharing(next, save);
+            save.catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
+        },
+        [rebuildEffectivePolicyData, t, tenantId, trackCaseSharing, updateCalendar],
+    );
+    const caseSharingPolicy = (effectivePolicyData ?? loadedPolicyData)?.caseSharing?.mode;
+
     /**
      * Runs `write` after every queued policy save: a tenant PUT carries the whole tenant, so it must
      * not overtake, or be overtaken by, a policy write (#1578 review). Skipped after a tenant switch.
@@ -390,6 +433,14 @@ export const TenantPermissionsSettings = ({
                     policies: (effectivePolicyData ?? loadedPolicyData)?.calendar,
                     onSave: handleCalendarSave,
                 }}
+                caseSharing={
+                    caseSharingPolicy
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingSave,
+                          }
+                        : undefined
+                }
             />
             {journeys.dialog}
         </>

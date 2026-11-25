@@ -194,3 +194,44 @@ export const applyNotificationTemplate = (
             clientNotificationTemplates: Object.keys(templates).length ? templates : null,
         };
     });
+
+/** The language the case handover templates are written in and translated from. */
+export const TEMPLATE_SOURCE_LANGUAGE: NotificationLanguage = 'de';
+
+/** Languages of one reason that still have no template of their own (the source language aside). */
+export const missingTemplateLanguages = (policy: CaseHandoverReasonPolicy | null): NotificationLanguage[] =>
+    NOTIFICATION_LANGUAGES.filter(
+        (language) => language !== TEMPLATE_SOURCE_LANGUAGE && !getNotificationTemplate(policy, language).trim(),
+    );
+
+const PLACEHOLDER = /\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g;
+
+/**
+ * The model keeps HTML but may translate `{{newAdvisor}}`. Placeholders travel as `<code>` (left
+ * alone by the prompt's "translate only the human-readable text") and come back as they were.
+ */
+export const protectPlaceholders = (text: string) => text.replace(PLACEHOLDER, (match) => `<code>${match}</code>`);
+
+const placeholdersOf = (text: string) => (text.match(PLACEHOLDER) ?? []).map((p) => p.replace(/\s/g, '')).sort();
+
+/** Undoes {@link protectPlaceholders}; `undefined` when a placeholder of the source got lost. */
+export const restorePlaceholders = (translated: string, source: string): string | undefined => {
+    const restored = translated
+        .replace(/<code>\s*(\{\{\s*[a-zA-Z0-9_]+\s*\}\})\s*<\/code>/g, '$1')
+        .replace(/<\/?p>/g, '')
+        .trim();
+    const expected = placeholdersOf(source);
+    const got = placeholdersOf(restored);
+    return expected.length === got.length && expected.every((p, i) => p === got[i]) ? restored : undefined;
+};
+
+/** Writes several languages' templates on one reason at once (the machine translations). */
+export const applyNotificationTemplates = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    texts: Partial<Record<NotificationLanguage, string>>,
+) =>
+    (Object.entries(texts) as [NotificationLanguage, string][]).reduce(
+        (current, [language, text]) => applyNotificationTemplate(current, code, language, text),
+        policies,
+    );

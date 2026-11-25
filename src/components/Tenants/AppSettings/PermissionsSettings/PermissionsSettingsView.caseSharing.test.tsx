@@ -65,6 +65,30 @@ describe('case sharing on the Mailberatung tile', () => {
         expect(mail.getByTestId('case-handover-settings')).toBeInTheDocument();
     });
 
+    // Frank, 2026-11-24: case sharing and the journeys start folded, each with its fold icon on the left.
+    it('starts the case sharing and journeys sections folded on the Mailberatung tile', async () => {
+        const user = userEvent.setup();
+        await renderView({
+            caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } },
+            renderJourneys: () => <div data-testid="journeys-entry" />,
+        });
+
+        const mail = within(screen.getByTestId('chat-type-card-oneOnOne'));
+        const sharing = mail.getByRole('button', { name: 'tenants.permissions.caseSharing.title' });
+        const journeys = mail.getByRole('button', { name: 'journeys.title' });
+        expect(sharing).toHaveAttribute('aria-expanded', 'false');
+        expect(journeys).toHaveAttribute('aria-expanded', 'false');
+        expect(mail.getByTestId('case-handover-settings')).not.toBeVisible();
+        expect(mail.getByTestId('journeys-entry')).not.toBeVisible();
+        // The icon leads the heading.
+        expect(sharing.firstElementChild?.tagName.toLowerCase()).toBe('svg');
+
+        await user.click(sharing);
+        await user.click(journeys);
+        expect(mail.getByTestId('case-handover-settings')).toBeVisible();
+        expect(mail.getByTestId('journeys-entry')).toBeVisible();
+    });
+
     it('hides the handover settings when another option is chosen', async () => {
         await renderView({ caseSharing: { policy: { value: 'teamCounselling', mode: 'SUGGESTED' } } });
 

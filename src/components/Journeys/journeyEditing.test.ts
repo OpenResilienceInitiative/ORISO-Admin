@@ -6,7 +6,6 @@ import {
     effectiveJourneys,
     inheritedJourneys,
     layersFrom,
-    mayEditJourney,
     type EditingContext,
     type JourneyCommand,
 } from './journeyEditing';
@@ -108,17 +107,19 @@ describe('one rule entry per level', () => {
         ).toBe(true);
     });
 
-    it('refuses an order the registration cannot run: the postcode after the Beratungsstelle', () => {
+    it('never yields an order the registration cannot run: the Beratungsstelle goes along with the postcode', () => {
         const steps = journey.phases.departure;
         const agencyAt = steps.findIndex((step) => step.core === 'agency');
         const postcode = idOf(journey, 'postcode');
-        expect(
-            mayEditJourney(
-                journey,
-                { type: 'moveStep', phase: 'departure', stepId: postcode, toIndex: agencyAt },
-                platform,
-            ),
-        ).toBe(false);
+        const result = editJourney(
+            journey,
+            { type: 'moveStep', phase: 'departure', stepId: postcode, toIndex: agencyAt },
+            platform,
+        );
+        expect(result.ok).toBe(true);
+        const moved = result.ok ? result.value.phases.departure : [];
+        const at = moved.findIndex((step) => step.id === postcode);
+        expect(moved[at + 1].core).toBe('agency');
     });
 });
 

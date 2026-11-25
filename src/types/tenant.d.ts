@@ -133,6 +133,8 @@ export interface TenantDataProtectionOfficer {
 
 export interface BasicTenantData {
     active?: boolean | null;
+    /** Set while the Träger is being deleted (ORISO-Admin#1525); absent otherwise. */
+    deleteDate?: string | null;
     id: number | null;
     key?: number | null;
     name: string;

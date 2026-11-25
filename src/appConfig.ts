@@ -36,6 +36,9 @@ export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agen
 export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin/agencyids/next-free`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
+/** What deleting a counselling centre takes with it (ORISO-Admin#1524). */
+export const agencyDeletionPreviewEndpoint = (agencyId: string | number) =>
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/deletion`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
 export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
@@ -58,6 +61,9 @@ export const grantConsultantIdentityEndpoint = (adminId: string) =>
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
+/** What a Träger still holds, counted before it is deleted (ORISO-Admin#1525). */
+export const tenantDeletionPreviewEndpoint = (tenantId: number) =>
+    `${userServiceURL}/service/useradmin/tenants/${tenantId}/deletion-blockers`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
 /**

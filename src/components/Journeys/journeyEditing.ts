@@ -20,6 +20,7 @@ import {
     type JourneyPhase,
     type JourneyRoutes,
     type JourneyStep,
+    type MoveTarget,
     type NewStep,
 } from './journey';
 
@@ -40,7 +41,8 @@ export const PLATFORM_EDITING: EditingContext = { level: 'platform', blocked: []
 /** Changes inside one journey. */
 export type JourneyCommand =
     | { type: 'addStep'; phase: JourneyPhase; step: NewStep; id: string; after?: string }
-    | { type: 'moveStep'; phase: JourneyPhase; stepId: string; toIndex: number }
+    /** `toIndex`: an index (the arrows) or a drop right before/after another card. */
+    | { type: 'moveStep'; phase: JourneyPhase; stepId: string; toIndex: MoveTarget }
     | { type: 'removeStep'; phase: JourneyPhase; stepId: string }
     /** The step dialog's result. Its kind and building block cannot change. */
     | { type: 'replaceStep'; phase: JourneyPhase; step: JourneyStep }

@@ -1,5 +1,5 @@
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
-import type { CalendarPolicies, InternalGroupChatPolicies, PolicyValue } from './permissionPolicy';
+import type { CalendarPolicies, CaseSharingPolicies, InternalGroupChatPolicies, PolicyValue } from './permissionPolicy';
 
 export type TenantAdminControls = {
     permissionsPageEnabled?: boolean | null;
@@ -15,4 +15,6 @@ export type TenantAdminControls = {
     internalGroupChat?: InternalGroupChatPolicies;
     /** Platform preset for the counsellor calendar (ADR-032, ORISO-TenantService#365). */
     calendar?: CalendarPolicies;
+    /** Platform preset for case sharing (ORISO-TenantService#374). */
+    caseSharing?: CaseSharingPolicies;
 };

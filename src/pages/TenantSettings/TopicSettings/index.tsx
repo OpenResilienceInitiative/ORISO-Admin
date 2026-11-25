@@ -11,6 +11,7 @@ import { useTopicActiveMutation } from '../../../hooks/useTopicActiveMutation';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { withUnplacedTopics } from '../../../components/TopicCatalogue/topicLayout';
 import type { TopicCatalogueDto } from '../../../types/TopicCatalogue';
+import { translateLegalTexts } from '../../../api/tenant/translation';
 import { SOURCE_LANGUAGE, catalogueLanguageCodes, toCatalogueLayout, toCatalogueTopics } from './topicCatalogueMapping';
 
 const UNPLACED_GROUP_ID = 'without-category';
@@ -112,6 +113,7 @@ export const TopicSettingsPage = () => {
                         sourceLanguage={SOURCE_LANGUAGE}
                         onSave={onSave}
                         onClose={() => setEditing(false)}
+                        onTranslate={translateLegalTexts}
                     />
                 )}
             </CardGrid.Item>

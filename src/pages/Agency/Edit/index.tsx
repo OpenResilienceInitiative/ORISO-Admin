@@ -558,7 +558,6 @@ const AgencyPageEditForm = ({
                             initialValues={initialValues}
                             onSave={onSaveCard}
                             departmentFieldRequest={departmentFieldRequest}
-                            persistedTeamAgency={initialValues.teamAgency}
                             status={
                                 <ManagedEntityStatus
                                     embedded
@@ -625,7 +624,7 @@ const AgencyPageEditForm = ({
                     <CardGrid minCardWidth={425} maxColumns={2}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
-                        <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                        <AgencySettings isEditMode={isEditing} />
                         <ContactPersonCreateCard />
                     </CardGrid>
                 </Form>
@@ -660,7 +659,7 @@ const AgencyPageEditForm = ({
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
                 the grid lets it use the row up to the shared card floor. */}
             <CardGrid minCardWidth={425} maxColumns={2}>
-                <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                <AgencySettings isEditMode={isEditing} />
             </CardGrid>
         </Form>
     );
