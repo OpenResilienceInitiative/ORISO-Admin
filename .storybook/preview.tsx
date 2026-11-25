@@ -22,6 +22,7 @@ import { clearStoryQueryClients, createStoryQueryClient, releaseStoryQueryClient
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
 import { applyAdminTheme, clearAdminInvertedThemeTokens } from '../src/utils/applyAdminTheme';
+import type { AdminContrast } from '../src/utils/theme/orisoScheme';
 
 // Global Admin styling: antd v5 reset + app less/overrides. Mirrors src/App.tsx.
 import 'antd/dist/reset.css';
@@ -65,19 +66,34 @@ const StoryProviders = ({ children }: { children: React.ReactNode }) => {
 };
 
 type StoryScheme = 'light' | 'dark';
+type StoryContrast = AdminContrast;
 
 /**
- * The `scheme` global: `dark` renders the story in the personal dark scheme the app applies for
- * `prefers-color-scheme: dark` (applyAdminTheme on the root + the antd theme for that scheme), on
- * the dark surface. `light` (default) leaves everything as before, so stories that set their own
- * tokens are not touched.
+ * The `scheme` and `contrast` globals: the personal display settings the app applies through
+ * AdminDisplayProvider (applyAdminTheme on the root, `data-admin-personal-contrast`, and the antd
+ * theme for the same scheme/contrast). `light` + `standard` (default) leave everything as before,
+ * so stories that set their own tokens are not touched.
  */
-const StoryScheme = ({ scheme, children }: { scheme: StoryScheme; children: React.ReactNode }) => {
+const StoryScheme = ({
+    scheme,
+    contrast,
+    children,
+}: {
+    scheme: StoryScheme;
+    contrast: StoryContrast;
+    children: React.ReactNode;
+}) => {
+    const personal = scheme === 'dark' || contrast !== 'standard';
     React.useLayoutEffect(() => {
-        if (scheme !== 'dark') return undefined;
-        applyAdminTheme(null, document.documentElement, 'dark');
-        return () => clearAdminInvertedThemeTokens();
-    }, [scheme]);
+        if (!personal) return undefined;
+        const root = document.documentElement;
+        applyAdminTheme(null, root, scheme, contrast);
+        if (contrast !== 'standard') root.dataset.adminPersonalContrast = contrast;
+        return () => {
+            clearAdminInvertedThemeTokens();
+            delete root.dataset.adminPersonalContrast;
+        };
+    }, [personal, scheme, contrast]);
     if (scheme !== 'dark') return <>{children}</>;
     return (
         <div
@@ -88,8 +104,10 @@ const StoryScheme = ({ scheme, children }: { scheme: StoryScheme; children: Reac
     );
 };
 
+const readContrast = (value: unknown): StoryContrast => (value === 'medium' || value === 'high' ? value : 'standard');
+
 const preview: Preview = {
-    initialGlobals: { scheme: 'light' },
+    initialGlobals: { scheme: 'light', contrast: 'standard' },
     globalTypes: {
         scheme: {
             description: 'Admin colour scheme (personal display setting)',
@@ -99,6 +117,19 @@ const preview: Preview = {
                 items: [
                     { value: 'light', title: 'Light' },
                     { value: 'dark', title: 'Dark' },
+                ],
+                dynamicTitle: true,
+            },
+        },
+        contrast: {
+            description: 'Admin contrast level (personal display setting)',
+            toolbar: {
+                title: 'Contrast',
+                icon: 'contrast',
+                items: [
+                    { value: 'standard', title: 'Standard' },
+                    { value: 'medium', title: 'Medium' },
+                    { value: 'high', title: 'High' },
                 ],
                 dynamicTitle: true,
             },
@@ -171,17 +202,19 @@ const preview: Preview = {
     decorators: [
         (Story, context) => {
             const scheme: StoryScheme = context.globals.scheme === 'dark' ? 'dark' : 'light';
+            const contrast = readContrast(context.globals.contrast);
+            const personal = scheme === 'dark' || contrast !== 'standard';
             return (
                 <StoryProviders>
                     <ConfigProvider
                         locale={de_DE}
-                        theme={buildAdminAntdTheme(scheme === 'dark' ? { scheme } : undefined)}
+                        theme={buildAdminAntdTheme(personal ? { scheme, contrast } : undefined)}
                         renderEmpty={() => <AdminEmpty />}
                     >
                         <AntdApp component={false}>
                             {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
                             <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
-                                <StoryScheme scheme={scheme}>
+                                <StoryScheme scheme={scheme} contrast={contrast}>
                                     <Story />
                                 </StoryScheme>
                             </MemoryRouter>

@@ -1,6 +1,7 @@
 import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
 import { brandSeedCannotYieldPalette } from './seedUsability';
 import { contrastRatio } from '../contrastRatio';
+import { toneOf } from './neutralTone';
 
 export type OrisoSchemeName = 'light' | 'inverted' | 'dark';
 export type AdminContrast = 'standard' | 'medium' | 'high';
@@ -504,6 +505,55 @@ const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoP
     };
 };
 
+/**
+ * Ink tones of the personal "high" contrast level, same values as the Frontend
+ * (ORISO-Frontend#2544). Surfaces keep the scheme's own; only text, icons and borders move toward
+ * black (light) or white (dark), so the choice is visible even where the standard palette already
+ * passes 7:1 and `applyPersonalContrast` alone would change nothing.
+ */
+export const HIGH_CONTRAST_INK_TONES = {
+    light: { onSurface: 0, onSurfaceVariant: 20, outline: 30, outlineVariant: 50 },
+    dark: { onSurface: 100, onSurfaceVariant: 92, outline: 80, outlineVariant: 60 },
+} as const;
+
+/** Tokens that paint a fill; the ink remap must never touch them. */
+const isFillToken = (name: string) => /surface|background|scrim|container|picture-filter/.test(name);
+
+/**
+ * Moves the four neutral ink roles to their high-contrast tones, and every text or border token
+ * that shares one of those colours with them (field outline, table and search text, scheme ink).
+ */
+const applyHighContrastInk = (tokens: Record<string, string>, scheme: 'light' | 'dark'): Record<string, string> => {
+    const tones = HIGH_CONTRAST_INK_TONES[scheme];
+    const roles = [
+        ['--m3-on-surface', tones.onSurface],
+        ['--m3-on-surface-variant', tones.onSurfaceVariant],
+        ['--m3-outline', tones.outline],
+        ['--m3-outline-variant', tones.outlineVariant],
+    ] as const;
+    const remap = new Map<string, string>();
+    roles.forEach(([name, tone]) => {
+        const current = tokens[name]?.toLowerCase();
+        if (current && !remap.has(current)) remap.set(current, toneOf(current, tone));
+    });
+    const next: Record<string, string> = {};
+    Object.entries(tokens).forEach(([name, value]) => {
+        const lifted = remap.get(value.toLowerCase());
+        next[name] = lifted && !isFillToken(name) ? lifted : value;
+    });
+    roles.forEach(([name, tone]) => {
+        if (tokens[name]) next[name] = toneOf(tokens[name], tone);
+    });
+    // Fields are drawn with the outline role in high contrast.
+    next['--admin-field-outline'] = next['--m3-outline'];
+    // Texts that keep a legacy literal in light (`var(--admin-scheme-*, <literal>)`) follow high
+    // contrast too; standard and medium light still never write these.
+    next['--admin-scheme-on-surface'] = next['--m3-on-surface'];
+    next['--admin-scheme-on-surface-variant'] = next['--m3-on-surface-variant'];
+    next['--admin-scheme-outline'] = next['--m3-outline'];
+    return next;
+};
+
 export const computeOrisoPalette = (
     seeds: TenantSeeds,
     scheme: OrisoSchemeName = 'light',
@@ -511,6 +561,7 @@ export const computeOrisoPalette = (
 ): OrisoPaletteResult => {
     const palette = computeBasePalette(seeds, scheme);
     if (contrast === 'standard' || scheme === 'inverted') return palette;
+    const inked = contrast === 'high' ? applyHighContrastInk(palette.tokens, scheme) : palette.tokens;
 
-    return { ...palette, tokens: applyPersonalContrast(palette.tokens, contrast) };
+    return { ...palette, tokens: applyPersonalContrast(inked, contrast) };
 };
