@@ -55,12 +55,8 @@ export const FunctionalityAccess: Story = {
             await within(liveChat).findByRole('region', { name: i18n.t('liveChatLinks.title') }, { timeout: 8000 }),
         ).toBeInTheDocument();
         await expect(canvas.getAllByRole('region', { name: i18n.t('liveChatLinks.title') })).toHaveLength(1);
-        // Frank, 2026-11-25: the same page as Einstellungen → Funktionszugriff, no extra intro paragraph.
-        await expect(
-            within(canvas.getByTestId('permissions-intro')).queryByText(
-                String(i18n.t('tenants.globalSettings.superAdminWarning.description')),
-            ),
-        ).not.toBeInTheDocument();
+        // Frank, 2026-11-25: the same page as Einstellungen → Funktionszugriff: lead and hint, no extra paragraph.
+        await expect(canvas.getByTestId('permissions-intro').querySelectorAll(':scope > p')).toHaveLength(2);
         await expect(canvas.queryByTestId('supervision-tile')).not.toBeInTheDocument();
         await expect(
             within(canvas.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: /^Supervision$/ }),

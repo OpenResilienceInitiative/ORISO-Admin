@@ -163,10 +163,10 @@ describe('Same tiles as the platform page (ORISO-Admin#1577)', () => {
         renderPage();
 
         const intro = await screen.findByTestId('permissions-intro');
-        expect(
-            within(intro).queryByText(i18n.t('tenants.globalSettings.superAdminWarning.description')),
-        ).not.toBeInTheDocument();
         expect(within(intro).getByText(i18n.t('tenants.permissions.intro.lead'))).toBeVisible();
+        expect(within(intro).getByText(i18n.t('tenants.permissions.intro.hint'))).toBeVisible();
+        // Lead and hint, nothing else outside the list of conversation types.
+        expect(intro.querySelectorAll(':scope > p')).toHaveLength(2);
     });
 });
 

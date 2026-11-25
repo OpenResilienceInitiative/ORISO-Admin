@@ -1414,7 +1414,6 @@
     "tenants.edit.tabs.general": "General",
     "tenants.edit.tabs.legal": "Legal",
     "tenants.edit.tabs.themeSettings": "Appearance",
-    "tenants.globalSettings.superAdminWarning.description": "Changes here apply to this provider only. A setting made a requirement is read-only for the provider admins; a recommendation they can adjust themselves. The platform-wide presets live under Settings → Functionality access.",
     "tenants.legal.singleTenantsManageLegal.setting.description": "If this function is set, then there is a separate version of the privacy policy for each provider, which is displayed to users as soon as a provider is selected. These provider legal texts can be maintained by the provider admins. If this function is not active, there is only one central version of the privacy policy managed by you, which is used for all providers.",
     "tenants.message.consultantsChangedSuccess": "Your changes have been saved. The changed number of counsellors will be visible in the system no later than 24 hours after editing.",
     "tenants.message.subdomainInUse": "This subdomain is already taken.",
