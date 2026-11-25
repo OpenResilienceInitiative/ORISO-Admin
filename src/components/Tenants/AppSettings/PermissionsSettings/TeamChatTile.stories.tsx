@@ -6,19 +6,12 @@ import i18n from '../../../../i18n';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { TEAM_FUNCTIONS } from '../../../TeamFunctions';
 import type { EffectivePolicy } from './permissionsSettingsUtils';
-import { SupervisionTile } from './SupervisionTile';
 import { TeamChatTile } from './TeamChatTile';
-import {
-    SUPERVISION_FEATURES,
-    SUPERVISION_MASTER,
-    TEAM_CHAT_AFTER_ACCEPT,
-    TEAM_CHAT_FEATURES,
-    TEAM_CHAT_MASTER,
-} from './traegerFunctions';
+import { TEAM_CHAT_AFTER_ACCEPT, TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from './traegerFunctions';
 
 /**
  * ORISO-Frontend#2491 — design proposal (Frank, 2026-11-24): the Team-Chat tile on Funktionszugriff follows the
- * Supervision tile exactly. Icon, title and status chip ("An · läuft nach Annahme: aus"); only the master
+ * former Supervision tile (now a section of the Mail-Beratung tile, Frank 2026-11-25). Icon, title and status chip ("An · läuft nach Annahme: aus"); only the master
  * switch in the tile; "Konfigurieren" opens the same dialog as supervision. In the dialog: "Team-Chat läuft nach
  * der Annahme weiter" (default off, data-protection question first) and what the side chat offers, each with
  * its own "Anpassbar"/"Vorgabe" on platform, Träger and Beratungsstelle.
@@ -29,7 +22,6 @@ type Level = 'platform' | 'tenant' | 'agency';
 type HarnessProps = {
     level: Level;
     initial: Record<string, EffectivePolicy>;
-    withSupervision?: boolean;
     onPoliciesChange: (changes: Record<string, PolicyValue<boolean>>) => void;
 };
 
@@ -44,7 +36,7 @@ const TEAM_CHAT_ON = {
 };
 
 /** Keeps the saved policies in the story, so the switch, the chip and the dialog can be clicked through. */
-const Harness = ({ level, initial, withSupervision, onPoliciesChange }: HarnessProps) => {
+const Harness = ({ level, initial, onPoliciesChange }: HarnessProps) => {
     const [policies, setPolicies] = useState<Record<string, EffectivePolicy>>(initial);
     const props = {
         level,
@@ -57,7 +49,6 @@ const Harness = ({ level, initial, withSupervision, onPoliciesChange }: HarnessP
     };
     return (
         <div style={{ display: 'grid', gap: 16, maxWidth: 1240 }}>
-            {withSupervision && <SupervisionTile {...props} />}
             <TeamChatTile {...props} />
         </div>
     );
@@ -106,18 +97,6 @@ export const Traeger: Story = {
         await expect(card.getByText('An · läuft nach Annahme: aus')).toBeVisible();
         await expect(card.queryByText(afterAcceptLabel())).not.toBeInTheDocument();
         await expect(card.getByRole('button', { name: configure() })).toBeEnabled();
-    },
-};
-
-/** Side by side with the Supervision tile: the same shape, the same "Konfigurieren". */
-export const NextToSupervision: Story = {
-    args: {
-        withSupervision: true,
-        initial: {
-            ...TEAM_CHAT_ON,
-            [SUPERVISION_MASTER]: own(true),
-            ...allOn(SUPERVISION_FEATURES.map((feature) => feature.field)),
-        },
     },
 };
 

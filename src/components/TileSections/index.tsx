@@ -31,6 +31,8 @@ interface TileSectionProps {
     defaultOpen?: boolean;
     /** A page that explains the topic (e.g. a feature page on ORISO Understand); opens in a new tab. */
     learnMoreHref?: string;
+    /** Scroll target of the admin search (`data-search-tile`); the heading stays visible when folded. */
+    searchTile?: string;
     children?: ReactNode;
 }
 
@@ -46,6 +48,7 @@ const TileSection = ({
     collapsible = false,
     defaultOpen = true,
     learnMoreHref,
+    searchTile,
     children,
 }: TileSectionProps) => {
     const { t } = useTranslation();
@@ -58,6 +61,7 @@ const TileSection = ({
         <section
             role="group"
             aria-labelledby={headingId}
+            data-search-tile={searchTile}
             className={classNames(styles.section, {
                 [styles.sectionBeside]: pictureBeside,
                 [styles.sectionWide]: wide,
