@@ -16,11 +16,11 @@ export type LegalTextKind = 'DPP' | 'IMPRINT';
 
 /**
  * Which rung of the ADR-021 ladder owns a version. `SHARED` is an ADR-014 shared
- * legal-text object. The Träger and platform levels are absent on purpose: #256
- * states their history has to be built in ORISO-TenantService and does not exist
- * yet (known gap 2 of that PR).
+ * legal-text object. `PLATFORM` (tenant id 0) and `TENANT` (a Träger) come from
+ * TenantService's `legal-versions` collection (ORISO-Admin#270, #1070), which carries
+ * no `consentText` and may omit `publishedBy` / `supersededAt`.
  */
-export type LegalTextOwnerLevel = 'DEPARTMENT' | 'AGENCY' | 'SHARED';
+export type LegalTextOwnerLevel = 'DEPARTMENT' | 'AGENCY' | 'SHARED' | 'PLATFORM' | 'TENANT';
 
 /** One archived, published legal-text version. Newest first in every list. */
 export interface LegalTextVersion {

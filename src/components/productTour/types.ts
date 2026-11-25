@@ -24,6 +24,12 @@ export interface TourStep {
     titleKey: string;
     contentKey: string;
     placement?: TourPlacement;
+    /**
+     * The anchor exists only for some roles, layouts or content (e.g. the
+     * desktop sidebar). The adapter skips a missing target anyway; the flag
+     * documents that the tour must still complete without this step.
+     */
+    optional?: boolean;
 }
 
 export interface TourDefinition {

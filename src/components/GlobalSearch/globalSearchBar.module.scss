@@ -144,7 +144,7 @@
     }
 
     &:focus-visible {
-        outline: 2px solid var(--m3-primary, #a5000a);
+        outline: 2px solid var(--admin-focus-ring-color);
         outline-offset: -4px;
     }
 
@@ -172,6 +172,10 @@
     min-width: 0;
     flex: 1 1 auto;
     animation: global-search-input-in 240ms cubic-bezier(0.2, 0, 0, 1);
+
+    &::-webkit-search-cancel-button {
+        appearance: none;
+    }
 
     &:global(.ant-input) {
         padding: 0 8px;
@@ -210,5 +214,42 @@
 
     .input {
         animation: none;
+    }
+}
+
+/*
+ * Scroll buttons (#1026, Frank 25 Sept): a Windows mouse has no sideways
+ * scroll, so an overflowing row gets ‹ › at both ends, like MUI Tabs
+ * `scrollButtons`. They sit outside the scrollport so they never cover a field.
+ */
+
+.buttonFrame {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: flex-start;
+    gap: 4px;
+
+    > .scroller {
+        flex: 1 1 auto;
+    }
+}
+
+/* Centred on the 56px control band (row padding 4px + (56 - 40) / 2). */
+.scrollButtonSlot {
+    display: inline-flex;
+    flex: 0 0 auto;
+    margin-top: 12px;
+}
+
+/*
+ * Phone: the row becomes a checklist, one control per line. The search pill
+ * and the more-button keep their own line; everything else takes the width.
+ */
+@media (max-width: 599px) {
+    .rowStacksOnPhone {
+        width: 100%;
+        min-width: 0;
+        flex-wrap: wrap;
     }
 }

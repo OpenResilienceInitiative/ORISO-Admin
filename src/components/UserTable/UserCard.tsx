@@ -1,0 +1,124 @@
+import { useId, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import PauseCircleOutlineOutlinedIcon from '@mui/icons-material/PauseCircleOutlineOutlined';
+import RestoreFromTrashOutlinedIcon from '@mui/icons-material/RestoreFromTrashOutlined';
+import type { DisplayStatus } from '../../types/userDisplayStatus';
+import { IconButton } from '../IconButton';
+import { StatusBadge } from './StatusBadge';
+import styles from './userCard.module.scss';
+
+export interface UserCardProps {
+    name: string;
+    email: string;
+    username?: string;
+    /** Account status; omit it when `badge` shows a different kind of state. */
+    status?: DisplayStatus;
+    /** Authoritative status metadata when this card represents a managed account list row. */
+    accountStatus?: { id: string; active?: boolean | null };
+    /** Replaces the account status badge, e.g. a Beratungsstelle's visibility. */
+    badge?: ReactNode;
+    /** Target of the „Eingeladen" link. */
+    inviteTo?: string;
+    /** Extra details shown when expanded (Träger, Stellen, …). */
+    children?: ReactNode;
+    defaultExpanded?: boolean;
+    /** Omitted = no permission; the button is left out. */
+    onEdit?: () => void;
+    onDelete?: () => void;
+    /** Only for an account whose deletion is running; stay enabled while edit and delete are not. */
+    onCancelDeletion?: () => void;
+    onPauseDeletion?: () => void;
+    /** E.g. while the account is being deleted. */
+    actionsDisabled?: boolean;
+}
+
+/** Phone card (< 768px): one row with name over status, expand next to edit and delete. */
+export const UserCard = ({
+    name,
+    email,
+    username,
+    status,
+    accountStatus,
+    badge,
+    inviteTo,
+    children,
+    defaultExpanded = false,
+    onEdit,
+    onDelete,
+    onCancelDeletion,
+    onPauseDeletion,
+    actionsDisabled = false,
+}: UserCardProps) => {
+    const { t } = useTranslation();
+    const detailsId = useId();
+    const [expanded, setExpanded] = useState(defaultExpanded);
+    const displayName = name || email;
+
+    return (
+        <article className={styles.card} aria-label={displayName}>
+            <div className={styles.summary}>
+                <div className={styles.lead}>
+                    <span className={styles.name} title={displayName}>
+                        {displayName}
+                    </span>
+                    {badge ??
+                        (status !== undefined && (
+                            <StatusBadge status={status} inviteTo={inviteTo} accountStatus={accountStatus} />
+                        ))}
+                </div>
+                <div className={styles.actions}>
+                    <IconButton
+                        icon={expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        ariaLabel={t('userTable.card.details', 'Details zu {{name}}', { name: displayName })}
+                        ariaExpanded={expanded}
+                        ariaControls={detailsId}
+                        onClick={() => setExpanded((open) => !open)}
+                    />
+                    {onEdit && (
+                        <IconButton
+                            icon={<EditOutlinedIcon />}
+                            ariaLabel={t('userTable.card.edit', '{{name}} bearbeiten', { name: displayName })}
+                            disabled={actionsDisabled}
+                            onClick={onEdit}
+                        />
+                    )}
+                    {onCancelDeletion && (
+                        <IconButton
+                            icon={<RestoreFromTrashOutlinedIcon />}
+                            ariaLabel={t('deletionWindow.cancel.action')}
+                            onClick={onCancelDeletion}
+                        />
+                    )}
+                    {onPauseDeletion && (
+                        <IconButton
+                            icon={<PauseCircleOutlineOutlinedIcon />}
+                            ariaLabel={t('deletionWindow.pause.action')}
+                            onClick={onPauseDeletion}
+                        />
+                    )}
+                    {onDelete && (
+                        <IconButton
+                            icon={<DeleteOutlinedIcon />}
+                            ariaLabel={t('userTable.card.delete', '{{name}} löschen', { name: displayName })}
+                            disabled={actionsDisabled}
+                            onClick={onDelete}
+                        />
+                    )}
+                </div>
+            </div>
+            <div id={detailsId} className={styles.details} hidden={!expanded}>
+                {expanded && (
+                    <>
+                        {name && <span className={styles.email}>{email}</span>}
+                        {username && <span className={styles.email}>@{username}</span>}
+                        {children}
+                    </>
+                )}
+            </div>
+        </article>
+    );
+};

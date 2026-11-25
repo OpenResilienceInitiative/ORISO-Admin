@@ -1,6 +1,13 @@
 import { ACTIONS, EVENTS, STATUS } from 'react-joyride';
-import { describe, expect, it } from 'vitest';
-import { effectivePlacement, initialTourRunState, mapStepsToJoyride, reduceTourCallback } from './tourEngine';
+import { describe, expect, it } from 'vite-plus/test';
+import {
+    effectivePlacement,
+    initialTourRunState,
+    mapStepsToJoyride,
+    OPTIONAL_SETTLED_TIMEOUT_MS,
+    reduceTourCallback,
+    targetWaitMs,
+} from './tourEngine';
 import type { TourStep } from './types';
 
 describe('mapStepsToJoyride', () => {
@@ -268,5 +275,17 @@ describe('effectivePlacement axis-specific coverage', () => {
 
     it('centers a bottom placement when the target spans the viewport height', () => {
         expect(effectivePlacement('bottom', { width: 200, height: 820 }, { width: 390, height: 844 })).toBe('center');
+    });
+});
+
+describe('targetWaitMs', () => {
+    it('waits briefly for an optional target on a page that is already there', () => {
+        expect(targetWaitMs({ optional: true }, false, 4000)).toBe(OPTIONAL_SETTLED_TIMEOUT_MS);
+    });
+
+    it('keeps the full wait after navigating or for a required target', () => {
+        expect(targetWaitMs({ optional: true }, true, 4000)).toBe(4000);
+        expect(targetWaitMs({ optional: false }, false, 4000)).toBe(4000);
+        expect(targetWaitMs({}, false, 4000)).toBe(4000);
     });
 });

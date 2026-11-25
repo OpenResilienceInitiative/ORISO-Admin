@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Page } from '../../components/Page';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
@@ -7,13 +7,11 @@ import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import { useUserRoles } from '../../hooks/useUserRoles.hook';
 import { type LinksTabKey, resolveVisibleLinksTabs } from '../../constants/linksAccess';
 import routePathNames from '../../appConfig';
-import pageStyles from '../../components/Page/styles.module.scss';
-// The tab glyph is the ORISO icon-master link mark, not the generic permissions
-// star that stood in for it: every tab here hands out an invite link.
-import { ReactComponent as TabLinkIcon } from '../../resources/img/svg/oriso/link_24px.svg';
-import styles from './styles.module.scss';
+import { AdminSegmentedTabs } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
+// Invitations go out by email, so the tabs carry the ORISO icon-master envelope,
+// the same mark as the Home "Einladen" tile (#1374).
+import { ReactComponent as TabInviteIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 
-export { ExternalInboundsTab } from './ExternalInboundsTab';
 export { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
 
 const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string }> = [
@@ -27,17 +25,9 @@ const LINK_TABS: ReadonlyArray<{ key: LinksTabKey; to: string; titleKey: string 
         to: routePathNames.linksCounsellor,
         titleKey: 'links.tabs.counsellor',
     },
-    {
-        key: 'external-inbounds',
-        to: routePathNames.linksExternalInbounds,
-        titleKey: 'links.tabs.externalInbounds',
-    },
 ];
 
-/**
- * Tabs the signed-in admin may see (platform admin: all; tenant admin: counsellor
- * invites only; agency admins: none — they never reach this page, see `linksAccess.ts`).
- */
+/** Tabs the signed-in admin may open (see `linksAccess.ts`). */
 const useVisibleLinkTabs = () => {
     const { isSuperAdmin, hasRole } = useUserRoles();
     return useMemo(() => {
@@ -61,9 +51,8 @@ export const LinksPage = () => {
         return matches[0]?.to;
     }, [navigableTabs, pathname]);
 
-    // Custom NavLink row keeps its own icon treatment on desktop; publish the
-    // same destinations for the mobile chip row (Page.Title `tabs` would also
-    // render PageTabs and double the desktop switcher).
+    // The desktop bar carries the link glyph (Page.Title `tabs` would fall back
+    // to the generic star); publish the same destinations for the mobile chip row.
     useRegisterMobileNav(
         'links-sections',
         navigableTabs.length > 1
@@ -81,17 +70,16 @@ export const LinksPage = () => {
     return (
         <Page>
             <Page.Title>
-                {isDesktopLayout && (
-                    <div className={styles.pageHeader}>
-                        <div className={pageStyles.tabsContainer}>
-                            {navigableTabs.map((tab) => (
-                                <NavLink className={pageStyles.tab} to={tab.to} key={tab.key}>
-                                    <TabLinkIcon className={pageStyles.tabStar} width={20} height={20} />
-                                    <span className={pageStyles.tabLabel}>{t(tab.titleKey)}</span>
-                                </NavLink>
-                            ))}
-                        </div>
-                    </div>
+                {isDesktopLayout && navigableTabs.length > 0 && (
+                    <AdminSegmentedTabs
+                        ariaLabel={String(t('links.navTitle'))}
+                        items={navigableTabs.map((tab) => ({
+                            id: tab.key,
+                            label: String(t(tab.titleKey)),
+                            to: tab.to,
+                            icon: <TabInviteIcon />,
+                        }))}
+                    />
                 )}
             </Page.Title>
             <Outlet />
@@ -99,7 +87,7 @@ export const LinksPage = () => {
     );
 };
 
-/** `/admin/links` lands on the first tab the admin may see (tenant admins: counsellor invites). */
+/** `/admin/links` lands on the first tab the admin may see. */
 export const LinksIndexRedirect = () => {
     const [firstTab] = useVisibleLinkTabs();
     return <Navigate to={firstTab?.to ?? routePathNames.root} replace />;

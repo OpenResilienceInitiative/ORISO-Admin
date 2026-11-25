@@ -1,0 +1,293 @@
+import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import Add from '@mui/icons-material/Add';
+import ConnectingAirports from '@mui/icons-material/ConnectingAirports';
+import { Modal } from '../Modal';
+import { M3Button } from '../M3Button';
+import { FloatingLabelInput } from '../FloatingLabelInput';
+import type { ConversationType } from '../ConversationModules/conversationModule';
+import { FlightPath } from './FlightPath';
+import {
+    fixLinkSlugs,
+    hasRegistrationRoute,
+    isReachable,
+    journeysOf,
+    phasesOf,
+    prepareJourneyForPublish,
+    topicsWithoutRoute,
+    type Journey,
+    type JourneyLevel,
+    type JourneyPhase,
+    type JourneyTopic,
+} from './journey';
+import { DestinationsDialog } from './DestinationsDialog';
+import { nextId } from './ids';
+import { JourneyCard } from './JourneyCard';
+import { PhaseDialog } from './PhaseDialog';
+import { journeyLabel } from './stepText';
+import type { KeywordSuggester, Translator } from './journeyTranslation';
+import { editJourneys, mayEditJourneys, type EditingContext, type JourneysCommand } from './journeyEditing';
+import { useDiscardGuard } from './useDiscardGuard';
+import styles from './styles.module.scss';
+
+export interface JourneysDialogOpen {
+    journeyId: string;
+    phase?: JourneyPhase;
+    stepId?: string;
+    adding?: boolean;
+    /** The language a step dialog opens in. */
+    language?: string;
+    destinations?: boolean;
+}
+
+export interface JourneysDialogProps {
+    type: ConversationType;
+    /** The name the platform gave the conversation type; the shipped one without. */
+    typeName?: string;
+    /** The journeys of every conversation type; this dialog edits the ones of `type`. */
+    journeys: Journey[];
+    topics: JourneyTopic[];
+    /** Machine translation through the Admin endpoint (`adminTranslator`); without it none is offered. */
+    translator?: Translator;
+    /** Suggests search terms (ORISO-Admin#1562); without it none are offered. */
+    suggester?: KeywordSuggester;
+    /** Which level edits: below the platform the check-in is the platform's (decision 29). */
+    level?: JourneyLevel;
+    /** Building blocks Funktionszugriff switched off. */
+    blocked?: readonly string[];
+    /** Opens a phase, a step or the destinations of one journey right away (stories). */
+    initially?: JourneysDialogOpen;
+    /** Saving to the store is under way: the save button waits. */
+    saving?: boolean;
+    /** Saving cannot go on (e.g. after a conflict: reload first). */
+    saveBlocked?: boolean;
+    /** Shown on top of the body, e.g. why saving failed. */
+    notice?: ReactNode;
+    onSave: (journeys: Journey[]) => void | Promise<void>;
+    onClose: () => void;
+}
+
+/**
+ * The journeys of one conversation type. Opened from the Journeys section and from the tile of
+ * the conversation type in Funktionszugriff.
+ */
+export const JourneysDialog = ({
+    type,
+    typeName,
+    journeys: stored,
+    topics,
+    translator,
+    suggester,
+    level = 'platform',
+    blocked = [],
+    initially,
+    saving = false,
+    saveBlocked = false,
+    notice,
+    onSave,
+    onClose,
+}: JourneysDialogProps) => {
+    const { t } = useTranslation();
+    const [draft, setDraft] = useState<Journey[]>(stored);
+    const guard = useDiscardGuard(draft, stored, onClose);
+    const [phaseOf, setPhaseOf] = useState(
+        initially?.phase ? { id: initially.journeyId, phase: initially.phase } : undefined,
+    );
+    const [destinationsOf, setDestinationsOf] = useState(initially?.destinations ? initially.journeyId : undefined);
+    const [renaming, setRenaming] = useState<{ id: string; name: string }>();
+    const [removingId, setRemovingId] = useState<string>();
+
+    const context: EditingContext = { level, blocked };
+    const isPlatform = level === 'platform';
+    /** Every change goes through the rules of `journeyEditing`; a refused one changes nothing. */
+    const edit = (command: JourneysCommand) =>
+        setDraft((current) => {
+            const result = editJourneys(current, command, context);
+            return result.ok ? result.value : current;
+        });
+
+    const own = journeysOf(draft, type);
+    const typeLabel = typeName ?? t(`conversationModules.type.${type}`);
+    const unrouted = hasRegistrationRoute(type) ? topicsWithoutRoute(draft, type, topics) : [];
+    const find = (id: string | undefined) => draft.find((journey) => journey.id === id);
+    const replace = (journey: Journey) =>
+        setDraft((current) => current.map((candidate) => (candidate.id === journey.id ? journey : candidate)));
+
+    const phaseJourney = find(phaseOf?.id);
+    const removing = find(removingId);
+
+    // Saving fixes the link addresses for good and raises the versions of changed questions.
+    const save = () =>
+        onSave(
+            fixLinkSlugs(draft).map((journey) => {
+                const before = stored.find((candidate) => candidate.id === journey.id);
+                return before ? prepareJourneyForPublish(journey, before) : journey;
+            }),
+        );
+
+    return (
+        <>
+            <Modal
+                icon={<ConnectingAirports />}
+                title={t('journeys.dialog.title', { type: typeLabel })}
+                descriptionKey="journeys.dialog.description"
+                descriptionFullWidth
+                width={1080}
+                footer={
+                    <div className={styles.footer}>
+                        <M3Button variant="text" onClick={onClose}>
+                            {t('journeys.action.cancel')}
+                        </M3Button>
+                        <M3Button variant="filled" loading={saving} disabled={saving || saveBlocked} onClick={save}>
+                            {t('journeys.action.save')}
+                        </M3Button>
+                    </div>
+                }
+                onClose={onClose}
+                onDismiss={guard.onDismiss}
+                wrapperTestId="journeys-dialog"
+                scrollableBody
+            >
+                <div className={styles.dialogBody}>
+                    {guard.confirm}
+                    {notice}
+                    <FlightPath available={phasesOf(type)} captions />
+                    {unrouted.length > 0 && (
+                        <div className={styles.notice} data-testid="journeys-unrouted">
+                            <p className={styles.noticeTitle}>
+                                {t('journeys.unrouted.title', { count: unrouted.length })}
+                            </p>
+                            <p>
+                                {t('journeys.unrouted.text', {
+                                    topics: unrouted.map((topic) => topic.name).join(', '),
+                                })}
+                            </p>
+                        </div>
+                    )}
+                    {own.length === 0 ? (
+                        <p className={styles.intro}>{t('journeys.dialog.empty')}</p>
+                    ) : (
+                        <ul className={styles.journeys} aria-label={t('journeys.dialog.title', { type: typeLabel })}>
+                            {own.map((journey) => (
+                                <JourneyCard
+                                    key={journey.id}
+                                    journey={journey}
+                                    topics={topics}
+                                    level={level}
+                                    reachable={isReachable(draft, journey)}
+                                    onOpenPhase={(phase) => setPhaseOf({ id: journey.id, phase })}
+                                    onOpenDestinations={isPlatform ? () => setDestinationsOf(journey.id) : undefined}
+                                    onRename={
+                                        isPlatform
+                                            ? () => setRenaming({ id: journey.id, name: journey.name })
+                                            : undefined
+                                    }
+                                    onDuplicate={
+                                        isPlatform
+                                            ? () =>
+                                                  edit({
+                                                      type: 'duplicate',
+                                                      sourceId: journey.id,
+                                                      id: nextId('journey'),
+                                                      name: journey.name
+                                                          ? t('journeys.journey.copyOf', { name: journey.name })
+                                                          : '',
+                                                  })
+                                            : undefined
+                                    }
+                                    onRemove={isPlatform ? () => setRemovingId(journey.id) : undefined}
+                                />
+                            ))}
+                        </ul>
+                    )}
+                    {mayEditJourneys(draft, { type: 'create', conversationType: type, id: 'probe' }, context) && (
+                        <div>
+                            <M3Button
+                                variant="tonal"
+                                icon={<Add />}
+                                onClick={() => edit({ type: 'create', conversationType: type, id: nextId('journey') })}
+                            >
+                                {t('journeys.dialog.add')}
+                            </M3Button>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
+            {phaseOf && phaseJourney && (
+                <PhaseDialog
+                    key={`${phaseOf.id}-${phaseOf.phase}`}
+                    journey={phaseJourney}
+                    phase={phaseOf.phase}
+                    translator={translator}
+                    suggester={suggester}
+                    blocked={blocked}
+                    level={level}
+                    initially={
+                        initially?.journeyId === phaseOf.id && initially.phase === phaseOf.phase
+                            ? { stepId: initially.stepId, adding: initially.adding, language: initially.language }
+                            : undefined
+                    }
+                    onApply={(journey) => {
+                        replace(journey);
+                        setPhaseOf(undefined);
+                    }}
+                    onClose={() => setPhaseOf(undefined)}
+                />
+            )}
+
+            {destinationsOf && isPlatform && (
+                <DestinationsDialog
+                    journeys={draft}
+                    journeyId={destinationsOf}
+                    topics={topics}
+                    onApply={(next) => {
+                        setDraft(next);
+                        setDestinationsOf(undefined);
+                    }}
+                    onClose={() => setDestinationsOf(undefined)}
+                />
+            )}
+
+            {renaming && (
+                <Modal
+                    titleKey="journeys.journey.rename"
+                    okLabelKey="journeys.action.apply"
+                    cancelLabelKey="journeys.action.cancel"
+                    zIndex={1100}
+                    onConfirm={() => {
+                        edit({
+                            type: 'edit',
+                            journeyId: renaming.id,
+                            command: { type: 'rename', name: renaming.name },
+                        });
+                        setRenaming(undefined);
+                    }}
+                    onClose={() => setRenaming(undefined)}
+                >
+                    <FloatingLabelInput
+                        label={t('journeys.journey.name')}
+                        value={renaming.name}
+                        onChange={(event) => setRenaming({ id: renaming.id, name: event.target.value })}
+                    />
+                </Modal>
+            )}
+
+            {removing && (
+                <Modal
+                    titleKey="journeys.journey.removeTitle"
+                    titleKeyOptions={{ journey: journeyLabel(removing, t) }}
+                    contentKey="journeys.journey.removeText"
+                    okLabelKey="journeys.journey.remove"
+                    cancelLabelKey="journeys.action.cancel"
+                    zIndex={1100}
+                    onConfirm={() => {
+                        edit({ type: 'delete', journeyId: removing.id });
+                        setRemovingId(undefined);
+                    }}
+                    onClose={() => setRemovingId(undefined)}
+                />
+            )}
+        </>
+    );
+};

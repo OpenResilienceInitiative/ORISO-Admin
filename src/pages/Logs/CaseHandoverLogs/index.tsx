@@ -1,10 +1,12 @@
-import { Alert, Tag } from 'antd';
+import { Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ColumnType } from 'antd/lib/table';
 import { ListingTable } from '../../../components/ListingTable';
 import { useCaseHandoverLogsData } from '../../../hooks/useCaseHandoverLogsData';
 import { CaseHandoverLogEntry } from '../../../types/caseHandoverLogs';
+import { reasonTranslationKey } from '../../../components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/caseHandoverCardUtils';
+import { Notify } from '../../../components/Notify';
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -69,6 +71,9 @@ export const CaseHandoverLogsPage = () => {
                 dataIndex: 'reasonLabel',
                 key: 'reasonLabel',
                 width: 240,
+                // Backend label is English; translate by code, else the label, else the code itself.
+                render: (label: string, row) =>
+                    t(reasonTranslationKey(row.reasonCode), { defaultValue: label || row.reasonCode }),
             },
             {
                 title: t('caseHandoverLogs.table.auditOutcome'),
@@ -84,8 +89,18 @@ export const CaseHandoverLogsPage = () => {
     );
 
     return (
-        <>
-            {isLogsError && <Alert type="error" message={t('error.loading')} showIcon />}
+        <div id="case-handover-logs">
+            {isLogsError && (
+                <Notify
+                    retry
+                    jump="case-handover-logs"
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.logs')}
+                    severity="error"
+                >
+                    {t('error.loading')}
+                </Notify>
+            )}
             <ListingTable<CaseHandoverLogEntry>
                 rowKey={(row) => `${row.requestId}`}
                 loading={isLoading}
@@ -106,6 +121,6 @@ export const CaseHandoverLogsPage = () => {
                     },
                 }}
             />
-        </>
+        </div>
     );
 };

@@ -1,0 +1,11 @@
+@use '../../styles/muiSpacing' as *;
+
+/* The switches read as one group rather than four unrelated rows, on the same
+   8px grid as the MUI fields above them. */
+
+.switchGroup {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 3 * $mui-unit;
+    gap: 2 * $mui-unit;
+}

@@ -1,0 +1,37 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* ORISO-UserService#1662 — one column per chat type, lined up with the direct-invite options. */
+.media {
+    display: grid;
+    gap: mui.$mui-unit * 1.5;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+}
+
+.medium {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+.mediumHeading {
+    display: flex;
+    align-items: center;
+    gap: mui.$mui-unit;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+    letter-spacing: 0.3px;
+}
+
+.mediumIcon {
+    font-size: 18px;
+}
+
+.note {
+    margin: 0;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: 0.3px;
+}

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -49,6 +49,13 @@ vi.mock('../../api/tenant/createDpaSignInvite', () => ({
 vi.mock('../../api/tenant/sendDpaInviteEmail', () => ({
     sendDpaInviteEmail: mocks.sendDpaInviteEmail,
     isDpaInviteEmailDeliveryFailure: (error: unknown) => error instanceof Response && error.status === 502,
+}));
+
+// A failed preview raises its own persistent pop-up, which would hold a place in the snackbar
+// stack and could cover the pop-up under test.
+vi.mock('../../api/tenantOnboarding/dpaMailPreview', () => ({
+    getAdminDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
+    getPublicDpaMailPreview: vi.fn().mockResolvedValue({ subject: 'AVV', html: '<p>AVV</p>' }),
 }));
 
 vi.mock('../../api/auth/logout', () => ({
@@ -112,7 +119,7 @@ describe('DpaBlockerGate', () => {
         mocks.createDpaSignInvite.mockReset();
         mocks.createDpaSignInvite.mockResolvedValue({
             signLink: 'https://app.example.org/dpa-sign/minted-token',
-            expiresAt: '2026-08-29T14:31:07',
+            expiresAt: '2099-08-29T14:31:07',
         });
         mocks.sendDpaInviteEmail.mockReset();
         mocks.sendDpaInviteEmail.mockResolvedValue(undefined);
@@ -194,15 +201,17 @@ describe('DpaBlockerGate', () => {
         expect(mocks.getDpaStatus).not.toHaveBeenCalled();
     });
 
-    it('shows the signable blocker with the published DPA text for OUTDATED', async () => {
-        mocks.getDpaStatus.mockResolvedValue(statusInfo('OUTDATED'));
+    it('keeps ongoing work reachable for OUTDATED after renewal expiry', async () => {
+        mocks.getDpaStatus.mockResolvedValue({
+            ...statusInfo('OUTDATED'),
+            signingDeadlineAt: '2020-01-01T12:00:00Z',
+            newCounsellingAllowed: false,
+        });
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
-        expect(screen.getByText('dpaBlocker.intro.OUTDATED')).toBeInTheDocument();
-        expect(await screen.findByTestId('dpa-text')).toHaveTextContent('AVV-Text des Betreibers');
-        expect(screen.getByRole('button', { name: 'dpaBlocker.sign.submit' })).toBeInTheDocument();
+        expect(await screen.findByTestId('admin-page')).toBeInTheDocument();
+        expect(screen.queryByTestId('dpa-blocker')).not.toBeInTheDocument();
     });
 
     it('shows the MISSING state without a sign form', async () => {
@@ -273,6 +282,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: 'Vertretungsberechtigt laut Satzung',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -302,6 +312,7 @@ describe('DpaBlockerGate', () => {
             signerEmail: 'toni@example.org',
             signerOrganisation: '',
             accepted: true,
+            dpaVersion: PUBLISHED_VERSION.activationDate,
             language: 'de',
         });
     });
@@ -351,10 +362,10 @@ describe('DpaBlockerGate', () => {
 
         renderGate();
 
-        expect(await screen.findByTestId('dpa-blocker')).toBeInTheDocument();
+        expect(await screen.findByTestId('dpa-text')).toBeInTheDocument();
         await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
     });
 
     it('scroll-locks the app behind the overlay while blocked', async () => {
@@ -421,7 +432,7 @@ describe('DpaBlockerGate', () => {
 
             await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-            expect(mocks.logout).toHaveBeenCalledWith(true);
+            expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
             expect(screen.getByTestId('dpa-pending-dialog')).toBeInTheDocument();
             expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
         });
@@ -633,7 +644,7 @@ describe('DpaBlockerGate', () => {
 
             await user.click(screen.getByRole('button', { name: 'dpaBlocker.logout' }));
 
-            expect(mocks.logout).toHaveBeenCalledWith(true);
+            expect(mocks.logout).toHaveBeenCalledWith(true, undefined, 'explicit');
         });
     });
 

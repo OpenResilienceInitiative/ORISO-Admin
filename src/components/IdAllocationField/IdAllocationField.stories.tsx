@@ -48,6 +48,8 @@ const staticAllocation = (overrides: Partial<UseIdAllocationResult>): UseIdAlloc
     setManualValue: () => {},
     step: () => {},
     resetToAuto: () => {},
+    selectExisting: () => {},
+    peekNextFree: async () => 21,
     ...overrides,
 });
 
@@ -102,10 +104,29 @@ const StateGallery = () => (
             allocation={staticAllocation({ mode: 'manual', value: 21, validation: 'error', canSubmit: false })}
             label="Service-Fehler"
         />
+        <IdAllocationField
+            allocation={staticAllocation({
+                mode: 'existing',
+                value: 7,
+                unit: { id: 7, name: 'Caritas Südbaden' },
+                validation: 'existing',
+            })}
+            label="Bestehend"
+        />
+        <IdAllocationField
+            allocation={staticAllocation({
+                mode: 'existing',
+                value: 7,
+                unit: { id: 7, name: 'Caritas Südbaden' },
+                validation: 'existing',
+            })}
+            label="Gesperrt"
+            locked
+        />
     </div>
 );
 
-/** All validation states side by side: Auto, empty, checking, available, reserved, assigned, service error. */
+/** All states side by side: Neu (Auto), empty, checking, available, reserved, assigned, service error, existing, locked. */
 export const AllStates: Story = {
     render: () => <StateGallery />,
 };

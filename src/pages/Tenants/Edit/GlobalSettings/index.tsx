@@ -1,24 +1,27 @@
-import { Col, Row } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PermissionsSettings } from '../../../../components/Tenants/AppSettings/PermissionsSettings';
-import styles from './styles.module.scss';
+import { LiveChatLinks } from '../../../../components/LiveChatLinks';
+import { TenantPermissionsSettings } from '../../../../components/Tenants/AppSettings/PermissionsSettings/TenantPermissionsSettings';
 
+/**
+ * Funktionszugriff of one Träger, edited by a platform admin (`/admin/tenants/:id/global-settings`).
+ * ORISO-Admin#989: it edits THIS Träger — its stored values and its policies — not the platform-wide
+ * controls under /settings. ORISO-Admin#1577: the same tiles as the platform and Beratungsstelle pages,
+ * the chat links on the Live Chat tile, and the scope said in the page intro.
+ */
 export const TenantGlobalSettings = () => {
     const { id } = useParams<{ id: string }>();
     const { t } = useTranslation();
+    const tenantId = Number(id);
+    const validTenantId = Number.isSafeInteger(tenantId) && tenantId > 0;
 
     return (
-        <Row gutter={[24, 24]}>
-            <Col span={24}>
-                <div className={styles.warningCard}>
-                    <strong>{t('tenants.globalSettings.superAdminWarning.title')}</strong>
-                    <p>{t('tenants.globalSettings.superAdminWarning.description')}</p>
-                </div>
-                <div className={styles.permissionsCardWrap}>
-                    <PermissionsSettings tenantId={id || ''} superAdminControlMode excludeCardKeys={['liveChat']} />
-                </div>
-            </Col>
-        </Row>
+        <TenantPermissionsSettings
+            tenantId={id || ''}
+            introScopeNote={t('tenants.globalSettings.superAdminWarning.description')}
+            liveChatLinks={
+                validTenantId ? <LiveChatLinks key={tenantId} mode="manage" tenantId={tenantId} /> : undefined
+            }
+        />
     );
 };

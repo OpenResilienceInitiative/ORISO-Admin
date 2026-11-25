@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor, within } from 'storybook/test';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { ReactComponent as ScheduleIcon } from '../../resources/img/svg/oriso/schedule_24px.svg';
 import { Modal, DialogButton } from './index';
@@ -26,6 +27,38 @@ export const Confirmation: Story = {
         cancelLabelKey: 'cancel',
         onConfirm: () => {},
         onClose: () => {},
+    },
+};
+
+export const TextSize: Story = {
+    ...Confirmation,
+    name: 'Sentence and Cancel follow the text size',
+    play: async ({ canvasElement }) => {
+        const doc = canvasElement.ownerDocument;
+        const host = within(doc.body);
+        const body = doc.querySelector('.ant-modal-body');
+        const cancel = host.getByRole('button', { name: /cancel|abbrechen/i });
+        if (!(body instanceof HTMLElement)) throw new Error('The dialog sentence is missing');
+
+        const read = (node: HTMLElement) => Number.parseFloat(getComputedStyle(node).fontSize);
+        doc.documentElement.style.setProperty('--admin-personal-text-scale', '1');
+        const bodyAtOne = read(body);
+        const cancelAtOne = read(cancel);
+
+        doc.documentElement.style.setProperty('--admin-personal-text-scale', '2');
+        await waitFor(() => {
+            expect(read(body)).toBeCloseTo(bodyAtOne * 2, 0);
+            expect(read(cancel)).toBeCloseTo(cancelAtOne * 2, 0);
+        });
+
+        const box = cancel.getBoundingClientRect();
+        const text = doc.createRange();
+        text.selectNodeContents(cancel);
+        const textBox = text.getBoundingClientRect();
+        expect(textBox.top).toBeGreaterThanOrEqual(box.top - 1);
+        expect(textBox.bottom).toBeLessThanOrEqual(box.bottom + 1);
+        expect(textBox.left).toBeGreaterThanOrEqual(box.left - 1);
+        expect(textBox.right).toBeLessThanOrEqual(box.right + 1);
     },
 };
 

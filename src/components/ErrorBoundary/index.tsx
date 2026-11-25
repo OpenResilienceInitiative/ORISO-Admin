@@ -67,7 +67,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         }
 
         return (
-            <div role="alert" style={{ maxWidth: '480px', margin: '15vh auto 0', padding: '0 24px' }}>
+            <div
+                data-error-boundary=""
+                role="alert"
+                style={{ maxWidth: '480px', margin: '15vh auto 0', padding: '0 24px' }}
+            >
                 <h1 style={{ fontSize: '22px', marginBottom: '8px' }}>{i18next.t('errorBoundary.title') as string}</h1>
                 <p style={{ marginBottom: '24px' }}>{i18next.t('errorBoundary.description') as string}</p>
                 <button

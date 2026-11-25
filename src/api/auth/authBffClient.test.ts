@@ -1,11 +1,16 @@
 // @vitest-environment node
 // Node env: fetch/AbortController from one realm, no DOM needed (same as fetchData.test.ts).
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('../../appConfig', () => ({ default: { root: '/admin' } }));
 
 // eslint-disable-next-line import/first
-import { AUTH_BFF_REQUEST_TIMEOUT_MS, clearAuthTokensViaBff, refreshAuthTokensViaBff } from './authBffClient';
+import {
+    AUTH_BFF_REQUEST_TIMEOUT_MS,
+    bootstrapAuthSessionViaBff,
+    clearAuthTokensViaBff,
+    refreshAuthTokensViaBff,
+} from './authBffClient';
 
 /**
  * Root cause of the endless invite spinner on a dead admin session: the BFF
@@ -136,5 +141,22 @@ describe('refreshAuthTokensViaBff timeout guard', () => {
         vi.stubGlobal('fetch', fetchMock);
 
         await expect(refreshAuthTokensViaBff()).rejects.toThrow('keycloakLogin');
+    });
+});
+
+describe('bootstrapAuthSessionViaBff cancellation', () => {
+    afterEach(vi.unstubAllGlobals);
+
+    it('forwards the caller AbortSignal to the session request', async () => {
+        const controller = new AbortController();
+        const fetchMock = vi.fn().mockResolvedValue({ status: 204 });
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(bootstrapAuthSessionViaBff(controller.signal)).resolves.toBeNull();
+        expect(fetchMock).toHaveBeenCalledExactlyOnceWith('/admin/auth/session', {
+            method: 'GET',
+            credentials: 'include',
+            signal: controller.signal,
+        });
     });
 });

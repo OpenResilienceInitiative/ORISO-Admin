@@ -2,8 +2,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import authLogout from '../../api/auth/logout';
+import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
+import routePathNames from '../../appConfig';
 import ProtectedPageLayoutWrapper from './ProtectedPageLayoutWrapper';
 import PublicPageLayoutWrapper from './PublicPageLayoutWrapper';
 
@@ -21,6 +25,7 @@ vi.mock('../../api/auth/auth', () => ({ handleTokenRefresh: vi.fn() }));
 vi.mock('../../api/auth/logout', () => ({ default: vi.fn() }));
 vi.mock('../../api/tenant/getPublicTenantData', () => ({ default: vi.fn() }));
 vi.mock('../../config/runtimeConfig', () => ({
+    getBuildCommit: () => 'a'.repeat(40),
     keycloakAuthPath: (path: string) => path,
     runtimeConfig: {
         apiBaseUrl: '',
@@ -40,7 +45,7 @@ vi.mock('../../context/FeatureContext', () => ({
 vi.mock('../../context/useAppConfig', () => ({
     useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: true } }),
 }));
-vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: () => true }));
+vi.mock('../../hooks/useIsDesktopLayout.hook', () => ({ useIsDesktopLayout: vi.fn(() => true) }));
 vi.mock('../../hooks/useLanguage', () => ({
     useLanguage: () => ({
         language: 'de',
@@ -73,6 +78,8 @@ vi.mock('./AdminMobileNavBar', () => ({
         </nav>
     ),
 }));
+vi.mock('../productTour/TourHost', () => ({ TourHost: () => <div data-testid="tour-host" /> }));
+vi.mock('../productTour/TourLauncher', () => ({ TourLauncher: () => <div data-testid="tour-launcher" /> }));
 vi.mock('./AdminSidebar', () => ({
     default: ({ items, account, logout }: any) => (
         <nav data-testid="desktop-navigation">
@@ -110,7 +117,7 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByRole('menuitem', { name: 'footer.label.imprint' })).toBeVisible();
         expect(screen.getByRole('menuitem', { name: 'footer.label.privacy' })).toBeVisible();
         expect(screen.getByRole('button', { name: /language\.selectAriaLabel/ })).toBeVisible();
-        expect(screen.getByText('v-test')).toBeVisible();
+        expect(screen.getByText('v-test - aaaaaaa')).toBeVisible();
     });
 
     it('omits the footer from authenticated pages', () => {
@@ -150,6 +157,28 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByRole('button', { name: 'logout' })).toBeVisible();
     });
 
+    it('mounts the global tour host and the "?" launcher on an ordinary authenticated page', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper>
+                <main>Protected content</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.getByTestId('tour-host')).toBeInTheDocument();
+        expect(screen.getByTestId('tour-launcher')).toBeInTheDocument();
+    });
+
+    it('renders no tour host behind the two-factor gate', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper restricted>
+                <main>Two-factor setup</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.queryByTestId('tour-host')).toBeNull();
+        expect(screen.queryByTestId('tour-launcher')).toBeNull();
+    });
+
     it('honors hideFooter on public pages', () => {
         renderAtRoute(
             <PublicPageLayoutWrapper hideFooter>
@@ -159,5 +188,36 @@ describe('Admin layout footer ownership', () => {
 
         expect(screen.getByText('Footerless public content')).toBeVisible();
         expect(screen.queryByRole('contentinfo')).toBeNull();
+    });
+});
+
+// The user can abandon a centre continuation from either navigation surface,
+// including the logout-only shell shown by the mandatory two-factor gate.
+// Session-loss callers retain their default destination in agencySetupSessionExpiry.test.ts.
+describe('deliberate logout from centre setup', () => {
+    afterEach(() => {
+        vi.mocked(useIsDesktopLayout).mockReturnValue(true);
+    });
+
+    it.each([
+        { desktop: true, restricted: false },
+        { desktop: false, restricted: false },
+        { desktop: true, restricted: true },
+        { desktop: false, restricted: true },
+    ])('abandons the previous centre on desktop=$desktop, restricted=$restricted', async ({ desktop, restricted }) => {
+        vi.mocked(authLogout).mockClear();
+        vi.mocked(useIsDesktopLayout).mockReturnValue(desktop);
+        const user = userEvent.setup();
+        render(
+            <MemoryRouter initialEntries={['/admin/agency/5/setup']}>
+                <ProtectedPageLayoutWrapper restricted={restricted}>
+                    <main>Centre setup</main>
+                </ProtectedPageLayoutWrapper>
+            </MemoryRouter>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'logout' }));
+
+        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login, 'explicit');
     });
 });

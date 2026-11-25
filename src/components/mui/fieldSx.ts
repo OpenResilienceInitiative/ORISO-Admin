@@ -18,7 +18,7 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
     fontFamily: 'var(--m3-body-font-family)',
     ...(isDisabled
         ? {
-              opacity: 0.5,
+              opacity: 'var(--admin-field-disabled-opacity, 0.5)',
               cursor: 'not-allowed',
               pointerEvents: 'auto',
               '&:hover': { cursor: 'not-allowed' },
@@ -33,14 +33,19 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         backgroundColor: 'transparent',
         color: 'var(--admin-form-field-text)',
         fontFamily: 'var(--m3-body-font-family)',
-        fontSize: 16,
-        lineHeight: '24px',
+        fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+        lineHeight: 1.5,
         letterSpacing: '0.5px',
+    },
+    'html[data-admin-personal-contrast] & .MuiInputBase-input::placeholder': {
+        color: 'var(--admin-form-muted-text)',
+        opacity: 1,
     },
     '& .MuiInputLabel-root': {
         maxWidth: 'calc(100% - 24px)',
         color: 'var(--label-color)',
         fontFamily: 'var(--m3-body-font-family)',
+        fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
     },
     '& .MuiInputLabel-root.Mui-focused': {
         color: 'var(--input-focus-label-color, var(--admin-form-field-text))',
@@ -64,7 +69,7 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         borderColor: 'var(--input-hover-border-color, var(--admin-form-field-text, #1b1b1b))',
     },
     '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
-        borderColor: 'var(--input-focus-border-color, var(--admin-form-field-text, #1b1b1b))',
+        borderColor: 'var(--admin-field-focus, var(--input-focus-border-color, var(--admin-form-field-text, #1b1b1b)))',
         borderWidth: 2,
     },
     '& .MuiOutlinedInput-root.Mui-focused': {
@@ -85,6 +90,10 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         cursor: 'not-allowed',
         WebkitTextFillColor: 'var(--admin-form-field-text)',
     },
+    '& .MuiInputBase-root.Mui-disabled .MuiInputBase-input': {
+        color: 'var(--admin-form-field-text)',
+        WebkitTextFillColor: 'var(--admin-form-field-text)',
+    },
     '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
         borderColor: 'var(--input-border-color)',
     },
@@ -93,6 +102,9 @@ export const muiFieldSx = (isDisabled?: boolean): SxProps<Theme> => ({
         color: 'var(--admin-form-muted-text)',
         fontFamily: 'var(--m3-body-font-family)',
         overflowWrap: 'anywhere',
+    },
+    '& .MuiFormHelperText-root.Mui-disabled': {
+        color: 'var(--admin-form-muted-text)',
     },
     '& .MuiFormHelperText-root.Mui-error': {
         color: 'var(--form-error, #cc0000)',

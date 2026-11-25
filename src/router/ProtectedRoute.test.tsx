@@ -1,5 +1,5 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { ProtectedRoute } from './ProtectedRoute';
@@ -71,6 +71,29 @@ describe('ProtectedRoute', () => {
         mocks.hasAdminPortalAccess.mockReturnValue(true);
     });
 
+    it('keeps only the internal centre ID when setup requires sign-in again', async () => {
+        mocks.getAccessTokenForRequests.mockReturnValue('');
+        mocks.getRefreshTokenForRequests.mockReturnValue('');
+        render(
+            <MemoryRouter initialEntries={['/admin/agency/5/setup']}>
+                <Routes>
+                    <Route
+                        path="/admin/agency/:id/setup"
+                        element={
+                            <ProtectedRoute>
+                                <div>Setup</div>
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route path="/admin/login" element={<div>Login page</div>} />
+                </Routes>
+            </MemoryRouter>,
+        );
+        await waitFor(() => expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login?agencySetupId=5'));
+        expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+        expect(screen.queryByText('Setup')).not.toBeInTheDocument();
+    });
+
     it('shows the initialization state while the auth session bootstraps', () => {
         mocks.bootstrapAuthSession.mockReturnValue(
             new Promise(() => {
@@ -90,16 +113,18 @@ describe('ProtectedRoute', () => {
         expect(mocks.logout).not.toHaveBeenCalled();
     });
 
-    it('redirects to login when session tokens are missing', async () => {
+    it('leaves navigation to logout when session tokens are missing', async () => {
         mocks.getAccessTokenForRequests.mockReturnValue('');
 
         renderProtectedRoute();
 
-        expect(await screen.findByText('Login page')).toBeInTheDocument();
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        await waitFor(() => expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login'));
+        expect(screen.getByText('Initializing')).toBeInTheDocument();
+        expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+        expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
     });
 
-    it('redirects to login when the tokens are expired', async () => {
+    it('leaves navigation to logout when the tokens are expired', async () => {
         mocks.getTokenExpiryFromLocalStorage.mockReturnValue({
             accessTokenValidUntilTime: Date.now() - 60_000,
             refreshTokenValidUntilTime: Date.now() - 30_000,
@@ -107,20 +132,22 @@ describe('ProtectedRoute', () => {
 
         renderProtectedRoute();
 
-        expect(await screen.findByText('Login page')).toBeInTheDocument();
-        expect(mocks.logout).toHaveBeenCalledWith(true);
+        await waitFor(() => expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login'));
+        expect(screen.getByText('Initializing')).toBeInTheDocument();
+        expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+        expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
     });
 
-    it('logs out and redirects when the token has no admin portal access', async () => {
+    it('replaces the denied route when the token has no admin portal access', async () => {
         mocks.hasAdminPortalAccess.mockReturnValue(false);
 
         renderProtectedRoute();
 
         await waitFor(() => {
-            expect(mocks.logout).toHaveBeenCalledWith(true, '/admin/login');
+            expect(mocks.logout).toHaveBeenCalledWith(true, { url: '/admin/login', replace: true });
         });
-        // React 19 defers the redirect render slightly; assert it asynchronously
-        // (consistent with the sibling redirect tests above).
-        expect(await screen.findByText('Login page')).toBeInTheDocument();
+        expect(screen.getByText('Initializing')).toBeInTheDocument();
+        expect(screen.queryByText('Login page')).not.toBeInTheDocument();
+        expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
     });
 });

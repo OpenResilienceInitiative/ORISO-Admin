@@ -83,6 +83,8 @@ export interface SplitButtonProps {
     /** Accessible name of the up-chevron segment. Required whenever `onCollapse` is set. */
     collapseLabel?: string;
     className?: string;
+    /** Stretch to the container; the main segment takes the spare width (stacked forms). */
+    fullWidth?: boolean;
 }
 
 /**
@@ -110,6 +112,7 @@ export const SplitButton = ({
     onCollapse,
     collapseLabel,
     className,
+    fullWidth = false,
 }: SplitButtonProps) => {
     const { t } = useTranslation();
     const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -127,6 +130,7 @@ export const SplitButton = ({
                 {
                     [styles.disabled]: disabled,
                     [styles.open]: open,
+                    [styles.fullWidth]: fullWidth,
                 },
                 className,
             )}

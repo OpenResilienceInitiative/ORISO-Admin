@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { deriveDpaGateDecision, isDpaGateSubject, resolveDpaGateSubject } from './dpaBlockerGate';
 
 describe('resolveDpaGateSubject', () => {
@@ -144,7 +144,7 @@ describe('deriveDpaGateDecision', () => {
         });
     });
 
-    it.each(['UNSIGNED', 'OUTDATED'] as const)('blocks signable for %s', (status) => {
+    it.each(['UNSIGNED'] as const)('blocks signable for %s', (status) => {
         expect(deriveDpaGateDecision({ subjectKind: 'subject', status, isLoading: false, isError: false })).toEqual({
             kind: 'blocked',
             reason: status,
@@ -191,7 +191,7 @@ describe('deriveDpaGateDecision', () => {
 });
 
 describe('deriveDpaGateDecision — forwarded-pending (#724)', () => {
-    it.each(['UNSIGNED', 'OUTDATED'] as const)(
+    it.each(['UNSIGNED'] as const)(
         'softens the %s block into forwarded-pending when the status reports forwardPending',
         (status) => {
             expect(

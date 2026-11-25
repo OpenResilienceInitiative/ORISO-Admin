@@ -1,13 +1,12 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Error404 } from './Error404';
 import { AccessDenied } from './ErrorPages/AccessDenied';
-
-const mocks = vi.hoisted(() => ({
-    hasRole: vi.fn(),
-}));
+import { clearSessionTokens } from '../api/auth/tokenSessionStore';
+import { UserRole } from '../enums/UserRole';
+import { setStoryAuth } from '../utils/storybook/adminStoryDecorators';
 
 const translations: Record<string, string> = {
     'errorPages.accessDenied.description': 'You do not have access to this area.',
@@ -24,15 +23,13 @@ vi.mock('../components/Layout/PublicPageLayoutWrapper', () => ({
     default: ({ children }: { children: React.ReactNode }) => <main>{children}</main>,
 }));
 
-vi.mock('../hooks/useUserRoles.hook', () => ({
-    useUserRoles: () => ({ hasRole: mocks.hasRole }),
-}));
-
 vi.mock('../resources/img/illustrations/unauthorized.svg', () => ({
     ReactComponent: () => <svg aria-label="unauthorized" />,
 }));
 
 describe('error pages', () => {
+    afterEach(clearSessionTokens);
+
     it('renders a translated 404 page with a home link', () => {
         render(
             <MemoryRouter>
@@ -46,7 +43,7 @@ describe('error pages', () => {
     });
 
     it('sends admin users back to the admin app from access denied', () => {
-        mocks.hasRole.mockReturnValue(true);
+        setStoryAuth([UserRole.AgencyAdmin], 17);
 
         render(<AccessDenied />);
 
@@ -56,7 +53,7 @@ describe('error pages', () => {
     });
 
     it('sends non-admin users back to the frontend app from access denied', () => {
-        mocks.hasRole.mockReturnValue(false);
+        setStoryAuth([UserRole.Consultant], 17);
 
         render(<AccessDenied />);
 

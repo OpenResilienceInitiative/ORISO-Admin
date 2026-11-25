@@ -5,7 +5,12 @@
 /* neutral colors */
 @white: #ffffff;
 @lightest-grey: #fafafa;
-@light-grey: #f5f3f6;
+
+/* A near-white hover/rest surface. Named for the job, not the shade: as
+   `@light-grey` it collided with Settings.less, where the same name is a
+   mid-grey FOREGROUND (#787378), and Settings.less is imported last so it
+   won. See colorPalette.styles.test.ts. */
+@surface-hover: #f5f3f6;
 @disabled-bg: #e6e6e6;
 @table-borders: #c1c2c2;
 @disabled-text: #848484;

@@ -117,3 +117,21 @@
     margin-top: 32px;
     gap: 12px;
 }
+
+.topicChipRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.switchRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.switchLabel {
+    color: var(--m3-on-surface);
+    font: 400 16px/24px var(--m3-body-font-family);
+}

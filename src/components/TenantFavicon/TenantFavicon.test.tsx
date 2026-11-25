@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TenantFavicon } from './TenantFavicon';
 
 const PLATFORM_ICON = 'data:image/vnd.microsoft.icon;base64,AAABAAEAICAA';

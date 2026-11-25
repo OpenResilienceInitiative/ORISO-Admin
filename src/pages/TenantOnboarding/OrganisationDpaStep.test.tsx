@@ -1,10 +1,22 @@
 import type { ComponentProps } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
 import type { TenantAdminOnboardingInviteDTO } from '../../api/tenantOnboarding/tenantOnboarding';
 import de from '../../locales/de/translation.json';
 import en from '../../locales/en/translation.json';
+
+// The subdomain switch is read through this mock, so every test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+afterEach(() => {
+    subdomainFeature.finished = false;
+});
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -160,6 +172,57 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
         ).not.toBeInTheDocument();
     });
 
+    it('greys the subdomain out with a hint and builds a technical name from the organisation name', async () => {
+        subdomainFeature.finished = false;
+        const onSubmit = vi.fn();
+        renderStep({ confirmed: true, onSubmit });
+
+        const subdomain = screen.getByLabelText('tenantOnboarding.organisation.subdomain');
+        expect(subdomain).toBeDisabled();
+        expect(screen.getByText('tenantOnboarding.organisation.subdomainHint')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        await waitFor(() => expect((subdomain as HTMLInputElement).value).toMatch(/^tr-ger-beispiel-\d{6}$/));
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0]).toMatchObject({
+            name: 'Träger Beispiel',
+            subdomain: expect.stringMatching(/^tr-ger-beispiel-\d{6}$/),
+        });
+        // The submitted name is the one shown in the greyed field.
+        expect(onSubmit.mock.calls[0][0].subdomain).toBe((subdomain as HTMLInputElement).value);
+    });
+
+    it('lets the Träger type its own subdomain once subdomains are technically finished', async () => {
+        subdomainFeature.finished = true;
+        const onSubmit = vi.fn();
+        renderStep({ confirmed: true, onSubmit });
+
+        const subdomain = screen.getByLabelText('tenantOnboarding.organisation.subdomain');
+        expect(subdomain).toBeEnabled();
+        expect(screen.queryByText('tenantOnboarding.organisation.subdomainHint')).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        // No technical name is derived: the field stays empty and is required.
+        expect((subdomain as HTMLInputElement).value).toBe('');
+        fireEvent.change(subdomain, { target: { value: 'beispiel' } });
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0]).toMatchObject({ name: 'Träger Beispiel', subdomain: 'beispiel' });
+    });
+
     it('keeps the organisation master data in the forwarded on-hold state, without a signer section', async () => {
         renderStep({
             forward: { signUrl: 'https://example.org/dpa-sign/t', expiresAt: null, recipientEmail: null },
@@ -173,6 +236,79 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
         expect(
             screen.queryByRole('heading', { name: 'tenantOnboarding.dpa.signerSectionTitle' }),
         ).not.toBeInTheDocument();
+    });
+});
+
+/**
+ * The backend can fail to deliver the contract text for two opposite reasons
+ * (`dpaUnavailableReason`), and the page used to answer both with "please
+ * reload". Reloading helps in neither case: on staging that single sentence
+ * made a server-side misconfiguration read as "the operator published
+ * nothing", and it stayed unreported for hours. The step must pass the reason
+ * through and keep refusing the submit in every case.
+ */
+describe('OrganisationDpaStep — the unavailable agreement names its cause', () => {
+    it('shows the platform-configuration message on an upstream error', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'UPSTREAM_ERROR' } });
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            'tenantOnboarding.dpa.unavailableUpstream',
+        );
+    });
+
+    it('shows the not-yet-published message when nothing was published', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'NOT_PUBLISHED' } });
+
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            'tenantOnboarding.dpa.unavailableNotPublished',
+        );
+    });
+
+    it('falls back to the generic message against a backend that does not send the field', async () => {
+        renderStep({ invite: { ...INVITE, dpaContent: null } });
+
+        // Anchored: both reason keys start with the generic one.
+        expect(await screen.findByTestId('dpa-content-unavailable')).toHaveTextContent(
+            /^tenantOnboarding\.dpa\.unavailable$/,
+        );
+    });
+
+    it('still refuses the submit with a named reason — the step stays blocked', async () => {
+        const onSubmit = vi.fn();
+        renderStep({
+            invite: { ...INVITE, dpaContent: null, dpaUnavailableReason: 'UPSTREAM_ERROR' },
+            onSubmit,
+        });
+
+        await screen.findByTestId('dpa-content-unavailable');
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() =>
+            expect(screen.getByTestId('onboarding-submit-error')).toHaveTextContent(
+                'tenantOnboarding.dpa.unavailableBlocked',
+            ),
+        );
+        expect(onSubmit).not.toHaveBeenCalled();
+        // The delegation path is the way out and must survive the error state.
+        expect(screen.getByRole('button', { name: /dpaForward\.action\.notAuthorised/ })).toBeInTheDocument();
+    });
+
+    it('ships both reason messages in every locale, each with its own remedy', () => {
+        expect(de['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/Plattform-Konfiguration/);
+        expect(de['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/Neuladen der Seite hilft hier nicht/);
+        expect(de['tenantOnboarding.dpa.unavailableNotPublished']).toMatch(/noch keine Vertragsunterlagen/);
+        // The old wording sent people to reload; the named states must not.
+        expect(de['tenantOnboarding.dpa.unavailableNotPublished']).not.toMatch(/laden Sie die Seite neu/);
+        expect(en['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/platform configuration/i);
+        expect(en['tenantOnboarding.dpa.unavailableUpstream']).toMatch(/will not help/i);
+        expect(en['tenantOnboarding.dpa.unavailableNotPublished']).toMatch(/has not published/i);
+        expect(en['tenantOnboarding.dpa.unavailableNotPublished']).not.toMatch(/reload the page/i);
     });
 });
 

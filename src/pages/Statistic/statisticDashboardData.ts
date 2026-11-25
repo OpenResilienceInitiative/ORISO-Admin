@@ -2,15 +2,17 @@ import type {
     AdminDashboardPeriodCounts,
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
+    StatisticSnapshotInterval,
 } from '../../api/statistic/getDashboardStatistics';
-import type { CasePeriodKey, ConversationPeriodKey, ScopeKey } from './types';
+import { conversationPeriodOptions } from './statisticConstants';
+import type { CardMenuKey, CaseChartBar, CasePeriodKey, ConversationPeriodKey, PeriodOption, ScopeKey } from './types';
+import { toIntlLocale } from '../../utils/language';
 
 /**
  * Pure mapping from the UserService admin statistics response to the dashboard data
  * shapes. All numbers shown on the statistics dashboard originate here — there is no
- * mock data anymore. Metrics without an application-layer data source (messages, video
- * calls, voice messages, phone calls, live chat) are represented as `null` and rendered
- * as "Keine Daten".
+ * mock data anymore. Communication metrics the backend does not send are `undefined`
+ * ("not tracked"); live chat has no data source yet and is always `undefined`.
  */
 
 export type FilterTargetType = 'Träger' | 'Beratungsstelle';
@@ -28,6 +30,8 @@ export interface TopicStatistic {
 }
 
 export type MetricValue = number | null;
+/** `undefined` = the backend does not track this metric at all (shown as "not tracked"). */
+export type TrackedMetricValue = MetricValue | undefined;
 
 export interface FilterTargetMetricStats {
     activeAgencies: MetricValue;
@@ -36,18 +40,16 @@ export interface FilterTargetMetricStats {
     conversationsTotal: MetricValue;
     counselors: MetricValue;
     groups: MetricValue;
-    liveChat: MetricValue;
-    messagesCounselors: MetricValue;
-    messagesSeekers: MetricValue;
+    liveChat: TrackedMetricValue;
+    messagesCounselors: TrackedMetricValue;
+    messagesSeekers: TrackedMetricValue;
     oneToOne: MetricValue;
-    phoneCalls: MetricValue;
-    textMessagesTotal: MetricValue;
-    videoCalls: MetricValue;
-    voiceMessages: MetricValue;
-    topTopic: TopicStatistic;
-    previousMonth: TopicStatistic;
-    twoMonthsAgo: TopicStatistic;
-    threeMonthsAgo: TopicStatistic;
+    phoneCalls: TrackedMetricValue;
+    textMessagesTotal: TrackedMetricValue;
+    videoCalls: TrackedMetricValue;
+    voiceMessages: TrackedMetricValue;
+    /** Top topic per month of the topic window; index 0 = this month, 1 = last month, … */
+    topicsByMonth: TopicStatistic[];
 }
 
 export type ConversationValues = [number, number, number, number];
@@ -55,7 +57,8 @@ export type ConversationValues = [number, number, number, number];
 export interface FilterTargetStatistics {
     suppressed: boolean;
     enquiriesPreviousMonth: MetricValue;
-    caseCharts: Record<CasePeriodKey, number[]>;
+    /** Seven daily values (Mon–Sun) per week of the chart window; index 0 = this week. */
+    caseCharts: number[][];
     conversation: Record<ConversationPeriodKey, ConversationValues>;
     metrics: FilterTargetMetricStats;
 }
@@ -66,6 +69,18 @@ export interface StatisticData {
     statisticsById: Record<string, FilterTargetStatistics>;
     /** True when the backend skipped small-cell suppression (test environments only). */
     suppressionDisabled: boolean;
+    /** Weeks of the requests chart, the current week included (global statistics setting). */
+    chartWeeks: number;
+    /** Months of the top-topic ranking, the current month included (global statistics setting). */
+    topicMonths: number;
+    /** When the backend calculated these numbers; null before they are loaded. */
+    generatedAt: string | null;
+    /** How often this role gets a new stand. */
+    snapshotInterval: StatisticSnapshotInterval;
+    /** The newest full day of a fixed stand (ISO date); null when live. */
+    dataUntil: string | null;
+    /** "Now" for weeks and months: a stand is read from its newest full day, live numbers from today. Null before loading. */
+    referenceDate: Date | null;
 }
 
 export interface StatisticNameLookups {
@@ -79,13 +94,35 @@ export const SUPPRESSED_DETAIL = 'Statistik unterdrückt';
 
 const noDataTopic = (): TopicStatistic => ({ label: NO_DATA_LABEL, share: 0 });
 
-export const casePeriodOrder: CasePeriodKey[] = [
-    'thisWeek',
-    'lastWeek',
-    'twoWeeksAgo',
-    'threeWeeksAgo',
-    'fourWeeksAgo',
+/** Today's fixed windows; used until the backend reports the configured ones (UserService#1544). */
+export const DEFAULT_CHART_WEEKS = 5;
+export const DEFAULT_TOPIC_MONTHS = 4;
+// Upper bounds well above the server's options, only to keep a broken response from building huge charts.
+const MAX_CHART_WEEKS = 53;
+const MAX_TOPIC_MONTHS = 24;
+
+const resolveWindow = (value: number | undefined, fallback: number, max: number) =>
+    typeof value === 'number' && Number.isInteger(value) && value >= 1 ? Math.min(value, max) : fallback;
+
+export const CASE_WEEK_OVERVIEW_KEY: CasePeriodKey = 'weekOverview';
+export const casePeriodKeyForWeek = (weeksAgo: number): CasePeriodKey => `weeksAgo${weeksAgo}`;
+
+const namedWeekLabels = ['diese Woche', 'letzte Woche', 'vor zwei Wochen', 'vor drei Wochen', 'vor vier Wochen'];
+
+/** One option per week of the chart window, newest first, then the week overview. */
+export const buildCasePeriodOptions = (chartWeeks: number): Array<PeriodOption<CasePeriodKey>> => [
+    ...Array.from({ length: chartWeeks }, (unused, weeksAgo) => ({
+        key: casePeriodKeyForWeek(weeksAgo),
+        label: namedWeekLabels[weeksAgo] ?? `vor ${weeksAgo} Wochen`,
+    })),
+    { key: CASE_WEEK_OVERVIEW_KEY, label: `${chartWeeks} Wochen im Überblick` },
 ];
+
+const namedTopicMenuKeys: CardMenuKey[] = ['topTopic', 'previousMonth', 'twoMonthsAgo', 'threeMonthsAgo'];
+
+/** Metric-menu key of the top topic n months back; the first four keep their established names. */
+export const topicMenuKeyForMonth = (monthsAgo: number): CardMenuKey =>
+    namedTopicMenuKeys[monthsAgo] ?? `topicMonthsAgo${monthsAgo}`;
 
 const conversationPeriodOrder: ConversationPeriodKey[] = [
     'today',
@@ -98,6 +135,8 @@ const conversationPeriodOrder: ConversationPeriodKey[] = [
 
 export const tenantTargetId = (tenantId: number) => `tenant-${tenantId}`;
 export const agencyTargetId = (agencyId: number) => `agency-${agencyId}`;
+/** The whole platform as one row (OBP #93); only platform admins receive it. */
+export const PLATFORM_TOTAL_TARGET_ID = 'platform-total';
 
 /* ---------- date helpers ---------- */
 
@@ -111,74 +150,93 @@ export const getWeekStart = (now: Date): Date => {
     return new Date(date.getTime() - weekday * dayInMs);
 };
 
-export const getWeekStartsByPeriod = (now: Date): Record<CasePeriodKey, Date> => {
+/** Monday 00:00 of this week and of each week before it; index = weeks back. */
+export const getWeekStarts = (now: Date, chartWeeks: number): Date[] => {
     const currentWeekStart = getWeekStart(now);
-    const weekStartMinusWeeks = (weeks: number) => new Date(currentWeekStart.getTime() - weeks * 7 * dayInMs);
 
-    return {
-        thisWeek: currentWeekStart,
-        lastWeek: weekStartMinusWeeks(1),
-        twoWeeksAgo: weekStartMinusWeeks(2),
-        threeWeeksAgo: weekStartMinusWeeks(3),
-        fourWeeksAgo: weekStartMinusWeeks(4),
-    };
+    // via the calendar date, not milliseconds, so a daylight-saving switch cannot shift a Monday
+    return Array.from(
+        { length: chartWeeks },
+        (unused, weeksAgo) =>
+            new Date(
+                currentWeekStart.getFullYear(),
+                currentWeekStart.getMonth(),
+                currentWeekStart.getDate() - weeksAgo * 7,
+            ),
+    );
 };
+
+const addDays = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 
 const toIsoDate = (date: Date) =>
     `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, '0')}-${`${date.getDate()}`.padStart(2, '0')}`;
 
 export const caseChartDayCodes = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
-/** Real date labels per period, e.g. "Do, 9 Jul" (day code is translated at render time). */
-export const buildCaseChartDateLabels = (now: Date): Record<CasePeriodKey, string[]> => {
-    const weekStarts = getWeekStartsByPeriod(now);
-    const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'short' });
+const monthFormatter = new Intl.DateTimeFormat('de-DE', { month: 'short' });
+const shortDate = (date: Date) => `${date.getDate()} ${monthFormatter.format(date).replace('.', '')}`;
 
-    return casePeriodOrder.reduce(
-        (labels, periodKey) => ({
-            ...labels,
-            [periodKey]: caseChartDayCodes.map((dayCode, index) => {
-                const date = new Date(weekStarts[periodKey].getTime() + index * dayInMs);
-                const monthShort = monthFormatter.format(date).replace('.', '');
-
-                return `${dayCode}, ${date.getDate()} ${monthShort}`;
-            }),
-        }),
-        {} as Record<CasePeriodKey, string[]>,
+/** Real date labels per week (index = weeks back), e.g. "Do, 9 Jul" (day code is translated at render time). */
+export const buildCaseChartDateLabels = (now: Date, chartWeeks: number = DEFAULT_CHART_WEEKS): string[][] =>
+    getWeekStarts(now, chartWeeks).map((weekStart) =>
+        caseChartDayCodes.map((dayCode, index) => `${dayCode}, ${shortDate(addDays(weekStart, index))}`),
     );
+
+/** ISO 8601 calendar week of a date (weeks start on Monday, week 1 holds the first Thursday). */
+export const getIsoWeek = (date: Date): number => {
+    const day = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const weekday = day.getUTCDay() || 7; // Monday = 1 … Sunday = 7
+    day.setUTCDate(day.getUTCDate() + 4 - weekday); // the Thursday of this week decides the year
+    const yearStart = Date.UTC(day.getUTCFullYear(), 0, 1);
+
+    return Math.ceil(((day.getTime() - yearStart) / dayInMs + 1) / 7);
+};
+
+/**
+ * The week overview: one bar per week of the chart window, oldest first, each the sum of its seven
+ * days. Bars are named by calendar week ("KW 28"); the current week is selected by default.
+ */
+export const buildCaseWeekOverview = (caseCharts: number[][], now: Date): CaseChartBar[] => {
+    const weekStarts = getWeekStarts(now, caseCharts.length);
+
+    return caseCharts
+        .map((days, weeksAgo) => {
+            const weekStart = weekStarts[weeksAgo];
+            const calendarWeek = `KW ${getIsoWeek(weekStart)}`;
+
+            return {
+                day: calendarWeek,
+                dateLabel: `${calendarWeek}, ${shortDate(weekStart)} – ${shortDate(addDays(weekStart, 6))}`,
+                value: days.reduce((sum, value) => sum + value, 0),
+                isDefaultSelected: weeksAgo === 0,
+            };
+        })
+        .reverse();
 };
 
 /** German two-letter code of today's weekday, used as default-selected chart bar. */
 export const getTodayDayCode = (now: Date): string => caseChartDayCodes[(now.getDay() + 6) % 7];
 
-const buildCaseChartValues = (
-    dailyNewSessions: AdminDashboardTarget['dailyNewSessions'],
-    now: Date,
-): Record<CasePeriodKey, number[]> => {
-    const weekStarts = getWeekStartsByPeriod(now);
+const buildCaseChartValues = (target: AdminDashboardTarget, now: Date, chartWeeks: number): number[][] => {
+    // A weekly stand has no single days: each week's count lies on its first slot, and only the week
+    // overview, which adds up a week, is offered.
     const countsByDate: Record<string, number> = {};
-    dailyNewSessions.forEach(({ date, count }) => {
+    [
+        ...target.dailyNewSessions,
+        ...(target.weeklyNewSessions ?? []).map(({ weekStart, count }) => ({ date: weekStart, count })),
+    ].forEach(({ date, count }) => {
         countsByDate[date] = (countsByDate[date] || 0) + count;
     });
 
-    return casePeriodOrder.reduce(
-        (charts, periodKey) => ({
-            ...charts,
-            [periodKey]: caseChartDayCodes.map((unusedDayCode, index) => {
-                const date = new Date(weekStarts[periodKey].getTime() + index * dayInMs);
-
-                return countsByDate[toIsoDate(date)] || 0;
-            }),
-        }),
-        {} as Record<CasePeriodKey, number[]>,
+    return getWeekStarts(now, chartWeeks).map((weekStart) =>
+        caseChartDayCodes.map((unusedDayCode, index) => countsByDate[toIsoDate(addDays(weekStart, index))] || 0),
     );
 };
 
-const emptyCaseCharts = (): Record<CasePeriodKey, number[]> =>
-    casePeriodOrder.reduce(
-        (charts, periodKey) => ({ ...charts, [periodKey]: [0, 0, 0, 0, 0, 0, 0] }),
-        {} as Record<CasePeriodKey, number[]>,
-    );
+export const emptyCaseCharts = (chartWeeks: number): number[][] =>
+    Array.from({ length: chartWeeks }, () => [0, 0, 0, 0, 0, 0, 0]);
+
+export const noDataTopics = (topicMonths: number): TopicStatistic[] => Array.from({ length: topicMonths }, noDataTopic);
 
 /* ---------- statistics mapping ---------- */
 
@@ -199,7 +257,7 @@ const buildTopicStatistic = (
     }
 
     return {
-        label: topicNamesById[`${monthlyTopic.topicId}`] || `#${monthlyTopic.topicId}`,
+        label: topicNamesById[`${monthlyTopic.topicId}`] || `Thema ${monthlyTopic.topicId}`,
         share: monthlyTopic.sharePercent,
     };
 };
@@ -218,24 +276,50 @@ const buildConversationValues = (
         {} as Record<ConversationPeriodKey, ConversationValues>,
     );
 
+/** Both parts tracked → their sum; one withheld → withheld (even next to an untracked part); else untracked. */
+const sumTracked = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === null || second === null) return null;
+    if (first === undefined || second === undefined) return undefined;
+    return first + second;
+};
+
+/**
+ * Combines one communication count across targets: a metric no target tracks stays untracked,
+ * and a count one target withholds (null) keeps the whole sum withheld instead of reading as 0.
+ */
+export const addTrackedMetricValues = (first: TrackedMetricValue, second: TrackedMetricValue): TrackedMetricValue => {
+    if (first === undefined) return second;
+    if (second === undefined) return first;
+    if (first === null || second === null) return null;
+    return first + second;
+};
+
+interface TimeWindows {
+    chartWeeks: number;
+    topicMonths: number;
+}
+
 const buildTargetStatistics = (
     target: AdminDashboardTarget,
     agencyRowCount: number,
     topicNamesById: Record<string, string>,
     now: Date,
+    windows: TimeWindows,
 ): FilterTargetStatistics => {
     if (target.suppressed) {
         return {
             suppressed: true,
             enquiriesPreviousMonth: null,
-            caseCharts: emptyCaseCharts(),
+            caseCharts: emptyCaseCharts(windows.chartWeeks),
             conversation: buildConversationValues(null, null),
             metrics: {
                 activeAgencies: null,
                 activeConversations: null,
                 cases: null,
                 conversationsTotal: null,
-                counselors: target.counselorCount,
+                // a hidden row shows no count: an old backend sends the real one, a new one a 0 that
+                // would read as "no counsellors"
+                counselors: null,
                 groups: null,
                 liveChat: null,
                 messagesCounselors: null,
@@ -245,10 +329,7 @@ const buildTargetStatistics = (
                 textMessagesTotal: null,
                 videoCalls: null,
                 voiceMessages: null,
-                topTopic: noDataTopic(),
-                previousMonth: noDataTopic(),
-                twoMonthsAgo: noDataTopic(),
-                threeMonthsAgo: noDataTopic(),
+                topicsByMonth: noDataTopics(windows.topicMonths),
             },
         };
     }
@@ -256,27 +337,29 @@ const buildTargetStatistics = (
     return {
         suppressed: false,
         enquiriesPreviousMonth: target.metrics?.enquiriesPreviousMonth ?? null,
-        caseCharts: buildCaseChartValues(target.dailyNewSessions, now),
+        caseCharts: buildCaseChartValues(target, now, windows.chartWeeks),
         conversation: buildConversationValues(target.sessionCountsByPeriod, target.groupChatCountsByPeriod),
         metrics: {
-            activeAgencies: target.targetType === 'TENANT' ? agencyRowCount || null : 1,
+            activeAgencies: target.targetType === 'AGENCY' ? 1 : agencyRowCount || null,
             activeConversations: target.metrics?.activeConversationsToday ?? null,
             cases: target.metrics?.activeCases ?? null,
             conversationsTotal: target.sessionCountsByPeriod?.total ?? null,
             counselors: target.counselorCount,
             groups: target.groupChatCountsByPeriod?.total ?? null,
-            liveChat: null,
-            messagesCounselors: null,
-            messagesSeekers: null,
+            liveChat: undefined,
+            messagesCounselors: target.metrics?.messagesCounselorsCurrentMonth,
+            messagesSeekers: target.metrics?.messagesAdviceSeekersCurrentMonth,
             oneToOne: target.metrics?.enquiriesCurrentMonth ?? null,
-            phoneCalls: null,
-            textMessagesTotal: null,
-            videoCalls: null,
-            voiceMessages: null,
-            topTopic: buildTopicStatistic(target, monthKeyWithOffset(now, 0), topicNamesById),
-            previousMonth: buildTopicStatistic(target, monthKeyWithOffset(now, 1), topicNamesById),
-            twoMonthsAgo: buildTopicStatistic(target, monthKeyWithOffset(now, 2), topicNamesById),
-            threeMonthsAgo: buildTopicStatistic(target, monthKeyWithOffset(now, 3), topicNamesById),
+            phoneCalls: target.metrics?.audioCallsCurrentMonth,
+            textMessagesTotal: sumTracked(
+                target.metrics?.messagesCounselorsCurrentMonth,
+                target.metrics?.messagesAdviceSeekersCurrentMonth,
+            ),
+            videoCalls: target.metrics?.videoCallsCurrentMonth,
+            voiceMessages: target.metrics?.voiceMessagesCurrentMonth,
+            topicsByMonth: Array.from({ length: windows.topicMonths }, (unused, monthsAgo) =>
+                buildTopicStatistic(target, monthKeyWithOffset(now, monthsAgo), topicNamesById),
+            ),
         },
     };
 };
@@ -311,17 +394,68 @@ export const emptyStatisticData = (): StatisticData => ({
     fallbackIdsByScope: { platform: [], tenant: [], agency: [] },
     statisticsById: {},
     suppressionDisabled: false,
+    chartWeeks: DEFAULT_CHART_WEEKS,
+    topicMonths: DEFAULT_TOPIC_MONTHS,
+    generatedAt: null,
+    snapshotInterval: 'LIVE',
+    dataUntil: null,
+    referenceDate: null,
 });
+
+/** The newest full day of a stand as a local date, so a browser elsewhere picks the same week and month. */
+const readStandDay = (dataUntil: string | null, fallback: Date): Date => {
+    const [year, month, day] = (dataUntil ?? '').split('-').map(Number);
+    return year && month && day ? new Date(year, month - 1, day) : fallback;
+};
+
+/** A stand's day, taken from the string itself so no time zone can move it to another day. */
+export const formatStandDay = (dataUntil: string, language: string): string => {
+    const [year, month, day] = dataUntil.split('-').map(Number);
+    if (!year || !month || !day) return dataUntil;
+    return new Intl.DateTimeFormat(toIntlLocale(language), {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'UTC',
+    }).format(new Date(Date.UTC(year, month - 1, day)));
+};
+
+/**
+ * The periods of the conversation chart. A fixed stand has no "today", and its newest full day goes
+ * by its date, because "yesterday" is wrong on any later reading. A weekly stand has no single days.
+ */
+export const buildConversationPeriodOptions = (
+    snapshotInterval: StatisticSnapshotInterval,
+    dataUntil: string | null,
+    language: string,
+): Array<PeriodOption<ConversationPeriodKey>> => {
+    if (snapshotInterval === 'LIVE') return conversationPeriodOptions;
+    return conversationPeriodOptions
+        .filter(({ key }) => key !== 'today' && (key !== 'yesterday' || snapshotInterval === 'DAILY'))
+        .map((option) =>
+            option.key === 'yesterday' && dataUntil
+                ? { ...option, label: formatStandDay(dataUntil, language) }
+                : option,
+        );
+};
 
 export const buildStatisticData = (
     response: AdminDashboardStatisticsResponse | undefined,
     lookups: StatisticNameLookups,
-    now: Date = new Date(),
+    today: Date = new Date(),
 ): StatisticData => {
     if (!response) {
         return emptyStatisticData();
     }
 
+    const snapshotInterval = response.snapshotInterval ?? 'LIVE';
+    const dataUntil = snapshotInterval === 'LIVE' ? null : response.dataUntil ?? null;
+    const now = snapshotInterval === 'LIVE' ? today : readStandDay(dataUntil, today);
+
+    const windows: TimeWindows = {
+        chartWeeks: resolveWindow(response.chartWeeks, DEFAULT_CHART_WEEKS, MAX_CHART_WEEKS),
+        topicMonths: resolveWindow(response.topicMonths, DEFAULT_TOPIC_MONTHS, MAX_TOPIC_MONTHS),
+    };
     const tenantRows = response.targets.filter((target) => target.targetType === 'TENANT');
     const agencyRows = response.targets.filter((target) => target.targetType === 'AGENCY');
 
@@ -336,6 +470,7 @@ export const buildStatisticData = (
                 agencyRows.length,
                 lookups.topicNamesById,
                 now,
+                windows,
             );
             targetIdsInOrder.push(filterTarget.id);
         }
@@ -349,17 +484,34 @@ export const buildStatisticData = (
         .filter((target): target is FilterTarget => Boolean(target));
 
     const suppressionDisabled = Boolean(response.suppressionDisabled);
+    const standFields = { generatedAt: response.generatedAt, snapshotInterval, dataUntil, referenceDate: now };
 
     if (response.scope === 'PLATFORM') {
+        // The backend's platform total is suppressed only when the platform itself is below its
+        // threshold. Adding up unsuppressed Träger instead would hide the whole platform as soon
+        // as every single Träger is small (OBP #93).
+        const platformRow = response.targets.find((target) => target.targetType === 'PLATFORM');
+        if (platformRow) {
+            statisticsById[PLATFORM_TOTAL_TARGET_ID] = buildTargetStatistics(
+                platformRow,
+                agencyRows.length,
+                lookups.topicNamesById,
+                now,
+                windows,
+            );
+        }
+
         return {
+            ...standFields,
             targetsByScope: { platform: tenantTargets, tenant: tenantTargets, agency: [] },
             fallbackIdsByScope: {
-                platform: tenantTargets.map((target) => target.id),
+                platform: platformRow ? [PLATFORM_TOTAL_TARGET_ID] : tenantTargets.map((target) => target.id),
                 tenant: tenantTargets.map((target) => target.id),
                 agency: [],
             },
             statisticsById,
             suppressionDisabled,
+            ...windows,
         };
     }
 
@@ -367,6 +519,7 @@ export const buildStatisticData = (
         const tenantFallback = tenantTargets.length ? [tenantTargets[0].id] : agencyTargets.map((target) => target.id);
 
         return {
+            ...standFields,
             targetsByScope: { platform: [], tenant: agencyTargets, agency: agencyTargets },
             fallbackIdsByScope: {
                 platform: [],
@@ -375,10 +528,12 @@ export const buildStatisticData = (
             },
             statisticsById,
             suppressionDisabled,
+            ...windows,
         };
     }
 
     return {
+        ...standFields,
         targetsByScope: { platform: [], tenant: [], agency: agencyTargets },
         fallbackIdsByScope: {
             platform: [],
@@ -387,5 +542,118 @@ export const buildStatisticData = (
         },
         statisticsById,
         suppressionDisabled,
+        ...windows,
+    };
+};
+
+/**
+ * A platform admin's dashboard has no Beratungsstellen (the platform scope stops at Träger). Picking a
+ * Beratungsstelle loads its Träger's dashboard (`?tenantId=`); this puts that Träger's Beratungsstellen
+ * on the Beratungsstellen level and keeps everything else from the platform dashboard. Only agency
+ * rows are taken over: the Träger row of both answers has the same id, and the platform one stays.
+ */
+export const withAgencyDrill = (platform: StatisticData, tenant: StatisticData): StatisticData => {
+    const agencies = tenant.targetsByScope.agency;
+    const agencyStatistics: Record<string, FilterTargetStatistics> = {};
+    agencies.forEach((target) => {
+        if (tenant.statisticsById[target.id]) agencyStatistics[target.id] = tenant.statisticsById[target.id];
+    });
+
+    return {
+        ...platform,
+        targetsByScope: { ...platform.targetsByScope, agency: agencies },
+        fallbackIdsByScope: { ...platform.fallbackIdsByScope, agency: tenant.fallbackIdsByScope.agency },
+        statisticsById: { ...platform.statisticsById, ...agencyStatistics },
+    };
+};
+
+/** A Beratungsstelle as the platform admin can pick it before any of its numbers are loaded. */
+export interface StatisticAgencyEntry {
+    id: number;
+    name: string;
+    tenantId: number;
+}
+
+/**
+ * Which Träger a platform admin is looking into: the Träger of the picked Beratungsstelle, else the
+ * Träger picked last. Undefined while nothing is picked (the platform dashboard alone is enough then).
+ * A Beratungsstelle wins only because picking a Träger drops the Beratungsstellen of other Träger
+ * (`agenciesOfTenant`): the two picks never point at different Träger, so the newest pick counts.
+ */
+export const resolveDrillTenantId = (
+    selection: Partial<Record<ScopeKey, string[]>>,
+    directory: StatisticAgencyEntry[],
+): number | undefined => {
+    const agencyId = selection.agency?.[0];
+    const fromAgency = agencyId
+        ? directory.find((agency) => agencyTargetId(agency.id) === agencyId)?.tenantId
+        : undefined;
+    if (fromAgency != null) return fromAgency;
+    const tenantId = selection.tenant?.[selection.tenant.length - 1]?.match(/^tenant-(\d+)$/)?.[1];
+    return tenantId ? Number(tenantId) : undefined;
+};
+
+/**
+ * A platform admin picked the Träger `tenantTarget`: only the picked Beratungsstellen of that Träger
+ * stay. Otherwise an older Beratungsstelle pick (kept in localStorage) would keep the Beratungsstellen
+ * level on its own Träger. Beratungsstellen the directory does not know cannot be checked and go too.
+ */
+export const agenciesOfTenant = (
+    agencyIds: string[],
+    tenantTarget: string,
+    directory: StatisticAgencyEntry[],
+): string[] =>
+    agencyIds.filter((agencyId) => {
+        const agency = directory.find((entry) => agencyTargetId(entry.id) === agencyId);
+        return agency != null && tenantTargetId(agency.tenantId) === tenantTarget;
+    });
+
+export type AgencyLevelHint = 'pick' | 'directoryFailed' | 'unsupported' | 'failed' | 'selectionUnavailable';
+
+export interface StatisticViewInput {
+    isSuperAdmin: boolean;
+    activeScope: ScopeKey;
+    /** Beratungsstellen picked on the Beratungsstellen level. */
+    pickedAgencyIds: string[];
+    isDashboardLoading: boolean;
+    isDirectoryLoading: boolean;
+    isDirectoryError: boolean;
+    drillTenantId: number | undefined;
+    drill: 'idle' | 'loading' | 'ready' | 'unsupported' | 'failed';
+    data: StatisticData;
+}
+
+/**
+ * Whether the shown level is still loading, and what a platform admin on the Beratungsstellen level is
+ * told instead of figures: nothing picked yet, the list of Beratungsstellen did not load, the Träger's
+ * numbers did not come, or they came without the picked Beratungsstelle (new, deleted, or withheld).
+ * In that last case the Träger's total must not appear under the Beratungsstelle's name.
+ */
+export const resolveStatisticView = ({
+    isSuperAdmin,
+    activeScope,
+    pickedAgencyIds,
+    isDashboardLoading,
+    isDirectoryLoading,
+    isDirectoryError,
+    drillTenantId,
+    drill,
+    data,
+}: StatisticViewInput): { isLoading: boolean; agencyLevelHint: AgencyLevelHint | null } => {
+    const onAgencyDrill = isSuperAdmin && activeScope === 'agency';
+    // A picked Beratungsstelle needs the list of Beratungsstellen to find its Träger: until the list is in,
+    // the level is loading, not waiting for a pick.
+    const directoryPending = onAgencyDrill && isDirectoryLoading && pickedAgencyIds.length > 0;
+    // The Träger's numbers only feed the Beratungsstellen level; no other level waits for them.
+    const isLoading = isDashboardLoading || directoryPending || (onAgencyDrill && drill === 'loading');
+    if (!onAgencyDrill || isLoading) return { isLoading, agencyLevelHint: null };
+
+    if (drillTenantId == null) return { isLoading, agencyLevelHint: isDirectoryError ? 'directoryFailed' : 'pick' };
+    if (drill === 'unsupported' || drill === 'failed') return { isLoading, agencyLevelHint: drill };
+    const answeredAgencyIds = new Set(data.targetsByScope.agency.map((target) => target.id));
+    const pickedAnswered = pickedAgencyIds.some((id) => answeredAgencyIds.has(id) && Boolean(data.statisticsById[id]));
+    return {
+        isLoading,
+        agencyLevelHint: pickedAgencyIds.length > 0 && !pickedAnswered ? 'selectionUnavailable' : null,
     };
 };

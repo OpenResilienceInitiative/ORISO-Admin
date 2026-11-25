@@ -1,15 +1,25 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Alert, Button, Tag } from 'antd';
+import { Button, Tag } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { GdprIcon, ImprintIcon } from '../../../../CustomIcons/LegalIcons';
-import { M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { legalTextTokensFor } from '../../../../PlaceholderTemplate/placeholderTokens';
+import { M3RichTextEditor, M3RichTextEditorProps } from '../../../../FormPluginEditor/M3RichTextEditor';
+import { TileHelpButton } from '../../../../TileHelp';
+import { LegalDocumentTile } from '../LegalDocumentTile';
+import { legalTextHelp, privacyHelp } from '../LegalText/help';
+import { isSameDraftContent } from '../../utils/draftComparison';
 import { TemplateSplitButton } from '../../../../PlaceholderTemplate';
 import { LegalContentLanguageSelect } from '../LegalContentLanguageSelect';
 import { LegalConsentField } from '../LegalConsentField';
+import { ConsentUnavailableNotice } from '../ConsentUnavailableNotice';
 import { PublishSourceWarningModal } from '../PublishSourceWarningModal';
 import { TranslateOnPublishModal } from '../TranslateOnPublishModal';
+import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
+import { Notify } from '../../../../Notify';
+import { EditorSnackbarQueue, editorSnackbarItems } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { useLegalContentTranslation } from '../../hooks/useLegalContentTranslation';
-import { consentPublicationBlockers, MANDATORY_CONSENT_TOKEN } from '../../utils/consentTextValidation';
+import { consentPublicationBlockers } from '../../utils/consentTextValidation';
+import type { ConsentUnavailableReason } from '../../utils/consentUnavailable';
 import { toEditorVersions } from '../../utils/legalVersionOptions';
 import { useConsentTemplates } from '../../hooks/useConsentTemplates';
 import { useViewedLegalVersion } from '../../hooks/useViewedLegalVersion';
@@ -17,9 +27,19 @@ import { LegalTextVersion } from '../../../../../types/legalVersion';
 import { TranslateRequest, TranslateResponse } from '../../../../../types/translation';
 import styles from './styles.module.scss';
 
-export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED';
+/** `INHERITED_*`: no own text at this level; the card shows the level above's (#1066). */
+export type DepartmentPublicationStatus = 'DRAFT' | 'PUBLISHED' | 'INHERITED_FROM_TRAEGER' | 'INHERITED_FROM_AGENCY';
+
+const STATUS_LABEL_KEYS: Record<DepartmentPublicationStatus, string> = {
+    DRAFT: 'tenants.legal.departmentDataProtection.status.draft',
+    PUBLISHED: 'tenants.legal.departmentDataProtection.status.published',
+    INHERITED_FROM_TRAEGER: 'tenants.legal.departmentDataProtection.status.inheritedFromTraeger',
+    INHERITED_FROM_AGENCY: 'tenants.legal.departmentDataProtection.status.inheritedFromAgency',
+};
 
 interface DepartmentDataProtectionCardProps {
+    /** Element id of the card root, so a pop-up can jump to it. */
+    anchorId?: string;
     /** Name of the Fachbereich (topic) this data privacy policy belongs to — shown in the header. */
     departmentName?: string;
     /** The complete stored content map (language -> HTML), including keys we do not render. */
@@ -67,6 +87,17 @@ interface DepartmentDataProtectionCardProps {
      */
     consentByLanguage?: Record<string, string>;
     /**
+     * Why the consent sentence cannot be edited for the CURRENT selection (#914).
+     * Set it and the consent trigger's place holds a muted stand-in that explains
+     * itself when pressed, instead of standing empty; leave it out and the slot
+     * behaves exactly as before — which is what a backend that does not carry
+     * `consentText` yet must keep getting.
+     *
+     * Ignored while the consent editor is offered, and on the imprint, which never
+     * has a consent gate (ADR-021 decision 7).
+     */
+    consentUnavailableReason?: ConsentUnavailableReason;
+    /**
      * Name of the level the consent sentence is inherited FROM (e.g. the Träger), shown as a notice
      * on the languages this level has not overridden. Together with `ownConsentByLanguage` — the
      * overrides that exist at THIS level — the card can answer the question per language, which the
@@ -85,11 +116,20 @@ interface DepartmentDataProtectionCardProps {
     onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
     /** Selects the legal document presentation while retaining the shared publication workflow. */
     documentType?: 'privacy' | 'imprint';
+    /** Selects whether the document belongs to the whole agency or one concrete department. */
+    documentScope?: 'agency' | 'department';
     /**
      * Fachbereich switcher for the editor's lower function bar, between language and version
      * (Figma 1261:52149). Absent when the card edits a single fixed department.
      */
     departmentSlot?: React.ReactNode;
+    /** The editor snackbar place (e.g. the draft status), passed through to the editor. */
+    snackbarSlot?: React.ReactNode;
+    /** Quiet state line(s) for the tile, shown under the description (for example an open draft decision). */
+    statusSlot?: React.ReactNode;
+    comparison?: M3RichTextEditorProps['comparison'];
+    errorMessage?: string;
+    onCloseError?: () => void;
     /**
      * The signed-in admin may not change legal content (#609). The card then reads —
      * editor, publish, draft-save and the consent sentence all inert — instead of
@@ -97,6 +137,13 @@ interface DepartmentDataProtectionCardProps {
      * stays visible which document the Fachbereich has.
      */
     readOnly?: boolean;
+    /** Replaces the description when the card is read-only, saying who maintains the text instead. */
+    readOnlyReason?: string;
+    /** Use the shared legal-document shell on pages with collapsible tiles. */
+    collapsible?: boolean;
+    defaultOpen?: boolean;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -112,25 +159,41 @@ export const DepartmentDataProtectionCard = ({
     initialContentByLanguage = {},
     languages = ['de'],
     defaultLanguage,
-    publicationStatus = 'DRAFT',
+    publicationStatus,
     onSave,
     saving,
     onTranslate,
     documentType = 'privacy',
+    documentScope = 'department',
     departmentSlot,
+    snackbarSlot,
+    statusSlot,
+    comparison,
+    errorMessage,
+    onCloseError,
     versions = [],
     versionsUnavailable = false,
     consentByLanguage,
-    consentInheritedFrom,
-    ownConsentByLanguage,
+    consentUnavailableReason,
     readOnly = false,
+    readOnlyReason,
+    collapsible = false,
+    defaultOpen,
+    open,
+    onOpenChange,
+    anchorId,
 }: DepartmentDataProtectionCardProps) => {
     const { t, i18n } = useTranslation();
     const locale = i18n?.language?.split('-')[0] || 'de';
     const published = publicationStatus === 'PUBLISHED';
+    const documentKeyPrefix = documentScope === 'agency' ? 'tenants.legal.agency' : 'tenants.legal.department';
+    const documentKeySuffix = documentType === 'imprint' ? 'Imprint' : 'DataProtection';
     // The consent sentence belongs to the policy, never to the imprint (ADR-021
     // decision 7 — the imprint is an information duty and never a consent gate).
     const consentEnabled = documentType === 'privacy' && consentByLanguage !== undefined;
+    // The stand-in only ever replaces a consent control that would otherwise be
+    // there: never on the imprint, and never next to the live editor.
+    const consentUnavailable = documentType === 'privacy' && !consentEnabled ? consentUnavailableReason : undefined;
     const [consentEdits, setConsentEdits] = useState<Record<string, string>>({});
     const [consentTemplateId, setConsentTemplateId] = useState<number | string | undefined>(undefined);
     const [consentDialogOpen, setConsentDialogOpen] = useState(false);
@@ -144,6 +207,9 @@ export const DepartmentDataProtectionCard = ({
     );
     // Links the blocked-publication notice to the consent action it marks invalid.
     const consentBlockedId = useId();
+    const cardDomId = useId();
+    const rootId = anchorId ?? cardDomId;
+    const translateFieldId = useId();
     // Named the way the admin reads them ("Deutsch, Englisch"), not as wire codes:
     // the whole point of the notice is to send them to the right language tab.
     const blockedLanguageNames = useMemo(
@@ -191,6 +257,16 @@ export const DepartmentDataProtectionCard = ({
         setConsentTemplateId(undefined);
     }, [activeLanguage, departmentName]);
 
+    const legalTextTokens = useMemo(
+        () =>
+            legalTextTokensFor(documentType, 'agency').map((token) => ({
+                key: token.key,
+                label: t(token.labelKey, token.labelFallback),
+                sample: token.sample,
+            })),
+        [t, documentType],
+    );
+
     const editorVersions = useMemo(
         () => toEditorVersions(versions, activeLanguage, locale, t('tenants.legal.version.current')),
         [versions, activeLanguage, locale, t],
@@ -207,6 +283,56 @@ export const DepartmentDataProtectionCard = ({
      * the same check here means the admin is told which languages are affected
      * instead of losing the round trip to a generic 400.
      */
+    // Owner call 2026-09-23: blocking errors read better as an error-coloured snackbar in the
+    // editor than as an alert box below the card.
+    const [consentBlockedClosed, setConsentBlockedClosed] = useState(false);
+    const [versionsNoticeClosed, setVersionsNoticeClosed] = useState(false);
+    const consentBlockedSnackbar =
+        blockedLanguages.length > 0 ? (
+            <span data-testid={consentBlockedClosed ? undefined : 'consent-publish-blocked'}>
+                {/* The pop-up is not in the tree: keep the reason as the consent trigger's description. It stays
+                    after the pop-up is closed, because the publication is still blocked. */}
+                <span id={consentBlockedId} hidden>
+                    {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                </span>
+                {!consentBlockedClosed && (
+                    <EditorHintSnackbar
+                        tone="error"
+                        text={t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}
+                        // "Ansehen" lands on the consent action that must be fixed, not on an empty wrapper.
+                        jump={`[id="${rootId}"] [data-testid="consent-edit-trigger"]`}
+                        onClose={() => setConsentBlockedClosed(true)}
+                    />
+                )}
+            </span>
+        ) : undefined;
+    const editorNotices = [
+        !!errorMessage && {
+            key: `save-error:${errorMessage}`,
+            node: <EditorHintSnackbar tone="error" text={errorMessage} onClose={() => onCloseError?.()} />,
+        },
+        versionsUnavailable &&
+            !versionsNoticeClosed && {
+                key: 'versions-unavailable',
+                node: (
+                    <span data-testid="legal-versions-unavailable">
+                        <EditorHintSnackbar
+                            tone="error"
+                            text={
+                                <>
+                                    <strong>{t('legal.versions.unavailable.title')}</strong>{' '}
+                                    {t('legal.versions.unavailable.description')}
+                                </>
+                            }
+                            onClose={() => setVersionsNoticeClosed(true)}
+                        />
+                    </span>
+                ),
+            },
+        consentBlockedSnackbar && { key: 'consent-blocked', node: consentBlockedSnackbar },
+        ...editorSnackbarItems(snackbarSlot, 'host-notice'),
+    ];
+
     const handlePublish = () => {
         if (blockedLanguages.length > 0) {
             return;
@@ -226,16 +352,76 @@ export const DepartmentDataProtectionCard = ({
         setConsentEdits((current) => ({ ...current, [activeLanguage]: template.values.text }));
     };
 
-    return (
-        <div className={styles.card}>
-            <M3RichTextEditor
-                title={t(
-                    documentType === 'imprint'
-                        ? 'tenants.legal.departmentImprint.title'
-                        : 'tenants.legal.departmentDataProtection.title',
+    /*
+     * The function bar's consent segment: the live chooser, or — where the consent
+     * sentence cannot be edited for the current selection — the stand-in that says
+     * why (#914). Nothing to edit is still something to say, so the segment no
+     * longer collapses to nothing.
+     */
+    let consentControl: React.ReactNode;
+    if (consentUnavailable) {
+        consentControl = <ConsentUnavailableNotice reason={consentUnavailable} language={activeLanguage} />;
+    } else if (consentEnabled) {
+        consentControl = (
+            <TemplateSplitButton
+                activeTemplateId={consentTemplateId}
+                disabled={consentLocked}
+                label={t('legal.consent.editButton')}
+                mainTestId="consent-edit-trigger"
+                mainDataMissingToken={blockedLanguages.length > 0}
+                mainInvalid={blockedLanguages.length > 0}
+                mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
+                templates={consentTemplates}
+                onMainClick={() => setConsentDialogOpen(true)}
+                onSelectTemplate={applyConsentTemplate}
+            />
+        );
+    }
+
+    const intro = (
+        <>
+            <div className={styles.header}>
+                {departmentName && <span className={styles.department}>{departmentName}</span>}
+                {/* Owner call 2026-09-23: the agency-wide text is live as soon as it is
+                                saved, so it carries "Veröffentlicht" too. Without a tag there, a
+                                published text read as a bug next to a tagged Fachbereich. */}
+                {publicationStatus && (
+                    <Tag color={published ? 'green' : 'default'} data-testid="legal-publication-status">
+                        {t(STATUS_LABEL_KEYS[publicationStatus])}
+                    </Tag>
                 )}
+            </div>
+            <p className={styles.description}>
+                {readOnly && readOnlyReason
+                    ? readOnlyReason
+                    : t(`${documentKeyPrefix}${documentKeySuffix}.description`)}
+            </p>
+            {statusSlot}
+        </>
+    );
+    const editor = (
+        <div id={rootId} className={styles.card}>
+            <M3RichTextEditor
+                snackbarSlot={editorNotices.some(Boolean) ? <EditorSnackbarQueue items={editorNotices} /> : undefined}
+                comparison={comparison}
+                title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                hideHeader={collapsible}
                 icon={documentType === 'imprint' ? ImprintIcon : GdprIcon}
+                headerAction={
+                    <TileHelpButton
+                        topic={documentType === 'imprint' ? legalTextHelp : privacyHelp}
+                        tileTitle={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+                        tileIcon={documentType === 'imprint' ? <ImprintIcon /> : <GdprIcon />}
+                    />
+                }
                 value={currentContent}
+                dirty={
+                    !isSameDraftContent(
+                        { content: contentMapWithEdits, consent: consentMap },
+                        { content: initialContentByLanguage, consent: consentByLanguage },
+                        { compareConsent: consentEnabled },
+                    )
+                }
                 readOnly={readOnly}
                 onChange={readOnly ? undefined : handleEditorChange}
                 publishing={saving}
@@ -245,38 +431,25 @@ export const DepartmentDataProtectionCard = ({
                 // draft; the published chain stays append-only and untouched.
                 onRestoreVersion={handleEditorChange}
                 onViewVersionChange={onViewVersionChange}
+                /* Same disable-never-hide rule as the consent template button below:
+                   a Träger with one active language must still see the switcher
+                   (it went missing in #811, owner report 2026-09-03). */
                 languageSlot={
-                    languages.length > 1 ? (
-                        <LegalContentLanguageSelect
-                            languages={languages}
-                            value={activeLanguage}
-                            onChange={setActiveLanguage}
-                            sourceLanguage={sourceLanguage}
-                            contentMap={contentMapWithEdits}
-                        />
-                    ) : undefined
+                    <LegalContentLanguageSelect
+                        languages={languages}
+                        value={activeLanguage}
+                        onChange={setActiveLanguage}
+                        sourceLanguage={sourceLanguage}
+                        contentMap={contentMapWithEdits}
+                    />
                 }
                 /* The consent sentence is a FIELD of this policy (ADR-021 decision 4),
                    so its template chooser belongs in this editor's function bar —
                    agency level only, by the owner's decision of 2026-08-19. It stays
                    visible but inert on read-only and archived surfaces: hiding it
-                   would also hide that this level offers templates at all. */
-                consentSlot={
-                    consentEnabled ? (
-                        <TemplateSplitButton
-                            activeTemplateId={consentTemplateId}
-                            disabled={consentLocked}
-                            label={t('legal.consent.editButton')}
-                            mainTestId="consent-edit-trigger"
-                            mainDataMissingToken={blockedLanguages.length > 0}
-                            mainInvalid={blockedLanguages.length > 0}
-                            mainDescribedBy={blockedLanguages.length > 0 ? consentBlockedId : undefined}
-                            templates={consentTemplates}
-                            onMainClick={() => setConsentDialogOpen(true)}
-                            onSelectTemplate={applyConsentTemplate}
-                        />
-                    ) : undefined
-                }
+                   would also hide that this level offers templates at all. The
+                   control itself is built above, as `consentControl`. */
+                consentSlot={consentControl}
                 topicSlot={
                     consentEnabled || departmentSlot ? (
                         <>
@@ -284,16 +457,6 @@ export const DepartmentDataProtectionCard = ({
                                 <LegalConsentField
                                     hideTemplateChooser
                                     hideTrigger
-                                    inheritedFrom={
-                                        // The notice describes the CURRENT state. While an archived version is on
-                                        // screen it would answer a question nobody asked about the version being
-                                        // read, so it goes away for the duration.
-                                        consentInheritedFrom &&
-                                        !isViewingVersion &&
-                                        ownConsentByLanguage?.[activeLanguage] === undefined
-                                            ? consentInheritedFrom
-                                            : undefined
-                                    }
                                     language={activeLanguage}
                                     open={consentDialogOpen}
                                     onOpenChange={setConsentDialogOpen}
@@ -308,28 +471,10 @@ export const DepartmentDataProtectionCard = ({
                         </>
                     ) : undefined
                 }
-                helpSlot={
-                    <>
-                        <div className={styles.header}>
-                            {departmentName && <span className={styles.department}>{departmentName}</span>}
-                            <Tag color={published ? 'green' : 'default'}>
-                                {published
-                                    ? t('tenants.legal.departmentDataProtection.status.published')
-                                    : t('tenants.legal.departmentDataProtection.status.draft')}
-                            </Tag>
-                        </div>
-                        <p className={styles.description}>
-                            {t(
-                                documentType === 'imprint'
-                                    ? 'tenants.legal.departmentImprint.description'
-                                    : 'tenants.legal.departmentDataProtection.description',
-                            )}
-                        </p>
-                    </>
-                }
+                helpSlot={collapsible ? undefined : intro}
                 aboveEditorSlot={
                     showFieldTranslate && (
-                        <div className={styles.translateField}>
+                        <div id={translateFieldId} className={styles.translateField}>
                             <Button
                                 size="small"
                                 loading={fieldTranslating}
@@ -340,12 +485,20 @@ export const DepartmentDataProtectionCard = ({
                             >
                                 {t('legal.translation.field.button')}
                             </Button>
+                            {/* A failed translation is an event: a pop-up, never text that pushes the editor down. */}
                             {fieldErrorKey && (
-                                <Alert type="error" showIcon message={t(fieldErrorKey)} className={styles.fieldError} />
+                                <Notify
+                                    severity="error"
+                                    title={t('legal.translation.field.error.title')}
+                                    jump={translateFieldId}
+                                >
+                                    {t(fieldErrorKey)}
+                                </Notify>
                             )}
                         </div>
                     )
                 }
+                textTokens={legalTextTokens}
                 onPublish={readOnly ? undefined : handlePublish}
                 onSaveDraft={
                     readOnly
@@ -378,37 +531,34 @@ export const DepartmentDataProtectionCard = ({
                 }
             />
             {/* A history that failed to load is not an empty history — see LegalText. */}
-            {versionsUnavailable && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    data-testid="legal-versions-unavailable"
-                    message={t('legal.versions.unavailable.title')}
-                    description={t('legal.versions.unavailable.description')}
-                />
-            )}
             {/* Shown as soon as ANY authored language is affected, not only after a
                 failed publish attempt: the rule arrived after texts were live, so a
                 stored sentence can be blocking on open, in a language that is not the
                 one on screen. Waiting for the Publish click would hide that. */}
-            {blockedLanguages.length > 0 && (
-                <Alert
-                    type="error"
-                    showIcon
-                    id={consentBlockedId}
-                    data-testid="consent-publish-blocked"
-                    message={t('legal.consent.publishBlocked.title')}
-                    description={
-                        <>
-                            {t('legal.consent.publishBlocked.description', { languages: blockedLanguageNames })}{' '}
-                            {/* The token is composed in JSX, never interpolated — i18next
-                                treats `{{…}}` in a translation as its own syntax. */}
-                            <code>{`{{${MANDATORY_CONSENT_TOKEN}}}`}</code>
-                        </>
-                    }
-                />
-            )}
         </div>
+    );
+    if (!collapsible) return editor;
+    const Icon = documentType === 'imprint' ? ImprintIcon : GdprIcon;
+    return (
+        <LegalDocumentTile
+            icon={Icon}
+            title={t(`${documentKeyPrefix}${documentKeySuffix}.title`)}
+            status={
+                publicationStatus
+                    ? {
+                          label: t(STATUS_LABEL_KEYS[publicationStatus]),
+                          tone: publicationStatus === 'DRAFT' ? 'attention' : 'neutral',
+                      }
+                    : undefined
+            }
+            help={documentType === 'imprint' ? legalTextHelp : privacyHelp}
+            intro={intro}
+            defaultOpen={defaultOpen}
+            open={open}
+            onOpenChange={onOpenChange}
+        >
+            {editor}
+        </LegalDocumentTile>
     );
 };
 

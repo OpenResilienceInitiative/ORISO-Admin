@@ -1,8 +1,8 @@
-import { notification } from 'antd';
 import type { Editor } from '@tiptap/react';
 import type { Transaction } from '@tiptap/pm/state';
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../Snackbar';
 import { uploadTenantMedia } from '../../api/tenant/uploadTenantMedia';
 
 /** Mirrors the server-side rules (TenantMediaService): PNG/JPEG/WebP, max 2 MB. */
@@ -44,14 +44,13 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
 
             const uploadOne = async (file: File) => {
                 if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
-                    notification.error({
+                    snackbar.error({
                         message: t('editor.image.upload.unsupportedType'),
-                        duration: 5,
                     });
                     return;
                 }
                 if (file.size > MAX_IMAGE_UPLOAD_BYTES) {
-                    notification.error({ message: t('editor.image.upload.tooLarge'), duration: 5 });
+                    snackbar.error({ message: t('editor.image.upload.tooLarge') });
                     return;
                 }
                 try {
@@ -59,7 +58,7 @@ export const useEditorImageUpload = (getEditor: () => Editor | null) => {
                     restoreInsertionPoint();
                     getEditor()?.chain().focus().setImage({ src: media.url }).run();
                 } catch {
-                    notification.error({ message: t('editor.image.upload.failed'), duration: 5 });
+                    snackbar.error({ message: t('editor.image.upload.failed') });
                 }
             };
 

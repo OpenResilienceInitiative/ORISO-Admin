@@ -1,16 +1,21 @@
-import { Alert, Button, message, Space, Col, Row, Form } from 'antd';
-import { useWatch } from 'antd/lib/form/Form';
+import { Button, Space, Col, Row, Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
-import { passwordFormRules, usernameFormRules } from '../../../utils/consultantCredentialRules';
+import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { Card } from '../../../components/Card';
-import { MuiFormField, MuiMultilineFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
-import { MuiSwitchField } from '../../../components/mui/MuiSwitchField';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
+import { MuiFormField } from '../../../components/mui/MuiFormField';
+import {
+    ConsultantPersonalFields,
+    ConsultantSettingsFields,
+    type ConsultantFieldName,
+} from '../../../components/ConsultantFields';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import profileStyles from '../accountProfile.module.scss';
 import { Page } from '../../../components/Page';
 import { MuiSelectField, Option } from '../../../components/mui/MuiSelectField';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -24,12 +29,21 @@ import { convertToOptions } from '../../../utils/convertToOptions';
 import { decodeUsername } from '../../../utils/encryptionHelpers';
 import styles from './styles.module.scss';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import { UserRole } from '../../../enums/UserRole';
+import {
+    AdminContactEmailField,
+    CONTACT_EMAIL_FIELD,
+    CONTACT_ROLES_FIELD,
+    ContactPersonForSection,
+} from '../AdminContact';
+import { centresForAdmin, refreshedRoles } from '../AdminContact/contactRolesModel';
+import { useContactRoleSaver } from '../AdminContact/useContactRoleSaver';
+import { useAgencyContactPairs } from '../../../hooks/useContactPerson';
+import { contactEmailForSave } from '../../../utils/contactEmailForSave';
+import { ADMIN_REMARKS_ROLES } from '../../../utils/adminRemarksRoles';
 import { parseUserAuthInfo } from '../../../utils/parseUserAuthInfo';
 import { searchTenantData } from '../../../api/tenant/searchTenantData';
 import { getSingleTenantData } from '../../../api/tenant/getSingleTenantData';
 import { createUserSaveErrorHandler } from '../../../utils/userSaveErrorHandler';
-import { findUncoveredTopics } from '../../../utils/topicAgencyCoverage';
 import { CounselorData } from '../../../types/counselor';
 import { useTenantTopics } from '../../../hooks/useTenantTopics';
 import { useCounselorById } from '../../../hooks/useCounselorById';
@@ -39,6 +53,40 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+import routePathNames, { appURL } from '../../../appConfig';
+import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
+import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from '../../../utils/publicContactLink';
+import { ADD_TOPICS_ERRORS, addTopicsToAgency } from '../../../api/agency/addTopicsToAgency';
+import {
+    CHANGE_TENANT_ERRORS,
+    ChangeConsultantTenantError,
+    changeConsultantTenant,
+    type ChangeConsultantTenantResult,
+    type ChangeTenantErrorCode,
+} from '../../../api/counselor/changeConsultantTenant';
+import { AGENCY_CONSULTANTS_KEY } from '../../../hooks/useAgencyConsultants';
+import { useAppConfigContext } from '../../../context/useAppConfig';
+import { AccessDenied } from '../../ErrorPages/AccessDenied';
+import { CentreTopicPickers } from './CentreTopicPickers';
+import { ChangeTraegerDialog } from './ChangeTraegerDialog';
+import { TopicsLostByMoveDialog } from './TopicsLostByMoveDialog';
+import { useSupervisionPrivacyConfirm } from '../../../components/SupervisionPrivacyConfirm';
+import {
+    buildTopicsPayload,
+    centreLabel,
+    centreTopicOptions,
+    findCentre,
+    findTopicsLostByMove,
+    idOf,
+    initialTopicsByCentre,
+    notOfferedAt,
+    topicsCarriedByMove,
+    topicsChanged,
+    topicsMissingFromFlatList,
+    TopicsByCentre,
+    TopicsLostByMove,
+} from './topicsByCentre';
+import { HintText } from '../../../components/HintText';
 
 /**
  * antd prefixes every bound control id with the form name, and
@@ -65,37 +113,64 @@ const SUPERVISOR_CANDIDATE_PAGE_SIZE = 1000;
 const isAssignableSupervisor = (candidate: CounselorData): boolean =>
     candidate.active !== false && candidate.status !== 'INACTIVE' && candidate.status !== 'IN_DELETION';
 
-const mergeTopicOptions = (current: Option[], incoming: Option[]): Option[] => {
-    const seen = new Set(current.map(({ value }) => value));
-    return [...current, ...incoming.filter(({ value }) => !seen.has(value))];
-};
+/**
+ * The counsellor profile (#994/#996/#1046). An agency admin has none of it —
+ * the record does not carry these columns — so this whole group drops out when
+ * the form is editing an admin rather than a consultant.
+ */
+const CONSULTANT_ONLY_PROFILE_FIELDS: ConsultantFieldName[] = [
+    'displayName',
+    'internalDisplayName',
+    'avatar',
+    'salutation',
+    'position',
+    'title',
+    'adminRemarks',
+];
 
 /**
- * Stable salutation keys (#994) — persisted as-is, rendered via i18n.
- * Wording of the option list follows the Counsellor Setup Wizard design:
- * Beraterin, Berater, Beratende Person, Berater*in, keine Angabe.
+ * Temporarily hidden on THIS screen: absence is driven from the counsellor's own profile, and
+ * group chats wait on the GroupChatV2 flag. The quick-create dialog offers both.
  */
-const SALUTATION_KEYS = [
-    'counsellor_female',
-    'counsellor_male',
-    'counselling_person',
-    'counsellor_gender_neutral',
-    'not_specified',
-] as const;
+const PAGE_SETTINGS_EXCLUSIONS: ConsultantFieldName[] = ['absent', 'isGroupchatConsultant'];
 
-export const UserEditOrAdd = () => {
+/** The agency picker's label, also what the dialog calls each centre. */
+const AGENCY_LABEL_FIELDS: Array<'postcode' | 'name' | 'city'> = ['postcode', 'name', 'city'];
+
+/** A Träger move waiting for, or past, the admin's confirmation (Admin#1216). */
+interface TenantMove {
+    step: 'confirm' | 'saving' | 'done';
+    tenantId: string;
+    centreIds: string[];
+    /** Undefined when the admin was shown no topic picker. */
+    topicIds?: string[];
+    /** Names as they were when the admin pressed Save; the refetch after the move must not change them. */
+    consultantName: string;
+    fromTraeger: string;
+    toTraeger: string;
+    centres: string[];
+    error?: ChangeTenantErrorCode;
+    result?: ChangeConsultantTenantResult;
+}
+
+type UserEditFormProps = {
+    id: string;
+    typeOfUsers: TypeOfUser.Consultants | TypeOfUser.AgencyAdmins;
+    can: ReturnType<typeof useUserPermissions>['can'];
+};
+
+const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
+    const { message } = useAdminFeedback();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [form] = Form.useForm();
-    const { can } = useUserPermissions();
     const { t } = useTranslation();
+    const { settings: appSettings } = useAppConfigContext();
     const { isSuperAdmin, hasRole } = useUserRoles();
-    // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole): remarks are
-    // tenant-level-admin only. For any other role the field is omitted entirely — the
-    // caller could neither read nor write it.
-    const canManageAdminRemarks = hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin]);
+    // The gate itself lives in one place, because the quick-create dialog asks the same
+    // question — see `ADMIN_REMARKS_ROLES`.
+    const canManageAdminRemarks = hasRole(ADMIN_REMARKS_ROLES);
 
-    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
     const isEditing = id !== 'add';
     const isConsultantForm = typeOfUsers === TypeOfUser.Consultants;
     const { data: consultantsResponse, isLoading: isLoadingConsultants } = useConsultantsOrAdminsData({
@@ -109,6 +184,35 @@ export const UserEditOrAdd = () => {
         id: isEditing && isConsultantForm ? id : undefined,
     });
     const singleData = consultantsResponse?.data.find((c) => c.id === id);
+    // #1534 "Ansprechperson für": the stored pair of every centre of this agency admin.
+    const showContactRoles = isEditing && !isConsultantForm;
+    const contactRoleAgencies = useMemo(
+        () =>
+            showContactRoles
+                ? (singleData?.agencies ?? []).map((agency) => ({
+                      id: Number(agency.id),
+                      name: agency.name,
+                  }))
+                : [],
+        [showContactRoles, singleData?.agencies],
+    );
+    const {
+        pairs: contactPairs,
+        failedIds: contactPairFailedIds,
+        retryFailed: retryContactPairs,
+        isLoading: contactPairsLoading,
+    } = useAgencyContactPairs(contactRoleAgencies, { enabled: showContactRoles });
+    const contactRoleFailedCentres = useMemo(
+        () =>
+            contactRoleAgencies
+                .filter((agency) => contactPairFailedIds.includes(agency.id))
+                .map((agency) => agency.name || `#${agency.id}`),
+        [contactRoleAgencies, contactPairFailedIds],
+    );
+    const contactRoleCentres = useMemo(
+        () => (showContactRoles && id ? centresForAdmin(contactRoleAgencies, contactPairs, id) : []),
+        [showContactRoles, id, contactRoleAgencies, contactPairs],
+    );
     /**
      * ADR-008 "Supervision (auto-assigned)": an agency admin points a counsellor at one standing
      * supervisor, who is then attached read-only to every case that counsellor accepts. Editing
@@ -136,11 +240,18 @@ export const UserEditOrAdd = () => {
     const [filteredAgencies, setFilteredAgencies] = useState([]);
     const selectedTenant = Form.useWatch('tenantId', form);
     const selectedAgencies = Form.useWatch('agencies', form) || [];
-    const selectedTopicIds = Form.useWatch('topicIds', form) || [];
     const publicSlug = Form.useWatch('publicSlug', form);
     const pendingPublicSlug = Form.useWatch('pendingPublicSlug', form);
     const publicSlugStatus = Form.useWatch('publicSlugStatus', form);
+    const pickedByCentre: TopicsByCentre | undefined = Form.useWatch('topicsByAgency', form);
     const prevAgencyIdsRef = useRef<string[] | null>(null);
+    /** Centres and their topics as loaded; a move away from them is checked against this. */
+    const initialCentresRef = useRef<{ ids: string[]; byCentre: Record<string, Option[]> } | null>(null);
+    /** Topics each centre's picker has held. Code only adds topics, so one gone now was removed by hand. */
+    const heldByPickerRef = useRef<Record<string, Set<string>>>({});
+    const [pendingMove, setPendingMove] = useState<{ data: any; lost: TopicsLostByMove } | null>(null);
+    const [addingTopics, setAddingTopics] = useState(false);
+    const [tenantMove, setTenantMove] = useState<TenantMove | null>(null);
     /**
      * Whether the ADMIN changed the standing supervisor, as opposed to us syncing it from a
      * refetch. antd's `isFieldTouched` cannot tell the two apart — `setFieldsValue` marks the
@@ -149,11 +260,7 @@ export const UserEditOrAdd = () => {
      * honest signal.
      */
     const supervisorPickedByAdminRef = useRef(false);
-    const topicsForList = topics?.filter((topic) => !selectedTopicIds.find(({ value }) => value === `${topic.id}`));
-    const topicOptions = [
-        ...selectedTopicIds.filter((selected) => !topics?.some((topic) => `${topic.id}` === selected.value)),
-        ...convertToOptions(topicsForList, 'name', 'id'),
-    ];
+    const confirmSupervision = useSupervisionPrivacyConfirm();
     /**
      * Read the standing supervisor from the single-consultant record, not from the list row.
      * The form's list comes from `/service/users/consultants/search`, which leaves
@@ -163,6 +270,16 @@ export const UserEditOrAdd = () => {
      */
     const storedSupervisorId = consultantById?.assignedSupervisorId ?? singleData?.assignedSupervisorId;
     const editedTenantId = consultantById?.tenantId ?? singleData?.tenantId;
+    /**
+     * Admin#1216: only a platform admin may move a counsellor to another Träger. Everyone else
+     * (Träger admins, and the admin forms) sees the field read-only once it is set.
+     */
+    const canChangeTraeger = isSuperAdmin && isEditing && isConsultantForm;
+    const traegerChosen =
+        canChangeTraeger &&
+        !!selectedTenant &&
+        editedTenantId != null &&
+        String(selectedTenant) !== String(editedTenantId);
     /**
      * Only the single-consultant record carries the current assignment, so without it we do not
      * know what is stored. Writing the field then would send '' on any unrelated edit and silently
@@ -232,17 +349,75 @@ export const UserEditOrAdd = () => {
         if (supervisorCandidatesTruncated) {
             return 'counselor.assignedSupervisor.truncated';
         }
-        return supervisorOptions.length === 0
-            ? 'counselor.assignedSupervisor.noCandidates'
-            : 'counselor.assignedSupervisor.hint';
+        if (supervisorOptions.length > 0) {
+            return 'counselor.assignedSupervisor.hint';
+        }
+        // A counsellor cannot supervise themselves. When they are the only one with the capability,
+        // say so: "nobody has been enabled" reads as if saving the capability had failed.
+        const editedIsOnlySupervisor = (supervisorCandidatesResponse?.data || []).some(
+            (candidate) => candidate.id === id && candidate.isSupervisor,
+        );
+        return editedIsOnlySupervisor
+            ? 'counselor.assignedSupervisor.onlySelf'
+            : 'counselor.assignedSupervisor.noCandidates';
     })();
 
     const hasSelectedAgencies = selectedAgencies.length > 0;
-    const consultantTopics = consultantById?.topics || [];
-    const showTopicsField =
-        isConsultantForm &&
-        topics?.length > 0 &&
-        (hasSelectedAgencies || (isEditing && consultantTopics.length > 0) || selectedTopicIds.length > 0);
+    // An empty tenant list (all inactive, or the request failed) must not hide topics the counsellor holds.
+    const holdsStoredTopics =
+        (consultantById?.topics?.length ?? 0) > 0 ||
+        (consultantById?.topicsByAgency ?? []).some(({ topicIds }) => (topicIds?.length ?? 0) > 0);
+    const showTopicPickers = isConsultantForm && hasSelectedAgencies && (topics?.length > 0 || holdsStoredTopics);
+    // An older UserService rejects unknown fields, so only send what it announced.
+    const serverStoresTopicsPerCentre = Array.isArray(consultantById?.topicsByAgency);
+    /** Names for topics a centre no longer lists, so their chips stay readable. */
+    const topicName = useCallback(
+        (topicId: string) =>
+            [...(topics ?? []), ...(consultantById?.topics ?? [])].find(
+                (topic) => String(topic?.id) === String(topicId),
+            )?.name,
+        [topics, consultantById],
+    );
+    /** Centres whose picked topics include one the centre no longer offers. */
+    const centresWithDroppedTopics = useCallback(
+        (centreIds: string[], byCentre: TopicsByCentre) =>
+            centreIds.filter(
+                (centreId) => notOfferedAt(findCentre(filteredAgencies, centreId), byCentre[centreId]).length,
+            ),
+        [filteredAgencies],
+    );
+    /**
+     * Without per-centre topics (older UserService, and every create) the union is stored at each
+     * centre offering a topic. Refuses a selection that would come back different, and says where.
+     */
+    const refuseFlatListMismatch = useCallback(
+        (centreIds: string[], byCentre: TopicsByCentre, alwaysSentFlat = false) => {
+            const initial = initialCentresRef.current;
+            if (
+                !isConsultantForm ||
+                (!alwaysSentFlat &&
+                    (serverStoresTopicsPerCentre ||
+                        (isEditing && (!initial || !topicsChanged(initial, centreIds, byCentre)))))
+            ) {
+                return false;
+            }
+            const missing = topicsMissingFromFlatList(centreIds, byCentre, filteredAgencies);
+            form.setFields(
+                centreIds.map((centreId) => ({
+                    name: ['topicsByAgency', centreId],
+                    errors: missing[centreId]
+                        ? [
+                              t('counselor.topicsAtAgency.flatListOnly', {
+                                  topics: missing[centreId].map(({ label }) => label).join(', '),
+                              }),
+                          ]
+                        : [],
+                })),
+            );
+            return Object.keys(missing).length > 0;
+        },
+        [isConsultantForm, serverStoresTopicsPerCentre, isEditing, filteredAgencies, form, t],
+    );
 
     useEffect(() => {
         const { tenantId = 0 } = parseUserAuthInfo();
@@ -273,15 +448,21 @@ export const UserEditOrAdd = () => {
     useEffect(() => {
         if (isEditing) return;
         form.setFieldValue('agencies', []);
-        form.setFieldValue('topicIds', []);
+        form.setFieldValue('topicsByAgency', {});
+        heldByPickerRef.current = {};
         prevAgencyIdsRef.current = [];
     }, [selectedTenant, isEditing]);
 
     useEffect(() => {
+        Object.entries(pickedByCentre ?? {}).forEach(([centreId, picked]) => {
+            const held = heldByPickerRef.current[centreId] ?? new Set<string>();
+            (picked ?? []).forEach((entry) => held.add(idOf(entry)));
+            heldByPickerRef.current[centreId] = held;
+        });
+    }, [pickedByCentre]);
+
+    useEffect(() => {
         if (!isConsultantForm || !hasSelectedAgencies) {
-            if (!isEditing) {
-                form.setFieldValue('topicIds', []);
-            }
             prevAgencyIdsRef.current = hasSelectedAgencies ? prevAgencyIdsRef.current : [];
             return;
         }
@@ -293,40 +474,60 @@ export const UserEditOrAdd = () => {
             return;
         }
 
-        const newlyAddedAgencyIds = currentAgencyIds.filter(
-            (agencyId) => !(prevAgencyIdsRef.current || []).includes(agencyId),
-        );
+        const previousAgencyIds = prevAgencyIdsRef.current || [];
+        const newlyAddedAgencyIds = currentAgencyIds.filter((agencyId) => !previousAgencyIds.includes(agencyId));
+        const centresChanged =
+            newlyAddedAgencyIds.length > 0 ||
+            previousAgencyIds.some((agencyId) => !currentAgencyIds.includes(agencyId));
         prevAgencyIdsRef.current = currentAgencyIds;
 
-        if (newlyAddedAgencyIds.length === 0) {
+        // A new centre starts empty; a centre with a single topic has nothing to choose, unless the
+        // pickers are hidden: a topic the admin cannot see must not be saved. A centre added again
+        // keeps the selection it had when removed (the form keeps it).
+        newlyAddedAgencyIds
+            .filter((agencyId) => form.getFieldValue(['topicsByAgency', agencyId]) === undefined)
+            .forEach((agencyId) => {
+                const offered = centreTopicOptions(filteredAgencies.find((agency) => String(agency.id) === agencyId));
+                form.setFieldValue(
+                    ['topicsByAgency', agencyId],
+                    showTopicPickers && offered.length === 1 ? offered : [],
+                );
+            });
+
+        // A move pre-selects the held topics the new centre offers (#1264). Only when the centres
+        // change: a refetch must not pick a topic behind the admin's back.
+        const initial = initialCentresRef.current;
+        if (!initial || !centresChanged) {
             return;
         }
-
-        const newAgencyTopics = filteredAgencies
-            .filter((agency) => newlyAddedAgencyIds.includes(String(agency.id)))
-            .flatMap((agency) => agency.topics || []);
-
-        if (newAgencyTopics.length === 0) {
-            return;
-        }
-
-        const currentTopicIds: Option[] = form.getFieldValue('topicIds') || [];
-        form.setFieldValue(
-            'topicIds',
-            mergeTopicOptions(currentTopicIds, convertToOptions(newAgencyTopics, 'name', 'id')),
+        const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+        const carried = topicsCarriedByMove({
+            initialCentreIds: initial.ids,
+            centreIds: currentAgencyIds,
+            byCentre,
+            heldByPicker: heldByPickerRef.current,
+            centres: filteredAgencies,
+        });
+        Object.entries(carried).forEach(([agencyId, carriedTopics]) =>
+            form.setFieldValue(['topicsByAgency', agencyId], [...(byCentre[agencyId] ?? []), ...carriedTopics]),
         );
-    }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form]);
+    }, [selectedAgencies, filteredAgencies, isConsultantForm, hasSelectedAgencies, isEditing, form, showTopicPickers]);
 
     useEffect(() => {
-        if (!isEditing || !isConsultantForm || !consultantById?.topics?.length) {
+        // The assigned centres come from the search row; a cached detail record can arrive first.
+        if (!isEditing || !isConsultantForm || !consultantById || !singleData || initialCentresRef.current) {
+            return;
+        }
+        const centreIds = (singleData.agencies || []).map(({ id: agencyId }) => String(agencyId));
+        // A centre missing from the list has unknown topics: stay uninitialised, save keeps what is stored.
+        if (!centreIds.every((centreId) => findCentre(filteredAgencies, centreId))) {
             return;
         }
 
-        form.setFieldsValue({
-            topicIds: convertToOptions(consultantById.topics, 'name', 'id'),
-        });
-        prevAgencyIdsRef.current = (form.getFieldValue('agencies') || []).map(({ value }) => String(value));
-    }, [consultantById, isEditing, isConsultantForm, form]);
+        const byCentre = initialTopicsByCentre(centreIds, filteredAgencies, consultantById, topicName);
+        initialCentresRef.current = { ids: centreIds, byCentre };
+        form.setFieldsValue({ topicsByAgency: byCentre });
+    }, [consultantById, singleData, filteredAgencies, isEditing, isConsultantForm, form, topicName]);
 
     // Personal-info fields (#994) are only served by the get-by-id endpoint, not by the
     // search result the rest of the form prefills from.
@@ -341,6 +542,10 @@ export const UserEditOrAdd = () => {
             salutation: consultantById.salutation || undefined,
             position: consultantById.position || '',
             title: consultantById.title || '',
+            // #1046: both stay undefined for a consultant who never chose, so an
+            // untouched form omits them and the backend keeps whatever it has.
+            avatarKind: consultantById.avatarKind || undefined,
+            avatarId: consultantById.avatarId || undefined,
             ...(canManageAdminRemarks ? { adminRemarks: consultantById.adminRemarks || '' } : {}),
             // The standing supervisor comes from the same record and belongs in the same sync.
             // antd applies `initialValues` once, at mount, and this query is invalidated on every
@@ -366,7 +571,6 @@ export const UserEditOrAdd = () => {
             if (!isEditing && (response as { agencyAssignmentFailed?: boolean })?.agencyAssignmentFailed) {
                 message.warning({
                     content: t('message.agencyAdmin.agencyAssignmentFailed'),
-                    duration: 8,
                 });
             }
 
@@ -374,36 +578,107 @@ export const UserEditOrAdd = () => {
         },
         onError: createUserSaveErrorHandler({
             t,
-            notifyError: (content) => message.error({ content, duration: 8 }),
+            notifyError: (content) => message.error({ content }),
             canReassignExistingEmail:
                 can(PermissionAction.Delete, Resource.Consultant) && typeOfUsers === TypeOfUser.Consultants,
+            onAccountCreatedWithoutMail: (content) => {
+                message.warning({ content });
+                navigate(`/admin/users/${typeOfUsers}`);
+            },
         }),
     });
 
-    // Mirror the backend ADR-003 rule (ConsultantTopicAgencyCompatibilityValidator):
-    // every selected topic must be offered by at least one selected agency. Catching this
-    // here means we name the mismatch instead of relying on the assignment request, which
-    // the backend used to swallow silently.
-    const onSave = useCallback(
-        (data) => {
-            if (isConsultantForm) {
-                const uncoveredTopics = findUncoveredTopics(
-                    data.agencies ?? [],
-                    data.topicIds ?? [],
-                    filteredAgencies || [],
+    /**
+     * #1534: centres whose role the admin changed. Kept outside the form: when a centre's pair
+     * fails to reload its row unmounts, and an unmounted field reads as untouched and drops out
+     * of the submitted values, so the form alone would forget the edit.
+     */
+    const contactRolesEditedRef = useRef<Set<string>>(new Set());
+    const contactRoleChangedByAdmin = useCallback(
+        (agencyId: string) => contactRolesEditedRef.current.has(agencyId),
+        [],
+    );
+
+    // The pairs load after the form mounted and may reload; refresh every row the admin has not
+    // changed. A programmatic fill does not mark a row as touched, so later reloads still apply.
+    useEffect(() => {
+        if (contactRoleCentres.length === 0) return;
+        form.setFieldValue(
+            CONTACT_ROLES_FIELD,
+            refreshedRoles(form.getFieldValue(CONTACT_ROLES_FIELD), contactRoleCentres, contactRoleChangedByAdmin),
+        );
+    }, [contactRoleCentres, form, contactRoleChangedByAdmin]);
+
+    /** #1534: the role PUTs run before the admin save, which navigates away on success. */
+    const onContactRolePlanErrors = useCallback(
+        (errors: Array<{ agencyId: number; errorKey: string }>) =>
+            form.setFields(
+                errors.map(({ agencyId, errorKey }) => ({
+                    name: [CONTACT_ROLES_FIELD, String(agencyId)],
+                    errors: [t(errorKey)],
+                })),
+            ),
+        [form, t],
+    );
+    // Stop here: the admin save would navigate away and the unsaved role would be lost.
+    const onContactRoleSaveFailed = useCallback(
+        (centreNames: string[]) =>
+            message.warning({
+                content: t('admin.contactPersonFor.saveFailedFor', { centres: centreNames.join(', ') }),
+            }),
+        [message, t],
+    );
+    const contactRoleCentreName = useCallback(
+        (agencyId: number) =>
+            contactRoleAgencies.find((agency) => Number(agency.id) === agencyId)?.name || `#${agencyId}`,
+        [contactRoleAgencies],
+    );
+    const { saveContactRoles, saving: savingContactRoles } = useContactRoleSaver({
+        enabled: showContactRoles,
+        adminId: id,
+        pairs: contactPairs,
+        centres: contactRoleCentres,
+        changedByAdmin: contactRoleChangedByAdmin,
+        nameOf: contactRoleCentreName,
+        onPlanErrors: onContactRolePlanErrors,
+        onSaveFailed: onContactRoleSaveFailed,
+    });
+
+    const persist = useCallback(
+        async (data, byCentre: TopicsByCentre, onError?: () => void) => {
+            const payload = { ...data };
+            delete payload.topicsByAgency;
+            delete payload[CONTACT_ROLES_FIELD];
+            if (!isConsultantForm) {
+                // Absent keeps the stored contact e-mail, "" clears it.
+                payload[CONTACT_EMAIL_FIELD] = contactEmailForSave(
+                    data[CONTACT_EMAIL_FIELD],
+                    (singleData as { contactEmail?: string | null } | undefined)?.contactEmail,
+                    isEditing,
                 );
-                if (uncoveredTopics.length > 0) {
-                    form.setFields([
-                        {
-                            name: 'topicIds',
-                            errors: [
-                                t('message.error.topicsNotCoveredByAgencies', {
-                                    topics: uncoveredTopics.map(({ label }) => label).join(', '),
-                                }),
-                            ],
-                        },
-                    ]);
+                // From the store, not `data`: a row that unmounted after a failed reload still counts.
+                if (!(await saveContactRoles(form.getFieldValue(CONTACT_ROLES_FIELD)))) {
+                    onError?.();
                     return;
+                }
+            }
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // null = keep what is stored. Used when the pickers never loaded, and when a topic the
+            // centre dropped is still held and nothing changed: the server would reject it (400).
+            // Also when no centre shows a picker at all (#1026): stored topics stay untouched.
+            const keepStored =
+                isConsultantForm &&
+                isEditing &&
+                (!initialCentresRef.current ||
+                    (!topicsChanged(initialCentresRef.current, centreIds, byCentre) &&
+                        (centreIds.length === 0 || centresWithDroppedTopics(centreIds, byCentre).length > 0)));
+            if (keepStored) {
+                payload.topicIds = null;
+            } else if (isConsultantForm) {
+                const { topicIds, topicsByAgency } = buildTopicsPayload(centreIds, byCentre);
+                payload.topicIds = topicIds;
+                if (serverStoresTopicsPerCentre) {
+                    payload.topicsByAgency = topicsByAgency;
                 }
             }
             // Write the standing supervisor ONLY when the admin deliberately changed it. Anything
@@ -412,39 +687,268 @@ export const UserEditOrAdd = () => {
             // and since '' means "clear it" to the backend, an unrelated edit could silently drop
             // a supervisor nobody touched. Omitted, the backend leaves the assignment alone.
             if (!canWriteStandingSupervisor || !supervisorPickedByAdminRef.current) {
-                const payloadWithoutSupervisor = { ...data };
-                delete payloadWithoutSupervisor.assignedSupervisorId;
-                mutate(payloadWithoutSupervisor);
+                delete payload.assignedSupervisorId;
+                mutate(payload, { onError });
                 return;
             }
             // `MuiSelectField` emits `undefined` when the admin clears it, but the backend reads
             // undefined as "leave the assignment untouched" — only '' clears it. Without this
             // coercion a standing supervisor could be set but never removed.
-            mutate({ ...data, assignedSupervisorId: data.assignedSupervisorId ?? '' });
+            mutate({ ...payload, assignedSupervisorId: payload.assignedSupervisorId ?? '' }, { onError });
         },
-        [isConsultantForm, filteredAgencies, form, mutate, t, canWriteStandingSupervisor],
+        [
+            isConsultantForm,
+            isEditing,
+            centresWithDroppedTopics,
+            serverStoresTopicsPerCentre,
+            mutate,
+            canWriteStandingSupervisor,
+            saveContactRoles,
+            singleData,
+            form,
+        ],
     );
+
+    /** Admin#1216: what the admin picked, put into the dialog that asks before the counsellor moves. */
+    const reviewTenantMove = useCallback(
+        (data) => {
+            const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // The move only takes a flat topic list, whatever the server stores for an ordinary save.
+            if (showTopicPickers && refuseFlatListMismatch(centreIds, byCentre, true)) {
+                return;
+            }
+            const nameOf = (tenantId: string | number) =>
+                tenantsData.find((tenant) => String(tenant.id) === String(tenantId))?.name ?? `#${tenantId}`;
+            setTenantMove({
+                step: 'confirm',
+                tenantId: String(data.tenantId),
+                centreIds,
+                // Without a picker the admin chose no topics, and the move starts without any.
+                topicIds: showTopicPickers ? buildTopicsPayload(centreIds, byCentre).topicIds : undefined,
+                consultantName: [data.firstname, data.lastname].filter(Boolean).join(' '),
+                fromTraeger: nameOf(editedTenantId),
+                toTraeger: nameOf(data.tenantId),
+                centres: centreIds.map((centreId) => {
+                    const centre = findCentre(filteredAgencies, centreId);
+                    return centre ? centreLabel(centre) : centreId;
+                }),
+            });
+        },
+        [form, tenantsData, showTopicPickers, editedTenantId, filteredAgencies, refuseFlatListMismatch],
+    );
+
+    const confirmTenantMove = async () => {
+        if (!tenantMove || tenantMove.step === 'saving') {
+            return;
+        }
+        const { tenantId, centreIds, topicIds } = tenantMove;
+        setTenantMove({ ...tenantMove, step: 'saving', error: undefined });
+        try {
+            const result = await changeConsultantTenant(id, { tenantId, centreIds, topicIds });
+            setTenantMove((current) => current && { ...current, step: 'done', result });
+        } catch (error) {
+            const code = error instanceof ChangeConsultantTenantError ? error.code : CHANGE_TENANT_ERRORS.UNKNOWN;
+            // The form stays as it was: nothing is lost, the admin can correct and try again.
+            setTenantMove((current) => current && { ...current, step: 'confirm', error: code });
+        }
+    };
+
+    const finishTenantMove = () => {
+        // The lists and the detail record still show the old Träger until they are read again.
+        [
+            ['HAS_CONSULTANTS'],
+            [AGENCY_CONSULTANTS_KEY],
+            [typeOfUsers.toUpperCase()],
+            ['CONSULTANT'],
+            ['AGENCIES'],
+        ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+        setTenantMove(null);
+        navigate(`/admin/users/${typeOfUsers}`);
+    };
+
+    const onSave = useCallback(
+        (data) => {
+            if (traegerChosen) {
+                reviewTenantMove(data);
+                return;
+            }
+            const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+            const centreIds = (data.agencies ?? []).map(({ value }) => String(value));
+            // A topic change is saved as a whole, and the server refuses a topic the centre no
+            // longer offers. So the admin removes the marked ones first, rather than losing them unseen.
+            const blocking =
+                isConsultantForm &&
+                initialCentresRef.current &&
+                topicsChanged(initialCentresRef.current, centreIds, byCentre)
+                    ? centresWithDroppedTopics(centreIds, byCentre)
+                    : [];
+            if (blocking.length > 0) {
+                form.setFields(
+                    blocking.map((centreId) => ({
+                        name: ['topicsByAgency', centreId],
+                        errors: [t('counselor.topicsAtAgency.notOfferedBlocksChange')],
+                    })),
+                );
+                return;
+            }
+            if (refuseFlatListMismatch(centreIds, byCentre)) {
+                return;
+            }
+            const lost =
+                isConsultantForm && initialCentresRef.current
+                    ? findTopicsLostByMove({
+                          initialCentreIds: initialCentresRef.current.ids,
+                          centreIds,
+                          initialByCentre: initialCentresRef.current.byCentre,
+                          byCentre,
+                          centres: filteredAgencies,
+                      })
+                    : null;
+            if (lost) {
+                setPendingMove({ data, lost });
+                return;
+            }
+            persist(data, byCentre);
+        },
+        [
+            traegerChosen,
+            reviewTenantMove,
+            isConsultantForm,
+            filteredAgencies,
+            form,
+            persist,
+            centresWithDroppedTopics,
+            refuseFlatListMismatch,
+            t,
+        ],
+    );
+
+    const dropLostTopics = () => {
+        persist(pendingMove.data, form.getFieldValue('topicsByAgency') ?? {});
+        setPendingMove(null);
+    };
+
+    const addLostTopicsToTarget = async () => {
+        const { data, lost } = pendingMove;
+        const targetId = String(lost.target.id);
+        const byCentre: TopicsByCentre = form.getFieldValue('topicsByAgency') ?? {};
+        const targetTopics = [...(byCentre[targetId] ?? []), ...lost.topics];
+        // Before the PUT: a refused save must not leave the centre changed.
+        if (
+            refuseFlatListMismatch(
+                (data.agencies ?? []).map(({ value }) => String(value)),
+                { ...byCentre, [targetId]: targetTopics },
+            )
+        ) {
+            setPendingMove(null);
+            return;
+        }
+        setAddingTopics(true);
+        try {
+            await addTopicsToAgency(
+                targetId,
+                lost.topics.map(({ value }) => value),
+            );
+        } catch (error) {
+            const agency = centreLabel(lost.target);
+            const reasons = {
+                [ADD_TOPICS_ERRORS.FORBIDDEN]: t('counselor.topicsLostByMove.addForbidden', { agency }),
+                [ADD_TOPICS_ERRORS.ONE_TOPIC_PER_AGENCY]: t('counselor.topicsLostByMove.oneTopicPerAgency', { agency }),
+                [ADD_TOPICS_ERRORS.SETTINGS_UNAVAILABLE]: t('counselor.topicsLostByMove.settingsUnavailable'),
+            };
+            message.error({
+                content: reasons[(error as Error)?.message] ?? t('counselor.topicsLostByMove.addFailed'),
+            });
+            return;
+        } finally {
+            setAddingTopics(false);
+            // Also after a failure: a timed-out PUT may still have changed the centre.
+            queryClient.invalidateQueries({ queryKey: ['AGENCIES'] });
+            queryClient.invalidateQueries({ queryKey: ['AGENCY', targetId] });
+        }
+        form.setFieldValue(['topicsByAgency', targetId], targetTopics);
+        // The centre keeps the topic: undoing the PUT could undo another admin's change. The form
+        // keeps the move, so Save retries it.
+        persist(data, { ...byCentre, [targetId]: targetTopics }, () =>
+            message.warning({
+                content: t('counselor.topicsLostByMove.addedButNotSaved', { agency: centreLabel(lost.target) }),
+            }),
+        );
+        setPendingMove(null);
+    };
+
+    /**
+     * The centres, and the topics picked at them, belong to one Träger. Choosing another one drops
+     * them, and so does the memory of what the old centres held: a move takes no topic along
+     * (UserService#1421). Choosing the counsellor's own Träger again brings the loaded state back.
+     */
+    const resetCentresForTraeger = (tenantId: string) => {
+        heldByPickerRef.current = {};
+        // `setFieldValue`, not `setFieldsValue`: that one merges into the old object instead of replacing it.
+        if (String(tenantId) === String(editedTenantId)) {
+            form.setFieldValue('agencies', convertToOptions(singleData?.agencies || [], AGENCY_LABEL_FIELDS, 'id'));
+            form.setFieldValue('topicsByAgency', initialCentresRef.current?.byCentre ?? {});
+            return;
+        }
+        form.setFieldValue('agencies', []);
+        form.setFieldValue('topicsByAgency', {});
+    };
+
     const onFinishFailed = useCallback(({ errorFields }: ValidateErrorEntity) => {
         // Keep values; jump to the field that blocked save (#717 / #594.6).
         focusFirstInvalidField(errorFields, FORM_NAME);
     }, []);
     const onCancel = useCallback(() => navigate(`/admin/users/${typeOfUsers}`), []);
-    const isAbsentEnabled = useWatch('absent', form);
+    // This screen and the quick-create dialog render ONE field set. What this surface does not
+    // offer is stated here rather than left out.
+    const personalFieldExclusions = useMemo<ConsultantFieldName[]>(() => {
+        const excluded = new Set<ConsultantFieldName>();
+
+        if (!isConsultantForm) {
+            CONSULTANT_ONLY_PROFILE_FIELDS.forEach((field) => excluded.add(field));
+        }
+        // Mirrors the backend gate (AuthenticatedUser#hasTenantLevelAdminRole).
+        if (!canManageAdminRemarks) {
+            excluded.add('adminRemarks');
+        }
+        // Credentials are set once, at creation, and only for account types that
+        // have a login. Afterwards they are changed through the reset flow. A new
+        // counsellor chooses their own password through the setup e-mail (#1144).
+        if (isEditing || typeOfUsers !== TypeOfUser.AgencyAdmins) {
+            excluded.add('password');
+        }
+
+        return [...excluded];
+    }, [isConsultantForm, canManageAdminRemarks, isEditing, typeOfUsers]);
+    // Once the detail record has loaded it is the only source, even when it cleared the name; the
+    // search-list row is a fallback until then and may be stale.
+    const storedPublicSlug = consultantById
+        ? {
+              publicSlug: consultantById.publicSlug || '',
+              pendingPublicSlug: consultantById.pendingPublicSlug || '',
+              publicSlugStatus: consultantById.publicSlugStatus || '',
+          }
+        : {
+              publicSlug: singleData?.publicSlug || '',
+              pendingPublicSlug: singleData?.pendingPublicSlug || '',
+              publicSlugStatus: singleData?.publicSlugStatus || '',
+          };
     const activePublicSlug = publicSlug || consultantById?.publicSlug;
     const pendingSlug = pendingPublicSlug || consultantById?.pendingPublicSlug;
     const slugStatus = publicSlugStatus || consultantById?.publicSlugStatus;
-    let publicSlugAlertType: 'info' | 'success' | 'warning' = 'info';
     let publicSlugAlertDescription = t('counselor.publicSlug.status.empty');
 
     if (pendingSlug) {
-        publicSlugAlertType = 'warning';
         publicSlugAlertDescription = t('counselor.publicSlug.status.pending', { slug: pendingSlug });
     } else if (slugStatus === 'REJECTED') {
         publicSlugAlertDescription = t('counselor.publicSlug.status.rejected');
     } else if (activePublicSlug) {
-        publicSlugAlertType = 'success';
         publicSlugAlertDescription = t('counselor.publicSlug.status.active', { slug: activePublicSlug });
     }
+
+    // The saved, live name only: a name still being typed (or awaiting approval) does not open yet.
+    const publicContactLinkUrl = buildPublicContactLinkUrl(storedPublicSlug.publicSlug, appURL);
 
     const approvePendingPublicSlug = () => {
         form.setFieldsValue({
@@ -464,8 +968,6 @@ export const UserEditOrAdd = () => {
     // Superadmins pick the tenant in the form; other admins carry it in their token.
     const agencyTenantId = resolveAgencyTenantId(selectedTenant, userTenantId);
 
-    const requiredRule = { required: true, message: t('form.errors.required') };
-
     const onAgencyCreated = (agency) => {
         const current = form.getFieldValue('agencies') || [];
         form.setFieldValue('agencies', [
@@ -479,7 +981,11 @@ export const UserEditOrAdd = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading || isLoadingTopics || isLoadingConsultantById} stickyHeader>
-            <Page.BackWithActions path={`/admin/users/${typeOfUsers}`} titleKey="agency.add.general.headline">
+            <Page.BackWithActions
+                path={`/admin/users/${typeOfUsers}`}
+                parentKey="sidebar.users"
+                titleKey="agency.add.general.headline"
+            >
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
@@ -504,7 +1010,7 @@ export const UserEditOrAdd = () => {
                             type="text"
                             className="admin-m3-text-button"
                             onClick={() => form.submit()}
-                            disabled={submitted}
+                            disabled={submitted || savingContactRoles}
                         >
                             {t('save')}
                         </Button>
@@ -514,6 +1020,7 @@ export const UserEditOrAdd = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
+                    className={profileStyles.form}
                     disabled={isReadOnly}
                     labelAlign="left"
                     labelWrap
@@ -527,6 +1034,16 @@ export const UserEditOrAdd = () => {
                         if ('assignedSupervisorId' in changedValues) {
                             supervisorPickedByAdminRef.current = true;
                         }
+                        Object.keys(changedValues[CONTACT_ROLES_FIELD] ?? {}).forEach((agencyId) =>
+                            contactRolesEditedRef.current.add(agencyId),
+                        );
+                        if (canChangeTraeger && 'tenantId' in changedValues) {
+                            resetCentresForTraeger(changedValues.tenantId);
+                        }
+                        // The "remove the marked topics first" error has no rule to clear it.
+                        Object.keys(changedValues.topicsByAgency ?? {}).forEach((centreId) =>
+                            form.setFields([{ name: ['topicsByAgency', centreId], errors: [] }]),
+                        );
                     }}
                     onFinishFailed={onFinishFailed}
                     initialValues={{
@@ -535,11 +1052,11 @@ export const UserEditOrAdd = () => {
                         }),
                         username: decodeUsername(singleData?.username || ''),
                         agencies: convertToOptions(singleData?.agencies || [], ['postcode', 'name', 'city'], 'id'),
-                        topicIds: convertToOptions(consultantById?.topics || [], 'name', 'id'),
                         assignedSupervisorId: storedSupervisorId || undefined,
-                        publicSlug: consultantById?.publicSlug || singleData?.publicSlug || '',
-                        pendingPublicSlug: consultantById?.pendingPublicSlug || singleData?.pendingPublicSlug || '',
-                        publicSlugStatus: consultantById?.publicSlugStatus || singleData?.publicSlugStatus || '',
+                        // The search row carries the server's list; the form holds a map by centre id,
+                        // filled once the centres are known. Never let the list in (#1302).
+                        topicsByAgency: {},
+                        ...storedPublicSlug,
                         rejectPendingPublicSlug: false,
                         tenantId:
                             singleData?.tenantId?.toString() || (userTenantId > 0 && userTenantId.toString()) || '',
@@ -548,138 +1065,14 @@ export const UserEditOrAdd = () => {
                     <Row gutter={[20, 10]}>
                         <Col xs={24} lg={12}>
                             <Card titleKey="agency.edit.general.general_information">
-                                <MuiFormField
-                                    name="firstname"
-                                    label={t('firstname')}
-                                    placeholder={t('placeholder.firstname')}
-                                    required
-                                    rules={[requiredRule]}
+                                <ConsultantPersonalFields
+                                    exclude={personalFieldExclusions}
+                                    disabled={isReadOnly}
+                                    // The username IS the Keycloak identity; it cannot move once issued.
+                                    usernameLocked={isEditing}
+                                    setupEmailHint={!isEditing && typeOfUsers === TypeOfUser.Consultants}
                                 />
-
-                                <MuiFormField
-                                    name="lastname"
-                                    label={t('lastname')}
-                                    placeholder={t('placeholder.lastname')}
-                                    required
-                                    rules={[requiredRule]}
-                                />
-
-                                {isConsultantForm && (
-                                    <>
-                                        <MuiFormField
-                                            name="displayName"
-                                            label={t('counselor.displayName')}
-                                            placeholder={t('counselor.displayName.placeholder')}
-                                            helpText={t('counselor.displayName.hint')}
-                                        />
-
-                                        <MuiFormField
-                                            name="internalDisplayName"
-                                            label={t('counselor.internalDisplayName')}
-                                            placeholder={t('counselor.internalDisplayName.placeholder')}
-                                            helpText={t('counselor.internalDisplayName.hint')}
-                                        />
-
-                                        {/*
-                                          Deliberately not clearable. Clearing the select yields
-                                          `undefined`, which the API layer omits and the backend
-                                          reads as "leave unchanged" — so the clear affordance
-                                          would silently fail to persist. `not_specified` ("keine
-                                          Angabe") is the canonical way to say "no salutation", so
-                                          nothing is lost by removing it. Sending `''` instead
-                                          would introduce a second representation of "none" and
-                                          would wipe a stored salutation whenever the form is
-                                          submitted before getConsultantById has prefilled it.
-                                        */}
-                                        <MuiSelectField
-                                            name="salutation"
-                                            label="counselor.salutation"
-                                            placeholder="plsSelect"
-                                            options={SALUTATION_KEYS.map((key) => ({
-                                                value: key,
-                                                label: t(`counselor.salutation.option.${key}`),
-                                            }))}
-                                        />
-
-                                        <MuiFormField
-                                            name="position"
-                                            label={t('counselor.position')}
-                                            placeholder={t('counselor.position.placeholder')}
-                                        />
-
-                                        <MuiFormField
-                                            name="title"
-                                            label={t('counselor.personalTitle')}
-                                            placeholder={t('counselor.personalTitle.placeholder')}
-                                        />
-
-                                        {canManageAdminRemarks && (
-                                            <MuiMultilineFormField
-                                                name="adminRemarks"
-                                                label={t('counselor.adminRemarks')}
-                                                helpText={t('counselor.adminRemarks.hint')}
-                                            />
-                                        )}
-                                    </>
-                                )}
-
-                                <MuiFormField
-                                    name="email"
-                                    label={t('email')}
-                                    placeholder={t('placeholder.email')}
-                                    rules={[
-                                        {
-                                            required: true,
-                                            type: 'email',
-                                            message: t('message.error.email.incorrect'),
-                                        },
-                                    ]}
-                                />
-
-                                <MuiFormField
-                                    name="username"
-                                    label={t('counselor.username')}
-                                    placeholder={t('placeholder.username')}
-                                    disabled={isEditing}
-                                    helpText={isEditing ? undefined : t('message.error.username.format')}
-                                    rules={isEditing ? undefined : usernameFormRules(t)}
-                                />
-
-                                {!isEditing &&
-                                    (typeOfUsers === TypeOfUser.Consultants ||
-                                        typeOfUsers === TypeOfUser.AgencyAdmins) && (
-                                        <>
-                                            <MuiPasswordFormField
-                                                name="password"
-                                                label={t('counselor.password')}
-                                                placeholder={t('placeholder.password')}
-                                                required
-                                                rules={[requiredRule, ...passwordFormRules(t)]}
-                                            />
-                                            <MuiPasswordFormField
-                                                name="passwordConfirmation"
-                                                label={t('counselor.passwordConfirmation')}
-                                                placeholder={t('placeholder.password')}
-                                                required
-                                                dependencies={['password']}
-                                                rules={[
-                                                    requiredRule,
-                                                    ({ getFieldValue }) => ({
-                                                        validator(_, value) {
-                                                            if (!value || getFieldValue('password') === value) {
-                                                                return Promise.resolve();
-                                                            }
-                                                            return Promise.reject(
-                                                                new Error(
-                                                                    t('profile.passwordChange.error.passwordsNotMatch'),
-                                                                ),
-                                                            );
-                                                        },
-                                                    }),
-                                                ]}
-                                            />
-                                        </>
-                                    )}
+                                {!isConsultantForm && <AdminContactEmailField disabled={isReadOnly} />}
                             </Card>
                         </Col>
                         <Col xs={24} lg={12}>
@@ -689,7 +1082,10 @@ export const UserEditOrAdd = () => {
                                         name="tenantId"
                                         placeholder="tenantAdmins.form.tenant"
                                         required
-                                        disabled={isReadOnly || isEditing || !isSuperAdmin}
+                                        // Only a platform admin moves a counsellor to another Träger (#1216);
+                                        // an existing admin's Träger stays fixed.
+                                        disabled={isReadOnly || !isSuperAdmin || (isEditing && !canChangeTraeger)}
+                                        help={traegerChosen ? 'counselor.changeTenant.saveHint' : undefined}
                                         className={styles.select}
                                         label="tenantAdmins.form.tenantAssignment"
                                         options={convertToOptions(tenantsData || [], 'name', 'id')}
@@ -701,7 +1097,23 @@ export const UserEditOrAdd = () => {
                                         labelInValue
                                         isMulti
                                         placeholder="plsSelect"
-                                        options={convertToOptions(filteredAgencies, ['postcode', 'name', 'city'], 'id')}
+                                        options={convertToOptions(filteredAgencies, AGENCY_LABEL_FIELDS, 'id')}
+                                        rules={
+                                            traegerChosen
+                                                ? [
+                                                      {
+                                                          validator: (_rule, value) =>
+                                                              (value?.length ?? 0) > 0
+                                                                  ? Promise.resolve()
+                                                                  : Promise.reject(
+                                                                        new Error(
+                                                                            t('counselor.changeTenant.centreRequired'),
+                                                                        ),
+                                                                    ),
+                                                      },
+                                                  ]
+                                                : []
+                                        }
                                     />
 
                                     <div className={styles.createAgency}>
@@ -712,37 +1124,16 @@ export const UserEditOrAdd = () => {
                                         />
                                     </div>
 
-                                    {showTopicsField && (
-                                        <MuiSelectField
-                                            label="topics.title"
-                                            name="topicIds"
-                                            labelInValue
-                                            isMulti
-                                            allowClear
-                                            placeholder="plsSelect"
-                                            options={topicOptions}
+                                    {showTopicPickers && (
+                                        <CentreTopicPickers
+                                            selectedCentres={selectedAgencies}
+                                            centres={filteredAgencies}
+                                            topicName={topicName}
                                         />
                                     )}
 
                                     {isConsultantForm && (
-                                        <>
-                                            <div className={styles.switchGroup}>
-                                                <MuiSwitchField
-                                                    label={t('counselor.formalLanguage.title')}
-                                                    name="formalLanguage"
-                                                />
-                                                {/* Temporarily hidden: {isEditing && <MuiSwitchField label={t('counselor.absent')} name="absent" />} */}
-                                                {/* Temporarily hidden: {isEnabled(FeatureFlag.GroupChatV2) && (
-                                                <MuiSwitchField
-                                                    label={t('counselor.isGroupChatConsultant')}
-                                                    name="isGroupchatConsultant"
-                                                />
-                                            )} */}
-                                                <MuiSwitchField
-                                                    label={t('counselor.isSupervisor')}
-                                                    name="isSupervisor"
-                                                />
-                                            </div>
+                                        <ConsultantSettingsFields exclude={PAGE_SETTINGS_EXCLUSIONS}>
                                             {showStandingSupervisor && (
                                                 <MuiSelectField
                                                     name="assignedSupervisorId"
@@ -757,17 +1148,25 @@ export const UserEditOrAdd = () => {
                                                     // vanishing.
                                                     disabled={!canWriteStandingSupervisor || supervisorCandidatesFailed}
                                                     allowClear
+                                                    confirmEnable={confirmSupervision.confirmEnable}
                                                 />
                                             )}
-                                            {isAbsentEnabled && (
-                                                <MuiMultilineFormField
-                                                    label={t('counselor.absenceMessage')}
-                                                    name="absenceMessage"
-                                                />
-                                            )}
-                                        </>
+                                        </ConsultantSettingsFields>
                                     )}
+                                    {/* OBP 2.1 #107: the first standing supervisor asks about the privacy policy. */}
+                                    {confirmSupervision.dialog}
                                 </Card>
+
+                                {showContactRoles && (
+                                    <ContactPersonForSection
+                                        centres={contactRoleCentres}
+                                        // The save plans from the values at Save; a later change would be lost.
+                                        disabled={isReadOnly || savingContactRoles}
+                                        loading={contactPairsLoading}
+                                        failedCentres={contactRoleFailedCentres}
+                                        onRetry={retryContactPairs}
+                                    />
+                                )}
 
                                 {isConsultantForm && (
                                     <Card titleKey="counselor.publicSlug.status.title">
@@ -775,13 +1174,36 @@ export const UserEditOrAdd = () => {
                                             name="publicSlug"
                                             label={t('counselor.publicSlug')}
                                             placeholder={t('placeholder.publicSlug')}
+                                            helpText={t('counselor.publicSlug.hint', { max: PUBLIC_SLUG_MAX_LENGTH })}
                                             rules={[
                                                 {
-                                                    pattern: /^[a-z]+(-[a-z]+)*$/,
-                                                    message: t('message.error.publicSlug.format'),
+                                                    // Same rule as the UserService, including the
+                                                    // id-shaped names it rejects (ORISO-UserService#1534).
+                                                    validator: (_, value?: string) => {
+                                                        if (!value || isValidPublicSlug(value)) {
+                                                            return Promise.resolve();
+                                                        }
+                                                        // Pasting bypasses maxLength; say why it is refused.
+                                                        const reason =
+                                                            value.length > PUBLIC_SLUG_MAX_LENGTH
+                                                                ? t('message.error.publicSlug.maxLength', {
+                                                                      max: PUBLIC_SLUG_MAX_LENGTH,
+                                                                  })
+                                                                : t('message.error.publicSlug.format');
+                                                        return Promise.reject(new Error(reason));
+                                                    },
                                                 },
                                             ]}
+                                            inputProps={{ maxLength: PUBLIC_SLUG_MAX_LENGTH }}
                                         />
+                                        {isEditing && publicContactLinkUrl && (
+                                            <CopyLinkRow
+                                                value={publicContactLinkUrl}
+                                                labelKey="counselor.publicSlug.url"
+                                                copyKey="counselor.publicSlug.copy"
+                                                copiedKey="counselor.publicSlug.copied"
+                                            />
+                                        )}
                                         <Form.Item name="pendingPublicSlug" hidden>
                                             <input />
                                         </Form.Item>
@@ -792,12 +1214,9 @@ export const UserEditOrAdd = () => {
                                             <input />
                                         </Form.Item>
                                         {isEditing && (
-                                            <Alert
-                                                type={publicSlugAlertType}
-                                                showIcon
-                                                message={t('counselor.publicSlug.status.title')}
-                                                description={publicSlugAlertDescription}
-                                            />
+                                            <HintText title={t('counselor.publicSlug.status.title')}>
+                                                {publicSlugAlertDescription}
+                                            </HintText>
                                         )}
                                         {pendingSlug && (
                                             <Space>
@@ -819,7 +1238,71 @@ export const UserEditOrAdd = () => {
                         </Col>
                     </Row>
                 </Form>
+                {isEditing && singleData && [TypeOfUser.Consultants, TypeOfUser.AgencyAdmins].includes(typeOfUsers) && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${singleData.firstname ?? ''} ${singleData.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        targetTenantId={singleData.tenantId}
+                        canManage={can(
+                            PermissionAction.Update,
+                            isConsultantForm ? Resource.Consultant : Resource.AgencyAdminUser,
+                        )}
+                    />
+                )}
             </ThemeProvider>
+            {tenantMove && (
+                <ChangeTraegerDialog
+                    consultantName={tenantMove.consultantName}
+                    fromTraeger={tenantMove.fromTraeger}
+                    toTraeger={tenantMove.toTraeger}
+                    centres={tenantMove.centres}
+                    // The server counts the open cases only while it moves the counsellor.
+                    handoverLogHref={routePathNames.caseHandoverLogs}
+                    step={tenantMove.step}
+                    error={tenantMove.error}
+                    result={tenantMove.result}
+                    onConfirm={confirmTenantMove}
+                    onCancel={() => setTenantMove(null)}
+                    onDone={finishTenantMove}
+                />
+            )}
+            {pendingMove && (
+                <TopicsLostByMoveDialog
+                    lost={pendingMove.lost}
+                    // Role-level only: the permission model has no per-centre check. A centre the
+                    // admin may not change answers 403, which addLostTopicsToTarget explains.
+                    canEditTarget={can(PermissionAction.Update, Resource.Agency)}
+                    oneTopicPerAgency={appSettings?.oneTopicPerAgencyEnabled === true}
+                    busy={addingTopics}
+                    onAddToTarget={addLostTopicsToTarget}
+                    onDrop={dropLostTopics}
+                    onCreateCentre={() => navigate(routePathNames.agencyAdd)}
+                    onClose={() => !addingTopics && setPendingMove(null)}
+                />
+            )}
         </Page>
     );
+};
+
+export const UserEditOrAdd = () => {
+    const { typeOfUsers, id } = useParams<{ id: string; typeOfUsers: TypeOfUser }>();
+    const { can } = useUserPermissions();
+
+    if (!id || (typeOfUsers !== TypeOfUser.Consultants && typeOfUsers !== TypeOfUser.AgencyAdmins)) {
+        return <AccessDenied />;
+    }
+
+    if (typeOfUsers === TypeOfUser.AgencyAdmins) {
+        const canOpenEditor =
+            id === 'add'
+                ? can(PermissionAction.Create, Resource.AgencyAdminUser)
+                : can(PermissionAction.Read, Resource.AgencyAdminUser) &&
+                  can(PermissionAction.Update, Resource.AgencyAdminUser);
+        if (!canOpenEditor) {
+            return <AccessDenied />;
+        }
+    }
+
+    return <UserEditForm id={id} typeOfUsers={typeOfUsers} can={can} />;
 };

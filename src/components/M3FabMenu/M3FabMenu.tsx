@@ -8,12 +8,20 @@ export interface M3FabMenuItem {
     /** Stable key; also what `onSelect` reports and what `activeKey` matches. */
     key: string;
     label: string;
+    /** One supporting sentence under the label; read as the pill's description, not its name. */
+    description?: string;
     /** Single-colour glyph — it inherits the pill's text colour. */
     icon?: ReactNode;
     /** Filled glyph for the currently selected item; falls back to `icon`. */
     selectedIcon?: ReactNode;
     /** Route. Without it the pill renders as a plain button. */
     to?: string;
+    /**
+     * Colour of this pill in an action menu. The tone follows the ACTION, not
+     * the current value: "activate" is primary, "deactivate" is neutral, whatever
+     * the feature is set to right now (#992). Falls back to the menu `tone`.
+     */
+    tone?: 'primary' | 'neutral';
 }
 
 export interface M3FabMenuProps {
@@ -35,7 +43,10 @@ export interface M3FabMenuProps {
     className?: string;
     /** Navigation keeps the existing palette; action menus use the compact policy-control palette. */
     variant?: 'navigation' | 'action';
-    /** Closed/action colour communicates the selected boolean value without relying on the glyph. */
+    /**
+     * Closed/action colour of the FAB communicates the selected boolean value
+     * without relying on the glyph. Items without their own `tone` inherit it.
+     */
     tone?: 'primary' | 'neutral';
     /** Optional value glyph for an action FAB; menu entries retain their own policy-mode glyphs. */
     triggerIcon?: ReactNode;
@@ -204,17 +215,37 @@ export const M3FabMenu = ({
         };
     }, [close, open]);
 
-    const renderItem = (item: M3FabMenuItem, isFooter: boolean) => {
+    const renderItem = (item: M3FabMenuItem, isFooter: boolean, index: number) => {
         const isActive = item.key === activeKey;
+        // Index, not the free-form key: aria-describedby splits on whitespace.
+        const descriptionId = item.description
+            ? `${menuId}-${isFooter ? 'footer' : 'item'}-${index}-description`
+            : undefined;
         const content = (
             <>
                 {isActive ? item.selectedIcon ?? item.icon : item.icon}
-                <span className={styles.itemLabel}>{item.label}</span>
+                {item.description ? (
+                    <span className={styles.itemText}>
+                        <span className={styles.itemLabel}>{item.label}</span>
+                        {/* aria-hidden keeps it out of the name; aria-describedby still reads it. */}
+                        <span
+                            className={classNames(styles.itemDescription, 'm3-body-medium')}
+                            id={descriptionId}
+                            aria-hidden
+                        >
+                            {item.description}
+                        </span>
+                    </span>
+                ) : (
+                    <span className={styles.itemLabel}>{item.label}</span>
+                )}
             </>
         );
         const itemClassName = classNames(styles.item, {
+            [styles.itemWithDescription]: Boolean(item.description),
             [styles.itemActive]: isActive,
             [styles.itemFooter]: isFooter,
+            [styles.itemNeutral]: (item.tone ?? tone) === 'neutral',
         });
 
         if (item.to) {
@@ -224,6 +255,7 @@ export const M3FabMenu = ({
                         className={itemClassName}
                         to={item.to}
                         aria-current={isActive ? 'page' : undefined}
+                        aria-describedby={descriptionId}
                         aria-disabled={disabled || undefined}
                         tabIndex={disabled ? -1 : undefined}
                         onClick={(event) => {
@@ -249,6 +281,7 @@ export const M3FabMenu = ({
                     // Also on the button branch: which destination you are on
                     // must not depend on whether it was given a route.
                     aria-current={isActive ? 'page' : undefined}
+                    aria-describedby={descriptionId}
                     disabled={disabled}
                     onClick={() => {
                         onSelect?.(item.key);
@@ -282,8 +315,8 @@ export const M3FabMenu = ({
                         transform: stackInlineOffset === 0 ? undefined : `translateX(${stackInlineOffset}px)`,
                     }}
                 >
-                    {items.map((item) => renderItem(item, false))}
-                    {footerItems.map((item) => renderItem(item, true))}
+                    {items.map((item, index) => renderItem(item, false, index))}
+                    {footerItems.map((item, index) => renderItem(item, true, index))}
                 </ul>
             )}
             <button

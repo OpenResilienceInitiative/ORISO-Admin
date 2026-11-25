@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
-import type { ComponentProps, SVGProps } from 'react';
+import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
 
 beforeEach(() => {
@@ -22,10 +22,6 @@ vi.mock('../../../../resources/img/svg/permissions/one_on_one.svg', () => ({ Rea
 vi.mock('../../../../resources/img/svg/permissions/live_chat.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group.svg', () => ({ ReactComponent: () => null }));
 vi.mock('../../../../resources/img/svg/permissions/group_internal.svg', () => ({ ReactComponent: () => null }));
-vi.mock('../../../../resources/img/svg/i.svg', () => ({
-    ReactComponent: (props: SVGProps<SVGSVGElement>) => <svg data-testid="permission-description-info" {...props} />,
-}));
-
 const renderOneOnOne = (
     onPolicyChange = vi.fn(),
     props: Partial<ComponentProps<typeof PermissionsSettingsView>> = {},
@@ -56,71 +52,77 @@ const renderOneOnOne = (
 };
 
 describe('PermissionsSettingsView per-feature policy controls', () => {
-    it('orders the title, leading description info, and activated control for quick scanning', () => {
+    it('orders the title before the activated control, with the explanation behind the help button', () => {
         renderOneOnOne();
 
-        const title = screen.getByRole('heading', { name: 'tenants.permissions.card.oneOnOne.title' });
-        const description = screen.getByText('tenants.permissions.card.oneOnOne.description').closest('p');
-        const descriptionInfo = screen.getByTestId('permission-description-info');
-        const activated = screen.getByRole('button', {
-            name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+        // #1558: the folding header also carries the summary chip.
+        const title = screen.getByRole('heading', { name: /^tenants\.permissions\.card\.oneOnOne\.title/ });
+        const activated = within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
+            name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
         });
 
-        expect(description).not.toBeNull();
-        expect(description?.firstElementChild).toBe(descriptionInfo);
-        expect(descriptionInfo).toHaveAttribute('aria-hidden', 'true');
-        expect(title.compareDocumentPosition(description as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-        expect((description as Node).compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ }).length).toBeGreaterThan(0);
+        expect(title.compareDocumentPosition(activated)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
     it('shows policy buttons instead of the former global enforcement UI', () => {
         renderOneOnOne();
 
         expect(
-            screen.getByRole('button', {
-                name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
+                name: /tenants.permissions.card.activated: tenants.permissions.policy.activated/,
             }),
         ).toBeTruthy();
         expect(
             screen.getByRole('button', {
-                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
+                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.deactivated/,
             }),
         ).toBeTruthy();
         expect(screen.queryByRole('switch')).toBeNull();
         expect(screen.queryByRole('checkbox')).toBeNull();
     });
 
-    it('keeps at most one feature menu open', async () => {
-        const user = userEvent.setup();
-        renderOneOnOne();
-
-        const masterTrigger = screen.getByRole('button', {
-            name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
-        });
-        const videoTrigger = screen.getByRole('button', {
-            name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
-        });
-        await user.click(masterTrigger);
-        expect(document.querySelectorAll('[data-admin-fab-menu-stack]')).toHaveLength(1);
-        expect(masterTrigger).toHaveAttribute('aria-expanded', 'true');
-
-        await user.click(videoTrigger);
-        expect(document.querySelectorAll('[data-admin-fab-menu-stack]')).toHaveLength(1);
-        expect(masterTrigger).toHaveAttribute('aria-expanded', 'false');
-        expect(videoTrigger).toHaveAttribute('aria-expanded', 'true');
-    });
-
-    it('auto-reports the exact feature and selected policy', async () => {
+    it('auto-reports the exact feature and the decision of each of its two buttons', async () => {
         const user = userEvent.setup();
         const onPolicyChange = renderOneOnOne();
+        const video = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
 
         await user.click(
-            screen.getByRole('button', {
-                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
+            within(video).getByRole('button', {
+                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.deactivated/,
             }),
         );
-        await user.click(screen.getByRole('button', { name: 'tenants.permissions.policy.activationEnforced' }));
+        expect(onPolicyChange).toHaveBeenLastCalledWith('featureVideoCallsOneOnOneChatsEnabled', {
+            value: true,
+            mode: 'SUGGESTED',
+        });
 
+        await user.click(within(video).getByRole('button', { name: /policy.makeRequired/ }));
+        expect(onPolicyChange).toHaveBeenLastCalledWith('featureVideoCallsOneOnOneChatsEnabled', {
+            value: false,
+            mode: 'ENFORCED',
+        });
+        // No popup menu any more: nothing but the buttons themselves reacts.
+        expect(document.querySelector('[data-admin-fab-menu-stack]')).toBeNull();
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('requires an already active feature with a single click on the lock', async () => {
+        const user = userEvent.setup();
+        const onPolicyChange = renderOneOnOne(vi.fn(), {
+            permissionPolicies: {
+                featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
+                featureVideoCallsOneOnOneChatsEnabled: { value: true, mode: 'SUGGESTED' },
+            },
+        });
+        const video = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+
+        await user.click(within(video).getByRole('button', { name: /policy.makeRequired/ }));
+        expect(onPolicyChange).toHaveBeenCalledTimes(1);
         expect(onPolicyChange).toHaveBeenCalledWith('featureVideoCallsOneOnOneChatsEnabled', {
             value: true,
             mode: 'ENFORCED',
@@ -152,14 +154,14 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         const video = document.querySelector(
             '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
         ) as HTMLElement;
-        await user.click(within(video).getByRole('button', { name: /openMenu/ }));
-        await user.click(within(video).getByRole('button', { name: /deactivationSuggested/ }));
+        // A Beratungsstelle only switches; it has no lock for a requirement.
+        expect(within(video).queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
+        await user.click(within(video).getByRole('button', { name: /policy.activated – / }));
 
         const audio = document.querySelector(
             '[data-feature-policy="featureAudioCallsOneOnOneChatsEnabled"]',
         ) as HTMLElement;
-        await user.click(within(audio).getByRole('button', { name: /openMenu/ }));
-        await user.click(within(audio).getByRole('button', { name: /deactivationSuggested/ }));
+        await user.click(within(audio).getByRole('button', { name: /policy.activated – / }));
 
         expect(onToggleUpdate.mock.calls[1][2]).toMatchObject({
             settings: {
@@ -169,8 +171,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         });
 
         const master = document.querySelector('[data-feature-policy="featureCallsEnabled"]') as HTMLElement;
-        await user.click(within(master).getByRole('button', { name: /openMenu/ }));
-        await user.click(within(master).getByRole('button', { name: /deactivationSuggested/ }));
+        await user.click(within(master).getByRole('button', { name: /policy.activated – / }));
         expect(onToggleUpdate.mock.calls[2][2]).toMatchObject({
             settings: {
                 featureCallsEnabled: false,
@@ -180,7 +181,7 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
         });
     });
 
-    it('opens the information dialog rather than a menu for inherited enforcement', async () => {
+    it('shows inherited enforcement as a disabled button, with no menu, lock or dialog', async () => {
         const user = userEvent.setup();
         render(
             <PermissionsSettingsView
@@ -197,13 +198,46 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
             />,
         );
 
-        await user.click(
-            screen.getByRole('button', {
-                name: /tenants.permissions.card.activated: tenants.permissions.policy.moreInformation/,
-            }),
-        );
-        expect(screen.getByRole('dialog')).toBeTruthy();
+        const inherited = within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
+            name: /tenants.permissions.card.activated: tenants.permissions.policy.activated$/,
+        });
+        expect(inherited).toBeDisabled();
+        await user.click(inherited);
+        expect(screen.queryByRole('dialog')).toBeNull();
         expect(document.querySelector('[data-admin-fab-menu-stack]')).toBeNull();
+        const master = document.querySelector('[data-feature-policy="featureCallsEnabled"]') as HTMLElement;
+        expect(within(master).queryByRole('button', { name: /makeRequired|makeAdjustable/ })).toBeNull();
+    });
+
+    // ORISO-TenantService#363: the Träger's stored "off" is shown, not the platform's suggestion.
+    // Caritas Berlin case: raw false + inherited suggestion on -> stays OFF, hint "Vorschlag: an".
+    // #1558: only that conflict is said; otherwise the card says what the feature does.
+    it.each([
+        [{ value: false, mode: 'SUGGESTED', inherited: false }, true, 'deactivated', null],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, false, 'deactivated', 'ownSuggestedOn'],
+        [{ value: true, mode: 'SUGGESTED', inherited: true }, undefined, 'activated', null],
+        [undefined, false, 'deactivated', null],
+    ] as const)('policy %o with raw %s shows %s with conflict hint %s', (videoPolicy, own, state, source) => {
+        renderOneOnOne(vi.fn(), {
+            permissionPolicies: {
+                featureCallsEnabled: { value: true, mode: 'SUGGESTED' },
+                ...(videoPolicy ? { featureVideoCallsOneOnOneChatsEnabled: videoPolicy } : {}),
+            },
+            ownSettings: { featureVideoCallsOneOnOneChatsEnabled: own },
+        });
+        const control = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        expect(
+            within(control).getByRole('button', { name: new RegExp(`tenants.permissions.policy.${state}`) }),
+        ).toBeInTheDocument();
+        expect(
+            within(control).getByText(
+                source
+                    ? `tenants.permissions.policy.source.${source}`
+                    : 'tenants.permissions.featureDescription.videoCalls',
+            ),
+        ).toBeInTheDocument();
     });
 
     it('uses false form values when an asker policy is absent from a partial response', () => {
@@ -227,12 +261,12 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
 
         expect(
             screen.getByRole('button', {
-                name: /tenants.permissions.asker.displayName.label:.*tenants.permissions.policy.deactivationSuggested/,
+                name: /tenants.permissions.asker.displayName.label: tenants.permissions.policy.deactivated/,
             }),
         ).toBeInTheDocument();
         expect(
             screen.getByRole('button', {
-                name: /tenants.permissions.asker.email.label:.*tenants.permissions.policy.deactivationSuggested/,
+                name: /tenants.permissions.asker.email.label: tenants.permissions.policy.deactivated/,
             }),
         ).toBeInTheDocument();
     });
@@ -242,15 +276,143 @@ describe('PermissionsSettingsView per-feature policy controls', () => {
             pendingPolicyFields: new Set(['featureVideoCallsOneOnOneChatsEnabled']),
         });
 
+        const video = document.querySelector(
+            '[data-feature-policy="featureVideoCallsOneOnOneChatsEnabled"]',
+        ) as HTMLElement;
+        within(video)
+            .getAllByRole('button')
+            .forEach((button) => expect(button).toBeDisabled());
         expect(
-            screen.getByRole('button', {
-                name: /tenants.permissions.feature.videoCalls: tenants.permissions.policy.openMenu/,
-            }),
-        ).toBeDisabled();
-        expect(
-            screen.getByRole('button', {
-                name: /tenants.permissions.card.activated: tenants.permissions.policy.openMenu/,
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('button', {
+                name: /tenants.permissions.card.activated: tenants.permissions.policy.activated – /,
             }),
         ).toBeEnabled();
+    });
+});
+
+// Review 4300331824: a failed or pending Träger read must not pass defaults off as the Träger's values.
+describe('PermissionsSettingsView tiles', () => {
+    it('gives every tile a header icon', () => {
+        renderOneOnOne();
+
+        // The page's own wrapper card shares the heading level but is not a tile.
+        const cardTiles = screen
+            .getAllByRole('heading', { level: 5 })
+            .filter((heading) => heading.textContent !== 'tenants.permissions.title');
+        // #1558: the asker account is a section of the Mailberatung tile, not a tile of its own.
+        expect(cardTiles.map((heading) => heading.textContent)).not.toContain('tenants.permissions.asker.title');
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByRole('group', {
+                name: 'tenants.permissions.asker.title',
+            }),
+        ).toBeInTheDocument();
+        cardTiles.forEach((heading) => {
+            expect(heading.parentElement?.querySelector('[class*="headerIcon"]')).toBeTruthy();
+        });
+        // #1558: conversation-type tiles fold up; their header button carries the icon.
+        const foldingTiles = screen
+            .getAllByRole('heading', { level: 3 })
+            .filter((heading) => heading.querySelector('button[aria-expanded]'));
+        expect(foldingTiles.length).toBeGreaterThan(0);
+        foldingTiles.forEach((heading) => {
+            expect(heading.querySelector('[class*="icon"][aria-hidden]')).toBeTruthy();
+        });
+        // Every tile has its explanation; sections inside a tile can add their own (#1558).
+        expect(screen.getAllByRole('button', { name: /tileHelp\.open/ }).length).toBeGreaterThanOrEqual(
+            cardTiles.length + foldingTiles.length,
+        );
+    });
+
+    it('shows direct invitations inside the one-on-one tile, independent of its master switch', () => {
+        renderOneOnOne(vi.fn(), {
+            initialValues: { settings: { featureCallsEnabled: false } },
+            permissionPolicies: { featureCallsEnabled: { value: false, mode: 'SUGGESTED' } },
+        });
+
+        const tile = screen.getByTestId('chat-type-card-oneOnOne');
+        const chat = tile.querySelector('[data-feature-policy="featureDirectInviteChatEnabled"]') as HTMLElement;
+        expect(chat).toBeTruthy();
+        // Round button and lock both stay usable while the tile's own master is off.
+        within(chat)
+            .getAllByRole('button')
+            .forEach((button) => expect(button).toBeEnabled());
+    });
+});
+
+// ORISO-UserService#1662: guest account modes per chat type, next to the direct invitations.
+describe('PermissionsSettingsView guest account modes', () => {
+    // #1560: one choice per medium, from a menu.
+    const permanentVideo = () =>
+        screen
+            .getByTestId('chat-type-card-oneOnOne')
+            .querySelector('[data-feature-policy="guestAccount-video"]') as HTMLElement | null;
+
+    it('shows the guest account modes in the one-on-one tile and writes a Träger choice as a policy', async () => {
+        const onPolicyChange = vi.fn();
+        renderOneOnOne(onPolicyChange, { policyLevel: 'tenant' });
+
+        expect(screen.getByText('tenants.permissions.guestAccountModes.title')).toBeTruthy();
+        const row = permanentVideo();
+        expect(row).toBeTruthy();
+        await userEvent.click(within(row as HTMLElement).getByRole('button', { name: /policy\.openMenu/ }));
+        await userEvent.click(
+            screen.getByRole('button', {
+                name: /^tenants\.permissions\.guestAccountModes\.choice\.permanent\.SUGGESTED/,
+            }),
+        );
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountPermanentVideoEnabled', {
+            value: true,
+            mode: 'SUGGESTED',
+        });
+        expect(onPolicyChange).toHaveBeenCalledWith('featureGuestAccountTemporaryVideoEnabled', {
+            value: false,
+            mode: 'SUGGESTED',
+        });
+    });
+
+    it('is part of the platform page too', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'platform' });
+
+        expect(permanentVideo()).toBeTruthy();
+    });
+
+    it('is not offered on a Beratungsstelle page, which has no value of its own', () => {
+        renderOneOnOne(vi.fn(), { policyLevel: 'agency' });
+
+        expect(screen.queryByText('tenants.permissions.guestAccountModes.title')).toBeNull();
+        expect(permanentVideo()).toBeNull();
+    });
+});
+
+describe('PermissionsSettingsView Träger channel switches', () => {
+    const renderCentre = (traegerChannelPoliciesStatus: 'pending' | 'error' | 'success') =>
+        renderOneOnOne(vi.fn(), {
+            channelsSetOnTraeger: true,
+            traegerChannelPolicies: undefined,
+            traegerChannelPoliciesStatus,
+        });
+    const emailChannel = () =>
+        document.querySelector('[data-feature-policy="featureAskerEmailAgencyCounsellingEnabled"]');
+
+    it('says the Träger values could not be loaded instead of showing defaults', () => {
+        renderCentre('error');
+
+        expect(screen.getByText('tenants.permissions.card.notifications.traegerUnavailable')).toBeInTheDocument();
+        expect(emailChannel()).toBeNull();
+        expect(screen.queryByTestId('traeger-channels-loading')).toBeNull();
+    });
+
+    it('shows a loading state while the Träger values are read', () => {
+        renderCentre('pending');
+
+        expect(screen.getByTestId('traeger-channels-loading')).toBeInTheDocument();
+        expect(emailChannel()).toBeNull();
+        expect(screen.queryByText('tenants.permissions.card.notifications.traegerUnavailable')).toBeNull();
+    });
+
+    it('shows the read-only channel switches once the Träger values are loaded', () => {
+        renderCentre('success');
+
+        expect(emailChannel()).not.toBeNull();
     });
 });

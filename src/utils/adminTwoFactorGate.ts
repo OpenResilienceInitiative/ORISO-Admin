@@ -11,6 +11,16 @@ import { UserData } from '../types/user';
  * out would be exactly the "additional roles must not bypass this rule" hole the
  * issue warns about.
  *
+ * Platform (super) admins are in scope as well (ORISO-Frontend#1931 product
+ * decision): they carry tenant-admin and agency-admin with tenantId 0
+ * (`useUserRoles.isSuperAdmin`), so this list covers them without a role of
+ * their own. Removing either role from the list must keep them covered — the
+ * platform-admin cases in the test file guard that.
+ *
+ * There is no server-side "mandatory for admins" fact to follow: UserService's
+ * `twoFactorAuth.isRequired` comes from the consultant row only and is always
+ * false for admin accounts, so the decision lives here.
+ *
  * Roles that are NOT here stay untouched (topic-admin, user-admin, consultants):
  * widening beyond the administrator roles the issue names is a separate product
  * decision, not something to slip in under a security fix.
@@ -20,6 +30,9 @@ export const MANDATORY_TWO_FACTOR_ROLES: readonly UserRole[] = [
     UserRole.SingleTenantAdmin,
     UserRole.AgencyAdmin,
     UserRole.RestrictedAgencyAdmin,
+    // ORISO-UserService#1666: platform-wide statistics are sensitive, so the read-only
+    // Statistik-Leser·in proves a second factor too (the backend also refuses without one).
+    UserRole.StatisticsReader,
 ];
 
 export interface MandatoryTwoFactorInput {

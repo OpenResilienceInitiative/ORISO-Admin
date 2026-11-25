@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DataTablePagination } from './DataTablePagination';
@@ -94,5 +94,14 @@ describe('DataTablePagination', () => {
     it('hides the page-size select when no handler is provided', () => {
         render(<DataTablePagination page={1} pageSize={10} total={5} onPageChange={vi.fn()} />);
         expect(screen.queryByLabelText('Zeilen pro Seite')).not.toBeInTheDocument();
+    });
+
+    it('keeps every control and its name in the compact toolbar variant, at 32px', () => {
+        renderPagination({ compact: true, pageSize: 20, total: 57 });
+
+        expect(screen.getByText('1–20 von 57')).toBeInTheDocument();
+        // The label is visually hidden but still names the select.
+        expect(screen.getByRole('combobox', { name: 'Zeilen pro Seite' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Nächste Seite' })).toHaveStyle({ width: '32px', height: '32px' });
     });
 });

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
 
@@ -8,9 +8,15 @@ export interface IconButtonProps {
     icon: ReactNode;
     /** Required accessible name (icon-only control). */
     ariaLabel: string;
-    onClick?: () => void;
+    onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+    /** Menu triggers: `aria-haspopup`, `aria-expanded`, `aria-controls`. */
+    ariaHasPopup?: 'menu';
+    ariaExpanded?: boolean;
+    ariaControls?: string;
     variant?: IconButtonVariant;
     disabled?: boolean;
+    /** Tooltip, e.g. the reason a disabled button is disabled. */
+    title?: string;
     /** Square hit-area in px (icon scales to ~24). Default 40. */
     size?: number;
     className?: string;
@@ -25,14 +31,22 @@ export const IconButton = ({
     icon,
     ariaLabel,
     onClick,
+    ariaHasPopup,
+    ariaExpanded,
+    ariaControls,
     variant = 'standard',
     disabled = false,
+    title,
     size = 40,
     className,
 }: IconButtonProps) => (
     <button
         type="button"
         aria-label={ariaLabel}
+        title={title}
+        aria-haspopup={ariaHasPopup}
+        aria-expanded={ariaExpanded}
+        aria-controls={ariaControls}
         disabled={disabled}
         onClick={onClick}
         style={{ width: size, height: size }}

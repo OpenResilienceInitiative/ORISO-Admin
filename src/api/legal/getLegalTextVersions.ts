@@ -2,6 +2,9 @@ import { agencyEndpointBase, tenantAdminEndpoint } from '../../appConfig';
 import { LegalTextVersion, LegalVersionScope } from '../../types/legalVersion';
 import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
+/** A missing endpoint is different from an owner with no published versions. */
+export type LegalTextVersionsResult = { state: 'available'; versions: LegalTextVersion[] } | { state: 'unsupported' };
+
 /**
  * Client for the generic legal-text version history (ADR-021 decision 3).
  *
@@ -10,10 +13,8 @@ import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
  * rather than by a path segment per document. This module is deliberately the ONLY
  * place that knows the URLs.
  *
- * The Träger level is NOT covered by that contract — #256 states levels 1-2 live in
- * ORISO-TenantService and their history has yet to be built there (its known gap 2).
- * The tenant URL below therefore still anticipates a shape rather than matching one,
- * and until it exists the request 404s and the hook degrades to "no history".
+ * The Träger and platform levels are served by TenantService in the same shape
+ * (`/tenantadmin/{id}/legal-versions`, id 0 = platform; ORISO-Admin#270, #1070).
  */
 export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
     switch (scope.level) {
@@ -37,12 +38,11 @@ export const legalTextVersionsUrl = (scope: LegalVersionScope): string => {
  * admin answering "which policy was in force in March" must not be told "none"
  * because a 403 or a 500 was swallowed.
  *
- * The one failure folded into "empty" is 404: the Träger level has no endpoint at all,
- * and ORISO-AgencyService#256 is merged but not yet deployed everywhere, so a level
- * legitimately has no history yet and an error banner on four cards would be noise
- * about a feature that has not reached that environment.
+ * A TenantService older than #1070 has no tenant collection, so its 404 is
+ * "unsupported" rather than "never published". Other owners' 404s remain failures:
+ * a routing/deployment error must not be guessed to be an empty or unsupported history.
  */
-export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTextVersion[]> =>
+export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTextVersionsResult> =>
     (
         fetchData({
             url: legalTextVersionsUrl(scope),
@@ -50,9 +50,11 @@ export const getLegalTextVersions = (scope: LegalVersionScope): Promise<LegalTex
             skipAuth: false,
             responseHandling: [FETCH_ERRORS.NO_MATCH, FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_ERRORS.FORBIDDEN_SILENT],
         }) as Promise<LegalTextVersion[]>
-    ).catch((error: unknown) => {
-        if (error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
-            return [] as LegalTextVersion[];
-        }
-        throw error;
-    });
+    )
+        .then((versions) => ({ state: 'available' as const, versions }))
+        .catch((error: unknown) => {
+            if (scope.level === 'tenant' && error instanceof Error && error.message === FETCH_ERRORS.NO_MATCH) {
+                return { state: 'unsupported' as const };
+            }
+            throw error;
+        });

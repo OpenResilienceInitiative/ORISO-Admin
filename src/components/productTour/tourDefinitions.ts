@@ -1,4 +1,5 @@
 import type { TourDefinition } from './types';
+import { adminIntroductionTour } from './tours/adminIntroductionTour';
 
 /**
  * Representative Admin tour for Storybook review only. Concrete Admin tours
@@ -30,5 +31,5 @@ export const adminDemoTour: TourDefinition = {
     ],
 };
 
-/** Tours enabled in the running admin app: none in this package. */
-export const adminTours: TourDefinition[] = [];
+/** Tours enabled in the running admin app, in the order the launcher lists them. */
+export const adminTours: TourDefinition[] = [adminIntroductionTour];

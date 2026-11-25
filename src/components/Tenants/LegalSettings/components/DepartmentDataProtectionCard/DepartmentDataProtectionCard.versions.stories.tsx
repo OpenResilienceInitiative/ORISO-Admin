@@ -8,7 +8,8 @@ import { DepartmentDataProtectionCard } from './index';
  * versions read-only; "adopt as new draft" copies one into the draft.
  */
 const meta = {
-    title: 'Organisms/Legal/DepartmentDataProtectionCard/Versions & Consent',
+    title: 'Settings/Einstellungen/Rechtliches/DepartmentDataProtectionCard/Versions & Consent',
+    id: 'organisms-legal-departmentdataprotectioncard-versions-consent',
     component: DepartmentDataProtectionCard,
     parameters: { layout: 'padded' },
     args: { onSave: () => undefined, departmentName: 'Suchtberatung', languages: ['de'] },

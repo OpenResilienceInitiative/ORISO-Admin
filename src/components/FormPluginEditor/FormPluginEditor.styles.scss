@@ -66,12 +66,6 @@
             align-items: center;
         }
 
-        &-placeholder {
-            &-tooltip .ant-tooltip-inner {
-                color: #000000;
-            }
-        }
-
         &-image > *,
         &-link > * {
             display: flex;
@@ -250,6 +244,18 @@
             background: transparent;
             color: inherit;
             cursor: pointer;
+
+            // The chip clips (overflow hidden), so the ring goes around the chip, on the tile, not inside it on
+            // the chip fill (1.5:1 there).
+            // !important: the shared :focus-visible rule is deliberately specific (it must beat MUI resets).
+            &:focus-visible {
+                outline: none !important;
+            }
+        }
+
+        &:has(button:focus-visible) {
+            outline: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+            outline-offset: var(--admin-focus-ring-offset, 2px);
         }
 
         &Label {

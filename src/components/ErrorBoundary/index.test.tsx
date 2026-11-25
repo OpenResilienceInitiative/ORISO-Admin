@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from './index';
 import { reportClientError } from '../../api/reportClientError';

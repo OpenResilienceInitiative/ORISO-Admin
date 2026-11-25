@@ -1,0 +1,60 @@
+@use '../../../../../styles/muiSpacing' as mui;
+
+/* ORISO-Admin#1558 — text on the page background, no tile surface. */
+.intro {
+    display: flex;
+    max-width: 1100px;
+    flex-direction: column;
+    padding: 0 mui.$mui-unit (mui.$mui-unit * 3);
+    color: var(--m3-on-surface, #1b1b1c);
+    gap: mui.$mui-unit * 1.5;
+}
+
+.lead {
+    margin: 0;
+    font-size: 16px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+}
+
+.scope {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.types {
+    display: grid;
+    margin: 0;
+    gap: mui.$mui-unit * 1.5 (mui.$mui-unit * 3);
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+}
+
+.type {
+    min-width: 0;
+    padding-left: mui.$mui-unit * 1.5;
+    border-left: 3px solid var(--m3-primary, #b3261e);
+}
+
+.typeName {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+
+.typePurpose {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.hint {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    line-height: 18px;
+}

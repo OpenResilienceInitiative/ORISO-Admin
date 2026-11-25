@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import Alert from '@mui/material/Alert';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import { useTranslation } from 'react-i18next';
 import { Modal } from '../Modal';
@@ -7,6 +6,7 @@ import { CopyLinkRow } from '../DpaForwardDialog/CopyLinkRow';
 import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardLink, DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './pendingSignatureDialog.module.scss';
+import { Notify } from '../Notify';
 
 export interface DpaPendingSignatureDialogProps {
     /**
@@ -19,6 +19,8 @@ export interface DpaPendingSignatureDialogProps {
     initialLink?: DpaForwardLink;
     /** Sends the DPA_FORWARD mail again (or to a different address). */
     forward: (request: { recipientEmail?: string }) => Promise<DpaForwardOutcome>;
+    /** Tenant whose canonical DPA forward mail is rendered. */
+    tenantId?: number;
     /**
      * "Abmelden" — the ONLY way off this screen (JOB7). There is no dismiss:
      * an unsigned tenant may not use the platform, so the dialog is a gate,
@@ -52,6 +54,7 @@ export const DpaPendingSignatureDialog = ({
     ensureSignLink,
     initialLink,
     forward,
+    tenantId,
     onLogout,
     onForwardCompleted,
     recheckRejected = false,
@@ -83,6 +86,7 @@ export const DpaPendingSignatureDialog = ({
         return (
             <DpaForwardDialog
                 forward={forward}
+                tenantId={tenantId}
                 // Shown after login on an authenticated admin surface, so the
                 // admin-only branded mail preview is reachable here.
                 surface="admin"
@@ -113,9 +117,9 @@ export const DpaPendingSignatureDialog = ({
         >
             <div className={styles.body} data-testid="dpa-pending-dialog">
                 {recheckRejected && (
-                    <Alert severity="warning" role="alert" data-testid="dpa-pending-recheck-rejected">
+                    <Notify title={t('notify.title.dpa')} testId="dpa-pending-recheck-rejected" severity="warning">
                         {t('dpaPending.recheckRejected')}
-                    </Alert>
+                    </Notify>
                 )}
                 {linkState.kind === 'loading' && (
                     <p className={styles.note} role="status">
@@ -125,9 +129,9 @@ export const DpaPendingSignatureDialog = ({
                 {linkState.kind === 'error' && (
                     // Not a dead end: "E-Mail senden" still opens the forward
                     // dialog, which mints a link of its own.
-                    <Alert severity="warning" data-testid="dpa-pending-link-error">
+                    <Notify title={t('notify.title.dpa')} testId="dpa-pending-link-error" severity="warning">
                         {t('dpaPending.linkUnavailable')}
-                    </Alert>
+                    </Notify>
                 )}
                 {linkState.kind === 'ready' && <CopyLinkRow value={linkState.link.signUrl} />}
                 <p className={styles.note}>{t('dpaPending.gatedNote')}</p>

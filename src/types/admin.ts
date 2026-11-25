@@ -5,7 +5,8 @@ export interface AdminData {
     lastname: string;
     firstname: string;
     email: string;
-    active: boolean;
+    /** Read-only login flag; null/omitted means that the identity status is unknown. */
+    active?: boolean | null;
     gender: string;
     id: string;
     phone: string;
@@ -16,5 +17,10 @@ export interface AdminData {
     deleteDate?: string | null;
     status: Status;
     twoFactorAuth?: boolean;
+    /**
+     * ORISO-Admin#1534: shown to counsellors instead of the login e-mail. On save,
+     * absent keeps the stored value and "" clears it.
+     */
+    contactEmail?: string | null;
     agencyAssignmentFailed?: boolean;
 }

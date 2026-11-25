@@ -1,8 +1,10 @@
-import { Col, message, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FETCH_ERRORS } from '../../../api/fetchData';
+import { snackbar } from '../../../components/Snackbar';
 import { CardEditable } from '../../../components/CardEditable';
 import { Button, BUTTON_TYPES } from '../../../components/button/Button';
 import { FormInputField } from '../../../components/FormInputField';
@@ -25,11 +27,16 @@ export const TopicEditOrAdd = () => {
     const { mutate } = useAddOrUpdateTopicAdmin({
         id: isEditing ? id : null,
         onSuccess: (response) => {
-            message.success({
+            snackbar.success({
                 content: t(`message.topic.${isEditing ? 'update' : 'add'}`),
                 duration: 3,
             });
             navigate(`/admin/topics/${response?.id || id}`);
+        },
+        onError: (error) => {
+            if (error instanceof Error && error.message === FETCH_ERRORS.CONFLICT) {
+                snackbar.error({ content: t('topicDialog.nameTaken') });
+            }
         },
     });
 
@@ -40,6 +47,7 @@ export const TopicEditOrAdd = () => {
         <Page isLoading={isLoading}>
             <Page.Back
                 path="/admin/topics"
+                parentKey="topics.title"
                 titleKey={isEditing ? 'topic.modal.headline.edit' : 'topic.modal.headline.add'}
             />
 
@@ -89,7 +97,7 @@ export const TopicEditOrAdd = () => {
                         isLoading={isLoading}
                         initialValues={{
                             ...(topic || {}),
-                            status: topic?.status === 'ACTIVE',
+                            status: topic?.status === 'ACTIVE' || !topic,
                             name: {
                                 ...(topic?.name || {}),
                             },

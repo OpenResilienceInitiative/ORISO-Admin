@@ -25,6 +25,11 @@ export const Disabled: Story = {
     args: { disabled: true },
 };
 
+/** Read access only: lock instead of pen, not-allowed cursor, still focusable. */
+export const Locked: Story = {
+    args: { locked: true },
+};
+
 /** Custom label overriding the default i18n key. */
 export const CustomLabel: Story = {
     args: { label: 'Bearbeiten' },

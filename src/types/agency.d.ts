@@ -3,6 +3,7 @@ import { CounsellingRelation } from '../enums/CounsellingRelation';
 import { PermissionToggleVisibility } from './PermissionToggleVisibility';
 import { TenantSettings } from './tenant';
 import { TopicData } from './topic';
+import type { CaseSharingApiMode, PolicyValue } from './permissionPolicy';
 
 /**
  * Platform-wide governance for agency-level toggles (a singleton, super-admin owned). The
@@ -20,6 +21,17 @@ export interface AgencyAdminControls {
  */
 export type AgencySettings = Omit<TenantSettings, 'smtp' | 'tenantAdminControls'> & {
     agencyAdminControls?: AgencyAdminControls;
+    /**
+     * Centre-owned "Weitere Beratung im Live-Chat empfehlen" (ORISO-Frontend#2251). Absent or null
+     * means off; not cascaded from the Träger. Only Träger and platform admins may change it.
+     */
+    featureLiveChatFurtherCounsellingEnabled?: boolean | null;
+    /** The centre's own case sharing choice (ORISO-TenantService#374); absent = none of its own. */
+    caseSharingMode?: CaseSharingApiMode | null;
+    /** Read-only effective case sharing mode of the centre, resolved by the AgencyService. */
+    caseSharing?: PolicyValue<CaseSharingApiMode>;
+    /** Read-only effective policies; the agency's own overrides remain the boolean settings. */
+    permissionPolicies?: Record<string, PolicyValue<boolean>>;
 };
 
 export interface AgencyDemographicsData {
@@ -70,6 +82,10 @@ export interface AgencyData {
     demographics?: AgencyDemographicsData;
     description: string;
     offline: boolean;
+    active?: boolean | null;
+    ownActive?: boolean;
+    tenantActive?: boolean | null;
+    restrictions?: string[];
     online: boolean;
     postcode: string;
     street?: string;
@@ -87,6 +103,8 @@ export interface AgencyData {
     createDate?: string; // Already returned by backend
     updateDate?: string; // Already returned by backend
     postCodes?: PostCodeRange[];
+    /** Registration-card choice: false means all postal-code areas. Absent on other card patches. */
+    postCodeRangesActive?: boolean;
     dataProtection: {
         dataProtectionResponsibleEntity:
             | 'AGENCY_RESPONSIBLE'

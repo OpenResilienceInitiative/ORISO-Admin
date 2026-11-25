@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
     InviteLinkError,
@@ -50,13 +50,13 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('account');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         expect(client.registerTenantAdmin).toHaveBeenCalledWith('raw-token', {
             organisation: ORGANISATION,
             dpa: DPA,
-            account: { password: 'SecurePass1!' },
+            account: { password: 'SecurePassword1!' },
             reservedTenantId: 21,
             tenantIdReservationToken: 'reservation-token-21',
         });
@@ -80,6 +80,34 @@ describe('useTenantAdminOnboardingFlow', () => {
             expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe(reason);
         },
     );
+
+    it.each([
+        ['the reserved number', { reservedTenantId: undefined }],
+        ['the reservation token', { tenantIdReservationToken: undefined }],
+    ])('treats a new-Träger invite without %s as an INVALID link', async (_missing, gap) => {
+        const client = createClient({ getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, ...gap }) });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+
+        await waitFor(() => expect(result.current.state.phase).toBe('link-error'));
+        expect(result.current.state.phase === 'link-error' && result.current.state.reason).toBe('INVALID');
+    });
+
+    it("keeps the invite's Träger number when the registration answers without one", async () => {
+        const client = createClient({
+            registerTenantAdmin: vi.fn().mockResolvedValue({ twoFactor: { secret: 'S', qrCodeBase64: null } }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+        act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
+        await act(async () => {
+            await result.current.submitAccount('SecurePassword1!');
+        });
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456');
+        });
+
+        expect(result.current.state).toEqual({ phase: 'done', tenantId: 21 });
+    });
 
     it('treats a missing token as an INVALID link without calling the backend', async () => {
         const client = createClient();
@@ -112,7 +140,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('link-error');
@@ -120,7 +148,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         // The flow is terminal now: further submits must not reach the client again.
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(client.registerTenantAdmin).toHaveBeenCalledTimes(1);
     });
@@ -137,14 +165,14 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('account');
         expect(result.current.submitError).toBe('registration');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         expect(result.current.submitError).toBeNull();
@@ -161,7 +189,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         await act(async () => {
@@ -219,11 +247,11 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         let first!: Promise<void>;
         act(() => {
-            first = result.current.submitAccount('SecurePass1!');
+            first = result.current.submitAccount('SecurePassword1!');
         });
         // Second click while the first request is still running: must be a no-op.
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(registerTenantAdmin).toHaveBeenCalledTimes(1);
 
@@ -247,7 +275,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         let first!: Promise<void>;
@@ -312,7 +340,7 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, DPA));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
 
         expect(result.current.state.phase).toBe('loading');
@@ -336,7 +364,7 @@ describe('useTenantAdminOnboardingFlow', () => {
         expect(result.current.state.phase).toBe('account');
 
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(result.current.state.phase).toBe('two-factor');
         // Unchanged request shape: the forwarded case just sends accepted:false
@@ -389,11 +417,247 @@ describe('useTenantAdminOnboardingFlow', () => {
 
         act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
         await act(async () => {
-            await result.current.submitAccount('SecurePass1!');
+            await result.current.submitAccount('SecurePassword1!');
         });
         expect(client.registerTenantAdmin).toHaveBeenCalledWith(
             'raw-token',
             expect.objectContaining({ dpa: expect.objectContaining({ accepted: false, signerName: '' }) }),
         );
+    });
+
+    describe('restores the DPA state the server recorded (#1065)', () => {
+        it('a forwarded invite re-enters the on-hold view after a reload, not the consent step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaForwardedAt: '2026-09-24T16:05:30' }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaForward).not.toBeNull();
+            expect(result.current.dpaForward?.recipientEmail).toBeNull();
+            expect(result.current.dpaConfirmed).toBe(false);
+
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('account');
+            await act(async () => {
+                await result.current.submitAccount('SecurePassword1!');
+            });
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({ dpa: expect.objectContaining({ accepted: false }) }),
+            );
+        });
+
+        it('a confirmed invite skips the consent act and continues to the account step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({
+                    ...INVITE,
+                    dpaForwardedAt: '2026-09-24T16:05:30',
+                    dpaSignedAt: '2026-09-25T09:12:00',
+                }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaConfirmed).toBe(true);
+            // Confirmed wins over forwarded: no waiting view, no signature mail promised.
+            expect(result.current.dpaForward).toBeNull();
+
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('account');
+            await act(async () => {
+                await result.current.submitAccount('SecurePassword1!');
+            });
+            expect(result.current.state.phase).toBe('two-factor');
+            expect(client.registerTenantAdmin).toHaveBeenCalledWith(
+                'raw-token',
+                expect.objectContaining({
+                    organisation: ORGANISATION,
+                    dpa: expect.objectContaining({ accepted: false }),
+                }),
+            );
+        });
+
+        it('an untouched invite still starts at the consent step', async () => {
+            const client = createClient({
+                getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, dpaForwardedAt: null, dpaSignedAt: null }),
+            });
+            const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+            await waitFor(() => expect(result.current.state.phase).toBe('organisation'));
+
+            expect(result.current.dpaForward).toBeNull();
+            expect(result.current.dpaConfirmed).toBe(false);
+            act(() => result.current.submitOrganisationDpa(ORGANISATION, null));
+            expect(result.current.state.phase).toBe('organisation');
+        });
+    });
+});
+
+describe('onboarding email gate', () => {
+    const twoFactor = {
+        secret: null,
+        qrCodeBase64: null,
+        methods: ['EMAIL', 'APP'] as const,
+        defaultMethod: 'EMAIL' as const,
+    };
+    const pendingClient = (overrides: Partial<Parameters<typeof createClient>[0]> = {}) =>
+        createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({ ...INVITE, phase: 'PENDING_2FA_ACTIVATION', twoFactor }),
+            sendTwoFactorEmail: vi.fn().mockResolvedValue(undefined),
+            ...overrides,
+        });
+
+    it('carries resumed capabilities, keeps sending separate from successful activation', async () => {
+        const client = pendingClient();
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        expect(result.current.state.phase === 'two-factor' && result.current.state.result.twoFactor).toEqual(twoFactor);
+        await act(async () => {
+            await result.current.sendTwoFactorEmail();
+        });
+        expect(client.sendTwoFactorEmail).toHaveBeenCalledWith('raw-token');
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(client.activateTwoFactor).not.toHaveBeenCalled();
+        await act(async () => {
+            await result.current.submitTwoFactorCode('123456', 'EMAIL');
+        });
+        expect(client.activateTwoFactor).toHaveBeenCalledWith('raw-token', '123456', 'EMAIL');
+        expect(result.current.state.phase).toBe('done');
+    });
+
+    it('keeps the gate pending on send and code failure', async () => {
+        const client = pendingClient({
+            sendTwoFactorEmail: vi.fn().mockRejectedValue(new Error('unavailable')),
+            activateTwoFactor: vi.fn().mockRejectedValue(new TwoFactorCodeInvalidError()),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        await act(async () => {
+            await expect(result.current.sendTwoFactorEmail()).rejects.toThrow('unavailable');
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBe('two-factor');
+        await act(async () => {
+            await result.current.submitTwoFactorCode('000000', 'EMAIL');
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBe('two-factor-code');
+    });
+
+    it('rejects email sending for a legacy app-only capability', async () => {
+        const client = pendingClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: 'LEGACY', qrCodeBase64: null },
+            }),
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(client.sendTwoFactorEmail).not.toHaveBeenCalled();
+    });
+});
+
+describe('email request guards', () => {
+    it('does not send twice while the first request is pending or after a terminal link error', async () => {
+        let rejectSend!: (error: unknown) => void;
+        const sendTwoFactorEmail = vi.fn().mockImplementation(
+            () =>
+                new Promise<void>((_resolve, reject) => {
+                    rejectSend = reject;
+                }),
+        );
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL', 'APP'], defaultMethod: 'EMAIL' },
+            }),
+            sendTwoFactorEmail,
+        });
+        const { result } = renderHook(() => useTenantAdminOnboardingFlow('raw-token', client));
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        let pending!: Promise<void>;
+        act(() => {
+            pending = result.current.sendTwoFactorEmail();
+        });
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(sendTwoFactorEmail).toHaveBeenCalledTimes(1);
+        await act(async () => {
+            const failure = expect(pending).rejects.toBeInstanceOf(InviteLinkError);
+            rejectSend(new InviteLinkError('REVOKED'));
+            await failure;
+        });
+        expect(result.current.state.phase).toBe('link-error');
+        await expect(result.current.sendTwoFactorEmail()).rejects.toThrow();
+        expect(sendTwoFactorEmail).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('second-factor requests across token changes', () => {
+    it.each([
+        ['send', 'success'],
+        ['send', 'failure'],
+        ['verify', 'success'],
+        ['verify', 'failure'],
+    ] as const)('isolates a stale %s %s from the new token and its pending request', async (action, outcome) => {
+        const deferred = () => {
+            let resolve!: () => void;
+            let reject!: (error: unknown) => void;
+            const promise = new Promise<void>((resolvePromise, rejectPromise) => {
+                resolve = resolvePromise;
+                reject = rejectPromise;
+            });
+            return { promise, resolve, reject };
+        };
+        const oldRequest = deferred();
+        const newRequest = deferred();
+        const sendTwoFactorEmail = vi
+            .fn()
+            .mockImplementation((token: string) => (token === 'old-token' ? oldRequest.promise : newRequest.promise));
+        const client = createClient({
+            getOnboardingInvite: vi.fn().mockResolvedValue({
+                ...INVITE,
+                phase: 'PENDING_2FA_ACTIVATION',
+                twoFactor: { secret: null, qrCodeBase64: null, methods: ['EMAIL', 'APP'], defaultMethod: 'EMAIL' },
+            }),
+            sendTwoFactorEmail,
+            activateTwoFactor: vi.fn().mockReturnValue(oldRequest.promise),
+        });
+        const { result, rerender } = renderHook(({ token }) => useTenantAdminOnboardingFlow(token, client), {
+            initialProps: { token: 'old-token' },
+        });
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        let oldCall!: Promise<void>;
+        act(() => {
+            oldCall = (
+                action === 'send'
+                    ? result.current.sendTwoFactorEmail()
+                    : result.current.submitTwoFactorCode('123456', 'EMAIL')
+            ).catch(() => {});
+        });
+        rerender({ token: 'new-token' });
+        await waitFor(() => expect(result.current.state.phase).toBe('two-factor'));
+        expect(result.current.busy).toBe(false);
+        let newCall!: Promise<void>;
+        act(() => {
+            newCall = result.current.sendTwoFactorEmail();
+        });
+        expect(result.current.busy).toBe(true);
+        await act(async () => {
+            if (outcome === 'failure') oldRequest.reject(new InviteLinkError('REVOKED'));
+            else oldRequest.resolve();
+            await oldCall;
+        });
+        expect(result.current.state.phase).toBe('two-factor');
+        expect(result.current.submitError).toBeNull();
+        expect(result.current.busy).toBe(true);
+        await act(async () => {
+            newRequest.resolve();
+            await newCall;
+        });
+        expect(result.current.busy).toBe(false);
+        expect(result.current.state.phase).toBe('two-factor');
     });
 });

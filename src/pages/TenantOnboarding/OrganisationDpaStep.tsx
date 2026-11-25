@@ -1,20 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Form } from 'antd';
 import classNames from 'classnames';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
-import Alert from '@mui/material/Alert';
 import Typography from '@mui/material/Typography';
 import ArrowForward from '@mui/icons-material/ArrowForward';
 import ForwardToInboxRounded from '@mui/icons-material/ForwardToInboxRounded';
 import HourglassTopRounded from '@mui/icons-material/HourglassTopRounded';
 import { useTranslation } from 'react-i18next';
-import { DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
+import { DPA_CONSENT_ANCHOR_ID, DpaFormSection, focusDpaConsent } from '../../components/DpaLegalForm/DpaFormSection';
 import { DpaLegalReader } from '../../components/DpaLegalForm/DpaLegalReader';
 import { DpaForwardDialog } from '../../components/DpaForwardDialog/DpaForwardDialog';
 import { M3Button } from '../../components/M3Button';
 import { MuiFormField } from '../../components/mui/MuiFormField';
+import { TraegerSenderFields } from '../../components/Tenants/TraegerSenderFields';
 import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
+import { SUBDOMAINS_TECHNICALLY_FINISHED } from '../../config/subdomainFeature';
+import { buildInternalSubdomain, newInternalSubdomainSuffix } from '../../utils/buildInternalSubdomain';
 import { pickLegalContentLanguage } from '../../components/Tenants/LegalSettings/utils/legalContentLanguages';
 import {
     DpaAcceptanceData,
@@ -24,6 +26,8 @@ import {
 import { DpaForwardClient } from '../../api/tenantOnboarding/dpaForward';
 import { WizardDpaForwardState } from './useTenantAdminOnboardingFlow';
 import styles from './styles.module.scss';
+import { Notify } from '../../components/Notify';
+import { HintText } from '../../components/HintText';
 
 interface OrganisationDpaStepProps {
     invite: TenantAdminOnboardingInviteDTO;
@@ -32,6 +36,8 @@ interface OrganisationDpaStepProps {
     initialDpa: DpaAcceptanceData | null;
     /** Declared delegation (#723) — the step renders the calm on-hold state. */
     forward: WizardDpaForwardState | null;
+    /** The representative already confirmed (#1065) — no consent block, organisation data only. */
+    confirmed?: boolean;
     /** Raw invite token — the only credential of the public forward endpoints. */
     inviteToken: string;
     forwardClient: DpaForwardClient;
@@ -43,6 +49,9 @@ interface OrganisationDpaFormValues {
     name: string;
     subdomain: string;
     address: string;
+    legalName?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     signerName: string;
     signerPosition: string;
     signerEmail: string;
@@ -58,6 +67,13 @@ const BLOCKER_MESSAGE: Record<SubmitBlocker, string> = {
     dpa: 'tenantOnboarding.dpa.unavailableBlocked',
 };
 
+/** Where "Ansehen" of a failed submit lands: the missing consent, the first invalid field, or the actions. */
+const blockerJump = (blocker: SubmitBlocker, actionsId: string): string => {
+    if (blocker === 'consent') return DPA_CONSENT_ANCHOR_ID;
+    if (blocker === 'fields') return '[aria-invalid="true"]';
+    return actionsId;
+};
+
 /**
  * antd prefixes the id of every bound control with the form name, and the
  * jump-to-the-invalid-field lookup resolves exactly that id — so the two must
@@ -65,6 +81,14 @@ const BLOCKER_MESSAGE: Record<SubmitBlocker, string> = {
  * page's global id space.
  */
 const FORM_NAME = 'tenantOnboarding';
+
+/** The optional sender block goes out only where something was entered. */
+const enteredSenderFields = (values: OrganisationDpaFormValues) =>
+    Object.fromEntries(
+        (['legalName', 'contactEmail', 'contactPhone'] as const)
+            .map((field) => [field, values[field]?.trim() ?? ''])
+            .filter(([, value]) => value !== ''),
+    ) as Pick<OrganisationData, 'legalName' | 'contactEmail' | 'contactPhone'>;
 
 /**
  * Step 1 (#571): organisation master data plus the EXISTING DPA/AVV form —
@@ -88,6 +112,7 @@ export const OrganisationDpaStep = ({
     initialOrganisation,
     initialDpa,
     forward,
+    confirmed = false,
     inviteToken,
     forwardClient,
     onForwarded,
@@ -99,6 +124,15 @@ export const OrganisationDpaStep = ({
     const [acceptTouched, setAcceptTouched] = useState(false);
     const [submitBlocker, setSubmitBlocker] = useState<SubmitBlocker | null>(null);
     const [forwardDialogOpen, setForwardDialogOpen] = useState(false);
+    const submitActionsId = useId();
+    // Subdomains are not finished: the field is greyed out and holds a technical name built from the
+    // organisation name. TenantService still needs a subdomain to create the Träger.
+    const [subdomainSuffix] = useState(newInternalSubdomainSuffix);
+    const organisationName = Form.useWatch('name', form);
+    useEffect(() => {
+        if (SUBDOMAINS_TECHNICALLY_FINISHED) return;
+        form.setFieldValue('subdomain', buildInternalSubdomain(organisationName, subdomainSuffix));
+    }, [form, organisationName, subdomainSuffix]);
 
     const dpaHtml = useMemo(
         () => DOMPurify.sanitize(pickLegalContentLanguage(invite.dpaContent, i18n.language)),
@@ -119,17 +153,22 @@ export const OrganisationDpaStep = ({
     // `undefined`, and `undefined !== null` is true — a caller that simply
     // does not pass `forward` would silently render the on-hold state and
     // withhold the consent control.
-    const forwarded = forward != null;
+    const forwarded = forward != null && !confirmed;
+    // Forwarded or confirmed: either way this step carries no own consent act.
+    const consentSettled = forwarded || confirmed;
 
     const onFinish = (values: OrganisationDpaFormValues) => {
         const organisation: OrganisationData = {
             name: values.name.trim(),
-            subdomain: values.subdomain.trim(),
+            subdomain: SUBDOMAINS_TECHNICALLY_FINISHED
+                ? values.subdomain.trim()
+                : buildInternalSubdomain(values.name, subdomainSuffix),
             address: values.address.trim(),
+            ...enteredSenderFields(values),
         };
-        if (forwarded) {
-            // The delegation replaces the consent act — the signature arrives
-            // through the sign link; only the organisation data is submitted.
+        if (consentSettled) {
+            // The delegation (or the confirmation already given) replaces the
+            // consent act; only the organisation data is submitted.
             setSubmitBlocker(null);
             onSubmit(organisation, null);
             return;
@@ -158,10 +197,10 @@ export const OrganisationDpaStep = ({
         // The consent state is part of "incomplete" as well — show its own
         // inline error from now on, whatever else is missing.
         setAcceptTouched(true);
-        setSubmitBlocker(dpaUnavailable && !forwarded ? 'dpa' : 'fields');
+        setSubmitBlocker(dpaUnavailable && !consentSettled ? 'dpa' : 'fields');
         // Actually move the viewport AND the caret to what is missing. antd's
         // own `scrollToField` silently did nothing here (#594.6 review).
-        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !forwarded && !dpaAccepted) {
+        if (!focusFirstInvalidField(errorFields, FORM_NAME) && !consentSettled && !dpaAccepted) {
             focusDpaConsent();
         }
     };
@@ -197,6 +236,10 @@ export const OrganisationDpaStep = ({
                 <MuiFormField
                     name="subdomain"
                     label={t('tenantOnboarding.organisation.subdomain')}
+                    disabled={!SUBDOMAINS_TECHNICALLY_FINISHED}
+                    helpText={
+                        SUBDOMAINS_TECHNICALLY_FINISHED ? undefined : t('tenantOnboarding.organisation.subdomainHint')
+                    }
                     rules={[
                         { required: true, whitespace: true, message: t('tenantOnboarding.validation.required') },
                         {
@@ -210,6 +253,11 @@ export const OrganisationDpaStep = ({
                     label={t('tenantOnboarding.organisation.address')}
                     rules={[{ required: true, whitespace: true, message: t('tenantOnboarding.validation.required') }]}
                 />
+            </div>
+            {/* Optional sender block for the mail footer (Frank, 2026-09-23): entered where
+                the address is, never required to continue. */}
+            <div className={classNames(styles.fieldStack, styles.senderFields)}>
+                <TraegerSenderFields />
             </div>
         </div>
     );
@@ -228,9 +276,14 @@ export const OrganisationDpaStep = ({
                     name: initialOrganisation?.name ?? '',
                     subdomain: initialOrganisation?.subdomain ?? '',
                     address: initialOrganisation?.address ?? '',
-                    signerName: initialDpa?.signerName ?? [invite.firstName, invite.lastName].filter(Boolean).join(' '),
+                    legalName: initialOrganisation?.legalName ?? '',
+                    contactEmail: initialOrganisation?.contactEmail ?? '',
+                    contactPhone: initialOrganisation?.contactPhone ?? '',
+                    // Never seeded from the invite: that would imply the admin is the authorised
+                    // representative (Frank, 2026-09-25).
+                    signerName: initialDpa?.signerName ?? '',
                     signerPosition: initialDpa?.signerPosition ?? '',
-                    signerEmail: initialDpa?.signerEmail ?? invite.recipientEmail,
+                    signerEmail: initialDpa?.signerEmail ?? '',
                     // The slot is a free note now, not the organisation name — seeding it
                     // from the field three rows up is exactly the duplication that went.
                     signerOrganisation: initialDpa?.signerOrganisation ?? '',
@@ -244,15 +297,28 @@ export const OrganisationDpaStep = ({
                     {t('tenantOnboarding.organisation.title')}
                 </Typography>
                 <div className={styles.dpaBlock}>
-                    {forwarded ? (
+                    {confirmed && (
+                        <>
+                            <HintText
+                                title={t('tenantOnboarding.dpa.confirmed.title')}
+                                role="status"
+                                data-testid="dpa-confirmed-notice"
+                                style={{ marginBottom: 16 }}
+                            >
+                                {t('tenantOnboarding.dpa.confirmed.description')}
+                            </HintText>
+                            {organisationSection}
+                        </>
+                    )}
+                    {forwarded && (
                         <>
                             {/* On hold, not an error (#723): the delegation IS the
                                 valid completion of this step; the agreement stays
                                 readable while the signer fields and the consent
                                 act are withdrawn. */}
-                            <Alert severity="success" data-testid="dpa-forwarded-notice" sx={{ mb: 2 }}>
+                            <HintText role="status" data-testid="dpa-forwarded-notice" style={{ marginBottom: 16 }}>
                                 {t('tenantOnboarding.dpa.forwarded.notice')}
-                            </Alert>
+                            </HintText>
                             {!dpaUnavailable && (
                                 <DpaLegalReader
                                     html={dpaHtml}
@@ -299,10 +365,17 @@ export const OrganisationDpaStep = ({
                                 </div>
                             </div>
                         </>
-                    ) : (
+                    )}
+                    {!consentSettled && (
                         <>
                             <DpaFormSection
                                 dpaHtml={dpaHtml}
+                                // The backend distinguishes "operator published
+                                // nothing" from "our own read of it failed"
+                                // (#dpaUnavailableReason). Passing it through is
+                                // the whole point: the two states look identical
+                                // on this page but need opposite remedies.
+                                unavailableReason={invite.dpaUnavailableReason}
                                 textLabel={t('tenantOnboarding.dpa.title')}
                                 // Owner annotation 2026-08-18 (I2): the reader's own icon +
                                 // title + info line goes in this view — mirrors DpaBlocker,
@@ -340,12 +413,18 @@ export const OrganisationDpaStep = ({
                 </div>
 
                 {submitBlocker && (
-                    <Alert severity="error" role="alert" data-testid="onboarding-submit-error" sx={{ mt: 3 }}>
+                    <Notify
+                        title={t('notify.title.dpa')}
+                        testId="onboarding-submit-error"
+                        severity="error"
+                        // "Ansehen" lands on what has to be fixed, not on the editor's maximize button.
+                        jump={blockerJump(submitBlocker, submitActionsId)}
+                    >
                         {t(BLOCKER_MESSAGE[submitBlocker])}
-                    </Alert>
+                    </Notify>
                 )}
 
-                <div className={styles.actions}>
+                <div id={submitActionsId} className={styles.actions}>
                     {/* Every action on these surfaces carries its icon — the
                         blocker's do, so the primary here must too (#594 review). */}
                     <M3Button type="submit" variant="filled" block icon={<ArrowForward fontSize="small" />}>
@@ -357,6 +436,7 @@ export const OrganisationDpaStep = ({
             {forwardDialogOpen && (
                 <DpaForwardDialog
                     forward={(request) => forwardClient.forward(inviteToken, request)}
+                    inviteToken={inviteToken}
                     onClose={() => setForwardDialogOpen(false)}
                     onForwarded={({ link, recipientEmail, mailFailed }) => {
                         setForwardDialogOpen(false);

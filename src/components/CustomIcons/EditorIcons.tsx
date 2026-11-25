@@ -9,6 +9,8 @@ import { ReactComponent as EditOutline } from '../../resources/img/svg/edit.svg'
 import { ReactComponent as EditFilled } from '../../resources/img/svg/edit-filled.svg';
 import { ReactComponent as KeyboardArrowDown } from '../../resources/img/svg/keyboard-arrow-down.svg';
 import { ReactComponent as VersionHistory } from '../../resources/img/svg/clock-arrow-down.svg';
+import { ReactComponent as PublishTemplate } from '../../resources/img/svg/oriso/template_24px.svg';
+import { ReactComponent as SaveDraft } from '../../resources/img/svg/oriso/save_draft_24px.svg';
 
 /* eslint-disable react/jsx-props-no-spreading */
 
@@ -33,9 +35,14 @@ export const MinimizeContentIcon = (props: EditorIconProps) => (
 /** Publish / draft state pair for the editor footer actions. */
 export const PublishedIcon = (props: EditorIconProps) => <Icon component={Published} {...decorative} {...props} />;
 export const UnpublishedIcon = (props: EditorIconProps) => <Icon component={Unpublished} {...decorative} {...props} />;
+/** "Vorlage veröffentlichen" — offers the saved draft to the level below as a template. */
+export const PublishTemplateIcon = (props: EditorIconProps) => (
+    <Icon component={PublishTemplate} {...decorative} {...props} />
+);
 /** Edit pencil (outline + filled) — "Entwurf bearbeiten" and edit affordances. */
 export const EditIcon = (props: EditorIconProps) => <Icon component={EditOutline} {...decorative} {...props} />;
 export const EditFilledIcon = (props: EditorIconProps) => <Icon component={EditFilled} {...decorative} {...props} />;
+export const SaveDraftIcon = (props: EditorIconProps) => <Icon component={SaveDraft} {...decorative} {...props} />;
 /** "Insert cross reference" (Noun Project) — the anchor-link bubble trigger. */
 export const CrossReferenceIcon = (props: EditorIconProps) => (
     <Icon component={CrossReference} {...decorative} {...props} />

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildAgencyDataRequestBody, resolveAgencyTenantId } from './addAgencyData';
 
 describe('buildAgencyDataRequestBody — ADR-003 single-select topic', () => {

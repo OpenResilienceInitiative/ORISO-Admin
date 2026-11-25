@@ -5,6 +5,17 @@ export type TranslationProvider = (typeof TRANSLATION_PROVIDERS)[number];
 /** Masked API keys per provider as returned by GET /tenantadmin/translation/keys (e.g. `sk-…abcd`). */
 export type TranslationKeys = Partial<Record<TranslationProvider, string | null>>;
 
+/** Result of POST /tenantadmin/translation/keys/{provider}/test: one short live call with the stored key. */
+export interface TranslationKeyTestResult {
+    provider: string;
+    model: string;
+    /** The German sentence that was sent. */
+    sourceText: string;
+    /** What the provider sent back (English). */
+    reply: string;
+    latencyMs: number;
+}
+
 /** Request body of POST /tenantadmin/translate. */
 export interface TranslateRequest {
     sourceLang: string;

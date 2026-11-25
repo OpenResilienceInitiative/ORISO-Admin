@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { FETCH_ERRORS, FetchErrorWithOptions } from '../fetchData';
 import getAccessToken from './getAccessToken';
 
@@ -46,6 +46,34 @@ describe('getAccessToken', () => {
         await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toMatchObject(
             new FetchErrorWithOptions(FETCH_ERRORS.BAD_REQUEST, { data: otpResponse }),
         );
+    });
+
+    // #1338: Keycloak answers 429 when the per-window ceiling for code mails is
+    // reached, and has always answered 429 for a code guessed too often. Both used
+    // to fall into the catch-all below and surface as "server unreachable", which
+    // sent people reloading and retyping instead of waiting.
+    it('keeps a refused-because-rate-limited login apart from an unreachable server', async () => {
+        const rateLimitResponse = { error: 'invalid_grant', otpType: 'EMAIL', resendAvailableInSeconds: 420 };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({ status: 429, json: () => Promise.resolve(rateLimitResponse) }),
+        );
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toMatchObject(
+            new FetchErrorWithOptions(FETCH_ERRORS.TOO_MANY_REQUESTS, { data: rateLimitResponse }),
+        );
+    });
+
+    it('still reports a 429 without a readable body as TOO_MANY_REQUESTS', async () => {
+        // the ingress rate limit (slice 4) answers with HTML, not JSON
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({ status: 429, json: () => Promise.reject(new Error('not json')) }),
+        );
+
+        await expect(getAccessToken({ username: 'admin@example.com', password: 'correct' })).rejects.toMatchObject({
+            message: FETCH_ERRORS.TOO_MANY_REQUESTS,
+        });
     });
 
     it('reports an unreachable auth server as TIMEOUT so the login form can show the network message', async () => {

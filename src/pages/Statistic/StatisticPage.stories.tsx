@@ -1,0 +1,637 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { delay, http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- Storybook 10 subpath export.
+import { expect, fireEvent, userEvent, within, waitFor } from 'storybook/test';
+import type {
+    AdminDashboardPeriodCounts,
+    AdminDashboardStatisticsResponse,
+    AdminDashboardTarget,
+    StatisticSnapshotInterval,
+} from '../../api/statistic/getDashboardStatistics';
+import { getSessionAccessToken, getSessionRefreshToken, setSessionTokens } from '../../api/auth/tokenSessionStore';
+import {
+    adminStatisticsDashboardEndpoint,
+    agencyEndpointBase,
+    tenantAdminEndpoint,
+    topicAdminEndpoint,
+    topicEndpoint,
+    tutorialStatisticsEndpoint,
+} from '../../appConfig';
+import { findPopup, popupsOf } from '../../test/storyPopups';
+import { Statistic } from '../Statistic';
+
+const GENERATED_AT = '2026-11-06T05:00:00Z';
+const CHART_WEEKS = 5;
+const TOPIC_MONTHS = 4;
+
+const periods = (total: number): AdminDashboardPeriodCounts => ({
+    today: Math.round(total / 120),
+    yesterday: Math.round(total / 60),
+    thisWeek: Math.round(total / 12),
+    total,
+    thisYear: Math.round(total * 0.8),
+    lastYear: Math.round(total * 0.2),
+});
+
+// Same sample numbers on every run, so screenshots stay comparable.
+const dailySessions = (factor: number) =>
+    Array.from({ length: CHART_WEEKS * 7 }, (_, index) => {
+        const day = new Date(Date.UTC(2026, 10, 5 - index));
+        return { date: day.toISOString().slice(0, 10), count: Math.round((((index * 7) % 11) + 2) * factor) };
+    }).reverse();
+
+const monthlyTopics = (factor: number) =>
+    ['2026-08', '2026-09', '2026-10', '2026-11'].flatMap((month, monthIndex) =>
+        [1, 2, 3].map((topicId) => ({
+            month,
+            topicId,
+            sessionCount: Math.round((40 - topicId * 8 + monthIndex * 3) * factor),
+            sharePercent: 50 - topicId * 10,
+        })),
+    );
+
+const target = (
+    targetType: AdminDashboardTarget['targetType'],
+    tenantId: number | null,
+    agencyId: number | null,
+    factor: number,
+): AdminDashboardTarget => ({
+    targetType,
+    tenantId,
+    agencyId,
+    counselorCount: Math.round(12 * factor),
+    suppressed: false,
+    metrics: {
+        enquiriesCurrentMonth: Math.round(84 * factor),
+        enquiriesPreviousMonth: Math.round(71 * factor),
+        activeCases: Math.round(56 * factor),
+        activeConversationsToday: Math.round(9 * factor),
+        groupChatsTotal: Math.round(14 * factor),
+        messagesCounselorsCurrentMonth: Math.round(410 * factor),
+        messagesAdviceSeekersCurrentMonth: Math.round(365 * factor),
+        audioCallsCurrentMonth: Math.round(18 * factor),
+        videoCallsCurrentMonth: Math.round(11 * factor),
+    },
+    dailyNewSessions: dailySessions(factor),
+    monthlyTopTopics: monthlyTopics(factor),
+    sessionCountsByPeriod: periods(Math.round(620 * factor)),
+    groupChatCountsByPeriod: periods(Math.round(90 * factor)),
+});
+
+const suppressedTarget = (agencyId: number): AdminDashboardTarget => ({
+    targetType: 'AGENCY',
+    tenantId: 2,
+    agencyId,
+    counselorCount: 0,
+    suppressed: true,
+    metrics: null,
+    dailyNewSessions: [],
+    monthlyTopTopics: [],
+    sessionCountsByPeriod: null,
+    groupChatCountsByPeriod: null,
+});
+
+// What the server leaves out of a fixed stand: no "today", and no single days in a weekly one.
+const asStand = (row: AdminDashboardTarget, snapshotInterval: StatisticSnapshotInterval): AdminDashboardTarget => {
+    if (snapshotInterval === 'LIVE' || row.suppressed || !row.metrics) return row;
+    const weekly = snapshotInterval === 'WEEKLY';
+    const counts = (period: AdminDashboardPeriodCounts | null) =>
+        period && { ...period, today: null, yesterday: weekly ? null : period.yesterday };
+    return {
+        ...row,
+        metrics: { ...row.metrics, activeConversationsToday: null },
+        dailyNewSessions: weekly ? [] : row.dailyNewSessions,
+        weeklyNewSessions: weekly
+            ? [-2, 5, 12, 19, 26].map((offset, index) => ({
+                  weekStart: new Date(Date.UTC(2026, 9, offset)).toISOString().slice(0, 10),
+                  count: Math.round(row.counselorCount * (index + 2)),
+              }))
+            : [],
+        sessionCountsByPeriod: counts(row.sessionCountsByPeriod),
+        groupChatCountsByPeriod: counts(row.groupChatCountsByPeriod),
+    };
+};
+
+const statistics = (
+    snapshotInterval: StatisticSnapshotInterval,
+    targets: AdminDashboardTarget[] = [
+        target('PLATFORM', null, null, 4),
+        target('TENANT', 2, null, 2),
+        target('TENANT', 3, null, 1),
+        target('AGENCY', 2, 11, 1),
+        target('AGENCY', 2, 12, 0.5),
+        target('AGENCY', 3, 13, 0.75),
+    ],
+): AdminDashboardStatisticsResponse => ({
+    generatedAt: snapshotInterval === 'WEEKLY' ? '2026-11-02T05:00:00Z' : GENERATED_AT,
+    dataUntil: { LIVE: null, DAILY: '2026-11-05', WEEKLY: '2026-11-01' }[snapshotInterval],
+    scope: 'PLATFORM',
+    snapshotInterval,
+    chartWeeks: CHART_WEEKS,
+    topicMonths: TOPIC_MONTHS,
+    targets: targets.map((row) => asStand(row, snapshotInterval)),
+});
+
+const named = (rows: { id: number; name: string }[]) => HttpResponse.json({ total: rows.length, _embedded: rows });
+
+const handlers = (dashboard: () => Response | Promise<Response>) => [
+    http.get(`${adminStatisticsDashboardEndpoint}*`, dashboard),
+    http.get(`${agencyEndpointBase}*`, () =>
+        named([
+            { id: 11, name: 'Beratungsstelle Musterstadt' },
+            { id: 12, name: 'Beratungsstelle Beispielort' },
+            { id: 13, name: 'Beratungsstelle Testheim' },
+        ]),
+    ),
+    http.get(`${tenantAdminEndpoint}/search*`, () =>
+        named([
+            { id: 2, name: 'Träger Musterland' },
+            { id: 3, name: 'Träger Beispielregion' },
+        ]),
+    ),
+    http.get(`${topicAdminEndpoint}/*`, () =>
+        named([
+            { id: 1, name: 'Schwangerschaft' },
+            { id: 2, name: 'Schulden' },
+            { id: 3, name: 'Sucht' },
+        ]),
+    ),
+    // the public topic list fills names the topic admin list does not give (Admin role without access)
+    http.get(`${topicEndpoint}public`, () => HttpResponse.json([])),
+    http.get(`${tutorialStatisticsEndpoint}*`, () =>
+        HttpResponse.json({ generatedAt: GENERATED_AT, scope: 'PLATFORM', tenants: [] }),
+    ),
+];
+
+const fixedStand = (snapshotInterval: StatisticSnapshotInterval) =>
+    handlers(() => HttpResponse.json(statistics(snapshotInterval)));
+
+const meta = {
+    title: 'Pages/Statistic',
+    component: Statistic,
+    parameters: { layout: 'fullscreen', msw: { handlers: fixedStand('DAILY') } },
+    // Its own cache per story: the page keeps its data for a minute, so the shared client of the
+    // preview would show the previous story's numbers.
+    decorators: [
+        (Story, { id }) => (
+            <QueryClientProvider key={id} client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+                <Story />
+            </QueryClientProvider>
+        ),
+    ],
+    beforeEach: () => {
+        const previousAccess = getSessionAccessToken();
+        const previousRefresh = getSessionRefreshToken();
+        // A platform admin sees all three levels; the token only drives the UI here, MSW answers.
+        const claims = { tenantId: 0, realm_access: { roles: ['agency-admin', 'tenant-admin'] } };
+        setSessionTokens(`${btoa('{}')}.${btoa(JSON.stringify(claims))}.fixture`, 'storybook-refresh-fixture');
+        return () => {
+            setSessionTokens(previousAccess, previousRefresh);
+        };
+    },
+} satisfies Meta<typeof Statistic>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/** A backend from before communication tracking: no message or call counts at all. */
+const withoutCommunication = (row: AdminDashboardTarget): AdminDashboardTarget =>
+    row.metrics
+        ? {
+              ...row,
+              metrics: {
+                  enquiriesCurrentMonth: row.metrics.enquiriesCurrentMonth,
+                  enquiriesPreviousMonth: row.metrics.enquiriesPreviousMonth,
+                  activeCases: row.metrics.activeCases,
+                  activeConversationsToday: row.metrics.activeConversationsToday,
+                  groupChatsTotal: row.metrics.groupChatsTotal,
+              },
+          }
+        : row;
+
+export const DailyStand: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const heading = await canvas.findByText('Anfragen gesamt');
+        // The dashboard fades in, so the text is in the DOM before it is visible.
+        await waitFor(() => expect(heading).toBeVisible());
+        const bar = canvasElement.querySelector('.statisticDashboard__bar') as HTMLElement;
+        await expect(Number.parseFloat(getComputedStyle(bar).animationDuration)).toBeLessThanOrEqual(0.48);
+        const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
+        await expect(getComputedStyle(tooltip).backgroundColor).toBe('rgb(27, 27, 28)');
+    },
+};
+export const WeeklyStand: Story = {
+    parameters: { msw: { handlers: fixedStand('WEEKLY') } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findAllByRole('button', { name: /Beratungsfälle in KW/ })).toHaveLength(CHART_WEEKS);
+        const notice = canvas.getByText(/^Stand 01\.11\.2026 · neue Zahlen montags/);
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
+        // One quiet info row, not a stack of full-width bars (Admin#1374).
+        const infoRow = canvas.getByTestId('statistic-info-row');
+        await expect(getComputedStyle(infoRow).marginBottom).toBe('16px');
+        await expect(getComputedStyle(infoRow).borderTopLeftRadius).toBe('16px');
+        // The KPI cards use the full width: no picture fills a free cell.
+        const dashboard = canvasElement.querySelector('.statisticDashboard') as HTMLElement;
+        const summary = canvasElement.querySelector('.statisticDashboard__summaryGrid') as HTMLElement;
+        await expect(Math.round(summary.getBoundingClientRect().width)).toBe(
+            Math.round(dashboard.getBoundingClientRect().width),
+        );
+        await expect(canvasElement.querySelectorAll('[data-admin-card-grid-filler]')).toHaveLength(0);
+        // The newest week is the tallest bar: its tooltip must stay clear of the period menu above it.
+        const tooltip = canvasElement.querySelector('.statisticDashboard__barTooltip') as HTMLElement;
+        const menu = canvas.getByText('5 Wochen im Überblick');
+        await expect(tooltip.getBoundingClientRect().top).toBeGreaterThanOrEqual(menu.getBoundingClientRect().bottom);
+    },
+};
+export const Live: Story = { parameters: { msw: { handlers: fixedStand('LIVE') } } };
+export const WithSuppressedCentre: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json(
+                    statistics('DAILY', [
+                        target('PLATFORM', null, null, 4),
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                        suppressedTarget(12),
+                    ]),
+                ),
+            ),
+        },
+    },
+};
+// A Träger admin sees the rows of the own centres, one of them hidden next to a shown one.
+export const HiddenRowNextToShownRow: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json({
+                    ...statistics('DAILY', [
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                        suppressedTarget(12),
+                    ]),
+                    scope: 'TENANT',
+                }),
+            ),
+        },
+    },
+    beforeEach: () => {
+        const claims = { tenantId: 2, realm_access: { roles: ['tenant-admin'] } };
+        setSessionTokens(`${btoa('{}')}.${btoa(JSON.stringify(claims))}.fixture`, 'storybook-refresh-fixture');
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Admin#1510: the level is chosen in the one "Ansicht" scope picker.
+        fireEvent.click(await canvas.findByRole('button', { name: /^Ansicht:/ }));
+        fireEvent.click(await canvas.findByRole('button', { name: 'Beratungsstellen' }));
+        fireEvent.keyDown(canvasElement.ownerDocument, { key: 'Escape' });
+        const notice = await canvas.findByText(/kann auch einen größeren Bereich treffen/);
+        // The long reason waits behind "Warum?" in the one info row.
+        await expect(notice).not.toBeVisible();
+        fireEvent.click(await canvas.findByRole('button', { name: 'Warum?' }));
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.queryByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/)).toBeNull();
+        await expect(canvas.getByText('Statistik als CSV herunterladen')).toBeVisible();
+    },
+};
+// The total itself is hidden (UserService#1567): it would reveal a small row, or rests on too few people.
+export const HiddenTotal: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json(
+                    statistics('DAILY', [
+                        { ...suppressedTarget(0), targetType: 'PLATFORM', tenantId: null, agencyId: null },
+                        target('TENANT', 2, null, 2),
+                        target('AGENCY', 2, 11, 1),
+                    ]),
+                ),
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const notice = await canvas.findByText(/Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt/);
+        fireEvent.click(await canvas.findByRole('button', { name: 'Warum?' }));
+        // The page fades in, so the notice is only visible once that has settled.
+        await waitFor(() => expect(notice).toBeVisible());
+        await expect(canvas.getAllByText('Geschützt – zu wenige aktive Beratende').length).toBeGreaterThan(0);
+        // a chart of zeros would read as "nothing happened": the preview says what will appear instead (#1374)
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(canvas.getByText('Das sehen Sie hier, sobald genug Daten da sind')).toBeVisible();
+        await expect(canvas.getByText('Träger im Vergleich')).toBeVisible();
+        // a dashed trend line marks where each protected figure will appear
+        await expect(canvasElement.querySelectorAll('.statisticDashboard__cardSparkline').length).toBeGreaterThan(0);
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
+};
+const withoutCases = (row: AdminDashboardTarget): AdminDashboardTarget => ({
+    ...row,
+    metrics: {
+        enquiriesCurrentMonth: 0,
+        enquiriesPreviousMonth: 0,
+        activeCases: 0,
+        activeConversationsToday: 0,
+        groupChatsTotal: 0,
+    },
+    dailyNewSessions: [],
+    monthlyTopTopics: [],
+    sessionCountsByPeriod: periods(0),
+    groupChatCountsByPeriod: periods(0),
+});
+export const StandWithoutCases: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() =>
+                HttpResponse.json(
+                    statistics('DAILY', [
+                        withoutCases(target('PLATFORM', null, null, 4)),
+                        withoutCases(target('TENANT', 2, null, 2)),
+                        withoutCases(target('AGENCY', 2, 11, 1)),
+                    ]),
+                ),
+            ),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect((await canvas.findAllByText('0')).length).toBeGreaterThan(0);
+        await expect(canvas.queryByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeNull();
+    },
+};
+// Nothing counted yet: the tiles stay quiet, the preview names what will appear and offers the next step.
+export const NoData: Story = {
+    parameters: { msw: { handlers: handlers(() => HttpResponse.json(statistics('DAILY', []))) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Ihr Dashboard füllt sich mit der ersten Beratung')).toBeVisible());
+        await expect(canvas.getByRole('button', { name: 'Beratende verwalten' })).toBeVisible();
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        // all eight figures share one raster (#1374)
+        await expect(canvasElement.querySelectorAll('[data-admin-card-raster]')).toHaveLength(1);
+    },
+};
+
+// The filled page on a phone: one column, filter below the level tabs, nothing scrolls sideways.
+export const DailyStandPhone: Story = {
+    globals: { viewport: { value: 'phone390', isRotated: false } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+        await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
+    },
+};
+export const Loading: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(async () => {
+                await delay('infinite');
+                return HttpResponse.json(statistics('DAILY'));
+            }),
+        },
+    },
+};
+// The request failed: say so, and draw no chart of zeros that would read as "nothing happened".
+export const LoadError: Story = {
+    parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 500 })) } },
+    play: async ({ canvasElement }) => {
+        // The event is a pop-up with a title, a way back to the dashboard and a retry; the tile keeps quiet text.
+        const popup = await findPopup(canvasElement, 'Statistikdaten konnten nicht geladen werden.', 'error');
+        await expect(popup).toHaveTextContent('Statistik');
+        await expect(within(popup).getByRole('button', { name: 'Erneut versuchen' })).toBeInTheDocument();
+        await expect(canvasElement.querySelector('#statistic-dashboard-state')).toHaveTextContent(
+            'Dieser Bereich konnte nicht geladen werden.',
+        );
+        await expect(canvasElement.querySelector('.statisticDashboard__chartGrid')).toBeNull();
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
+};
+
+let dashboardRequests = 0;
+let retried = false;
+// The first answer fails, the second works: "Erneut versuchen" must fire a second request and recover the page.
+export const LoadErrorRetryRecovers: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() => {
+                dashboardRequests += 1;
+                // Everything before the click fails (the page may ask more than once while it settles).
+                return !retried ? new HttpResponse(null, { status: 500 }) : HttpResponse.json(statistics('DAILY'));
+            }),
+        },
+    },
+    beforeEach: () => {
+        dashboardRequests = 0;
+        retried = false;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const popup = await findPopup(canvasElement, 'Statistikdaten konnten nicht geladen werden.', 'error');
+        const before = dashboardRequests;
+        retried = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(dashboardRequests).toBeGreaterThan(before));
+        await expect(await canvas.findByText('Anfragen gesamt')).toBeInTheDocument();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+    },
+};
+// The settings behind the statistics cannot be read (UserService#1568): no figures, not even old ones.
+export const TemporarilyUnavailable: Story = {
+    parameters: { msw: { handlers: handlers(() => new HttpResponse(null, { status: 503 })) } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // The event is a pop-up; the page keeps quiet text and shows no figures.
+        await findPopup(canvasElement, /vorübergehend nicht verfügbar/, 'error');
+        const quiet = await canvas.findByText('Dieser Bereich konnte nicht geladen werden.');
+        // The page fades in, so the text is only visible once that has settled.
+        await waitFor(() => expect(quiet).toBeVisible());
+        await expect(canvas.queryByText('Statistik als CSV herunterladen')).toBeNull();
+        await expect(canvasElement.querySelector('.statisticDashboard__summaryGrid')).toBeNull();
+    },
+};
+
+/*
+ * Frank: "In Statistik the search did not work." The platform dashboard stops at Träger (scope
+ * PLATFORM: one platform row, one row per Träger), so no Beratungsstelle could ever be found. Now
+ * every Beratungsstelle is in the picker, and picking one loads its Träger's dashboard (`?tenantId=`).
+ */
+let drillRequests: string[] = [];
+const platformDirectoryHandlers = (answerTenant: boolean, withMusterstadt = true) => [
+    http.get(`${adminStatisticsDashboardEndpoint}*`, ({ request }) => {
+        const tenantId = new URL(request.url).searchParams.get('tenantId');
+        if (tenantId) drillRequests.push(tenantId);
+        if (tenantId && answerTenant) {
+            return HttpResponse.json({
+                ...statistics('LIVE', [
+                    target('TENANT', 2, null, 2),
+                    // a factor no other row has: 105 enquiries this month exist only for Musterstadt
+                    ...(withMusterstadt ? [target('AGENCY', 2, 11, 1.25)] : []),
+                    target('AGENCY', 2, 12, 0.5),
+                ]),
+                scope: 'TENANT',
+            });
+        }
+        // An older backend ignores ?tenantId= and answers with the platform dashboard.
+        return HttpResponse.json(
+            statistics('LIVE', [
+                target('PLATFORM', null, null, 4),
+                target('TENANT', 2, null, 2),
+                target('TENANT', 3, null, 1),
+            ]),
+        );
+    }),
+    http.get(`${agencyEndpointBase}*`, () =>
+        HttpResponse.json({
+            total: 3,
+            _embedded: [
+                { id: 11, name: 'Beratungsstelle Musterstadt', tenantId: 2 },
+                { id: 12, name: 'Beratungsstelle Beispielort', tenantId: 2 },
+                { id: 13, name: 'Beratungsstelle Testheim', tenantId: 3 },
+            ],
+        }),
+    ),
+    ...handlers(() => HttpResponse.json({})).slice(2),
+];
+
+const pickMusterstadt = async (canvasElement: HTMLElement) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toBeVisible());
+    await userEvent.click(canvas.getByRole('button', { name: /^Ansicht:/ }));
+    await userEvent.type(await canvas.findByRole('combobox'), 'Muster');
+    await userEvent.click(await canvas.findByRole('option', { name: /Beratungsstelle Musterstadt/ }));
+};
+
+export const PlatformAdminFindsBeratungsstelle: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const canvas = within(canvasElement);
+        await waitFor(() =>
+            expect(canvas.getByRole('button', { name: /^Ansicht:/ })).toHaveAccessibleName(/Musterstadt/),
+        );
+        await expect(canvas.queryByTestId('agency-level-hint')).toBeNull();
+        await waitFor(() => expect(canvas.getByText('Anfragen gesamt')).toBeVisible());
+        // the figure comes from Musterstadt's own row in the Träger dashboard, not from the platform data
+        await waitFor(() => expect(canvas.getByText('105')).toBeVisible());
+    },
+};
+
+export const PlatformAdminFindsBeratungsstellePhone: Story = {
+    ...PlatformAdminFindsBeratungsstelle,
+    globals: { viewport: { value: 'phone', isRotated: false } },
+};
+
+/**
+ * The Träger's answer lacks the picked Beratungsstelle (new, deleted, or withheld): the page says so
+ * instead of showing the Träger's total under the Beratungsstelle's name.
+ */
+export const PlatformAdminPickWithoutFigures: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(true, false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        await waitFor(() => expect(drillRequests).toContain('2'));
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('Für diese Beratungsstelle liegen noch keine Zahlen vor');
+        // Beispielort's 42 enquiries (factor 0.5) must not show up as Musterstadt's figures
+        await expect(within(canvasElement).queryByText('Anfragen gesamt')).toBeNull();
+    },
+};
+
+/** Until the UserService knows `?tenantId=`, the page says so instead of showing an empty level. */
+export const PlatformAdminOlderBackend: Story = {
+    parameters: { msw: { handlers: platformDirectoryHandlers(false) } },
+    beforeEach: () => {
+        drillRequests = [];
+        window.localStorage.clear();
+    },
+    play: async ({ canvasElement }) => {
+        await pickMusterstadt(canvasElement);
+        const hint = await within(canvasElement).findByTestId('agency-level-hint');
+        await expect(hint).toHaveTextContent('erst mit dem nächsten Server-Update');
+        // no figures on screen, so no file of them either
+        await expect(within(canvasElement).queryByText('Statistik als CSV herunterladen')).toBeNull();
+    },
+};
+
+const communicationCard = (canvasElement: HTMLElement, title: string) =>
+    [...canvasElement.querySelectorAll<HTMLElement>('.statisticDashboard__metricCard')].find((card) =>
+        card.querySelector('.statisticDashboard__cardHeader')?.textContent?.trim().startsWith(title),
+    );
+
+/** Messages and calls are counted (UserService): the communication row shows this month's numbers. */
+export const CommunicationTracked: Story = {
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        // platform row, factor 4: 1640 counsellor + 1460 advice-seeker messages
+        await waitFor(() =>
+            expect(communicationCard(canvasElement, 'Textnachrichten')?.textContent).toContain('3.100'),
+        );
+        await expect(communicationCard(canvasElement, 'Anrufe')?.textContent).toContain('72');
+        // voice messages are not sent by the backend: the dashed slot says so, without a promise
+        const voice = communicationCard(canvasElement, 'Sprachnachrichten');
+        await expect(voice?.className).toContain('notTracked');
+        await expect(voice?.textContent).toContain('Für diese Kennzahl gibt es noch keine Datenquelle.');
+    },
+};
+
+/** A backend from before communication tracking: the four slots stay as dashed "no data source" cards. */
+export const BeforeCommunicationTracking: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers(() => {
+                const body = statistics('DAILY');
+                return HttpResponse.json({ ...body, targets: body.targets.map(withoutCommunication) });
+            }),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Textnachrichten')).toBeVisible());
+        await waitFor(() =>
+            expect(
+                canvasElement.querySelectorAll('.statisticDashboard__metricCard--notTracked').length,
+            ).toBeGreaterThanOrEqual(4),
+        );
+    },
+};
+
+/** Platform admins get a 403 from the topic admin list; the public topic list still names the topic. */
+export const TopicNameWithoutTopicAdmin: Story = {
+    parameters: {
+        msw: {
+            handlers: [
+                http.get(`${topicAdminEndpoint}/*`, () => new HttpResponse(null, { status: 403 })),
+                http.get(`${topicEndpoint}public`, () =>
+                    HttpResponse.json([
+                        { id: 1, name: 'Allgemeine Sozialberatung' },
+                        { id: 2, name: 'Schulden' },
+                        { id: 3, name: 'Sucht' },
+                    ]),
+                ),
+                ...fixedStand('DAILY'),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await waitFor(() => expect(canvas.getByText('Häufigstes Thema')).toBeVisible());
+        // a long name is shown whole, on up to two lines, not cut after a few letters
+        const topic = await canvas.findByTitle('Allgemeine Sozialberatung');
+        await expect(getComputedStyle(topic).whiteSpace).toBe('normal');
+        await expect(canvasElement.textContent).not.toMatch(/#\d/);
+    },
+};

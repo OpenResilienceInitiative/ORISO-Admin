@@ -5,6 +5,13 @@ import { ListingTable } from '../../../components/ListingTable';
 import { useSupervisorLogsData } from '../../../hooks/useSupervisorLogsData';
 import { SupervisorLogEntry } from '../../../types/supervisorLogs';
 
+const supervisorOf = (row: SupervisorLogEntry) =>
+    row.supervisorName || row.supervisorUsername || row.supervisorConsultantId;
+
+const previousSupervisorOf = (row: SupervisorLogEntry) =>
+    row.previousSupervisorName || row.previousSupervisorUsername || row.previousSupervisorConsultantId || '-';
+
+/** Results only: who attached, removed or replaced a supervisor, when, by whom and why (#2494 *6). */
 export const SupervisorLogsPage = () => {
     const { t } = useTranslation();
     const [page, setPage] = useState(1);
@@ -24,30 +31,38 @@ export const SupervisorLogsPage = () => {
             title: t('logs.table.action', 'Aktion'),
             dataIndex: 'action',
             key: 'action',
-            width: 110,
+            width: 130,
+            render: (value: string) => t(`logs.supervisors.action.${value}`, { defaultValue: value }),
         },
         {
             title: t('logs.table.sessionId', 'Session'),
             dataIndex: 'sessionId',
             key: 'sessionId',
-            width: 120,
+            width: 100,
         },
         {
             title: t('logs.table.supervisor', 'Supervisor'),
             key: 'supervisor',
-            render: (_: any, row) => row.supervisorName || row.supervisorUsername || row.supervisorConsultantId,
+            render: (_: unknown, row) =>
+                row.action === 'REPLACED'
+                    ? t('logs.supervisors.replaced', {
+                          from: previousSupervisorOf(row),
+                          to: supervisorOf(row),
+                          defaultValue: '{{from}} → {{to}}',
+                      })
+                    : supervisorOf(row),
         },
         {
-            title: t('logs.table.actor', 'Hinzugefuegt von'),
+            title: t('logs.supervisors.by', 'Geändert von'),
             key: 'actor',
-            render: (_: any, row) =>
-                row.action === 'REMOVED' ? '-' : row.actorName || row.actorUsername || row.actorConsultantId,
+            render: (_: unknown, row) => row.actorName || row.actorUsername || row.actorConsultantId || '-',
         },
         {
-            title: t('logs.table.notes', 'Notiz'),
+            title: t('logs.supervisors.reason', 'Grund'),
             dataIndex: 'notes',
             key: 'notes',
             ellipsis: true,
+            render: (value?: string | null) => value || '-',
         },
     ];
 

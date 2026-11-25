@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LegalConsentField } from './index';
@@ -6,6 +6,13 @@ import { LegalConsentField } from './index';
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
         t: (key: string, options?: unknown) => {
+            // The platform's standard sentence is the one string whose CONTENT the
+            // component reacts to — it seeds an empty editor and must carry the
+            // mandatory token, so echoing the key here would test a sentence the
+            // product never ships.
+            if (key === 'legal.consent.template.platform.text') {
+                return 'Standardsatz {{legal_links}}.';
+            }
             if (typeof options === 'string') {
                 return options;
             }
@@ -61,7 +68,7 @@ describe('LegalConsentField — dialog (#862)', () => {
         await userEvent.click(input);
         (input as HTMLTextAreaElement).focus();
         await userEvent.paste('Neu {{legal_links}}.');
-        await userEvent.click(screen.getByRole('button', { name: 'save' }));
+        await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
 
         expect(onChange).toHaveBeenCalledWith('Neu {{legal_links}}.');
         expect(screen.queryByText('placeholderTemplate.dialog.legalTitle')).not.toBeInTheDocument();
@@ -90,7 +97,7 @@ describe('LegalConsentField — dialog (#862)', () => {
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
 
         expect(screen.getByRole('textbox')).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'save' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'legal.consent.apply' })).toBeDisabled();
         expect(onChange).not.toHaveBeenCalled();
     });
 
@@ -105,5 +112,65 @@ describe('LegalConsentField — dialog (#862)', () => {
 
         await userEvent.click(screen.getByTestId('consent-edit-trigger'));
         expect(screen.getByTestId('consent-missing-token-error')).toBeInTheDocument();
+    });
+
+    it('announces both blocking errors, which stop Apply and Publish', async () => {
+        render(<LegalConsentField language="de" value="Ich stimme zu {{legal_links}}." onChange={() => undefined} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        expect(screen.queryByTestId('consent-empty-error')).not.toBeInTheDocument();
+        await userEvent.clear(screen.getByRole('textbox'));
+
+        expect(screen.getByTestId('consent-empty-error')).toHaveAttribute('role', 'alert');
+        await userEvent.click(screen.getByRole('textbox'));
+        await userEvent.paste('Ich stimme zu.');
+        expect(screen.getByTestId('consent-missing-token-error')).toHaveAttribute('role', 'alert');
+    });
+});
+
+describe('LegalConsentField — placeholders that run together (#1255)', () => {
+    it('warns inside the dialog and names both placeholders', async () => {
+        render(
+            <LegalConsentField
+                language="en"
+                value="I have read the {{legal_links}}{{Thema}}."
+                onChange={() => undefined}
+            />,
+        );
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+
+        const warning = screen.getByTestId('consent-run-together-warning');
+        expect(warning).toHaveTextContent('legal.consent.warning.runTogether.title');
+        expect(warning).toHaveTextContent('legal.consent.warning.runTogether.item:{{legal_links}}:{{Thema}}');
+        // A warning, not a blocker: it stays silent for screen readers.
+        expect(warning).not.toHaveAttribute('role');
+    });
+
+    it('drops the warning once a space separates them', async () => {
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}." onChange={() => undefined} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        const input = screen.getByRole('textbox');
+        await userEvent.clear(input);
+        await userEvent.click(input);
+        await userEvent.paste('Neu {{legal_links}}{{Thema}}.');
+        expect(screen.getByTestId('consent-run-together-warning')).toBeInTheDocument();
+
+        await userEvent.clear(input);
+        await userEvent.click(input);
+        await userEvent.paste('Neu {{legal_links}} {{Thema}}.');
+        expect(screen.queryByTestId('consent-run-together-warning')).not.toBeInTheDocument();
+    });
+
+    it('still applies the sentence with the warning shown', async () => {
+        const onChange = vi.fn();
+        render(<LegalConsentField language="de" value="Alt {{legal_links}}{{Thema}}." onChange={onChange} />);
+
+        await userEvent.click(screen.getByTestId('consent-edit-trigger'));
+        expect(screen.getByTestId('consent-run-together-warning')).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'legal.consent.apply' }));
+
+        expect(onChange).toHaveBeenCalledWith('Alt {{legal_links}}{{Thema}}.');
     });
 });

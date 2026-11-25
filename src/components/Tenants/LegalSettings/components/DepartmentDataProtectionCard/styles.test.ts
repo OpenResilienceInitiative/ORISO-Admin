@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 const cardStyles = readFileSync(resolve(__dirname, './styles.module.scss'), 'utf8');
 const editorStyles = readFileSync(
@@ -27,5 +27,12 @@ describe('DepartmentDataProtectionCard responsive contract', () => {
         expect(mobileRule).toMatch(/\.toolbarScroll\s*{[\s\S]*scrollbar-width:\s*thin/);
         expect(mobileRule).toMatch(/&::-webkit-scrollbar\s*{[\s\S]*height:\s*4px/);
         expect(mobileRule).toMatch(/&::-webkit-scrollbar-thumb\s*{[\s\S]*background:/);
+    });
+
+    // #1066: at 390px the "Vom Träger übernommen" tag was cut at the card edge.
+    it('wraps the Fachbereich name and status tag instead of clipping the tag', () => {
+        const headerRule = cardStyles.match(/\.header\s*{([^}]*)}/s)?.[1] ?? '';
+
+        expect(headerRule).toMatch(/flex-wrap:\s*wrap/);
     });
 });

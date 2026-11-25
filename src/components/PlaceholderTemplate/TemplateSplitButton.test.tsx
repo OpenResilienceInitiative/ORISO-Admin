@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TemplateSplitButton } from './TemplateSplitButton';
@@ -80,6 +80,27 @@ describe('TemplateSplitButton', () => {
         await user.click(await screen.findByRole('menuitem', { name: /Neu aus „Kurzfassung“/ }));
         expect(onCreateFromTemplate).toHaveBeenCalledWith(2);
     });
+
+    it.each([{ options: templates }, { options: [] }])(
+        'offers blank creation with or without existing templates: %j',
+        async ({ options }) => {
+            const user = userEvent.setup();
+            const onCreateTemplate = vi.fn();
+            const onCreateFromTemplate = vi.fn();
+            render(
+                <TemplateSplitButton
+                    templates={options}
+                    onSelectTemplate={() => {}}
+                    onCreateTemplate={onCreateTemplate}
+                    onCreateFromTemplate={onCreateFromTemplate}
+                />,
+            );
+            await user.click(screen.getByRole('button', { name: 'Vorlagenmenü öffnen' }));
+            await user.click(await screen.findByRole('menuitem', { name: /^Neue Vorlage$/ }));
+            expect(onCreateTemplate).toHaveBeenCalledTimes(1);
+            expect(onCreateFromTemplate).not.toHaveBeenCalled();
+        },
+    );
 
     it('hides the create-from entries without the callback', async () => {
         const user = userEvent.setup();

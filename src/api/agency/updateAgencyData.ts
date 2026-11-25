@@ -6,6 +6,7 @@ import getConsultingType4Tenant from '../consultingtype/getConsultingType4Tenant
 import updateAgencyPostCodeRange from './updateAgencyPostCodeRange';
 import { normalizeTopicIds } from './normalizeTopicIds';
 import { stripAgencyAdminControls } from './stripAgencyAdminControls';
+import { assignAgencyToConsultants } from './assignAgencyToConsultants';
 
 /**
  * update agency
@@ -13,12 +14,27 @@ import { stripAgencyAdminControls } from './stripAgencyAdminControls';
  * @param formInput - input data from form
  * @return data
  */
-export const updateAgencyData = async (agencyModel: AgencyData, formInput: AgencyData) => {
+export const updateAgencyData = async (
+    agencyModel: AgencyData,
+    formInput: AgencyData,
+    /** Called once the main PUT is accepted. */
+    onMainWritten?: (saved: AgencyData) => void,
+) => {
     const agencyId = agencyModel.id;
     if (agencyId == null) {
         throw Error('agency id must be set');
     }
 
+    // Reject an incomplete range selection before type or counsellor preparation writes.
+    const postCodes =
+        formInput.postCodeRangesActive === false ? [{ from: '00000', until: '99999' }] : formInput.postCodes;
+    if (formInput.postCodeRangesActive === true && !postCodes?.length) {
+        throw new Error('Selected postal-code ranges are missing');
+    }
+
+    // Same absent-vs-empty rule as `topicIds` and `online` below: `updateAgencyType` itself skips
+    // the `/changetype` call for a patch that carries no `teamAgency` field, and normalises both
+    // sides before comparing so an unchanged type cannot produce a 409.
     await updateAgencyType(agencyModel, formInput);
 
     const consultingTypeId =
@@ -67,6 +83,26 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         ...(formInput.settings ? { settings: stripAgencyAdminControls(formInput.settings) } : {}),
     };
 
+    // Assign picked counsellors BEFORE the PUT: AgencyService rejects offline=false for an
+    // agency without counsellors, so "first counsellor + visible" in one save needs them
+    // attached first (#1069). Absent-vs-empty applies: a narrow card patch carries no
+    // `consultantIds` and must leave assignments alone. Additive — empty means "nothing picked".
+    let consultantAssignmentFailed = false;
+    if (formInput.consultantIds?.length > 0) {
+        try {
+            await assignAgencyToConsultants(agencyId, formInput.consultantIds);
+        } catch {
+            consultantAssignmentFailed = true;
+        }
+    }
+
+    // AgencyService requires persisted coverage before accepting offline=false. The all-areas
+    // choice unmounts the range inputs, so postCodes can be absent even on a registration save.
+    // POST replaces coverage transactionally; DELETE then POST can leave the centre with no rows.
+    if (postCodes !== undefined) {
+        await updateAgencyPostCodeRange(agencyId, postCodes, 'POST');
+    }
+
     return fetchData({
         url: `${agencyEndpointBase}/${agencyModel.id}`,
         method: FETCH_METHODS.PUT,
@@ -74,14 +110,11 @@ export const updateAgencyData = async (agencyModel: AgencyData, formInput: Agenc
         responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
-        // Card-based agency edits submit narrow patches. The regular agency GET
-        // does not contain postcode ranges, so treating an absent `postCodes`
-        // field as an empty selection silently replaces the stored range with
-        // 00000-99999. Only the registration card may mutate postcode ranges.
-        if (formInput.postCodes !== undefined) {
-            await updateAgencyPostCodeRange(agencyId, formInput.postCodes, '');
-        }
         // eslint-disable-next-line no-underscore-dangle
-        return response?._embedded;
+        const updatedAgency = response?._embedded;
+        onMainWritten?.(updatedAgency);
+
+        // The agency is saved either way; the caller warns on this flag.
+        return consultantAssignmentFailed ? { ...updatedAgency, consultantAssignmentFailed: true } : updatedAgency;
     });
 };

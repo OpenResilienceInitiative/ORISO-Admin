@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { compile } from 'sass';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 /*
  * Type-role contract of the legal-document editor headings (owner decision

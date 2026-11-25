@@ -1,11 +1,11 @@
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { useAgencyUpdate } from './useAgencyUpdate';
 
 const mocks = vi.hoisted(() => ({
-    updateAgencyData: vi.fn(async (_stored, update) => update),
+    updateAgencyData: vi.fn(async (...args: unknown[]) => args[1]),
     agency: {
         id: 282,
         name: 'E2E Agency',
@@ -26,6 +26,115 @@ vi.mock('./useAgencyData', () => ({ useAgencyData: () => ({ data: mocks.agency }
 describe('useAgencyUpdate sequential card saves', () => {
     beforeEach(() => {
         mocks.updateAgencyData.mockClear();
+    });
+
+    it('uses the server-normalized agency as the base for the next card save', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        mocks.updateAgencyData.mockImplementationOnce(async () => ({
+            ...mocks.agency,
+            name: 'Normalized name',
+            settings: { featureVideoCallsOneOnOneChatsEnabled: false },
+        }));
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ name: 'Submitted name' });
+        await result.current.mutateAsync({ description: 'Second card' });
+
+        expect(mocks.updateAgencyData.mock.calls[1][1]).toMatchObject({
+            name: 'Normalized name',
+            settings: { featureVideoCallsOneOnOneChatsEnabled: false },
+            description: 'Second card',
+        });
+    });
+
+    // ORISO-Frontend#2251: a restricted admin never sees the switch, so their save omits it.
+    it('keeps a stored live-chat further counselling setting when a card save omits it', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            settings: { featureLiveChatFurtherCounsellingEnabled: true },
+        });
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ name: 'Updated name' } as never);
+
+        expect(mocks.updateAgencyData.mock.calls[0][1]).toMatchObject({
+            name: 'Updated name',
+            settings: { featureLiveChatFurtherCounsellingEnabled: true },
+        });
+    });
+
+    it('does not replay geographic coverage from a previous card while the refetch is pending', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({
+            online: true,
+            postCodeRangesActive: false,
+            postCodes: [{ from: '00000', until: '99999' }],
+        } as never);
+        await result.current.mutateAsync({ name: 'Updated name' } as never);
+
+        const laterUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(laterUpdate.postCodeRangesActive).toBeUndefined();
+        expect(laterUpdate.postCodes).toBeUndefined();
+        expect(laterUpdate.name).toBe('Updated name');
+    });
+
+    // ORISO-Admin#1243: AgencyService rejects an incomplete stored contact that is echoed back,
+    // so switching the centre offline failed. Omitted, the service keeps the stored contact.
+    it('does not echo the stored data protection contact when a card switches the centre offline', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        // AgencyService keeps the stored contact when the request omits it and answers with it.
+        mocks.updateAgencyData.mockImplementationOnce(async (...args: unknown[]) => ({
+            ...(args[1] as object),
+            dataProtection: mocks.agency.dataProtection,
+        }));
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ online: false, postCodeRangesActive: false } as never);
+
+        const request = mocks.updateAgencyData.mock.calls[0][1];
+        // Availability of an existing centre changes only through the narrow status command, never in this PUT.
+        expect(request.online).toBeUndefined();
+        expect(request.dataProtection).toBeUndefined();
+        // The cache still holds the contact for the other cards.
+        expect(queryClient.getQueryData<{ dataProtection?: unknown }>(['AGENCY', '282'])?.dataProtection).toEqual(
+            mocks.agency.dataProtection,
+        );
+    });
+
+    it('still sends the contact when a card puts the centre online, so the service can check it', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({ online: true, postCodeRangesActive: false } as never);
+
+        expect(mocks.updateAgencyData.mock.calls[0][1].dataProtection).toEqual(mocks.agency.dataProtection);
     });
 
     it('merges a later card patch with the latest optimistic agency state', async () => {
@@ -53,5 +162,168 @@ describe('useAgencyUpdate sequential card saves', () => {
             nameAndLegalForm: 'E2E Responsible Operator gGmbH',
         });
         expect(secondUpdate.content.impressum).toEqual({ en: '<p>E2E imprint</p>' });
+    });
+
+    it('replaces explicitly supplied legal maps while preserving sibling content and partial updates', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            description: 'Keep this description',
+            content: {
+                privacy: { de: '<p>Old privacy</p>', en: '<p>Remove privacy</p>' },
+                impressum: { de: '<p>Keep imprint</p>' },
+                privacyConsent: { de: 'Old consent', en: 'Remove consent' },
+                termsAndConditions: { de: '<p>Keep terms</p>' },
+                confirmPrivacy: true,
+            },
+        });
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await result.current.mutateAsync({
+            content: {
+                privacy: { de: '<p>New privacy</p>' },
+                privacyConsent: {},
+            },
+        } as never);
+
+        await waitFor(() => expect(mocks.updateAgencyData).toHaveBeenCalledTimes(1));
+        const update = mocks.updateAgencyData.mock.calls[0][1];
+        expect(update.content).toEqual({
+            privacy: { de: '<p>New privacy</p>' },
+            impressum: { de: '<p>Keep imprint</p>' },
+            privacyConsent: {},
+            termsAndConditions: { de: '<p>Keep terms</p>' },
+            confirmPrivacy: true,
+        });
+        expect(update.description).toBe('Keep this description');
+    });
+
+    it('reloads the agency after a failed update so a partial server write is not undone later', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(result.current.mutateAsync({ description: 'x' } as never)).rejects.toThrow(
+            'postcode range rejected',
+        );
+
+        await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['AGENCY', '282'] }));
+    });
+
+    it('settles a failed update only after the agency refetch, so a queued save sees fresh data', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        let releaseRefetch: () => void = () => undefined;
+        const refetch = new Promise<void>((resolve) => {
+            releaseRefetch = resolve;
+        });
+        vi.spyOn(queryClient, 'invalidateQueries').mockImplementation(() => refetch);
+        mocks.updateAgencyData.mockRejectedValueOnce(new Error('postcode range rejected'));
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        let settled = false;
+        const failing = result.current.mutateAsync({ description: 'x' } as never).catch(() => {
+            settled = true;
+        });
+        await new Promise((resolve) => {
+            setTimeout(resolve, 20);
+        });
+        expect(settled).toBe(false);
+        releaseRefetch();
+        await failing;
+        expect(settled).toBe(true);
+    });
+
+    it('keeps the accepted main write as the base when a follow-up request and the refetch both fail', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], { ...mocks.agency, description: 'Old' });
+        vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+        mocks.updateAgencyData
+            .mockImplementationOnce(async (_stored, update, onMainWritten?: (saved: unknown) => void) => {
+                onMainWritten?.(update);
+                throw new Error('postcode range rejected');
+            })
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(result.current.mutateAsync({ description: 'Accepted' } as never)).rejects.toThrow(
+            'postcode range rejected',
+        );
+        await result.current.mutateAsync({ name: 'Queued' } as never);
+
+        const queued = mocks.updateAgencyData.mock.calls[1][1];
+        expect(queued.description).toBe('Accepted');
+        expect(queued.name).toBe('Queued');
+    });
+
+    it('does not let a failed legal publication leak into a later unrelated card save', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], {
+            ...mocks.agency,
+            description: 'Stored description',
+            content: { privacy: { de: '<p>Published privacy</p>' } },
+        });
+        mocks.updateAgencyData
+            .mockRejectedValueOnce(new Error('publication rejected'))
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        await expect(
+            result.current.mutateAsync({ content: { privacy: { de: '<p>Rejected privacy</p>' } } } as never),
+        ).rejects.toThrow('publication rejected');
+        await result.current.mutateAsync({ description: 'Updated description' } as never);
+
+        expect(mocks.updateAgencyData).toHaveBeenCalledTimes(2);
+        const laterUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(laterUpdate.description).toBe('Updated description');
+        expect(laterUpdate.content.privacy).toEqual({ de: '<p>Published privacy</p>' });
+    });
+
+    it('serializes overlapping successful card saves so the later patch includes the first', async () => {
+        const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        queryClient.setQueryData(['AGENCY', '282'], mocks.agency);
+        let finishFirst: () => void = () => undefined;
+        mocks.updateAgencyData
+            .mockImplementationOnce(
+                (_stored, update) =>
+                    new Promise((resolve) => {
+                        finishFirst = () => resolve(update);
+                    }),
+            )
+            .mockImplementationOnce(async (_stored, update) => update);
+        const wrapper = ({ children }: { children: React.ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+        const { result } = renderHook(() => useAgencyUpdate('282'), { wrapper });
+
+        const firstSave = result.current.mutateAsync({ description: 'First card' } as never);
+        const secondSave = result.current.mutateAsync({
+            content: { impressum: { de: '<p>Second card</p>' } },
+        } as never);
+
+        await waitFor(() => expect(mocks.updateAgencyData).toHaveBeenCalledTimes(1));
+        finishFirst();
+        await Promise.all([firstSave, secondSave]);
+
+        const secondUpdate = mocks.updateAgencyData.mock.calls[1][1];
+        expect(secondUpdate.description).toBe('First card');
+        expect(secondUpdate.content.impressum).toEqual({ de: '<p>Second card</p>' });
     });
 });

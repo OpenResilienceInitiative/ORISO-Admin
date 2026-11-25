@@ -12,10 +12,13 @@ import { useTenantData } from './useTenantData.hook';
  * GET /service/tenant path and skip the broken tenantadmin prefetch (same
  * pattern as GlobalLoginSettingsPage / PR #299).
  */
-export const useTenantAppearanceFormData = (tenantId: string) => {
+export const useTenantAppearanceFormData = (
+    tenantId: string,
+    { successMessageKey, ownOverrides = false }: { successMessageKey?: string | null; ownOverrides?: boolean } = {},
+) => {
     const { data: tenantData, isLoading: isTenantLoading } = useTenantData();
     const seedTenantAdminData = useMemo(() => {
-        if (tenantData?.id == null || tenantId === '' || tenantId === 'add') {
+        if (ownOverrides || tenantData?.id == null || tenantId === '' || tenantId === 'add') {
             return undefined;
         }
 
@@ -24,24 +27,37 @@ export const useTenantAppearanceFormData = (tenantId: string) => {
         }
 
         return mapTenantDataToTenantAdminData(tenantData);
-    }, [tenantData, tenantId]);
+    }, [tenantData, tenantId, ownOverrides]);
 
     const shouldFetchTenantAdmin = !!tenantId && tenantId !== 'add' && !seedTenantAdminData;
-    const { data: tenantAdminData, isLoading: isAdminLoading } = useSingleTenantData({
+    const {
+        data: tenantAdminData,
+        isLoading: isAdminLoading,
+        isError,
+    } = useSingleTenantData({
         id: tenantId,
         enabled: shouldFetchTenantAdmin,
     });
 
-    const { mutate, isPending } = useTenantAdminDataMutation({
+    const { mutate, mutateAsync, isPending } = useTenantAdminDataMutation({
         id: tenantId,
         seedTenantAdminData,
         prefetchTenantAdminData: !seedTenantAdminData,
+        ...(successMessageKey === undefined ? {} : { successMessageKey }),
     });
 
+    // The API adapter may turn a caught read failure into { name: '' }.
+    // Never treat that response, or a different tenant, as verified own overrides.
+    const invalidOwnData =
+        ownOverrides &&
+        !isAdminLoading &&
+        (tenantAdminData?.id == null || String(tenantAdminData.id) !== String(tenantId));
     return {
-        data: (tenantAdminData ?? seedTenantAdminData) as TenantAdminData | undefined,
+        data: (invalidOwnData ? undefined : tenantAdminData ?? seedTenantAdminData) as TenantAdminData | undefined,
         isLoading: seedTenantAdminData ? isTenantLoading : isAdminLoading,
+        isError: isError || invalidOwnData,
         mutate,
+        mutateAsync,
         isPending,
     };
 };

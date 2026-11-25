@@ -5,7 +5,7 @@ import type { MenuProps } from 'antd';
 import { Footer } from 'antd/es/layout/layout';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
-import { runtimeConfig } from '../../config/runtimeConfig';
+import { getBuildCommit, runtimeConfig } from '../../config/runtimeConfig';
 import { FooterLanguageMenu } from './FooterLanguageMenu';
 import { LegalNoticeDialog } from './LegalNoticeDialog';
 import { LEGAL_NOTICE_KINDS, type LegalNoticeKind } from './legalNoticeContent';
@@ -45,6 +45,7 @@ const SiteFooter = ({ variant = 'default' }: SiteFooterProps) => {
     const { t } = useTranslation();
     const [openNotice, setOpenNotice] = useState<LegalNoticeKind | null>(null);
     const isStage = variant === 'stage';
+    const buildCommit = getBuildCommit();
 
     const items: MenuProps['items'] = LEGAL_NOTICE_KINDS.map((kind) => ({
         label: <span>{t(`footer.label.${kind}`)}</span>,
@@ -69,7 +70,14 @@ const SiteFooter = ({ variant = 'default' }: SiteFooterProps) => {
                 aria-label={t('footer.ariaLabel')}
             />
             {isStage && <FooterLanguageMenu />}
-            {runtimeConfig.platformVersion && <span className="platformVersion">{runtimeConfig.platformVersion}</span>}
+            <span
+                className="platformVersion"
+                data-testid="build-identity"
+                data-platform-version={runtimeConfig.platformVersion}
+                data-build-commit={buildCommit ?? ''}
+            >
+                {[runtimeConfig.platformVersion, buildCommit?.slice(0, 7) ?? 'unknown'].filter(Boolean).join(' - ')}
+            </span>
             {openNotice && <LegalNoticeDialog kind={openNotice} onClose={() => setOpenNotice(null)} />}
         </Footer>
     );

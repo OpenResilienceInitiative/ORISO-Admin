@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -13,13 +14,14 @@ import {
     Link as LinkIcon,
     Image as ImageIcon,
 } from '@mui/icons-material';
-import { Button, ConfigProvider, Select } from 'antd';
+import { Button, ConfigProvider } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { M3Select } from '../M3Select';
 import { ResolvingImage } from './createResolvingImage';
 import { createImageDropPasteHandlers, useEditorImageUpload } from './useEditorImageUpload';
 import { HeadingAnchors } from './headingAnchors';
 import AnchorChips from './AnchorChips';
-import { useHeadingAnchorNav } from './useHeadingAnchorNav';
+import { anchorBubbleOptions, useHeadingAnchorNav } from './useHeadingAnchorNav';
 
 // TipTap replacement for the former draft-js editor. Same data contract:
 // `value` is an HTML string in, `onChange` emits an HTML string out. Template
@@ -111,7 +113,7 @@ const Toolbar = ({
             <div className="RichEditor-controls">
                 {showHeadingSelect && (
                     <div className="RichEditor-control-group">
-                        <Select
+                        <M3Select
                             size="small"
                             value={activeHeadingLevel}
                             popupMatchSelectWidth={false}
@@ -191,7 +193,7 @@ const Toolbar = ({
                 </div>
             </div>
             {placeholders && Object.keys(placeholders).length > 0 && (
-                <Select
+                <M3Select
                     size="small"
                     placeholder={t('editor.plugin.placeholder.select.placeholder', 'Placeholder')}
                     value={null}
@@ -231,8 +233,9 @@ const TiptapEditor = ({
     uploadAndInsertRef.current = imageUpload.uploadAndInsert;
 
     const editor = useEditor({
+        shouldRerenderOnTransaction: true,
         extensions: [
-            StarterKit,
+            StarterKit.configure({ link: false, underline: false, listKeymap: false, trailingNode: false }),
             Underline,
             Link.configure({ openOnClick: false, autolink: false }),
             ResolvingImage,
@@ -242,7 +245,7 @@ const TiptapEditor = ({
         content: value,
         editable: !disabled,
         editorProps: {
-            attributes: { class: 'RichEditor-editor' },
+            attributes: { class: 'RichEditor-editor', role: disabled ? 'presentation' : 'textbox' },
             ...createImageDropPasteHandlers((files) => {
                 if (editorRef.current?.isEditable) {
                     uploadAndInsertRef.current(files);
@@ -263,7 +266,7 @@ const TiptapEditor = ({
         const incoming = value || '';
         const current = editor.isEmpty ? '' : editor.getHTML();
         if (incoming !== current && !(isEmptyHtml(incoming) && editor.isEmpty)) {
-            editor.commands.setContent(incoming, false);
+            editor.commands.setContent(incoming, { emitUpdate: false });
         }
     }, [value, editor]);
 
@@ -283,7 +286,7 @@ const TiptapEditor = ({
 
     // Shared anchor-navigation behavior (chips, scroll spy, jump/remove,
     // read-only link-click capture) — same hook as the M3RichTextEditor.
-    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+    const { anchors, shouldShowAnchorMenu, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
         useHeadingAnchorNav(editor, { enabled: enableAnchors, editable: !disabled });
 
     if (!editor) return null;
@@ -313,19 +316,16 @@ const TiptapEditor = ({
                 <EditorContent editor={editor} />
             </div>
             {enableAnchors && !disabled && (
-                // Stable host div: the BubbleMenu plugin detaches its element
-                // from the React tree (tippy re-parents it), so it must not be
-                // a direct sibling that React repositions or removes.
                 <div className="RichEditor-anchorBubbleHost">
                     <BubbleMenu
                         editor={editor}
                         pluginKey="anchorLinkBubble"
                         updateDelay={150}
-                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
-                        shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
+                        options={anchorBubbleOptions}
+                        shouldShow={shouldShowAnchorMenu}
                     >
                         <div className="RichEditor-anchorBubble">
-                            <Select
+                            <M3Select
                                 size="small"
                                 placeholder={t('editor.plugin.anchor.link.placeholder', 'Link to section')}
                                 value={null}

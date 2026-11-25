@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node env: fetch/Request/AbortController all come from the same realm, avoiding
 // the jsdom-vs-undici "signal is not an AbortSignal" mismatch. No DOM is needed here.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 
 // fetchData statically pulls in antd / i18next / appConfig / auth side effects.
 // Stub them so the unit stays focused on the self-healing 401 retry flow and we
@@ -29,7 +29,8 @@ vi.mock('../appConfig', () => ({
     },
 }));
 const messageError = vi.hoisted(() => vi.fn());
-vi.mock('antd', () => ({ message: { error: messageError } }));
+// These node tests isolate HTTP/auth contracts; the real dispatcher owns DOM/no-window tests.
+vi.mock('./transportFeedback', () => ({ captureTransportFeedback: () => messageError }));
 vi.mock('i18next', () => ({ default: { resolvedLanguage: 'de', language: 'de', t: (key: unknown) => key } }));
 
 // eslint-disable-next-line import/first
@@ -63,6 +64,7 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
     // the stubbed fetch never leak into the next test.
     afterEach(() => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
         vi.unstubAllGlobals();
     });
 
@@ -216,6 +218,29 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
         expect(location.href).toBe('');
     });
 
+    it.each([401, 403])('leaves the current page and rejects locally when a read returns %s', async (status) => {
+        const location = { href: '' };
+        vi.stubGlobal('window', { location });
+        const failure = response(status);
+        const fetchMock = vi.fn().mockResolvedValue(failure);
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/tenantadmin/42',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_ERRORS.LOCAL_FAILURE_WITH_RESPONSE],
+            }),
+        ).rejects.toBe(failure);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0].headers.get('Authorization')).toBe('Bearer access-token');
+        expect(location.href).toBe('');
+        expect(logout).not.toHaveBeenCalled();
+        expect(tryRefreshAccessToken).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
     // UserService#1006 (client half): a 403 on invite create carries the backend's
     // role explanation. Callers opting into FORBIDDEN_WITH_RESPONSE get the raw
     // Response (to read that message) and must NOT lose the page to the
@@ -274,6 +299,34 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await expect(createAgency()).rejects.toThrow(FETCH_ERRORS.CATCH_ALL);
         expect(messageError).toHaveBeenCalledTimes(1);
+    });
+
+    // UserService#1568: the statistics dashboard answers 503 when its settings cannot be read.
+    // Callers that opt in get a code of their own, so the page can say "temporarily unavailable"
+    // instead of the generic load error (CLAUDE.md: unreachable, unauthorised and unavailable differ).
+    it('rejects with SERVICE_UNAVAILABLE on 503 when the caller asks for it, with no toast', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(503)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    it('does not mistake other failures for SERVICE_UNAVAILABLE', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(500)));
+
+        await expect(
+            fetchData({
+                url: 'https://api.test/service/statistics',
+                method: FETCH_METHODS.GET,
+                responseHandling: [FETCH_SUCCESS.CONTENT, FETCH_ERRORS.SERVICE_UNAVAILABLE],
+            }),
+        ).rejects.not.toThrow(FETCH_ERRORS.SERVICE_UNAVAILABLE);
     });
 
     // Dead-session UX: when the refresh fails and we fall back to logout, the
@@ -372,5 +425,240 @@ describe('fetchData – self-healing 401 retry (logout-on-create fix)', () => {
 
         await vi.advanceTimersByTimeAsync(5_000);
         await assertion;
+    });
+
+    it('does not send a request whose signal has already been aborted', async () => {
+        const controller = new AbortController();
+        controller.abort();
+        const fetchMock = vi.fn().mockResolvedValue(response(204));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(
+            fetchData({ url: 'https://api.test/settings', method: FETCH_METHODS.GET, signal: controller.signal }),
+        ).rejects.toThrow(FETCH_ERRORS.ABORT);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each([200, 409])('releases cancellation resources for raw HTTP %i responses', async (status) => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const addListener = vi.spyOn(controller.signal, 'addEventListener');
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        const raw = new Response('explanation', { status });
+        let sent: Request | undefined;
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => {
+                sent = request;
+                return raw;
+            }),
+        );
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.PUT,
+            responseHandling: [FETCH_ERRORS.CONFLICT_WITH_RESPONSE],
+            signal: controller.signal,
+            timeout: 50,
+        });
+        if (status === 200) {
+            await expect(pending).resolves.toBe(raw);
+        } else {
+            await expect(pending).rejects.toBe(raw);
+        }
+        expect(vi.getTimerCount()).toBe(0);
+        expect(removeListener).toHaveBeenCalledWith('abort', addListener.mock.calls[0][1]);
+        controller.abort();
+        await vi.advanceTimersByTimeAsync(50);
+        expect(sent?.signal.aborted).toBe(false);
+        await expect(raw.text()).resolves.toBe('explanation');
+    });
+
+    it('keeps the deadline through managed body reads and reports its first cause', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        let failBody: () => void = () => {};
+        const readBody = vi.fn(
+            () =>
+                new Promise((_resolve, reject) => {
+                    failBody = () => reject(new DOMException('aborted', 'AbortError'));
+                }),
+        );
+        const fetchMock = vi.fn(async (request: Request) => {
+            expect(request.signal.aborted).toBe(false);
+            return { ...response(200), json: readBody };
+        });
+        vi.stubGlobal('fetch', fetchMock);
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            signal: controller.signal,
+            timeout: 50,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.TIMEOUT);
+        await vi.advanceTimersByTimeAsync(50);
+        expect(readBody).toHaveBeenCalledOnce();
+        expect(fetchMock.mock.calls[0][0].signal.aborted).toBe(true);
+        controller.abort();
+        failBody();
+        await assertion;
+        expect(vi.getTimerCount()).toBe(0);
+        expect(removeListener).toHaveBeenCalledOnce();
+    });
+
+    it('aborts an internally-read text body and releases its deadline', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (request: Request) => ({
+                ...response(200),
+                text: () =>
+                    new Promise((_resolve, reject) => {
+                        request.signal.addEventListener('abort', () =>
+                            reject(new DOMException('aborted', 'AbortError')),
+                        );
+                    }),
+            })),
+        );
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            responseHandling: [FETCH_SUCCESS.TEXT],
+            signal: controller.signal,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.ABORT);
+        await vi.advanceTimersByTimeAsync(0);
+        controller.abort();
+        await assertion;
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('does not retain resources when constructing the request fails', async () => {
+        vi.useFakeTimers();
+        const controller = new AbortController();
+        const addListener = vi.spyOn(controller.signal, 'addEventListener');
+        const removeListener = vi.spyOn(controller.signal, 'removeEventListener');
+        await expect(
+            fetchData({ url: 'not a URL', method: FETCH_METHODS.GET, signal: controller.signal }),
+        ).rejects.toBeInstanceOf(TypeError);
+        expect(vi.getTimerCount()).toBe(0);
+        expect(addListener.mock.calls.length).toBe(removeListener.mock.calls.length);
+    });
+
+    it('leaves a shared refresh running when one caller is cancelled', async () => {
+        const controller = new AbortController();
+        let finishRefresh: (value: boolean) => void = () => {};
+        const shared = new Promise<boolean>((resolve) => {
+            finishRefresh = resolve;
+        });
+        tryRefreshAccessToken.mockReturnValue(shared);
+        const fetchMock = vi.fn().mockResolvedValueOnce(response(401)).mockResolvedValueOnce(response(401));
+        fetchMock.mockResolvedValue(response(204));
+        vi.stubGlobal('fetch', fetchMock);
+
+        const request = { url: 'https://api.test/settings', method: FETCH_METHODS.GET, responseHandling: [] };
+        const cancelled = fetchData({ ...request, signal: controller.signal }).catch((error: unknown) => error);
+        const other = fetchData(request);
+        await vi.waitFor(() => expect(tryRefreshAccessToken).toHaveBeenCalledTimes(2));
+        try {
+            controller.abort();
+            const outcome = await Promise.race([
+                cancelled,
+                new Promise((resolve) => {
+                    setTimeout(() => resolve('still waiting'), 50);
+                }),
+            ]);
+            expect(outcome).toEqual(new Error(FETCH_ERRORS.ABORT));
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        } finally {
+            finishRefresh(true);
+            await other;
+        }
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(logout).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
+    });
+
+    it('does not log out when cancellation wins a retry returning 401', async () => {
+        const controller = new AbortController();
+        let sendRetryHeaders: (value: ReturnType<typeof response>) => void = () => {};
+        const retry = new Promise<ReturnType<typeof response>>((resolve) => {
+            sendRetryHeaders = resolve;
+        });
+        const fetchMock = vi.fn().mockResolvedValueOnce(response(401)).mockReturnValueOnce(retry);
+        vi.stubGlobal('fetch', fetchMock);
+        tryRefreshAccessToken.mockResolvedValue(true);
+
+        const pending = fetchData({
+            url: 'https://api.test/settings',
+            method: FETCH_METHODS.GET,
+            responseHandling: [],
+            signal: controller.signal,
+        });
+        const assertion = expect(pending).rejects.toThrow(FETCH_ERRORS.ABORT);
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+        sendRetryHeaders(response(401));
+        controller.abort();
+        await assertion;
+        expect(logout).not.toHaveBeenCalled();
+        expect(messageError).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * #1015. TenantService now answers 400 with `X-Reason: SUBDOMAIN_INVALID` for a malformed
+ * subdomain. Which object the rejection carries decides whether the admin can be told which
+ * field was refused: a caller that declares no 400 branch falls through to the final `else`
+ * and gets a bare `Error`, so the `error.headers.get('X-Reason')` the tenant form does is
+ * never reachable and the generic "something went wrong" is all that is left.
+ */
+describe('fetchData – a 400 carries its reason only when the caller opts in', () => {
+    const badRequest = {
+        status: 400,
+        statusText: 'Bad Request',
+        headers: { get: (name: string) => (name === FETCH_ERRORS.X_REASON ? 'SUBDOMAIN_INVALID' : null) },
+        json: async () => ({}),
+    };
+
+    const saveTenant = (responseHandling: string[]) =>
+        fetchData({
+            url: 'https://api.test/service/tenantadmin/1',
+            method: FETCH_METHODS.PUT,
+            responseHandling,
+            bodyData: JSON.stringify({ subdomain: 'Not Valid' }),
+        });
+
+    beforeEach(() => {
+        getAccessTokenForRequests.mockReset();
+        getAccessTokenForRequests.mockReturnValue('access-token');
+        messageError.mockReset();
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(badRequest));
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('rejects with a bare Error when no 400 branch is declared, losing the reason', async () => {
+        const error = await saveTenant([FETCH_SUCCESS.CONTENT, FETCH_ERRORS.CONFLICT_WITH_RESPONSE]).catch(
+            (rejection) => rejection,
+        );
+
+        expect(error).toBeInstanceOf(Error);
+        expect((error as unknown as Response).headers).toBeUndefined();
+    });
+
+    it('rejects with the raw response, reason header and all, when the caller declares it', async () => {
+        const error = await saveTenant([
+            FETCH_SUCCESS.CONTENT,
+            FETCH_ERRORS.CONFLICT_WITH_RESPONSE,
+            FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE,
+        ]).catch((rejection) => rejection);
+
+        expect(error).not.toBeInstanceOf(Error);
+        expect(error.headers.get(FETCH_ERRORS.X_REASON)).toBe('SUBDOMAIN_INVALID');
     });
 });

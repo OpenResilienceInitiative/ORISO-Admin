@@ -1,13 +1,15 @@
-import { FormInstance, Typography } from 'antd';
+import { FormInstance } from 'antd';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { CardEditable } from '../../CardEditable';
+import { TileSections } from '../../TileSections';
 import { MuiFormField, MuiMultilineFormField, MuiNumberFormField } from '../../mui/MuiFormField';
 import { MuiSelectField } from '../../mui/MuiSelectField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
 import { DPIA_KEY_FIGURE_NAMES, DpiaMasterData } from '../../../types/dpiaMasterData';
+import { documentMasterDataHelp } from './help';
 import styles from './styles.module.scss';
 
 interface DocumentMasterDataCardProps {
@@ -119,6 +121,7 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                 className={styles.card}
                 variant="dialog"
                 headerIcon={<DescriptionOutlinedIcon />}
+                help={documentMasterDataHelp}
                 isLoading={isLoading}
                 initialValues={initialValues}
                 titleKey="globalSettings.documentMasterData.title"
@@ -136,11 +139,11 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                             editing={editing}
                             skipped={supersededRecord}
                         />
-                        <div className={styles.sections}>
-                            <section className={styles.section}>
-                                <Typography.Text strong className={styles.sectionTitle}>
-                                    {t('globalSettings.documentMasterData.operator.title')}
-                                </Typography.Text>
+                        <TileSections className={styles.sections}>
+                            <TileSections.Section
+                                id="document-operator"
+                                title={t('globalSettings.documentMasterData.operator.title')}
+                            >
                                 <div className={styles.fieldGrid}>
                                     <MuiFormField
                                         label={t('globalSettings.documentMasterData.operator.legalName')}
@@ -188,12 +191,12 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                                         inputProps={{ maxLength: 255 }}
                                     />
                                 </div>
-                            </section>
+                            </TileSections.Section>
 
-                            <section className={styles.section}>
-                                <Typography.Text strong className={styles.sectionTitle}>
-                                    {t('globalSettings.documentMasterData.supervisoryAuthority.title')}
-                                </Typography.Text>
+                            <TileSections.Section
+                                id="document-authority"
+                                title={t('globalSettings.documentMasterData.supervisoryAuthority.title')}
+                            >
                                 <div className={styles.fieldGrid}>
                                     <MuiSelectField
                                         name={['supervisoryAuthority', 'legalFramework']}
@@ -222,12 +225,12 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                                         inputProps={{ maxLength: 255 }}
                                     />
                                 </div>
-                            </section>
+                            </TileSections.Section>
 
-                            <section className={styles.section}>
-                                <Typography.Text strong className={styles.sectionTitle}>
-                                    {t('globalSettings.documentMasterData.document.title')}
-                                </Typography.Text>
+                            <TileSections.Section
+                                id="document-document"
+                                title={t('globalSettings.documentMasterData.document.title')}
+                            >
                                 <div className={styles.fieldGrid}>
                                     <MuiFormField
                                         label={t('globalSettings.documentMasterData.document.documentDate')}
@@ -240,12 +243,12 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                                         type="date"
                                     />
                                 </div>
-                            </section>
+                            </TileSections.Section>
 
-                            <section className={styles.section}>
-                                <Typography.Text strong className={styles.sectionTitle}>
-                                    {t('globalSettings.documentMasterData.keyFigures.title')}
-                                </Typography.Text>
+                            <TileSections.Section
+                                id="document-figures"
+                                title={t('globalSettings.documentMasterData.keyFigures.title')}
+                            >
                                 {/* Manual entry for now; filling these from platform statistics is a follow-up. */}
                                 <p className={styles.sectionHint}>
                                     {t('globalSettings.documentMasterData.keyFigures.hint')}
@@ -285,8 +288,8 @@ export const DocumentMasterDataCard = ({ data, isLoading, onSave, disabled }: Do
                                         );
                                     })}
                                 </div>
-                            </section>
-                        </div>
+                            </TileSections.Section>
+                        </TileSections>
                     </>
                 )}
             </CardEditable>

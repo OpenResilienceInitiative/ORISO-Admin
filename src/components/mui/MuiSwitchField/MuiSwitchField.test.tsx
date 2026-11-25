@@ -5,7 +5,8 @@ import React from 'react';
 import { Form } from 'antd';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
+import i18n from '../../../i18n';
 import { MuiSwitchField } from './index';
 
 const renderWithForm = (
@@ -55,5 +56,53 @@ describe('MuiSwitchField', () => {
         });
 
         expect(screen.getByRole('switch', { name: 'Enabled' })).toBeDisabled();
+    });
+
+    it('renders the dark off knob when unchecked and the white on knob when checked (#1374)', async () => {
+        const user = userEvent.setup();
+        const { container } = renderWithForm(<MuiSwitchField name="enabled" label="Enabled" />, {
+            initialValues: { enabled: false },
+        });
+
+        expect(container.querySelector('[data-switch-thumb="off"]')).toBeInTheDocument();
+        expect(container.querySelector('[data-switch-thumb="on"]')).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole('switch', { name: 'Enabled' }));
+
+        expect(container.querySelector('[data-switch-thumb="on"]')).toBeInTheDocument();
+        expect(container.querySelector('[data-switch-thumb="off"]')).not.toBeInTheDocument();
+    });
+
+    describe('state word („An“/„Aus“, #1374)', () => {
+        it('is off by default', () => {
+            const { container } = renderWithForm(<MuiSwitchField name="enabled" label="Enabled" />, {
+                initialValues: { enabled: true },
+            });
+
+            expect(container.querySelector('[data-switch-state]')).not.toBeInTheDocument();
+        });
+
+        it('follows the bound value when shown', async () => {
+            await i18n.changeLanguage('de');
+            const user = userEvent.setup();
+            const { container } = renderWithForm(<MuiSwitchField name="enabled" label="Rundgänge" showStateLabel />, {
+                initialValues: { enabled: false },
+            });
+
+            expect(container.querySelector('[data-switch-state]')).toHaveTextContent('Aus');
+            await user.click(screen.getByRole('switch', { name: 'Rundgänge' }));
+            expect(container.querySelector('[data-switch-state]')).toHaveTextContent('An');
+        });
+
+        it('stays visible on a disabled switch', async () => {
+            await i18n.changeLanguage('de');
+            const { container } = renderWithForm(
+                <MuiSwitchField name="enabled" label="Rundgänge" showStateLabel disabled />,
+                { initialValues: { enabled: true } },
+            );
+
+            expect(screen.getByRole('switch', { name: 'Rundgänge' })).toBeDisabled();
+            expect(container.querySelector('[data-switch-state="on"]')).toHaveTextContent('An');
+        });
     });
 });

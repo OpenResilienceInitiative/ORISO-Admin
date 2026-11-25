@@ -1,13 +1,15 @@
 import { UserRole } from '../enums/UserRole';
 import parseJwt from './parseJWT';
 
-const ADMIN_PORTAL_ROLES = [
+export const ADMIN_PORTAL_ROLES: readonly UserRole[] = [
     UserRole.TenantAdmin,
     UserRole.SingleTenantAdmin,
     UserRole.UserAdmin,
     UserRole.AgencyAdmin,
     UserRole.RestrictedAgencyAdmin,
     UserRole.TopicAdmin,
+    // Read-only statistics account: sees nothing but /admin/statistic (ORISO-UserService#1666).
+    UserRole.StatisticsReader,
 ];
 
 export const hasAdminPortalRole = (roles: string[] = []) => ADMIN_PORTAL_ROLES.some((role) => roles.includes(role));

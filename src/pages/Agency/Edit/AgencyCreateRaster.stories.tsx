@@ -11,7 +11,7 @@ import { AgencySettings } from './components/AgencySettings';
 /**
  * #620: the agency create flow composes its three cards in the responsive
  * CardGrid (shared row width, wrap below the floor) instead of the fixed
- * 392px CardDeck. This story renders the real create composition so the
+ * 392px card row. This story renders the real create composition so the
  * raster can be reviewed at desktop/tablet/mobile without a backend.
  */
 const topics = [
@@ -24,7 +24,7 @@ const consultants = {
     embedded: [
         {
             embedded: {
-                id: 'c1',
+                id: 'organisms-agency-createflowraster',
                 firstname: 'Erika',
                 lastname: 'Beispiel',
                 email: 'erika@example.org',
@@ -36,7 +36,8 @@ const consultants = {
 };
 
 const meta: Meta<typeof CardGrid> = {
-    title: 'Organisms/Agency/CreateFlowRaster',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/CreateFlowRaster',
+    id: 'organisms-agency-createflowraster',
     component: CardGrid,
     parameters: {
         msw: {

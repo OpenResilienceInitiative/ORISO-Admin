@@ -1,5 +1,11 @@
 import { tenantAdminEndpoint } from '../../appConfig';
-import { TranslateRequest, TranslateResponse, TranslationKeys, TranslationProvider } from '../../types/translation';
+import {
+    TranslateRequest,
+    TranslateResponse,
+    TranslationKeyTestResult,
+    TranslationKeys,
+    TranslationProvider,
+} from '../../types/translation';
 import { FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS, fetchData } from '../fetchData';
 
 /**
@@ -58,6 +64,22 @@ export const setTranslationKey = (provider: TranslationProvider, apiKey: string)
         bodyData: JSON.stringify({ apiKey }),
         responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT],
     }).catch(async (rejection) => {
+        throw await toTranslationApiError(rejection);
+    });
+
+/**
+ * Tests the stored key of one provider with one short live call (superadmin only). Resolves with
+ * the provider's reply; a refused key or an empty one rejects with a TranslationApiError.
+ */
+export const testTranslationKey = (provider: TranslationProvider): Promise<TranslationKeyTestResult> =>
+    (
+        fetchData({
+            url: `${tenantAdminEndpoint}/translation/keys/${provider}/test`,
+            method: FETCH_METHODS.POST,
+            skipAuth: false,
+            responseHandling: [FETCH_ERRORS.CATCH_ALL_SILENT, FETCH_SUCCESS.CONTENT],
+        }) as Promise<TranslationKeyTestResult>
+    ).catch(async (rejection) => {
         throw await toTranslationApiError(rejection);
     });
 

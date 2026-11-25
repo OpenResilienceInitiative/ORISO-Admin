@@ -6,6 +6,7 @@ import { editCounselorData } from '../api/counselor/editCounselorData';
 import { TypeOfUser } from '../enums/TypeOfUser';
 import { AdminData } from '../types/admin';
 import { CounselorData } from '../types/counselor';
+import { AGENCY_CONSULTANTS_KEY } from './useAgencyConsultants';
 
 interface AddOrUpdateConsultantOptions
     extends UseMutationOptions<CounselorData | AdminData, Error, CounselorData | AdminData, Error | Response> {
@@ -24,6 +25,7 @@ export const useAddOrUpdateConsultantOrAdmin = ({ id, typeOfUser, ...options }: 
         ...options,
         onSuccess: (...all) => {
             queryClient.invalidateQueries({ queryKey: ['HAS_CONSULTANTS'] });
+            queryClient.invalidateQueries({ queryKey: [AGENCY_CONSULTANTS_KEY] });
             queryClient.invalidateQueries({ queryKey: [typeOfUser.toUpperCase()] });
             // The list key above is plural; the consultant DETAIL entry (`['CONSULTANT', id]`,
             // `useCounselorById`) has its own key and was left stale after every save. Reopening

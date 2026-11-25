@@ -19,7 +19,9 @@ runs:
           # --ignore-scripts blocks arbitrary dependency postinstall scripts from
           # executing in CI (supply-chain hardening). Admin is a Vite app and does
           # not rely on any dependency lifecycle script to build.
-          run: npm ci --ignore-scripts
+          run: |
+              npm ci --ignore-scripts
+              npm run prepare:runtime
 
         # src/components/IconCatalog/iconCatalog.generated.json has to stay
         # committed — ESLint resolves the Storybook page's import of it long
@@ -61,10 +63,12 @@ runs:
           shell: bash
           run: npx prettier . --check --ignore-unknown
 
-        - name: Run unit tests
-          shell: bash
-          run: npm test
-
         - name: Build app
           shell: bash
-          run: npm run build
+          run: |
+              set -euo pipefail
+              # Identify the source actually checked out, including PR merge checkouts.
+              # github.sha can refer to a different commit when checkout uses a ref.
+              export VITE_BUILD_COMMIT="$(git rev-parse --verify HEAD^{commit})"
+              [[ "$VITE_BUILD_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+              npm run build

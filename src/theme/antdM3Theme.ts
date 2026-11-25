@@ -1,6 +1,6 @@
 import { theme as antdTheme, type ThemeConfig } from 'antd';
 
-import { computeOrisoPalette, type OrisoSchemeName } from '../utils/theme/orisoScheme';
+import { computeOrisoPalette, type AdminContrast, type OrisoSchemeName } from '../utils/theme/orisoScheme';
 import type { TenantSeeds } from '../utils/themeSeeds';
 
 /**
@@ -35,6 +35,8 @@ const M3_CONTROL_HEIGHT = 40;
 export interface AdminAntdThemeOptions {
     seeds?: TenantSeeds;
     scheme?: OrisoSchemeName;
+    textScale?: number;
+    contrast?: AdminContrast;
 }
 
 /**
@@ -44,14 +46,21 @@ export interface AdminAntdThemeOptions {
  *                        (`#A5000A`) when omitted.
  * @param options.scheme `'light'` (default) or `'inverted'` for the dark surface.
  */
-export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeOptions = {}): ThemeConfig => {
-    const { tokens } = computeOrisoPalette(seeds ?? {}, scheme);
+export const buildAdminAntdTheme = ({
+    seeds,
+    scheme = 'light',
+    textScale = 1,
+    contrast = 'standard',
+}: AdminAntdThemeOptions = {}): ThemeConfig => {
+    const { tokens } = computeOrisoPalette(seeds ?? {}, scheme, contrast);
     const t = (name: string, fallback: string) => tokens[name] ?? fallback;
 
     // Field anatomy tokens (#313) — the same `--admin-field-*` values that
     // applyAdminTheme writes to :root, so raw antd fields and the SCSS-module
     // fields share one source of truth.
     const primary = t('--m3-primary', '#a5000a');
+    const fieldFocus = t('--admin-field-focus', primary);
+    const link = t('--admin-link-text', primary);
     const fieldSurface = t('--admin-field-surface', '#fcf9f9');
     const fieldOutline = t('--admin-field-outline', '#c4c7c8');
     const fieldSurfaceHover = t('--admin-field-surface-hover', '#f6f3f3');
@@ -59,16 +68,22 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
     const fieldSelectedText = t('--admin-field-selected-text', '#930008');
 
     return {
-        algorithm: scheme === 'inverted' ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        algorithm: scheme === 'light' ? antdTheme.defaultAlgorithm : antdTheme.darkAlgorithm,
         token: {
             // Brand + semantic colours, straight from the M3 scheme.
             colorPrimary: primary,
-            colorLink: primary,
+            colorLink: link,
             colorInfo: primary,
             colorError: t('--m3-error', '#b1005e'),
             colorWarning: t('--m3-warning', '#410001'),
             // Surfaces + text.
             colorTextBase: t('--m3-on-surface', '#1a1c1e'),
+            ...(tokens['--admin-link-text'] && {
+                colorLinkHover: link,
+                colorLinkActive: link,
+                colorText: tokens['--m3-on-surface'],
+                colorTextSecondary: tokens['--m3-on-surface-variant'],
+            }),
             colorBgBase: t('--m3-surface', '#fcf9f9'),
             colorBgContainer: t('--m3-surface-container-low', '#f7f3f4'),
             colorBgElevated: t('--m3-surface-container', '#f0edee'),
@@ -84,11 +99,16 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
             borderRadiusSM: M3_RADIUS_SM,
             // M3 typography.
             fontFamily: M3_FONT_FAMILY,
-            fontSize: 14,
+            fontSize: 14 * textScale,
             // M3 sizing (+ WCAG 2.2 target size headroom).
             controlHeight: M3_CONTROL_HEIGHT,
         },
         components: {
+            // Every tooltip is solid black with white text, whatever the tenant theme (#1299).
+            Tooltip: {
+                colorBgSpotlight: '#000000',
+                colorTextLightSolid: '#ffffff',
+            },
             // antd's Layout component keeps its own dark-navy defaults
             // (headerBg/footerBg) independent of the global token set above,
             // so without this override SiteHeader/SiteFooter render near-black
@@ -106,20 +126,20 @@ export const buildAdminAntdTheme = ({ seeds, scheme = 'light' }: AdminAntdThemeO
                 colorBgContainer: fieldSurface,
                 hoverBg: fieldSurfaceHover,
                 activeBg: fieldSurface,
-                hoverBorderColor: primary,
-                activeBorderColor: primary,
+                hoverBorderColor: fieldFocus,
+                activeBorderColor: fieldFocus,
             },
             InputNumber: {
                 colorBgContainer: fieldSurface,
                 hoverBg: fieldSurfaceHover,
                 activeBg: fieldSurface,
-                hoverBorderColor: primary,
-                activeBorderColor: primary,
+                hoverBorderColor: fieldFocus,
+                activeBorderColor: fieldFocus,
             },
             Select: {
                 selectorBg: fieldSurface,
-                hoverBorderColor: primary,
-                activeBorderColor: primary,
+                hoverBorderColor: fieldFocus,
+                activeBorderColor: fieldFocus,
                 optionActiveBg: fieldSurfaceHover,
                 optionSelectedBg: fieldSelectedSurface,
                 optionSelectedColor: fieldSelectedText,

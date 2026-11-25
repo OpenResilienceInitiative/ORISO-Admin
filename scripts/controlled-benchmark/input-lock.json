@@ -1,0 +1,172 @@
+{
+    "schemaVersion": 2,
+    "profile": "admin1611-314228e-cache5",
+    "sourceCommit": "314228ed735bee7d3d753d98eba5e72624e50510",
+    "originalToolchainCommit": "b57c979f08fadd2ccda8d135a12258b46ee651fd",
+    "phaseOrder": ["controls", "cache-controls", "unit-proof", "receipt-controls", "gate", "timed"],
+    "phaseCommandTemplates": [
+        {
+            "phase": "controls",
+            "leaseStage": "controls",
+            "attemptPrefix": "c",
+            "argv": [
+                "python3",
+                "<benchmark>/guard-controls.py",
+                "--lease",
+                "<fresh-controls-lease>",
+                "--timeout",
+                "60",
+                "--attempt",
+                "<controls-attempt>"
+            ],
+            "expected": {
+                "retainedNativeControls": 38
+            }
+        },
+        {
+            "phase": "cache-controls",
+            "leaseStage": "controls",
+            "attemptPrefix": "h",
+            "argv": [
+                "python3",
+                "<benchmark>/guard-controls.py",
+                "--lease",
+                "<fresh-cache-hook-lease>",
+                "--timeout",
+                "60",
+                "--attempt",
+                "<cache-hook-attempt>",
+                "--cache-only"
+            ],
+            "expected": {
+                "hookFixtureRejections": 7,
+                "notNativeVitestResolution": true
+            }
+        },
+        {
+            "phase": "unit-proof",
+            "leaseStage": "unit-proof",
+            "attemptPrefix": "u",
+            "argv": [
+                "python3",
+                "<benchmark>/run.py",
+                "unit-proof",
+                "--lease",
+                "<fresh-unit-proof-lease>",
+                "--timeout",
+                "600",
+                "--attempt",
+                "<unit-proof-attempt>"
+            ],
+            "expected": {
+                "nativeCommands": 4,
+                "nativeCasesEach": 52,
+                "originalColdWarmThenCandidateColdWarm": true
+            }
+        },
+        {
+            "phase": "receipt-controls",
+            "leaseStage": "controls",
+            "attemptPrefix": "r",
+            "argv": [
+                "python3",
+                "<benchmark>/cache-receipt-controls.py",
+                "--lease",
+                "<fresh-receipt-controls-lease>",
+                "--attempt",
+                "<receipt-controls-attempt>",
+                "--proof-attempt",
+                "<unit-proof-attempt>"
+            ],
+            "expected": {
+                "actualPositiveValidations": 2,
+                "negativeVerifierFixtures": 7,
+                "notAdditionalNativeCommands": true
+            }
+        },
+        {
+            "phase": "gate",
+            "leaseStage": "gate",
+            "attemptPrefix": "g",
+            "argv": [
+                "python3",
+                "<benchmark>/run.py",
+                "gate",
+                "--lease",
+                "<fresh-equality-lease>",
+                "--timeout",
+                "600",
+                "--attempt",
+                "<equality-attempt>"
+            ],
+            "expected": {
+                "nativeCommands": 4,
+                "casesPerUnitLeg": 52,
+                "casesPerStorybookLeg": 10,
+                "rawAuditsPerBrowserLeg": 10
+            }
+        },
+        {
+            "phase": "timed",
+            "leaseStage": "timed",
+            "attemptPrefix": "t",
+            "argv": [
+                "python3",
+                "<benchmark>/run.py",
+                "timed",
+                "--lease",
+                "<fresh-timed-lease>",
+                "--timeout",
+                "600",
+                "--attempt",
+                "<timed-attempt>",
+                "--gate-attempt",
+                "<equality-attempt>"
+            ],
+            "expected": {
+                "fixedNativeCommands": 24,
+                "requiresAcceptedEqualityReceipt": true,
+                "noMediansFromPartials": true
+            }
+        }
+    ],
+    "phaseCommandTemplatesSHA256": "511187203f827e4b86a33f8243f79fdfa949f9c4ce422872e906ca628f289d8b",
+    "localProofIsOriginOnly": {
+        "materializationReceiptSHA256": "17b821f85e6ac39ccd1e643c93fabd115090e6a6e85f4fb69d96c421f5bfdd81",
+        "boundedCache5ReviewSHA256": "5e758bb53ad54bb04bf8bac58c4b9b9113b8c88bfcb355b72e50604b386d7dc2",
+        "unitProofReceiptSHA256": "8a5f25a97a6bfd6e49faa14468dbac0a449331baa7e27754eb1ba50ff3b28244",
+        "freshCIPhasesRequired": true
+    },
+    "files": {
+        "assemble.py": "332fc369494bea43ce239343d7afd1ca4c1c79259adbd44e86c7755ec0eb5477",
+        "cache-receipt-controls.py": "f88f62b4bcc15743a755607dda694c369a45a13447e01b124f36b70bd7f7daee",
+        "ci_controller.py": "c55a292586e419f81d37073b346d827cef6aadd2f8460c977b3f02f7e7e684f8",
+        "guard-control-child.mjs": "8aa2880bf65fb543e5e6b87c61526c326eea528f25e21292f6e8d5a87d6f2b6c",
+        "guard-controls.py": "e796d35de7a92fec14e8bacbc9818eb766846db5dfac0aa4b7433d1fd96318ec",
+        "inputs/benchmark-harness.ts": "9218aa4d3bfcdaaad5a559e4b11bbdf2783792020e68e1cb153490149bda6b29",
+        "inputs/candidate-expected.json": "eed549f54615b190badebe3632886aa585d49f555a4edd117e94142a50d277d5",
+        "inputs/expected-inventory.json": "54d6f8b159c59daecebc1423dc807b54c1b7a8112f3486d7a09f894ee2f25269",
+        "inputs/git-source-spec.json": "49f0e0fd45c2aaf1627925ade6a882d54d3002051e6dff095ede9ed6cb8a6815",
+        "inputs/original-expected.json": "f58f4312b981621d3996a91a3df36663e906211765a0e00fdda30c44a7e5eb7c",
+        "inputs/schedule.json": "28a2278c858bd7fbf1eb27c19e509356a909db7be39f67e477262b1150ccc16e",
+        "inputs/source-map.json": "f03e3b60ebd83ecaa55670a3a3a8efe7f0069d4c4b76d27c656286bef28a6eda",
+        "inputs/toolchains.json": "0b210090b16847130caba844174a10c16a463f68a4fa23f76b93c4ecf383fce4",
+        "inputs/verification-provenance.mjs": "b141d6720c35dbbcbcd1357256015c88a3a1c5695890288fce5284fac242ede8",
+        "run.py": "fbf37af0fe92c8a8f011ca6ccb08b8cbad5f3e7dde73bff1abf2cad9c820fbea",
+        "test_ci_controller.py": "266c1f7f7c3398cbf1e7bb2c1f1f033fbafc76a6a50db5a7863eec1d3a355e33"
+    },
+    "sharedInstrumentationDelta": [
+        {
+            "path": "benchmark-harness.ts",
+            "previousSHA256": "43959bea4b16fdf384b7135baef1e814e2fb5187e5c3ba98c1eb72fbcbf30500",
+            "currentSHA256": "9218aa4d3bfcdaaad5a559e4b11bbdf2783792020e68e1cb153490149bda6b29",
+            "reason": "Exact declared Chromium instance native-project identity plus canonical formatting; same instrumentation bytes on both subjects."
+        },
+        {
+            "path": "scripts/verification-provenance.mjs",
+            "previousSHA256": "65a79f0c777b972b997b560aa04e2209ad3b5127d97b7c2e8364aea1461fd0eb",
+            "currentSHA256": "b141d6720c35dbbcbcd1357256015c88a3a1c5695890288fce5284fac242ede8",
+            "reason": "Canonical formatting only; parsed JS AST unchanged; same instrumentation bytes on both subjects."
+        }
+    ]
+}

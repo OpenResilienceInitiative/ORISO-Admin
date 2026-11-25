@@ -38,6 +38,7 @@ export const usePlatformAdminsData = (
                 sortBy: sortBy || USER_TABLE_DEFAULT_SORT,
                 order: order || USER_TABLE_DEFAULT_ORDER,
                 normalizeSortField: normalizeTenantAdminSortField,
+                rethrowOnFailure: true,
             });
 
             const platformAdmins = (response.data || []).filter(

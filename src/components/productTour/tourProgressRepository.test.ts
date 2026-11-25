@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { inMemoryTourProgressRepository } from './tourProgressRepository';
 import type { TourProgress } from './types';
 

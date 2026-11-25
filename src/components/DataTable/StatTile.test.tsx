@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StatTile } from './StatTile';
@@ -32,5 +32,10 @@ describe('StatTile', () => {
     it('stays visible but inert when disabled (disable, never hide)', () => {
         render(<StatTile label="Eingeladen" value={0} disabled onClick={() => {}} />);
         expect(screen.getByRole('button')).toBeDisabled();
+    });
+
+    it('shows a one-line breakdown under the label, read out with the tile', () => {
+        render(<StatTile label="Vorbereitet" value={3} supportingText="2 Draft · 1 Wartet" onClick={() => {}} />);
+        expect(screen.getByRole('button', { name: '3 Vorbereitet 2 Draft · 1 Wartet' })).toBeInTheDocument();
     });
 });

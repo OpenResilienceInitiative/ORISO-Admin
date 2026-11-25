@@ -4,12 +4,18 @@ export interface DpaVersion {
     activationDate: string;
     /** The published multilingual content (JSON map language -> HTML). */
     content: string;
+    signingDeadlineAt?: string | null;
 }
 
 /** The DPA consultation-gate status for a tenant. */
 export interface DpaGateStatus {
     dpaPublished: boolean;
     dpaSigned: boolean;
+    dpaStatus?: TenantDpaStatus;
+    currentDpaVersion?: string | null;
+    signingDeadlineAt?: string | null;
+    renewalGraceActive?: boolean;
+    newCounsellingAllowed?: boolean;
     /**
      * Additive flag (ORISO-Admin#723 contract correction): not signed, but an
      * unexpired forwarded sign link is outstanding. Never true alongside a
@@ -34,6 +40,9 @@ export type TenantDpaStatus = 'MISSING' | 'UNSIGNED' | 'OUTDATED' | 'VALID' | 'I
 export interface TenantDpaStatusInfo {
     tenantId: number;
     status: TenantDpaStatus;
+    newCounsellingAllowed?: boolean;
+    signingDeadlineAt?: string | null;
+    renewalGraceActive?: boolean;
     /** Activation timestamp of the currently published DPA version, if any. */
     currentDpaVersion?: string | null;
     /** Newest DPA version a signature exists for, if any. */
@@ -51,6 +60,8 @@ export interface TenantDpaStatusInfo {
 
 /** Request body of the U9 sign endpoint (DpaAdminSignRequestDTO). */
 export interface DpaAdminSignRequest {
+    /** Exact stored version of the contract displayed and accepted by the admin. */
+    dpaVersion: string;
     signerName: string;
     signerPosition?: string;
     signerEmail?: string;

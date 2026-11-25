@@ -74,8 +74,9 @@ const configuredApiUrl = readConfigValue('API_URL') ?? '';
 const apiHost = stripUrlProtocol(configuredApiUrl);
 const keycloakHost = readConfigValue('KEYCLOAK_URL');
 const keycloakBaseUrl = keycloakHost ? toAbsoluteUrl(keycloakHost, useHttps) : '';
-const configuredAppHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
-const appHost = configuredAppHost || apiHost.replace(/^api\./i, 'app.');
+// ORISO-Helm#368: APP_URL, else the configured API URL (Helm serves app and API on one domain).
+// Never a host rewritten from the API host (the old `api.` -> `app.` guess).
+const appHost = stripUrlProtocol(readConfigValue('APP_URL') ?? '');
 const matrixHost = stripUrlProtocol(readConfigValue('MATRIX_URL') ?? '');
 
 let apiBaseUrl = origin;
@@ -113,7 +114,22 @@ const otelMetricsUrl = (() => {
     }
 })();
 
+// ORISO-Admin#1558: ORISO Understand, where a feature page explains a setting. Unset: no link.
+const understandUrl = (() => {
+    const configured = readConfigValue('UNDERSTAND_URL') ?? '';
+    try {
+        const url = new URL(configured);
+        // Origin and path only: a query or hash would end up in front of the feature path.
+        return url.protocol === 'http:' || url.protocol === 'https:'
+            ? `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+            : '';
+    } catch {
+        return '';
+    }
+})();
+
 export const runtimeConfig = {
+    understandUrl,
     useHttps,
     useApiUrl,
     apiBaseUrl,
@@ -122,7 +138,10 @@ export const runtimeConfig = {
     agencyServiceOrigin: serviceOrigin('AGENCY_SERVICE_ORIGIN'),
     tenantServiceOrigin: serviceOrigin('TENANT_SERVICE_ORIGIN'),
     consultingTypeServiceOrigin: serviceOrigin('CONSULTING_TYPE_SERVICE_ORIGIN'),
+    addonServiceOrigin: serviceOrigin('ADDON_SERVICE_ORIGIN'),
     appBaseUrl: toAbsoluteUrl(appHost, useHttps) || apiBaseUrl,
+    /** APP_URL as configured, with no API fallback; '' when unset. */
+    configuredAppUrl: toAbsoluteUrl(appHost, useHttps),
     matrixBaseUrl: matrixHost ? toAbsoluteUrl(matrixHost, useHttps) : '',
     keycloakRealm: readConfigValue('KEYCLOAK_REALM') ?? 'online-beratung',
     keycloakClientId: readConfigValue('KEYCLOAK_CLIENT_ID') ?? 'app',
@@ -142,6 +161,9 @@ export const runtimeConfig = {
     // (ADR-019, ORISO-Admin#734). Opt-in, so an unconfigured environment is
     // honest by default rather than by accident.
     mediaAiScanAvailable: readExplicitTrueConfig('MEDIA_AI_SCAN_AVAILABLE'),
+    // Journeys on the conversation type tiles of Funktionszugriff (ADR-036 part E,
+    // ORISO-Admin#1571). Opt-in until UserService stores them everywhere.
+    journeysEnabled: readExplicitTrueConfig('JOURNEYS_ENABLED'),
     otelMetricsUrl,
     otelExportIntervalMillis,
     platformVersion: readConfigValue('PLATFORM_VERSION') ?? '',
@@ -156,4 +178,11 @@ export const keycloakAuthPath = (path: string) => {
         : `${keycloakOrigin}/auth/realms`;
 
     return `${realmBaseUrl}/${runtimeConfig.keycloakRealm}${path}`;
+};
+
+// Bundle identity deliberately bypasses env.js and every runtime config global.
+// Local builds without an injected full commit remain explicitly unidentified.
+export const getBuildCommit = (): string | undefined => {
+    const commit = import.meta.env.VITE_BUILD_COMMIT;
+    return commit && /^[0-9a-f]{40}$/.test(commit) ? commit : undefined;
 };

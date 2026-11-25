@@ -1,0 +1,23 @@
+/* The tile's header is the card's title, so the card inside gives up its own surface and cap: the tile lets
+   the editor use the row, and the text keeps a page's line length. */
+
+.document {
+    --m3-editor-max-width: none;
+    --m3-editor-text-max-width: 88ch;
+
+    /* Doubled class: it must beat the single-class caps of the cards (960px) whatever the style order. */
+    &.document > * {
+        max-width: none;
+    }
+}
+
+/* The explanation button is positioned against this row, so the help text never runs under it. */
+.intro {
+    position: relative;
+    min-height: 60px;
+    padding-right: 64px;
+}
+
+.introText {
+    min-width: 0;
+}

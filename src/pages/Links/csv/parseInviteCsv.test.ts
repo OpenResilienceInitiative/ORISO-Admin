@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { assignBatchTenantIds, detectInviteCsvDelimiter, parseInviteCsv } from './parseInviteCsv';
 
 describe('parseInviteCsv', () => {
@@ -67,11 +67,102 @@ describe('parseInviteCsv', () => {
         expect(result.rows[0]).toMatchObject({ line: 2, email: 'maria@example.org', id: 4 });
     });
 
+    it('rejects ambiguous provider and centre IDs instead of picking the wrong organisation', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Provider ID,Agency ID,Target,Role\nmaria@example.org,Maria,Huber,4,9,existing,counselling centre admin',
+        );
+        expect(result.rows).toEqual([]);
+        expect(result.rejected).toMatchObject([{ line: 2, reason: 'ambiguousId' }]);
+    });
+
+    describe('ID column labelled for the other organisation type', () => {
+        // Same number, different organisation: a provider ID must never be read as a counselling centre ID.
+        const file = (idLabel: string, role: string, id = '4') =>
+            `Email,First Name,Name,Target,Role,${idLabel}\nmaria@example.org,Maria,Huber,existing,${role},${id}`;
+
+        it.each(['Provider ID', 'Tenant ID', 'Träger-ID'])('rejects "%s" on the counsellor tab', (label) => {
+            const result = parseInviteCsv(file(label, 'counsellor'), 'agency');
+            expect(result.rows).toEqual([]);
+            expect(result.rejected).toMatchObject([{ line: 2, reason: 'wrongIdType' }]);
+        });
+
+        it.each(['Counselling centre ID', 'Agency ID', 'Beratungsstellen-ID'])(
+            'rejects "%s" on the provider tab',
+            (label) => {
+                const result = parseInviteCsv(file(label, 'provider admin'), 'tenant');
+                expect(result.rows).toEqual([]);
+                expect(result.rejected).toMatchObject([{ line: 2, reason: 'wrongIdType' }]);
+            },
+        );
+
+        it('accepts the ID type that matches the importing tab', () => {
+            expect(parseInviteCsv(file('Provider ID', 'provider admin'), 'tenant').rows[0]).toMatchObject({ id: 4 });
+            expect(parseInviteCsv(file('Counselling centre ID', 'counsellor'), 'agency').rows[0]).toMatchObject({
+                id: 4,
+            });
+        });
+
+        it.each(['ID', 'Nr', 'Nummer'])('keeps the generic heading "%s" valid on both tabs', (label) => {
+            expect(parseInviteCsv(file(label, 'counsellor'), 'agency').rows[0]).toMatchObject({ id: 4 });
+            expect(parseInviteCsv(file(label, 'provider admin'), 'tenant').rows[0]).toMatchObject({ id: 4 });
+        });
+
+        it('keeps a provider-admin row on the counsellor tab, which uses the own provider and not the cell', () => {
+            const result = parseInviteCsv(file('Provider ID', 'provider admin'), 'agency');
+            expect(result.rejected).toEqual([]);
+            expect(result.rows[0]).toMatchObject({ role: 'TENANT_ADMIN', id: 4 });
+        });
+
+        it('does not reject a row without an ID, since there is no number to misread', () => {
+            const result = parseInviteCsv(
+                'Email,First Name,Name,Target,Role,Provider ID\nmaria@example.org,Maria,Huber,new,counsellor,',
+                'agency',
+            );
+            expect(result.rejected).toEqual([]);
+            expect(result.rows).toHaveLength(1);
+        });
+
+        it('checks only when the importing tab is given', () => {
+            expect(parseInviteCsv(file('Provider ID', 'counsellor')).rows[0]).toMatchObject({ id: 4 });
+        });
+
+        it('ignores a custom ID label, which keeps its fixed position', () => {
+            const result = parseInviteCsv(
+                'Email,First Name,Name,Träger-Nummer\nmaria@example.org,Maria,Huber,4',
+                'agency',
+            );
+            expect(result.rows[0]).toMatchObject({ id: 4 });
+        });
+    });
+
+    it('accepts the provider ID heading in an extended invitation file', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Target,Role,Provider ID,Template\nmaria@example.org,Maria,Huber,existing,provider admin,4,standard',
+        );
+        expect(result.headerSkipped).toBe(true);
+        expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'TENANT_ADMIN' });
+    });
+
+    it('accepts the counselling centre ID and admin role in an extended invitation file', () => {
+        const result = parseInviteCsv(
+            'Email,First Name,Name,Target,Role,Counselling centre ID,Template\nmaria@example.org,Maria,Huber,existing,counselling centre admin,4,standard',
+        );
+        expect(result.headerSkipped).toBe(true);
+        expect(result.rows[0]).toMatchObject({ email: 'maria@example.org', id: 4, role: 'AGENCY_ADMIN' });
+    });
+
+    it.each(['counselling-centre admin', 'agency admin'])('accepts the centre-admin role spelling %s', (role) => {
+        const result = parseInviteCsv(
+            `Email,First Name,Name,Target,Role,Counselling centre ID,Template\nmaria@example.org,Maria,Huber,existing,${role},4,standard`,
+        );
+        expect(result.rows[0]).toMatchObject({ id: 4, role: 'AGENCY_ADMIN' });
+    });
+
     it('does not treat a merely invalid first e-mail as a header (surfaces it as a rejection)', () => {
         const result = parseInviteCsv('not-an-email,Peter,Maier\nmaria@example.org,Maria,Huber');
 
         expect(result.headerSkipped).toBe(false);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 1, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
         ]);
         expect(result.rows).toHaveLength(1);
@@ -106,7 +197,7 @@ describe('parseInviteCsv', () => {
         const result = parseInviteCsv('maria@example.org,Maria,Huber\nnot-an-email,Peter,Maier\n@broken,Ida,Klein');
 
         expect(result.rows).toHaveLength(1);
-        expect(result.rejected).toEqual([
+        expect(result.rejected).toMatchObject([
             { line: 2, cells: ['not-an-email', 'Peter', 'Maier'], reason: 'invalidEmail' },
             { line: 3, cells: ['@broken', 'Ida', 'Klein'], reason: 'invalidEmail' },
         ]);
@@ -126,8 +217,88 @@ describe('parseInviteCsv', () => {
     });
 
     it('returns empty results for an empty file', () => {
-        expect(parseInviteCsv('')).toEqual({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
+        expect(parseInviteCsv('')).toMatchObject({ rows: [], rejected: [], delimiter: ',', headerSkipped: false });
         expect(parseInviteCsv('\uFEFF\n\n').rows).toEqual([]);
+    });
+});
+
+describe('parseInviteCsv — Ziel, Rolle, Vorlage and Themen & Fachbereiche', () => {
+    const HEADER = 'E-Mail;Vorname;Name;Beratungsstellen-ID;Ziel;Rolle;Vorlage;Themen & Fachbereiche';
+
+    it('reads all eight columns of the example file', () => {
+        const result = parseInviteCsv(
+            `${HEADER}\r\nanna@x.de;Anna;Beispiel;42;bestehend;Berater:in;Standard;SELECT_EXISTING\r\nbernd@x.de;Bernd;Muster;;neu;BST-Admin;;\r\n`,
+        );
+        expect(result.rejected).toEqual([]);
+        expect(result.rows[0]).toMatchObject({
+            id: 42,
+            target: 'EXISTING',
+            role: 'COUNSELLOR',
+            template: 'Standard',
+            topicPermission: 'SELECT_EXISTING',
+        });
+        expect(result.rows[1]).toMatchObject({ target: 'NEW', role: 'AGENCY_ADMIN' });
+        expect(result.rows[1].template).toBeUndefined();
+        expect(result.rows[1].topicPermission).toBeUndefined();
+    });
+
+    it.each([
+        ['true', 'CREATE'],
+        ['FALSE', 'NONE'],
+        ['ja', 'CREATE'],
+        ['nein', 'NONE'],
+        ['none', 'NONE'],
+        ['Select_Existing', 'SELECT_EXISTING'],
+        ['CREATE', 'CREATE'],
+    ])('accepts topic permission %s as %s', (raw, expected) => {
+        const result = parseInviteCsv(`a@x.de;A;B;;;;;${raw}`);
+        expect(result.rows[0].topicPermission).toBe(expected);
+    });
+
+    it.each([
+        ['a@x.de;A;B;;vielleicht', 'invalidMode'],
+        ['a@x.de;A;B;;bestehend', 'existingWithoutId'],
+        ['a@x.de;A;B;;;Chef', 'invalidRole'],
+        ['a@x.de;A;B;;;;;manchmal', 'invalidTopicPermission'],
+    ])('rejects %s with %s', (line, reason) => {
+        const result = parseInviteCsv(line);
+        expect(result.rows).toEqual([]);
+        expect(result.rejected[0]).toMatchObject({ line: 1, reason, email: 'a@x.de', firstName: 'A', lastName: 'B' });
+    });
+
+    it('matches columns by header, in any order and with columns left out', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Themen;Vorname\r\nc@x.de;Träger-Admin;false;Carla\r\n');
+        expect(result.columns).toEqual(['email', 'firstName', 'role', 'topicPermission']);
+        expect(result.rows[0]).toMatchObject({
+            firstName: 'Carla',
+            lastName: '',
+            role: 'TENANT_ADMIN',
+            topicPermission: 'NONE',
+        });
+        expect(result.rows[0].id).toBeUndefined();
+    });
+
+    it('keeps reading an old four-column file with a custom ID header by position', () => {
+        const result = parseInviteCsv('E-Mail;Vorname;Name;Träger-Nummer\r\nd@x.de;D;E;7\r\n');
+        expect(result.rows[0]).toMatchObject({ id: 7 });
+        expect(result.rows[0].target).toBeUndefined();
+    });
+
+    it('reads an unknown extra column as nothing, not by its position', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Vorname;Name;ID;Telefon;Ziel;Rolle;Bemerkung\r\nd@x.de;D;E;7;0170 1;bestehend;Berater:in;ja\r\n',
+        );
+        expect(result.rows[0]).toMatchObject({ id: 7, target: 'EXISTING' });
+        // "ja" in an unlabelled 8th column must not turn into "may create topics".
+        expect(result.rows[0].topicPermission).toBeUndefined();
+        expect(result.columns).not.toContain('topicPermission');
+    });
+
+    it('lets a recognised ID header win over an unknown header that sits in the ID position', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Vorname;Name;Bemerkung;Beratungsstellen-ID;Ziel\r\nd@x.de;D;E;99;7;bestehend\r\n',
+        );
+        expect(result.rows[0]).toMatchObject({ id: 7, target: 'EXISTING' });
     });
 });
 
@@ -167,5 +338,25 @@ describe('assignBatchTenantIds', () => {
 
         expect(assigned.get(1)).toBe(2);
         expect(assigned.get(2)).toBe(1);
+    });
+});
+
+describe('parseInviteCsv — "Berät auch"', () => {
+    it('reads ja/nein and true/false by header', () => {
+        const result = parseInviteCsv(
+            'E-Mail;Rolle;Beratungsstellen-ID;Berät auch\r\na@x.de;BST-Admin;900;ja\r\nb@x.de;BST-Admin;901;false\r\nc@x.de;BST-Admin;902;\r\n',
+        );
+        expect(result.rejected).toHaveLength(0);
+        expect(result.rows.map((row) => row.alsoCounsellor)).toEqual([true, false, undefined]);
+    });
+
+    it('rejects an unknown "Berät auch" value with its own reason', () => {
+        const result = parseInviteCsv('E-Mail;Rolle;Berät auch\r\na@x.de;BST-Admin;vielleicht\r\n');
+        expect(result.rejected[0].reason).toBe('invalidAlsoCounsellor');
+    });
+
+    it('reads the ninth column of a header-less file as "Berät auch"', () => {
+        const result = parseInviteCsv('a@x.de,Anna,A,900,neu,BST-Admin,,,nein\n');
+        expect(result.rows[0].alsoCounsellor).toBe(false);
     });
 });

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const h = vi.hoisted(() => ({
     useDepartmentDetails: vi.fn(),
@@ -86,12 +86,17 @@ describe('AgencyDepartmentDetails (container)', () => {
         render(<AgencyDepartmentDetails agencyData={agencyData} />);
 
         await userEvent.click(screen.getByText('edit'));
-        const openingHours = screen.getByLabelText('agency.edit.general.address.opening_hours');
-        await userEvent.type(openingHours, 'Nur Di 10-12');
+        // Tuesday (second switch) opens with the 09:00–17:00 default range.
+        await userEvent.click(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')[1]);
         await userEvent.click(screen.getByText('card.edit.save'));
 
         expect(h.mutate).toHaveBeenCalledWith(
-            expect.objectContaining({ openingHours: 'Nur Di 10-12' }),
+            expect.objectContaining({
+                openingHours: JSON.stringify({
+                    version: 1,
+                    openingHours: [{ fromDay: 'TUESDAY', from: '09:00', untilDay: 'TUESDAY', until: '17:00' }],
+                }),
+            }),
             expect.anything(),
         );
     });
@@ -115,10 +120,53 @@ describe('AgencyDepartmentDetails (container)', () => {
     });
 });
 
+describe('AgencyDepartmentDetails (container) without departments', () => {
+    it('hands the jump to the Fachbereich field through to the empty card', async () => {
+        h.useDepartmentDetails.mockReturnValue({ isLoading: false, isError: false, refetch: h.refetch });
+        const onAddDepartment = vi.fn();
+
+        render(
+            <AgencyDepartmentDetails agencyData={{ id: '55', topics: [] } as any} onAddDepartment={onAddDepartment} />,
+        );
+        await userEvent.click(
+            screen.getByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        );
+
+        expect(onAddDepartment).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('DepartmentDetailsCard (presentational)', () => {
     it('keeps the card visible with a hint when no departments are assigned (disable, not hide)', () => {
         render(<DepartmentDetailsCard departments={[]} onSelect={vi.fn()} inherited={{}} onSave={vi.fn()} />);
 
         expect(screen.getByText('agency.edit.general.department_details.no_departments')).toBeInTheDocument();
+    });
+
+    it('points to where a Fachbereich is added and jumps there (#1069)', async () => {
+        const onAddDepartment = vi.fn();
+        render(
+            <DepartmentDetailsCard
+                departments={[]}
+                onSelect={vi.fn()}
+                inherited={{}}
+                onSave={vi.fn()}
+                onAddDepartment={onAddDepartment}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        );
+
+        expect(onAddDepartment).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no jump button when nothing can be added', () => {
+        render(<DepartmentDetailsCard departments={[]} onSelect={vi.fn()} inherited={{}} onSave={vi.fn()} />);
+
+        expect(
+            screen.queryByRole('button', { name: 'agency.edit.general.department_details.add_department' }),
+        ).not.toBeInTheDocument();
     });
 });

@@ -1,16 +1,26 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import type {
     AdminDashboardStatisticsResponse,
     AdminDashboardTarget,
 } from '../../api/statistic/getDashboardStatistics';
 import {
     buildCaseChartDateLabels,
+    buildCasePeriodOptions,
+    buildCaseWeekOverview,
+    addTrackedMetricValues,
     buildStatisticData,
     emptyStatisticData,
+    getIsoWeek,
     getTodayDayCode,
     getWeekStart,
     NO_DATA_LABEL,
     SUPPRESSED_DETAIL,
+    formatStandDay,
+    agenciesOfTenant,
+    resolveDrillTenantId,
+    resolveStatisticView,
+    type StatisticViewInput,
+    withAgencyDrill,
 } from './statisticDashboardData';
 
 // Saturday, 11 July 2026 (local time)
@@ -99,9 +109,57 @@ describe('statisticDashboardData', () => {
         expect(stats.suppressed).toBe(true);
         expect(stats.metrics.cases).toBeNull();
         expect(stats.metrics.oneToOne).toBeNull();
-        expect(stats.metrics.counselors).toBe(1);
-        expect(stats.metrics.topTopic.label).toBe(NO_DATA_LABEL);
+        // an old backend still sends the exact count of a hidden row: it must not reach the screen
+        expect(stats.metrics.counselors).toBeNull();
+        expect(stats.metrics.topicsByMonth[0].label).toBe(NO_DATA_LABEL);
         expect(data.targetsByScope.agency[0].detail).toBe(SUPPRESSED_DETAIL);
+    });
+
+    it('shows no count for a hidden row, whether the backend sends 0 (new) or the real number (old)', () => {
+        const hiddenWithZero = agencyTarget({ agencyId: 12, counselorCount: 0, suppressed: true, metrics: null });
+        // an old backend sends the real count of a row that is hidden because of a small neighbour
+        const hiddenBigRow = agencyTarget({ agencyId: 13, counselorCount: 12, suppressed: true, metrics: null });
+
+        const data = buildStatisticData(tenantScopeResponse([hiddenWithZero, hiddenBigRow]), emptyLookups, now);
+
+        expect(data.statisticsById['agency-12'].metrics.counselors).toBeNull();
+        expect(data.statisticsById['agency-13'].metrics.counselors).toBeNull();
+    });
+
+    it('keeps the count of a visible row', () => {
+        const data = buildStatisticData(
+            tenantScopeResponse([agencyTarget({ agencyId: 12, counselorCount: 6 })]),
+            emptyLookups,
+            now,
+        );
+
+        expect(data.statisticsById['agency-12'].metrics.counselors).toBe(6);
+    });
+
+    it('marks a hidden platform total as hidden and uses it for the platform view', () => {
+        const data = buildStatisticData(
+            {
+                generatedAt: '2026-07-11T10:00:00Z',
+                scope: 'PLATFORM',
+                targets: [
+                    agencyTarget({
+                        targetType: 'PLATFORM',
+                        tenantId: null,
+                        agencyId: null,
+                        counselorCount: 0,
+                        suppressed: true,
+                        metrics: null,
+                    }),
+                    agencyTarget({ targetType: 'TENANT', tenantId: 1, agencyId: null, counselorCount: 8 }),
+                ],
+            },
+            emptyLookups,
+            now,
+        );
+
+        expect(data.statisticsById['platform-total'].suppressed).toBe(true);
+        expect(data.statisticsById['platform-total'].metrics.counselors).toBeNull();
+        expect(data.fallbackIdsByScope.platform).toEqual(['platform-total']);
     });
 
     it('buckets daily session counts into calendar weeks', () => {
@@ -115,9 +173,9 @@ describe('statisticDashboardData', () => {
         const data = buildStatisticData(tenantScopeResponse([target]), emptyLookups, now);
 
         const { caseCharts } = data.statisticsById['agency-11'];
-        expect(caseCharts.thisWeek).toEqual([2, 0, 0, 0, 0, 3, 0]);
-        expect(caseCharts.lastWeek).toEqual([0, 0, 1, 0, 0, 0, 0]);
-        expect(caseCharts.fourWeeksAgo).toEqual([0, 0, 0, 0, 0, 0, 0]);
+        expect(caseCharts[0]).toEqual([2, 0, 0, 0, 0, 3, 0]);
+        expect(caseCharts[1]).toEqual([0, 0, 1, 0, 0, 0, 0]);
+        expect(caseCharts[4]).toEqual([0, 0, 0, 0, 0, 0, 0]);
     });
 
     it('maps conversation donut values to sessions and group chats per period', () => {
@@ -130,6 +188,85 @@ describe('statisticDashboardData', () => {
         const { conversation } = data.statisticsById['agency-11'];
         expect(conversation.today).toEqual([3, 0, 1, 0]);
         expect(conversation.total).toEqual([40, 0, 5, 0]);
+    });
+
+    it('maps communication counts and keeps untracked ones apart from withheld ones', () => {
+        const base = agencyTarget({});
+        const tracked = agencyTarget({
+            metrics: {
+                ...base.metrics!,
+                messagesCounselorsCurrentMonth: 40,
+                messagesAdviceSeekersCurrentMonth: 25,
+                audioCallsCurrentMonth: 3,
+                videoCallsCurrentMonth: null,
+            },
+        });
+        const { metrics } = buildStatisticData(tenantScopeResponse([tracked]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesCounselors).toBe(40);
+        expect(metrics.messagesSeekers).toBe(25);
+        expect(metrics.textMessagesTotal).toBe(65);
+        expect(metrics.phoneCalls).toBe(3);
+        // tracked but withheld
+        expect(metrics.videoCalls).toBeNull();
+        // not sent at all: no data source
+        expect(metrics.voiceMessages).toBeUndefined();
+        expect(metrics.liveChat).toBeUndefined();
+    });
+
+    it('keeps a communication count withheld when one target withholds it', () => {
+        // one target reports 5 messages, another withholds its count: the sum is not 5
+        expect(addTrackedMetricValues(5, null)).toBeNull();
+        expect(addTrackedMetricValues(null, 5)).toBeNull();
+        expect(addTrackedMetricValues(5, 3)).toBe(8);
+        // untracked contributors are skipped, all-untracked stays untracked
+        expect(addTrackedMetricValues(undefined, 5)).toBe(5);
+        expect(addTrackedMetricValues(null, undefined)).toBeNull();
+        expect(addTrackedMetricValues(undefined, undefined)).toBeUndefined();
+    });
+
+    it('reports text messages as withheld, not untracked, when one part is withheld and the other absent', () => {
+        const base = agencyTarget({});
+        const target = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const { metrics } = buildStatisticData(tenantScopeResponse([target]), emptyLookups, now).statisticsById[
+            'agency-11'
+        ];
+
+        expect(metrics.messagesSeekers).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeNull();
+    });
+
+    it('keeps the combined text-message total withheld across targets when one target has a withheld part', () => {
+        const base = agencyTarget({});
+        const withheldPart = agencyTarget({ metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: null } });
+        const fullyTracked = agencyTarget({
+            agencyId: 12,
+            metrics: { ...base.metrics!, messagesCounselorsCurrentMonth: 4, messagesAdviceSeekersCurrentMonth: 6 },
+        });
+        const { statisticsById } = buildStatisticData(
+            tenantScopeResponse([withheldPart, fullyTracked]),
+            emptyLookups,
+            now,
+        );
+
+        const combined = addTrackedMetricValues(
+            statisticsById['agency-11'].metrics.textMessagesTotal,
+            statisticsById['agency-12'].metrics.textMessagesTotal,
+        );
+
+        expect(statisticsById['agency-12'].metrics.textMessagesTotal).toBe(10);
+        expect(combined).toBeNull();
+    });
+
+    it('treats a backend without communication counts as not tracking them', () => {
+        const { metrics } = buildStatisticData(tenantScopeResponse([agencyTarget({})]), emptyLookups, now)
+            .statisticsById['agency-11'];
+
+        expect(metrics.messagesCounselors).toBeUndefined();
+        expect(metrics.textMessagesTotal).toBeUndefined();
+        expect(metrics.phoneCalls).toBeUndefined();
     });
 
     it('resolves monthly top topics by calendar month with topic names', () => {
@@ -146,9 +283,9 @@ describe('statisticDashboardData', () => {
         );
 
         const { metrics } = data.statisticsById['agency-11'];
-        expect(metrics.topTopic).toEqual({ label: 'Schulden', share: 75 });
-        expect(metrics.previousMonth).toEqual({ label: '#200', share: 50 });
-        expect(metrics.twoMonthsAgo.label).toBe(NO_DATA_LABEL);
+        expect(metrics.topicsByMonth[0]).toEqual({ label: 'Schulden', share: 75 });
+        expect(metrics.topicsByMonth[1]).toEqual({ label: 'Thema 200', share: 50 });
+        expect(metrics.topicsByMonth[2].label).toBe(NO_DATA_LABEL);
     });
 
     it('feeds platform and tenant scope with tenant rows for platform admins', () => {
@@ -169,6 +306,40 @@ describe('statisticDashboardData', () => {
         expect(data.targetsByScope.platform[1].label).toBe('Träger 2');
     });
 
+    it('uses the platform total for the platform view, not the sum of unsuppressed Träger (OBP #93)', () => {
+        const response: AdminDashboardStatisticsResponse = {
+            generatedAt: '2026-07-11T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                agencyTarget({ targetType: 'PLATFORM', tenantId: null, agencyId: null, counselorCount: 12 }),
+                agencyTarget({
+                    targetType: 'TENANT',
+                    tenantId: 1,
+                    agencyId: null,
+                    counselorCount: 3,
+                    suppressed: true,
+                    metrics: null,
+                }),
+                agencyTarget({
+                    targetType: 'TENANT',
+                    tenantId: 2,
+                    agencyId: null,
+                    counselorCount: 4,
+                    suppressed: true,
+                    metrics: null,
+                }),
+            ],
+        };
+        const data = buildStatisticData(response, emptyLookups, now);
+
+        // the platform total is the default view; the Träger stay selectable one by one
+        expect(data.fallbackIdsByScope.platform).toEqual(['platform-total']);
+        expect(data.statisticsById['platform-total'].suppressed).toBe(false);
+        expect(data.statisticsById['platform-total'].metrics.cases).toBe(7);
+        expect(data.targetsByScope.platform.map((target) => target.id)).toEqual(['tenant-1', 'tenant-2']);
+        expect(data.fallbackIdsByScope.tenant).toEqual(['tenant-1', 'tenant-2']);
+    });
+
     it('passes the suppressionDisabled flag through from the backend', () => {
         const withFlag = { ...tenantScopeResponse([agencyTarget()]), suppressionDisabled: true };
 
@@ -178,12 +349,366 @@ describe('statisticDashboardData', () => {
         );
     });
 
+    describe('fixed stand (UserService#1547)', () => {
+        const standAt = '2026-10-26T05:00:00Z';
+        const readLater = new Date('2026-11-02T04:00:00Z');
+        const topicRow = agencyTarget({
+            monthlyTopTopics: [{ month: '2026-10', topicId: 100, sessionCount: 3, sharePercent: 75 }],
+        });
+
+        it('reads a stand from the time it was calculated, not from today', () => {
+            const data = buildStatisticData(
+                {
+                    generatedAt: standAt,
+                    dataUntil: standAt.slice(0, 10),
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [topicRow],
+                },
+                { ...emptyLookups, topicNamesById: { '100': 'Schulden' } },
+                readLater,
+            );
+
+            expect(data.statisticsById['agency-11'].metrics.topicsByMonth[0].label).toBe('Schulden');
+            expect(data.generatedAt).toBe(standAt);
+            expect(data.snapshotInterval).toBe('WEEKLY');
+        });
+
+        it('puts the chart on the week of the stand, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { statisticsById } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-03T05:00:00Z',
+                        dataUntil: '2026-11-02',
+                        scope: 'TENANT',
+                        snapshotInterval: 'DAILY',
+                        targets: [agencyTarget({ dailyNewSessions: [{ date: '2026-11-02', count: 7 }] })],
+                    },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(statisticsById['agency-11'].caseCharts[0][0]).toBe(7);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('reads a stand from its newest full day, wherever the browser is', () => {
+            vi.stubEnv('TZ', 'America/Los_Angeles');
+            try {
+                const { referenceDate, dataUntil } = buildStatisticData(
+                    {
+                        generatedAt: '2026-11-02T05:00:00Z',
+                        dataUntil: '2026-11-01',
+                        scope: 'TENANT',
+                        snapshotInterval: 'WEEKLY',
+                        targets: [],
+                    },
+                    emptyLookups,
+                    readLater,
+                );
+
+                expect(dataUntil).toBe('2026-11-01');
+                expect(referenceDate?.getFullYear()).toBe(2026);
+                expect(referenceDate?.getMonth()).toBe(10);
+                expect(referenceDate?.getDate()).toBe(1);
+            } finally {
+                vi.unstubAllEnvs();
+            }
+        });
+
+        it('puts the weeks of a weekly stand into the week overview', () => {
+            const { statisticsById, referenceDate } = buildStatisticData(
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: '2026-11-01',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    chartWeeks: 2,
+                    targets: [
+                        {
+                            ...topicRow,
+                            dailyNewSessions: [],
+                            weeklyNewSessions: [
+                                { weekStart: '2026-10-19', count: 4 },
+                                { weekStart: '2026-10-26', count: 9 },
+                            ],
+                        },
+                    ],
+                },
+                emptyLookups,
+                readLater,
+            );
+
+            const bars = buildCaseWeekOverview(statisticsById['agency-11'].caseCharts, referenceDate as Date);
+            expect(bars.map((bar) => bar.value)).toEqual([4, 9]);
+            expect(bars[1].isDefaultSelected).toBe(true);
+        });
+
+        it('falls back to today when a stand has no readable time', () => {
+            const { referenceDate } = buildStatisticData(
+                {
+                    generatedAt: '2026-11-02T05:00:00Z',
+                    dataUntil: 'not a date',
+                    scope: 'TENANT',
+                    snapshotInterval: 'WEEKLY',
+                    targets: [],
+                },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(referenceDate).toEqual(readLater);
+        });
+
+        it('keeps reading live numbers from today', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', snapshotInterval: 'LIVE', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+
+        it('treats a backend without the field as live', () => {
+            const data = buildStatisticData(
+                { generatedAt: standAt, scope: 'TENANT', targets: [topicRow] },
+                emptyLookups,
+                readLater,
+            );
+
+            expect(data.referenceDate).toEqual(readLater);
+            expect(data.snapshotInterval).toBe('LIVE');
+        });
+    });
+
+    it('shows an unreadable stand day as it came, instead of crashing the page', () => {
+        expect(formatStandDay('not a date', 'de')).toBe('not a date');
+        expect(formatStandDay('2026-11-01', 'de')).toBe('01.11.2026');
+    });
+
+    it('formats the stand day in informal German instead of crashing the page (Admin#1503)', () => {
+        expect(formatStandDay('2026-11-01', 'de@informal')).toBe('01.11.2026');
+    });
+
     it('computes week starts and day codes', () => {
         expect(getWeekStart(now).getDate()).toBe(6); // Monday, 6 July 2026
         expect(getTodayDayCode(now)).toBe('Sa');
+        expect(getIsoWeek(new Date(2026, 6, 6))).toBe(28);
+        expect(getIsoWeek(new Date(2026, 0, 1))).toBe(1); // Thursday
+        expect(getIsoWeek(new Date(2027, 0, 1))).toBe(53); // Friday, still week 53 of 2026
 
         const labels = buildCaseChartDateLabels(now);
-        expect(labels.thisWeek[0]).toMatch(/^Mo, 6 Jul/);
-        expect(labels.lastWeek[0]).toMatch(/^Mo, 29 Jun/);
+        expect(labels[0][0]).toMatch(/^Mo, 6 Jul/);
+        expect(labels[1][0]).toMatch(/^Mo, 29 Jun/);
+    });
+});
+
+describe('configurable time windows (UserService#1544)', () => {
+    const withWindows = (
+        targets: AdminDashboardTarget[],
+        windows: Partial<Pick<AdminDashboardStatisticsResponse, 'chartWeeks' | 'topicMonths'>>,
+    ): AdminDashboardStatisticsResponse => ({ ...tenantScopeResponse(targets), ...windows });
+
+    it("defaults to today's five weeks and four months when the backend does not report windows", () => {
+        const data = buildStatisticData(tenantScopeResponse([agencyTarget()]), emptyLookups, now);
+
+        expect(data.chartWeeks).toBe(5);
+        expect(data.topicMonths).toBe(4);
+        expect(data.statisticsById['agency-11'].caseCharts).toHaveLength(5);
+        expect(data.statisticsById['agency-11'].metrics.topicsByMonth).toHaveLength(4);
+    });
+
+    it('builds one seven-day chart per configured week', () => {
+        const target = agencyTarget({
+            dailyNewSessions: [
+                { date: '2026-07-06', count: 2 }, // Monday of the current week
+                { date: '2026-04-22', count: 1 }, // Wednesday, eleven weeks before
+            ],
+        });
+        const data = buildStatisticData(withWindows([target], { chartWeeks: 12 }), emptyLookups, now);
+
+        const { caseCharts } = data.statisticsById['agency-11'];
+        expect(data.chartWeeks).toBe(12);
+        expect(caseCharts).toHaveLength(12);
+        expect(caseCharts[0]).toEqual([2, 0, 0, 0, 0, 0, 0]);
+        expect(caseCharts[11]).toEqual([0, 0, 1, 0, 0, 0, 0]);
+    });
+
+    it('resolves one top topic per configured month', () => {
+        const target = agencyTarget({
+            monthlyTopTopics: [{ month: '2025-08', topicId: 300, sessionCount: 2, sharePercent: 40 }],
+        });
+        const data = buildStatisticData(withWindows([target], { topicMonths: 12 }), emptyLookups, now);
+
+        const { topicsByMonth } = data.statisticsById['agency-11'].metrics;
+        expect(data.topicMonths).toBe(12);
+        expect(topicsByMonth).toHaveLength(12);
+        expect(topicsByMonth[11]).toEqual({ label: 'Thema 300', share: 40 });
+        expect(topicsByMonth[0].label).toBe(NO_DATA_LABEL);
+    });
+
+    it('keeps suppressed targets at the configured window length without numbers', () => {
+        const target = agencyTarget({ suppressed: true, metrics: null });
+        const data = buildStatisticData(withWindows([target], { chartWeeks: 26, topicMonths: 3 }), emptyLookups, now);
+
+        const stats = data.statisticsById['agency-11'];
+        expect(stats.caseCharts).toHaveLength(26);
+        expect(stats.caseCharts.flat().every((value) => value === 0)).toBe(true);
+        expect(stats.metrics.topicsByMonth.map((topic) => topic.label)).toEqual([
+            NO_DATA_LABEL,
+            NO_DATA_LABEL,
+            NO_DATA_LABEL,
+        ]);
+    });
+
+    it('labels one chart period per configured week plus a week overview', () => {
+        expect(buildCasePeriodOptions(8).map((option) => option.label)).toEqual([
+            'diese Woche',
+            'letzte Woche',
+            'vor zwei Wochen',
+            'vor drei Wochen',
+            'vor vier Wochen',
+            'vor 5 Wochen',
+            'vor 6 Wochen',
+            'vor 7 Wochen',
+            '8 Wochen im Überblick',
+        ]);
+        expect(new Set(buildCasePeriodOptions(8).map((option) => option.key)).size).toBe(9);
+    });
+
+    it('sums every configured week into one overview bar, oldest first', () => {
+        const weeks = Array.from({ length: 12 }, (unused, weeksAgo) =>
+            weeksAgo === 0 ? [1, 2, 0, 0, 0, 3, 0] : [0, 0, weeksAgo, 0, 0, 0, 0],
+        );
+
+        const bars = buildCaseWeekOverview(weeks, now);
+
+        expect(bars).toHaveLength(12);
+        expect(bars[11]).toMatchObject({ day: 'KW 28', value: 6, isDefaultSelected: true });
+        expect(bars[11].dateLabel).toMatch(/^KW 28, 6 Jul\S* – 12 Jul/);
+        expect(bars[0]).toMatchObject({ day: 'KW 17', value: 11, isDefaultSelected: false });
+    });
+});
+
+// Frank: "In Statistik the search did not work." The platform dashboard has no Beratungsstellen, so a
+// platform admin looks into one Träger (`?tenantId=`), whose Beratungsstellen are merged in here.
+describe('platform admin looking into one Träger', () => {
+    const platform = buildStatisticData(
+        {
+            generatedAt: '2026-07-11T10:00:00Z',
+            scope: 'PLATFORM',
+            targets: [
+                agencyTarget({ targetType: 'PLATFORM', tenantId: null, agencyId: null, counselorCount: 12 }),
+                agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 8 }),
+            ],
+        },
+        emptyLookups,
+        now,
+    );
+    const tenant = buildStatisticData(
+        tenantScopeResponse([
+            agencyTarget({ targetType: 'TENANT', tenantId: 5, agencyId: null, counselorCount: 99 }),
+            agencyTarget({ agencyId: 11 }),
+            agencyTarget({ agencyId: 12 }),
+        ]),
+        { ...emptyLookups, agencyNamesById: { '11': 'BST Nord' } },
+        now,
+    );
+
+    it('puts that Träger’s Beratungsstellen on the Beratungsstellen level and keeps the platform levels', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(platform.targetsByScope.agency).toEqual([]);
+        expect(merged.targetsByScope.agency.map((target) => target.id)).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.agency[0].label).toBe('BST Nord');
+        expect(merged.fallbackIdsByScope.agency).toEqual(['agency-11', 'agency-12']);
+        expect(merged.targetsByScope.tenant).toEqual(platform.targetsByScope.tenant);
+        expect(merged.fallbackIdsByScope.platform).toEqual(['platform-total']);
+        expect(merged.statisticsById['agency-11']).toBeDefined();
+    });
+
+    it('keeps the Träger row of the platform dashboard (same id in both answers)', () => {
+        const merged = withAgencyDrill(platform, tenant);
+
+        expect(merged.statisticsById['tenant-5']).toBe(platform.statisticsById['tenant-5']);
+    });
+
+    it('looks into the Träger of the picked Beratungsstelle, else the picked Träger, else none', () => {
+        const directory = [{ id: 11, name: 'BST Nord', tenantId: 5 }];
+
+        expect(resolveDrillTenantId({ agency: ['agency-11'], tenant: ['tenant-9'] }, directory)).toBe(5);
+        expect(resolveDrillTenantId({ agency: [], tenant: ['tenant-9'] }, directory)).toBe(9);
+        expect(resolveDrillTenantId({ agency: ['agency-77'] }, directory)).toBeUndefined();
+        expect(resolveDrillTenantId({}, directory)).toBeUndefined();
+    });
+
+    // Found in review (PR #1530): a Beratungsstelle kept in localStorage outvoted a Träger picked later.
+    it('follows the newest pick: a picked Träger drops the Beratungsstellen of other Träger', () => {
+        const directory = [
+            { id: 11, name: 'BST Nord', tenantId: 5 },
+            { id: 21, name: 'BST Süd', tenantId: 9 },
+        ];
+        const agency = agenciesOfTenant(['agency-11', 'agency-21', 'agency-77'], 'tenant-9', directory);
+
+        expect(agency).toEqual(['agency-21']);
+        expect(
+            resolveDrillTenantId(
+                { agency: agenciesOfTenant(['agency-11'], 'tenant-9', directory), tenant: ['tenant-9'] },
+                directory,
+            ),
+        ).toBe(9);
+        expect(resolveDrillTenantId({ tenant: ['tenant-5', 'tenant-9'] }, directory)).toBe(9);
+    });
+});
+
+describe('resolveStatisticView (platform admin, Beratungsstellen level)', () => {
+    const view = (overrides: Partial<StatisticViewInput> = {}) =>
+        resolveStatisticView({
+            isSuperAdmin: true,
+            activeScope: 'agency',
+            pickedAgencyIds: [],
+            isDashboardLoading: false,
+            isDirectoryLoading: false,
+            isDirectoryError: false,
+            drillTenantId: undefined,
+            drill: 'idle',
+            data: emptyStatisticData(),
+            ...overrides,
+        });
+
+    // Found in review (PR #1530): the Träger level waited for a Träger dashboard only the Beratungsstellen level uses.
+    it('lets no other level wait for the Träger dashboard', () => {
+        expect(view({ activeScope: 'tenant', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ activeScope: 'platform', drill: 'loading', drillTenantId: 9 }).isLoading).toBe(false);
+        expect(view({ drill: 'loading', drillTenantId: 9 })).toEqual({ isLoading: true, agencyLevelHint: null });
+    });
+
+    // Found in review (PR #1530): with a saved Beratungsstelle the page asked to pick one while the list of
+    // Beratungsstellen (which names its Träger) was still loading.
+    it('is loading, not asking for a pick, while the list for a picked Beratungsstelle loads', () => {
+        expect(view({ pickedAgencyIds: ['agency-11'], isDirectoryLoading: true })).toEqual({
+            isLoading: true,
+            agencyLevelHint: null,
+        });
+        expect(view({ isDirectoryLoading: true }).agencyLevelHint).toBe('pick');
+        expect(view({ isDirectoryError: true }).agencyLevelHint).toBe('directoryFailed');
+    });
+
+    it('says when the Träger dashboard failed, or came without the picked Beratungsstelle', () => {
+        expect(view({ drillTenantId: 9, drill: 'failed' }).agencyLevelHint).toBe('failed');
+        expect(view({ drillTenantId: 9, drill: 'unsupported' }).agencyLevelHint).toBe('unsupported');
+        expect(view({ drillTenantId: 9, drill: 'ready', pickedAgencyIds: ['agency-11'] }).agencyLevelHint).toBe(
+            'selectionUnavailable',
+        );
+        expect(view({ drillTenantId: 9, drill: 'ready' }).agencyLevelHint).toBeNull();
+    });
+
+    it('gives other roles no hint', () => {
+        expect(view({ isSuperAdmin: false })).toEqual({ isLoading: false, agencyLevelHint: null });
     });
 });

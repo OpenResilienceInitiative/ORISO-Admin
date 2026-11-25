@@ -4,8 +4,8 @@
 import '@ant-design/v5-patch-for-react-19';
 import { useEffect, useState, type JSX } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
+import { App as AntdApp, ConfigProvider } from 'antd';
 import { Locale } from 'antd/lib/locale';
 import de_DE from 'antd/es/locale/de_DE';
 import en_GB from 'antd/es/locale/en_GB';
@@ -25,12 +25,17 @@ import { Initialization } from './components/Layout/Initialization';
 import { AccessDenied } from './pages/ErrorPages/AccessDenied';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { DEFAULT_LANGUAGE, normalizeLanguage } from './utils/language';
-import { buildAdminAntdTheme } from './theme/antdM3Theme';
+import { buildAdminAntdTheme, type AdminAntdThemeOptions } from './theme/antdM3Theme';
 import { PasswordResetRequestPage } from './pages/PasswordReset/PasswordResetRequestPage';
 import { PasswordResetConfirmPage } from './pages/PasswordReset/PasswordResetConfirmPage';
 import { TenantAdminOnboardingPage } from './pages/TenantOnboarding/TenantAdminOnboardingPage';
 import { CounsellorOnboardingPage } from './pages/CounsellorOnboarding/CounsellorOnboardingPage';
 import { TenantFavicon } from './components/TenantFavicon/TenantFavicon';
+import { AdminDisplayProvider, useAdminDisplay } from './context/AdminDisplayContext';
+import { usePublicTenantData } from './hooks/usePublicTenantData.hook';
+import { getAdminDisplaySessionScope } from './api/auth/adminDisplaySessionScope';
+import { readSeeds, type ThemingSeedFields } from './utils/themeSeeds';
+import { SnackbarHost } from './components/Snackbar';
 
 interface LangMap {
     [key: string]: Locale;
@@ -58,7 +63,13 @@ const AppSettingsWrapper = ({ children }: { children: JSX.Element }): JSX.Elemen
     return loaded ? children : <Initialization />;
 };
 
-const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) => {
+export const LanguageAwareConfigProvider = ({
+    children,
+    appearance,
+}: {
+    children: JSX.Element;
+    appearance?: AdminAntdThemeOptions;
+}) => {
     const [language, setLanguage] = useState(() => normalizeLanguage(i18n.language) || DEFAULT_LANGUAGE);
 
     useEffect(() => {
@@ -76,72 +87,138 @@ const LanguageAwareConfigProvider = ({ children }: { children: JSX.Element }) =>
     // table, list and select that runs out of data shows the ORISO graphic
     // instead of antd's stock tray drawing.
     return (
-        <ConfigProvider locale={myLanguages[language]} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-            {children}
+        <ConfigProvider
+            locale={myLanguages[language]}
+            theme={buildAdminAntdTheme(appearance)}
+            renderEmpty={() => <AdminEmpty />}
+        >
+            <AntdApp component={false}>
+                {children}
+                <SnackbarHost />
+            </AntdApp>
         </ConfigProvider>
     );
 };
 
+const PersonalAdminTheme = ({ children, theming }: { children: JSX.Element; theming?: ThemingSeedFields | null }) => {
+    const display = useAdminDisplay();
+    const theme = buildAdminAntdTheme({
+        scheme: display?.scheme,
+        textScale: display?.textScale,
+        contrast: display?.contrast,
+        seeds: display?.contrast === 'standard' ? undefined : readSeeds(theming),
+    });
+
+    // The inner AntdApp makes App.useApp() (modal.confirm, message, notification) render its holders inside
+    // this provider, so confirm dialogs follow the personal scheme, text size and contrast too.
+    return (
+        <ConfigProvider theme={theme}>
+            <AntdApp component={false}>{children}</AntdApp>
+        </ConfigProvider>
+    );
+};
+
+export const AdminDisplayBoundary = ({
+    children,
+    theming,
+    isReady,
+    sessionScope = null,
+}: {
+    children: JSX.Element;
+    theming?: ThemingSeedFields | null;
+    isReady?: boolean;
+    sessionScope?: string | null;
+}) => {
+    return (
+        <AdminDisplayProvider key={sessionScope} theming={theming} isReady={isReady} sessionScope={sessionScope}>
+            <PersonalAdminTheme theming={theming}>{children}</PersonalAdminTheme>
+        </AdminDisplayProvider>
+    );
+};
+
+const ProtectedAdmin = () => {
+    const tenant = usePublicTenantData();
+    return (
+        <>
+            <TenantFavicon />
+            <AdminDisplayBoundary
+                theming={tenant.data?.theming}
+                isReady={tenant.isFetched || !tenant.isLoading}
+                sessionScope={getAdminDisplaySessionScope()}
+            >
+                <App />
+            </AdminDisplayBoundary>
+        </>
+    );
+};
+
+const PublicAdminLayout = () => (
+    <>
+        <TenantFavicon />
+        <Outlet />
+    </>
+);
+
 /**
  * The admin's provider + route composition, extracted from `index.tsx` so it can
  * be rendered in tests. `index.tsx` keeps the module-level side effects
- * (observability bootstrap, antd message config, `createRoot`).
+ * (observability bootstrap, `createRoot`).
  */
 export const AdminApp = () => (
     <ErrorBoundary scope="app">
         <QueryClientProvider client={queryClient}>
             <UseAppConfigProvider>
-                <AppSettingsWrapper>
-                    <LanguageAwareConfigProvider>
+                <LanguageAwareConfigProvider>
+                    <AppSettingsWrapper>
                         <Router>
-                            {/* Outside <Routes> on purpose: the branding favicon has to reach
-                                anonymous visitors on /admin/login, the onboarding and
-                                password-reset pages too, not only the protected tree behind
-                                <ProtectedRoute>, which is where the old effect lived. */}
-                            <TenantFavicon />
                             <Routes>
-                                <Route path={routePathNames.login} element={<Login />} />
-                                <Route path={routePathNames.passwordReset} element={<PasswordResetRequestPage />} />
-                                <Route
-                                    path={routePathNames.passwordResetConfirm}
-                                    element={<PasswordResetConfirmPage />}
-                                />
-                                {/* Public tenant-admin onboarding (TEN-INV U8, #571): reached
-                                    from the emailed invite link {base}/{rawToken}. */}
-                                <Route
-                                    path={`${routePathNames.tenantOnboarding}/:token`}
-                                    element={<TenantAdminOnboardingPage />}
-                                />
-                                <Route path={routePathNames.tenantOnboarding} element={<TenantAdminOnboardingPage />} />
-                                {/* Public counsellor onboarding wizard (#997): reached from the
-                                    emailed counsellor invite link {base}/{rawToken}. */}
-                                <Route
-                                    path={`${routePathNames.counsellorOnboarding}/:token`}
-                                    element={<CounsellorOnboardingPage />}
-                                />
-                                <Route
-                                    path={routePathNames.counsellorOnboarding}
-                                    element={<CounsellorOnboardingPage />}
-                                />
-                                <Route path="/admin/404" element={<Error404 />} />
-                                <Route path="/admin/access-denied" element={<AccessDenied />} />
+                                <Route element={<PublicAdminLayout />}>
+                                    <Route path={routePathNames.login} element={<Login />} />
+                                    <Route path={routePathNames.passwordReset} element={<PasswordResetRequestPage />} />
+                                    <Route
+                                        path={routePathNames.passwordResetConfirm}
+                                        element={<PasswordResetConfirmPage />}
+                                    />
+                                    {/* Public tenant-admin onboarding (TEN-INV U8, #571): reached
+                                        from the emailed invite link {base}/{rawToken}. */}
+                                    <Route
+                                        path={`${routePathNames.tenantOnboarding}/:token`}
+                                        element={<TenantAdminOnboardingPage />}
+                                    />
+                                    <Route
+                                        path={routePathNames.tenantOnboarding}
+                                        element={<TenantAdminOnboardingPage />}
+                                    />
+                                    {/* Public counsellor onboarding wizard (#997): reached from the
+                                        emailed counsellor invite link {base}/{rawToken}. */}
+                                    <Route
+                                        path={`${routePathNames.counsellorOnboarding}/:token`}
+                                        element={<CounsellorOnboardingPage />}
+                                    />
+                                    <Route
+                                        path={routePathNames.counsellorOnboarding}
+                                        element={<CounsellorOnboardingPage />}
+                                    />
+                                    <Route path="/admin/404" element={<Error404 />} />
+                                    <Route path="/admin/access-denied" element={<AccessDenied />} />
 
-                                <Route path={routePathNames.imprint} element={<Imprint />} />
-                                <Route path={routePathNames.privacy} element={<Privacy />} />
+                                    <Route path={routePathNames.imprint} element={<Imprint />} />
+                                    <Route path={routePathNames.privacy} element={<Privacy />} />
+                                </Route>
 
                                 {/* put protected routes at the end to act as a wildcard route fetcher */}
                                 <Route
                                     path="*"
                                     element={
                                         <ProtectedRoute>
-                                            <App />
+                                            <ProtectedAdmin />
                                         </ProtectedRoute>
                                     }
                                 />
                             </Routes>
                         </Router>
-                    </LanguageAwareConfigProvider>
-                </AppSettingsWrapper>
+                    </AppSettingsWrapper>
+                </LanguageAwareConfigProvider>
             </UseAppConfigProvider>
         </QueryClientProvider>
     </ErrorBoundary>

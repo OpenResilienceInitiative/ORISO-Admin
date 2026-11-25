@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type ToggleAfterChangeHandler = (
     fieldPath: string | string[],
     value: boolean,
@@ -13,6 +15,10 @@ export type PermissionsSettingsCommonArgs = {
     tenantId: string;
     /** Hide chat-type cards by key (e.g. liveChat on super-admin settings — managed under Global Configs). */
     excludeCardKeys?: Array<ChatTypeCardKey>;
+    /** The links that open a live chat; shown on the live-chat tile (ORISO-Admin#1321). */
+    liveChatLinks?: ReactNode;
+    /** What the page applies to, said in the page intro (ORISO-Admin#1577). */
+    introScopeNote?: ReactNode;
 };
 
 /**
@@ -24,10 +30,28 @@ export type PermissionsSettingsCommonArgs = {
  */
 export type PermissionToggleCapability = 'mediaAiScan';
 
+/** Participant setting shown on a conversation-type tile. */
+export type ChatTypeParticipantToggle = {
+    labelKey: string;
+    /** Key inside `settings`, e.g. `featureAskerEmailLiveChatEnabled`. */
+    setting: string;
+    /** Label naming the type, used when the tile is hidden and the advice-seeker card shows it. */
+    fallbackLabelKey?: string;
+    /** Value when the backend sends none (mirrors TenantService `default`). */
+    defaultValue?: boolean;
+    /** Stored but without effect yet: shown disabled with a note (open product question). */
+    notYetEffective?: boolean;
+    /** Only meaningful while the account-level "E-Mail-Adresse darf hinterlassen werden" is on. */
+    requiresAskerEmail?: boolean;
+    /** Only meaningful while the account-wide name setting is on. */
+    requiresAskerNameEditing?: boolean;
+    /** The chat only asks while this delivery setting is on (emailCollectionSetupPolicy). */
+    worksWithDelivery?: string;
+};
+
 export type ChatTypeCardDef = {
     key: ChatTypeCardKey;
     titleKey: string;
-    descriptionKey: string;
     Icon: import('react').FunctionComponent<import('react').SVGProps<SVGSVGElement>>;
     masterField?: string[];
     toggles: Array<{
@@ -39,5 +63,18 @@ export type ChatTypeCardDef = {
          * disabled with a reason instead of pretending to control something.
          */
         requiresCapability?: PermissionToggleCapability;
+        /**
+         * Only the counselling app obeys this switch (ORISO-Helm#466): it hides the
+         * button, but the app uploads the encrypted file straight to the chat
+         * server, which cannot check it. The tile says so once.
+         */
+        appOnly?: boolean;
     }>;
+    /** Tenant-owned name policy for advice-seeker entry in this conversation type. */
+    askerNamePolicy?: ChatTypeParticipantToggle;
+    /** Email/browser switches for this type; not master children, so a master-off never resets them. */
+    notifications?: {
+        audience: 'asker' | 'consultant';
+        toggles: ChatTypeParticipantToggle[];
+    };
 };

@@ -1,0 +1,387 @@
+import type { Meta, StoryObj } from '@storybook/react-vite';
+import { delay, http, HttpResponse } from 'msw';
+import { useEffect, useState, type ReactNode } from 'react';
+// eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { UserRole } from '../../../../../enums/UserRole';
+import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
+import { legalDraftKey } from '../../utils/legalDraftStorage';
+import type { AgencyLegalDraft } from '../../../../../api/agency/legalDrafts';
+import { AgencyLegalTextContainer } from '.';
+import { useAppConfigContext } from '../../../../../context/useAppConfig';
+
+const AGENCY_ID = 55;
+const TENANT_ID = 7;
+const USER_ID = 'storybook-agency-admin';
+const DRAFT_ENDPOINT = '*/service/agencyadmin/agencies/:id/legal-drafts/DPP';
+
+const agencyData = {
+    id: AGENCY_ID,
+    tenantId: TENANT_ID,
+    name: 'Beratungsstelle Nordlicht',
+    topics: [],
+    content: {
+        privacy: {
+            de: '<h2>Veröffentlichte Datenschutzerklärung</h2><p>Diese Fassung ist derzeit öffentlich.</p>',
+            en: '<h2>Published privacy policy</h2><p>This version is currently public.</p>',
+        },
+        privacyConsent: { de: 'Einwilligung {{legal_links}}', en: 'Consent {{legal_links}}' },
+    },
+} as any;
+
+const tenant = {
+    id: TENANT_ID,
+    name: 'Träger Nordlicht',
+    settings: { activeLanguages: ['de', 'en'] },
+    content: {
+        privacy: { de: '<p>Geerbte Trägerfassung</p>', en: '<p>Inherited tenant version</p>' },
+        privacyConsent: { de: 'Träger-Einwilligung', en: 'Tenant consent' },
+    },
+};
+
+const persistedDraft: AgencyLegalDraft = {
+    kind: 'DPP',
+    content: {
+        de: '<h2>Server-Entwurf der Beratungsstelle</h2><p>Noch nicht veröffentlicht.</p>',
+        en: '<h2>Agency server draft</h2><p>Not published yet.</p>',
+    },
+    consentText: { de: 'Entwurfs-Einwilligung', en: 'Draft consent' },
+    revision: 'baf71f72-a196-47a5-9b22-da95791badc8:2',
+    savedAt: '2026-09-17T15:00:00',
+};
+
+const commonHandlers = [
+    http.get('*/service/users/data', () => HttpResponse.json({ id: USER_ID })),
+    http.get('*/service/tenant/:id', () => HttpResponse.json(tenant)),
+    http.get('*/service/tenantadmin/:id', () => HttpResponse.json(tenant)),
+    http.get('*/service/agencyadmin/agencies/:id/legal-versions', () => HttpResponse.json([])),
+];
+
+const persistedFixture = (onSave?: (content: AgencyLegalDraft['content']) => void) => {
+    let draft: AgencyLegalDraft | null = persistedDraft;
+    const handlers = [
+        ...commonHandlers,
+        http.get(DRAFT_ENDPOINT, () => (draft ? HttpResponse.json(draft) : new HttpResponse(null, { status: 404 }))),
+        http.put(DRAFT_ENDPOINT, async ({ request }) => {
+            const body = (await request.json()) as Pick<AgencyLegalDraft, 'content' | 'consentText'> & {
+                revision?: string;
+            };
+            onSave?.(body.content);
+            draft = { ...persistedDraft, ...body, revision: `${persistedDraft.revision.split(':')[0]}:3` };
+            return HttpResponse.json(draft);
+        }),
+        http.delete(DRAFT_ENDPOINT, () => {
+            draft = null;
+            return new HttpResponse(null, { status: 204 });
+        }),
+    ];
+    return {
+        handlers,
+        reset: () => {
+            draft = persistedDraft;
+        },
+    };
+};
+
+// Module-level so the story's beforeEach can reset it: the handlers are built once, and a rerun
+// would otherwise start with a nonzero count and get the newer draft on its very first read.
+let conflictReads = 0;
+const conflictHandlers = () => {
+    const newer = {
+        ...persistedDraft,
+        content: { de: '<h2>Neuere Server-Fassung</h2><p>Von einer anderen Administration.</p>' },
+        consentText: {},
+        revision: `${persistedDraft.revision.split(':')[0]}:3`,
+        savedAt: '2026-09-17T15:20:00',
+    };
+    return [
+        ...commonHandlers,
+        http.get(DRAFT_ENDPOINT, async () => {
+            conflictReads += 1;
+            if (conflictReads > 1) await delay(600);
+            return HttpResponse.json(conflictReads > 1 ? newer : persistedDraft);
+        }),
+        http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 409 })),
+    ];
+};
+
+const meta = {
+    title: 'Settings/Beratungsstellen/Rechtliches/AgencyLegalText/Server drafts',
+    id: 'organisms-legal-agencylegaltext-server-drafts',
+    component: AgencyLegalTextContainer,
+    parameters: { layout: 'padded' },
+    decorators: [
+        (Story, context) => {
+            setStoryAuth([UserRole.AgencyAdmin], TENANT_ID);
+            const key = legalDraftKey('privacy', `${TENANT_ID}:${USER_ID}:agency:${AGENCY_ID}`);
+            if (key) {
+                window.localStorage.removeItem(key);
+                if (context.parameters.localDraft) {
+                    window.localStorage.setItem(
+                        key,
+                        JSON.stringify({
+                            content: { de: '<h2>Lokaler Alt-Entwurf</h2><p>Nur auf diesem Gerät gespeichert.</p>' },
+                            consent: {},
+                            savedAt: '2026-09-16T16:20:00+02:00',
+                        }),
+                    );
+                }
+            }
+            return withAdminProviders(() => (
+                <div style={{ minHeight: 760, padding: 16 }}>
+                    <Story />
+                </div>
+            ));
+        },
+    ],
+    args: {
+        agencyData,
+        field: 'privacy',
+        onSaveAgencyWide: async () => undefined,
+    },
+} satisfies Meta<typeof AgencyLegalTextContainer>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const PersistedServerDraft: Story = {
+    parameters: { msw: { handlers: persistedFixture().handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(async () =>
+            expect(
+                await body.findByText(/noch nicht veröffentlicht\. Online bleibt bis dahin die bisherige Fassung\./),
+            ).toBeVisible(),
+        );
+        await expect(canvas.getByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Bearbeiten' })).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Veröffentlichen' })).toBeVisible();
+    },
+};
+
+export const LocalAndServerCollision: Story = {
+    parameters: { localDraft: true, msw: { handlers: persistedFixture().handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(async () => expect(await body.findByText('Zwei Entwürfe gefunden')).toBeVisible());
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        await userEvent.click(body.getByRole('button', { name: 'Entwurf aus diesem Browser verwenden' }));
+        const localDraftContent = canvas.getAllByText('Lokaler Alt-Entwurf');
+        await expect(localDraftContent[0]).toBeVisible();
+        await expect(canvas.getByRole('button', { name: 'Bearbeiten' })).toBeVisible();
+    },
+};
+
+export const ConflictRefresh: Story = {
+    beforeEach: () => {
+        conflictReads = 0;
+    },
+    parameters: { msw: { handlers: conflictHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await canvas.findByRole('button', { name: 'Bearbeiten' }));
+        await userEvent.click(canvasElement.querySelector('.ProseMirror') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
+        await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
+        await waitFor(async () =>
+            expect(await body.findByText('Der Entwurf wurde zwischenzeitlich geändert')).toBeVisible(),
+        );
+        await expect(body.queryByRole('button', { name: 'Gespeicherte Fassung laden' })).not.toBeInTheDocument();
+        await waitFor(() => expect(body.getByRole('button', { name: 'Gespeicherte Fassung laden' })).toBeVisible(), {
+            timeout: 3000,
+        });
+        await expect(body.getByRole('button', { name: 'Eigene Fassung weiterbearbeiten' })).toBeVisible();
+    },
+};
+
+/**
+ * Two drafts: the decision is a pop-up with two actions; closing it keeps the open decision as plain
+ * text in the tile, and its button raises the pop-up again.
+ */
+export const CollisionPopupClosedKeepsQuietLine: Story = {
+    parameters: { localDraft: true, msw: { handlers: persistedFixture().handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const popup = await body.findByTestId('tenant-draft-source-choice');
+        await expect(await canvas.findByTestId('tenant-draft-status')).toHaveTextContent(
+            'Zwei Entwürfe gefunden, Entscheidung offen.',
+        );
+        await expect(canvas.queryByRole('button', { name: 'Entscheidung öffnen' })).not.toBeInTheDocument();
+
+        await userEvent.click(within(popup).getByRole('button', { name: 'Meldung schließen' }));
+        await waitFor(() => expect(body.queryByTestId('tenant-draft-source-choice')).not.toBeInTheDocument());
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+
+        await userEvent.click(await canvas.findByRole('button', { name: 'Entscheidung öffnen' }));
+        const again = await body.findByTestId('tenant-draft-source-choice');
+        await userEvent.click(within(again).getByRole('button', { name: 'Gespeicherten Entwurf verwenden' }));
+        await waitFor(() => expect(canvas.queryByTestId('tenant-draft-status')).not.toBeInTheDocument());
+    },
+};
+
+// Outage flag: every read fails until the play flips it (a remount must not use up the failure).
+let draftStoreDown = true;
+let unavailableReads = 0;
+const unavailableHandlers = () => [
+    ...commonHandlers,
+    http.get(DRAFT_ENDPOINT, () => {
+        unavailableReads += 1;
+        if (draftStoreDown) return new HttpResponse(null, { status: 500 });
+        return HttpResponse.json(persistedDraft);
+    }),
+];
+
+/**
+ * The saved agency draft cannot be loaded (L3): an error pop-up with "Erneut laden" and a quiet line in
+ * the tile. Retry refetches the draft; once it arrives the error and its line are gone.
+ */
+export const ServerDraftUnavailable: Story = {
+    beforeEach: () => {
+        unavailableReads = 0;
+        draftStoreDown = true;
+    },
+    parameters: { msw: { handlers: unavailableHandlers() } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const body = within(canvasElement.ownerDocument.body);
+        const popup = await body.findByTestId('tenant-draft-unavailable');
+        await expect(popup).toHaveTextContent('Der gespeicherte Entwurf konnte nicht geladen werden');
+        await expect(popup).toHaveAttribute('data-severity', 'error');
+        await expect(await canvas.findByTestId('tenant-draft-status')).toBeVisible();
+        const readsBeforeRetry = unavailableReads;
+        await expect(readsBeforeRetry).toBeGreaterThan(0);
+        draftStoreDown = false;
+
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut laden' }));
+
+        await waitFor(() => expect(unavailableReads).toBeGreaterThan(readsBeforeRetry));
+        await waitFor(() => expect(body.queryByTestId('tenant-draft-unavailable')).not.toBeInTheDocument());
+        await waitFor(() => expect(canvas.queryByTestId('tenant-draft-status')).not.toBeInTheDocument());
+        await expect(await canvas.findByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
+    },
+};
+
+const publishedWide: unknown[] = [];
+
+/**
+ * The agency draft store is not deployed (dev on 21.09.2026: GET and PUT answer 404).
+ * Publishing saves first, so nothing goes live — and the admin is told exactly that,
+ * in a message that stays until closed. The agency-wide text carries no "Entwurf" tag.
+ */
+export const PublishWithoutDraftStoreExplains: Story = {
+    args: {
+        onSaveAgencyWide: async () => {
+            publishedWide.push('published');
+        },
+    },
+    parameters: {
+        msw: {
+            handlers: [
+                ...commonHandlers,
+                http.get(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+                http.put(DRAFT_ENDPOINT, () => new HttpResponse(null, { status: 404 })),
+            ],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        publishedWide.length = 0;
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 });
+        await expect(canvas.queryByText('Entwurf', { selector: '.ant-tag' })).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        // The card re-keys once the user id has loaded; re-query instead of holding references.
+        await waitFor(
+            () => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull(),
+            {
+                timeout: 8000,
+            },
+        );
+        await userEvent.click(canvasElement.querySelector('.ProseMirror[contenteditable="true"]') as HTMLElement);
+        await userEvent.keyboard(' Geändert.');
+        await userEvent.click(canvas.getByRole('button', { name: 'Veröffentlichen' }));
+        const translate = await page.findByRole('dialog');
+        await userEvent.click(within(translate).getByRole('button', { name: /Ohne Übersetzung veröffentlichen/ }));
+        // The notice fades in; wait for the end of the animation, not just its first frame.
+        await waitFor(() => expect(page.getByText(/Nicht veröffentlicht/)).toBeVisible(), { timeout: 8000 });
+        await expect(publishedWide).toHaveLength(0);
+    },
+};
+
+/** Configure the real single-domain policy before mounting the permission-gated editor. */
+const LegalDelegation = ({ allowed, children }: { allowed: boolean; children: ReactNode }) => {
+    const { setManualSettings } = useAppConfigContext();
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        setManualSettings({
+            multitenancyWithSingleDomainEnabled: true,
+            legalContentChangesBySingleTenantAdminsAllowed: allowed,
+        });
+        setReady(true);
+    }, [allowed, setManualSettings]);
+    return ready ? children : null;
+};
+
+const restrictedSavedContents: AgencyLegalDraft['content'][] = [];
+const restrictedDraftFixture = persistedFixture((content) => restrictedSavedContents.push(content));
+
+/** #1070: the normal Beratungsstelle-admin role bundle can edit and save when legal content is delegated. */
+export const RestrictedAgencyAdminCanEdit: Story = {
+    beforeEach: () => {
+        restrictedSavedContents.length = 0;
+        restrictedDraftFixture.reset();
+    },
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID);
+            return (
+                <LegalDelegation allowed>
+                    <Story />
+                </LegalDelegation>
+            );
+        },
+    ],
+    parameters: { msw: { handlers: restrictedDraftFixture.handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('button', { name: 'Veröffentlichen' }, { timeout: 8000 })).toBeVisible();
+        await expect(canvas.getByText('Server-Entwurf der Beratungsstelle')).toBeVisible();
+        await expect(canvas.queryByText(/Ergänzung der Beratungsstelle/)).not.toBeInTheDocument();
+        await expect(canvas.queryByText(/Diesen Text pflegt Ihr Träger/)).not.toBeInTheDocument();
+        await userEvent.click(canvas.getByRole('button', { name: 'Bearbeiten' }));
+        await waitFor(() => expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).not.toBeNull());
+        await userEvent.click(canvasElement.querySelector('.ProseMirror[contenteditable="true"]') as HTMLElement);
+        await userEvent.keyboard(' Ergänzung der Beratungsstelle.');
+        await userEvent.click(await canvas.findByRole('button', { name: 'Speichern' }));
+        await waitFor(() => expect(restrictedSavedContents).toHaveLength(1));
+        await expect(restrictedSavedContents[0].de).toContain('Ergänzung der Beratungsstelle.');
+    },
+};
+
+/** #1070: withheld delegation keeps the same role bundle read-only and names the platform lock. */
+export const RestrictedAgencyAdminDelegationWithheld: Story = {
+    decorators: [
+        (Story) => {
+            setStoryAuth([UserRole.RestrictedAgencyAdmin, UserRole.UserAdmin], TENANT_ID);
+            return (
+                <LegalDelegation allowed={false}>
+                    <Story />
+                </LegalDelegation>
+            );
+        },
+    ],
+    parameters: { msw: { handlers: persistedFixture().handlers } },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText(/Änderungen an Rechtstexten sind plattformweit gesperrt/)).toBeVisible();
+        await expect(await canvas.findByText('Veröffentlichte Datenschutzerklärung')).toBeVisible();
+        await expect(canvas.queryByRole('button', { name: 'Veröffentlichen' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Speichern' })).not.toBeInTheDocument();
+        await expect(canvas.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+        await expect(canvasElement.querySelector('.ProseMirror[contenteditable="true"]')).toBeNull();
+    },
+};

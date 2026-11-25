@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { ALL_DEPARTMENTS, DepartmentSelect } from '.';
 
 vi.mock('react-i18next', () => ({
@@ -33,6 +33,12 @@ describe('DepartmentSelect', () => {
         render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
 
         expect(screen.getByText('Alle Fachbereiche')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Fachbereich wählen/i })).toHaveAccessibleName(
+            'Alle Fachbereiche Fachbereich wählen',
+        );
+        expect(
+            screen.getByRole('button', { name: /Fachbereich wählen/i }).querySelector('[aria-hidden="true"]'),
+        ).toBeInTheDocument();
     });
 
     it('shows the selected department name as the label', () => {
@@ -171,5 +177,21 @@ describe('DepartmentSelect — who still inherits', () => {
         await userEvent.click(await screen.findByText('U25 Suizidprävention'));
 
         expect(onChange).toHaveBeenCalledWith(3);
+    });
+    // #1066 / H4: at Caritas a Beratungsstelle has exactly one Fachbereich; offering
+    // "Alle Fachbereiche" next to it is a choice without a difference.
+    it('offers no "Alle Fachbereiche" entry when there is exactly one Fachbereich', async () => {
+        render(<DepartmentSelect departments={[departments[0]]} value={3} onChange={vi.fn()} />);
+        await openMenu();
+
+        expect(await screen.findByRole('menuitem', { name: /U25 Suizidprävention/ })).toBeInTheDocument();
+        expect(screen.queryByRole('menuitem', { name: /Alle Fachbereiche/ })).not.toBeInTheDocument();
+    });
+
+    it('keeps "Alle Fachbereiche" when there are several Fachbereiche', async () => {
+        render(<DepartmentSelect departments={departments} value={ALL_DEPARTMENTS} onChange={vi.fn()} />);
+        await openMenu();
+
+        expect(await screen.findByRole('menuitem', { name: /Alle Fachbereiche/ })).toBeInTheDocument();
     });
 });

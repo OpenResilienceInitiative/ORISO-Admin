@@ -1,14 +1,31 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
     refetch: vi.fn(),
     card: vi.fn(),
     canEditLegalText: vi.fn(() => true),
+    tenantData: vi.fn((): unknown => undefined),
 }));
 
+vi.mock('../../hooks/useAgencyLegalDraft', () => ({
+    useAgencyLegalDraft: () => ({
+        draft: null,
+        isLoading: false,
+        isError: false,
+        retry: vi.fn(),
+        save: vi.fn(),
+        discard: vi.fn(),
+        hasConflict: false,
+        conflict: undefined,
+        conflictRefreshFailed: false,
+        conflictRefreshing: false,
+        retryConflict: vi.fn(),
+        clearConflict: vi.fn(),
+    }),
+}));
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'de' } }),
 }));
@@ -22,7 +39,7 @@ vi.mock('../../../../../hooks/usePublishDepartmentDpp.hook', () => ({
 vi.mock('../../../../../hooks/usePublishDepartmentImprint.hook', () => ({
     usePublishDepartmentImprint: () => ({ mutate: vi.fn(), isPending: false }),
 }));
-vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData: () => ({ data: undefined }) }));
+vi.mock('../../../../../hooks/useSingleTenantData', () => ({ useSingleTenantData: () => ({ data: h.tenantData() }) }));
 vi.mock('../../../../../hooks/useTenantAdminData.hook', () => ({ useTenantAdminData: () => ({ data: undefined }) }));
 vi.mock('../../../../../hooks/useTranslateLegalContent.hook', () => ({
     useTranslateLegalContent: () => ({ translate: vi.fn() }),
@@ -54,7 +71,11 @@ import { AgencyLegalTextContainer } from '.';
 const agencyData: any = {
     id: '55',
     tenantId: '1',
-    topics: [{ id: 3, name: 'U25 Suizidprävention' }],
+    // Two Fachbereiche: with only one it is preselected and "Alle Fachbereiche" is not offered (#1066).
+    topics: [
+        { id: 3, name: 'U25 Suizidprävention' },
+        { id: 4, name: 'Schuldnerberatung' },
+    ],
     content: { privacy: { de: '<p>agency wide</p>' } },
 };
 
@@ -72,6 +93,7 @@ describe('AgencyLegalTextContainer', () => {
         h.useDepartmentDpp.mockReset();
         h.card.mockReset();
         h.canEditLegalText.mockReset().mockReturnValue(true);
+        h.tenantData.mockReset().mockReturnValue(undefined);
     });
 
     it('edits the agency-wide text before a department is chosen', () => {
@@ -81,8 +103,10 @@ describe('AgencyLegalTextContainer', () => {
 
         expect(screen.getByTestId('legal-editor')).toBeInTheDocument();
         expect(h.card.mock.calls[0][0].initialContentByLanguage).toEqual({ de: '<p>agency wide</p>' });
+        expect(h.card.mock.calls[0][0].documentScope).toBe('agency');
         // No department chosen — the card must not claim a publication status of its own.
-        expect(h.card.mock.calls[0][0].publicationStatus).toBeUndefined();
+        // Saved agency-wide text is live, so the card tags it as published (owner call 2026-09-23).
+        expect(h.card.mock.calls[0][0].publicationStatus).toBe('PUBLISHED');
     });
 
     it('lets the admin leave a department that is still loading', async () => {
@@ -156,6 +180,7 @@ describe('AgencyLegalTextContainer', () => {
         await selectDepartment('U25 Suizidprävention');
 
         expect(h.card.mock.calls.at(-1)?.[0].initialContentByLanguage).toEqual({ de: '<p>department own</p>' });
+        expect(h.card.mock.calls.at(-1)?.[0].documentScope).toBe('department');
     });
 
     it('seeds a department with no own text from the inherited text', async () => {
@@ -235,6 +260,67 @@ describe('AgencyLegalTextContainer', () => {
 
             expect(await screen.findByTestId('own-text-4')).toBeInTheDocument();
             expect(screen.queryByTestId('own-text-3')).not.toBeInTheDocument();
+        });
+    });
+
+    describe('follows the Träger text until the Beratungsstelle has wording of its own (#132)', () => {
+        const traeger = { content: { privacy: { de: '<p>Träger text</p>' } } };
+        const mountedSeed = () => h.card.mock.calls.at(-1)?.[0];
+
+        it('starts a new Beratungsstelle from the Träger text', () => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue(traeger);
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: undefined }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({ de: '<p>Träger text</p>' });
+            expect(mountedSeed().publicationStatus).toBe('INHERITED_FROM_TRAEGER');
+        });
+
+        it.each([
+            ['an emptied language entry', { de: '' }],
+            ['an empty paragraph', { de: '<p>&nbsp;</p>' }],
+        ])('does not let %s hide the Träger text', (_label, own) => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue(traeger);
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: { privacy: own } }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({ de: '<p>Träger text</p>' });
+            expect(mountedSeed().publicationStatus).toBe('INHERITED_FROM_TRAEGER');
+        });
+
+        it('keeps the own wording of a Beratungsstelle that customised one language', () => {
+            h.useDepartmentDpp.mockReturnValue({ data: undefined, isLoading: false, isError: false, isSuccess: true });
+            h.tenantData.mockReturnValue({
+                content: { privacy: { de: '<p>Träger text</p>', en: '<p>Träger EN</p>' } },
+            });
+
+            render(
+                <AgencyLegalTextContainer
+                    agencyData={{ ...agencyData, content: { privacy: { de: '<p>agency wide</p>', en: '' } } }}
+                    field="privacy"
+                    onSaveAgencyWide={vi.fn()}
+                />,
+            );
+
+            expect(mountedSeed().initialContentByLanguage).toEqual({
+                de: '<p>agency wide</p>',
+                en: '<p>Träger EN</p>',
+            });
+            expect(mountedSeed().publicationStatus).toBe('PUBLISHED');
         });
     });
 });
