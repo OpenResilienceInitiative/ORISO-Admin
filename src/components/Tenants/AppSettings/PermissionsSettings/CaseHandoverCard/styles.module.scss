@@ -289,3 +289,17 @@
     flex-direction: column;
     gap: mui.$mui-unit * 1.5;
 }
+
+.translateRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 8px;
+}
+
+.translateHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
+}

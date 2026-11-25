@@ -5,7 +5,6 @@ import AddIcon from '@mui/icons-material/Add';
 import routePathNames from '../../../appConfig';
 import type { DataTableSort } from '../../../components/DataTable';
 import { M3Button } from '../../../components/M3Button';
-import { Modal } from '../../../components/Modal';
 import { Page } from '../../../components/Page';
 import { PageMobileActions } from '../../../components/Page/PageMobileActions';
 import { ListSearchBar } from '../../../components/ListSearchBar';
@@ -19,12 +18,12 @@ import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
-import decodeHTML from '../../../utils/decodeHTML';
 import { TenantDataTable, type TenantRow } from './TenantDataTable';
 import { nextTenantSortState, tenantSortOf } from './tenantSort';
 import styles from './styles.module.scss';
 import { Notify } from '../../../components/Notify';
 import { TenantDeleteErrorMessage } from './TenantDeleteErrorMessage';
+import { TenantDeletionModal } from './TenantDeletionModal';
 
 /** The outcome of the last deletion; a failure keeps its error so the message can say what is left. */
 type DeleteResult = { kind: 'success' } | { kind: 'error'; error: unknown } | null;
@@ -155,20 +154,20 @@ export const TenantsList = () => {
                             ? (row) => navigate(`${routePathNames.tenants}/${row.id}`)
                             : undefined
                     }
-                    onDelete={can(PermissionAction.Delete, Resource.Tenant) ? setTenantToDelete : undefined}
+                    // Deleting a Träger empties it of everything: the platform administrator's act alone
+                    // (ORISO-Admin#1525), as TenantService enforces.
+                    onDelete={
+                        isSuperAdmin && can(PermissionAction.Delete, Resource.Tenant) ? setTenantToDelete : undefined
+                    }
                     canDeleteRow={(row) => settings.mainTenantSubdomainForSingleDomainMultitenancy !== row.subdomain}
                     ariaLabel={t('tenants.title')}
                 />
             </div>
 
             {tenantToDelete !== null && (
-                <Modal
-                    titleKey="tenants.list.deleteModal.title"
-                    titleKeyOptions={{ name: decodeHTML(tenantToDelete.name) }}
-                    contentKey="tenants.list.deleteModal.description"
-                    okLabelKey="tenants.list.deleteModal.confirm"
-                    cancelLabelKey="tenants.list.deleteModal.cancel"
-                    onConfirm={() => onDelete(tenantToDelete.id)}
+                <TenantDeletionModal
+                    tenant={tenantToDelete}
+                    onConfirm={onDelete}
                     onClose={() => setTenantToDelete(null)}
                 />
             )}

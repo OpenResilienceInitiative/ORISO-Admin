@@ -31,6 +31,7 @@ import {
     type ScaleId,
 } from './journey';
 import { KIND_ICONS } from './AddStepDialog';
+import { useGreetingTexts } from './GreetingTexts';
 import { BlockProfileCard } from './BlockProfileCard';
 import { nextId } from './ids';
 import { JourneyQuestionsEditor } from './JourneyQuestionsEditor';
@@ -110,6 +111,8 @@ export const StepDialog = ({
     const [translationError, setTranslationError] = useState<string>();
     const [translating, setTranslating] = useState(false);
     const [profileOpen, setProfileOpen] = useState<ProfileView>();
+    const greetingTexts = useGreetingTexts();
+    const isGreeting = step.kind === 'core' && step.core === 'agencyGreeting';
 
     /** The step as it is now, for answers that arrive later. */
     const latest = useRef(draft);
@@ -276,6 +279,20 @@ export const StepDialog = ({
 
                     {field('title', t('journeys.stepDialog.title'))}
                     {field('description', t('journeys.stepDialog.descriptionForSeekers'))}
+
+                    {isGreeting && greetingTexts && (
+                        <section
+                            className={styles.greetingTexts}
+                            aria-labelledby="journey-greeting-texts-title"
+                            data-testid="journey-greeting-texts"
+                        >
+                            <h3 id="journey-greeting-texts-title" className={styles.noticeTitle}>
+                                {t('journeys.greetingTexts.title')}
+                            </h3>
+                            <p className={styles.help}>{t('journeys.greetingTexts.help')}</p>
+                            {greetingTexts}
+                        </section>
+                    )}
 
                     {draft.core && FIXED_TRIGGERS[draft.core] && (
                         <p className={styles.help}>

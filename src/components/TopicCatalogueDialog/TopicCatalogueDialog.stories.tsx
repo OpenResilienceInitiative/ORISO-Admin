@@ -137,3 +137,27 @@ export const OnThePageTranslated: Story = {
         await expect((await canvas.findAllByRole('img', { name: /Maschinell|Machine/ })).length).toBeGreaterThan(0);
     },
 };
+
+/** "Fehlende Texte mit KI übersetzen" fills every empty language; the admin checks and saves (Frank, 2026-11-24). */
+export const TranslateMissingWithAi: Story = {
+    args: {
+        onTranslate: fn(async (request) => ({
+            provider: 'mistral',
+            model: 'mistral-small-latest',
+            translations: Object.fromEntries(
+                request.targetLangs.map((code) => [
+                    code,
+                    Object.fromEntries(
+                        Object.entries(request.texts).map(([key, value]) => [key, `[${code}] ${value}`]),
+                    ),
+                ]),
+            ),
+        })),
+    },
+    play: async ({ canvasElement, args }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await userEvent.click(await body.findByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+        await expect(args.onTranslate).toHaveBeenCalledTimes(1);
+        await expect(await body.findByRole('button', { name: 'Speichern' })).toBeEnabled();
+    },
+};

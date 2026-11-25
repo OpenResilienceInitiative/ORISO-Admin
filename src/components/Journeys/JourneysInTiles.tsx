@@ -12,6 +12,8 @@ import type { Journey, JourneyTopic } from './journey';
 import type { JourneyStore } from './journeyStore';
 import { adminTranslator } from './journeyTranslation';
 import { JourneysDialog } from './JourneysDialog';
+import { GreetingTextsContext } from './GreetingTexts';
+import { GreetingTextsForScope } from './GreetingTextsForScope';
 import { JourneyTileEntry } from './index';
 import { useJourneyWorkspace, type JourneyBase, type JourneyScope, type JourneyWorkspace } from './useJourneyWorkspace';
 import styles from './styles.module.scss';
@@ -112,36 +114,38 @@ const useMountedJourneys = (scope: JourneyScope, store: JourneyStore): JourneysI
     };
     const pruned = opened ? workspace.prunedTopicsOf(opened.type) : 0;
     const dialog = opened && (
-        <JourneysDialog
-            key={opened.type}
-            type={opened.type}
-            journeys={opened.journeys}
-            topics={topics ?? []}
-            translator={translator}
-            level={scope.level}
-            saving={workspace.saving}
-            saveBlocked={workspace.failure === 'conflict'}
-            notice={
-                <>
-                    {pruned > 0 && (
-                        <div className={styles.notice} role="status" data-testid="journeys-pruned-topics">
-                            <p>{t('journeys.prunedTopics', { count: pruned })}</p>
-                        </div>
-                    )}
-                    <SaveFailure
-                        workspace={workspace}
-                        onReload={() => {
-                            workspace.reload();
-                            setOpen(undefined);
-                        }}
-                    />
-                </>
-            }
-            onSave={async (next) => {
-                if ((await workspace.save(next, opened.base)).ok) setOpen(undefined);
-            }}
-            onClose={close}
-        />
+        <GreetingTextsContext.Provider value={<GreetingTextsForScope scope={scope} />}>
+            <JourneysDialog
+                key={opened.type}
+                type={opened.type}
+                journeys={opened.journeys}
+                topics={topics ?? []}
+                translator={translator}
+                level={scope.level}
+                saving={workspace.saving}
+                saveBlocked={workspace.failure === 'conflict'}
+                notice={
+                    <>
+                        {pruned > 0 && (
+                            <div className={styles.notice} role="status" data-testid="journeys-pruned-topics">
+                                <p>{t('journeys.prunedTopics', { count: pruned })}</p>
+                            </div>
+                        )}
+                        <SaveFailure
+                            workspace={workspace}
+                            onReload={() => {
+                                workspace.reload();
+                                setOpen(undefined);
+                            }}
+                        />
+                    </>
+                }
+                onSave={async (next) => {
+                    if ((await workspace.save(next, opened.base)).ok) setOpen(undefined);
+                }}
+                onClose={close}
+            />
+        </GreetingTextsContext.Provider>
     );
     return { renderJourneys, dialog };
 };

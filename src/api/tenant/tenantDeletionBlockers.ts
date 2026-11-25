@@ -1,4 +1,5 @@
-import { FETCH_ERRORS } from '../fetchData';
+import { tenantDeletionPreviewEndpoint } from '../../appConfig';
+import { FETCH_ERRORS, FETCH_METHODS, fetchData } from '../fetchData';
 
 /**
  * What still belongs to a Träger and therefore blocks its deletion (ORISO-UserService#1466).
@@ -74,3 +75,15 @@ export const tenantDeletionBlockerLines = (blockers: TenantDeletionBlockers, t: 
     BLOCKER_KINDS.filter((kind) => blockers[kind] > 0).map((kind) =>
         t(`tenants.list.deleteMessage.blockers.${kind}`, { count: blockers[kind] }),
     );
+
+/**
+ * What the Träger still holds before it is deleted, as UserService counts it (ORISO-Admin#1525).
+ * The dialog offers no deletion without this overview. Throws on failure.
+ */
+export const getTenantDeletionPreview = (tenantId: number): Promise<TenantDeletionBlockers> =>
+    fetchData({
+        url: tenantDeletionPreviewEndpoint(tenantId),
+        method: FETCH_METHODS.GET,
+        skipAuth: false,
+        responseHandling: [FETCH_ERRORS.FORBIDDEN_SILENT, FETCH_ERRORS.CATCH_ALL_SILENT],
+    });

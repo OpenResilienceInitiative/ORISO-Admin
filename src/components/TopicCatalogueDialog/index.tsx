@@ -35,6 +35,12 @@ export interface TopicCatalogueDialogProps {
     /** Receives the body of PUT /topicadmin/catalogue; a rejection keeps the dialog open. */
     onSave: (body: TopicCatalogueDto) => Promise<void>;
     onClose: () => void;
+    /**
+     * Machine translation (POST /tenantadmin/translate). Edit mode then offers one button that fills
+     * every missing text in every language; machine texts carry the translate mark until someone
+     * types over them. Without it there is no AI button.
+     */
+    onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
 }
 
 export interface TopicCatalogueEditorProps extends Omit<TopicCatalogueDialogProps, 'onClose'> {
@@ -50,12 +56,6 @@ export interface TopicCatalogueEditorProps extends Omit<TopicCatalogueDialogProp
     pendingTopicIds?: number[];
     /** `modal` (default) wraps the editor in a dialog; `inline` renders it as the page card. */
     variant?: 'modal' | 'inline';
-    /**
-     * Machine translation (POST /tenantadmin/translate). Edit mode then offers one button that fills
-     * every missing text in every language; machine texts carry the translate mark until someone
-     * types over them. Without it there is no AI button.
-     */
-    onTranslate?: (request: TranslateRequest) => Promise<TranslateResponse>;
 }
 
 /** Keys the translation service gets back unchanged, and the machine marks are built from. */

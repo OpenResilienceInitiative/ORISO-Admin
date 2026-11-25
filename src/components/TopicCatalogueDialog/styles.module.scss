@@ -559,7 +559,8 @@ $amberSoft: #fff3dc;
 }
 
 .footerHint {
-    color: $muted;
+    // On the dialog's surface-container-high sheet $muted reaches only 4.33:1.
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 .problem {
