@@ -4392,6 +4392,7 @@
     "conversationModules.dialog.resetConfirmOk": "Zurücksetzen",
     "conversationModules.safety.title": "Sicherheitsabschnitt entfernt",
     "conversationModules.safety.text": "„{{titles}}“ fehlt jetzt. Ratsuchende in einer Notlage sehen dann keine Notfallnummern mehr. Sie dürfen das so speichern; die Verantwortung liegt bei Ihnen.",
+    "journeys.safety.firstReplyText": "„{{titles}}“ fehlt jetzt. In der ersten Antwort der Mailberatung ergänzt die Plattform ihre Notfallnummern. In anderen Texten sehen Ratsuchende in einer Notlage dann keine Notfallnummern. Sie dürfen das so speichern; die Verantwortung liegt bei Ihnen.",
     "conversationModules.safety.restore": "Wieder einfügen",
     "conversationModules.safety.badge": "Sicherheit",
     "conversationModules.kind.message": "Nachricht",

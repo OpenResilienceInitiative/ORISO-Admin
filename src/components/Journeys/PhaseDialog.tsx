@@ -117,6 +117,7 @@ export const PhaseDialog = ({
     const journeyName = journeyLabel(draft, t);
     const profileStep = profileOf && steps.find((step) => step.id === profileOf.id);
     const missingSafety = phase === 'flight' ? missingSafetyAspects(draft) : [];
+    const firstReplyPhase = phase === 'flight' && draft.conversationType === 'AGENCY_COUNSELLING';
 
     /** A refused move says why, visibly (Frank, 2026-11-24): before, the card just did not move. */
     const explainRefusal = (step: JourneyStep, reason: MoveRefusal | undefined) => {
@@ -247,11 +248,19 @@ export const PhaseDialog = ({
                         <div className={styles.warning} role="alert" data-testid="journey-safety-warning">
                             <p className={styles.noticeTitle}>{t('conversationModules.safety.title')}</p>
                             <p>
-                                {t('conversationModules.safety.text', {
-                                    titles: missingSafety
-                                        .map((aspect) => aspect.title[language] || aspect.title.de)
-                                        .join('“, „'),
-                                })}
+                                {/* Only the on-board phase of message counselling builds the first
+                                    reply, where the platform adds its emergency numbers (ADR-036
+                                    decision 42). Everywhere else the old warning holds. */}
+                                {t(
+                                    firstReplyPhase
+                                        ? 'journeys.safety.firstReplyText'
+                                        : 'conversationModules.safety.text',
+                                    {
+                                        titles: missingSafety
+                                            .map((aspect) => aspect.title[language] || aspect.title.de)
+                                            .join('“, „'),
+                                    },
+                                )}
                             </p>
                         </div>
                     )}
