@@ -6,8 +6,8 @@ import { TenantPermissionsSettings } from '../../../../components/Tenants/AppSet
  * Funktionszugriff of one Träger, edited by a platform admin (`/admin/tenants/:id/global-settings`).
  * ORISO-Admin#989: it edits THIS Träger — its stored values and its policies — not the platform-wide
  * controls under /settings. ORISO-Admin#1577: the same tiles as the platform and Beratungsstelle pages,
- * the chat links on the Live Chat tile. The page intro is the same as on the platform page (Frank, 2026-11-25):
- * no extra paragraph about the scope.
+ * the chat links on the Live Chat tile. Frank, 2026-11-25: it looks exactly like Einstellungen →
+ * Funktionszugriff, so the intro carries no extra scope paragraph (the Träger name heads the page).
  */
 export const TenantGlobalSettings = () => {
     const { id } = useParams<{ id: string }>();

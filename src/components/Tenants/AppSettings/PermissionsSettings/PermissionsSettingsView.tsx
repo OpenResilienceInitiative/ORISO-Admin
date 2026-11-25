@@ -12,7 +12,8 @@ import { CaseSharingSection } from './CaseSharingSection';
 import { TileSections } from '../../../TileSections';
 import { SectionHelp } from './SectionHelp';
 import { PermissionsIntro } from './PermissionsIntro';
-import { SupervisionTile } from './SupervisionTile';
+import { SupervisionSection, supervisionSummaryKey } from './SupervisionSection';
+import { SUPERVISION_MASTER } from './traegerFunctions';
 import { TeamChatTile } from './TeamChatTile';
 import {
     GROUP_CHAT_UMBRELLA,
@@ -472,7 +473,8 @@ export const PermissionsSettingsView = ({
 
     const settingsFallback = initialValues.settings as Record<string, unknown> | undefined;
 
-    // ORISO-Admin#1558: what a folded tile still says: on or off, how many extra features, the case sharing.
+    // ORISO-Admin#1558: what a folded tile still says: on or off, how many extra features, the case sharing
+    // and (Mail Beratung) whether supervision is on.
     const tileSummary = (
         card: ChatTypeCardDef,
         getFieldValue: FormInstance['getFieldValue'],
@@ -490,6 +492,10 @@ export const PermissionsSettingsView = ({
         ];
         if (card.key === 'oneOnOne' && caseSharing?.policy) {
             parts.push(t(`tenants.permissions.caseSharing.summary.${caseSharing.policy.value}`));
+        }
+        if (card.key === 'oneOnOne') {
+            const supervisionOn = policyFor(SUPERVISION_MASTER, getFieldValue(['settings', SUPERVISION_MASTER])).value;
+            parts.push(t(supervisionSummaryKey(supervisionOn)));
         }
         return parts.join(' · ');
     };
@@ -666,6 +672,17 @@ export const PermissionsSettingsView = ({
                                 />
                             )}
 
+                            {/* Frank, 2026-11-25 (ORISO-Admin#1577 decision update): supervision is a section
+                                of the Mail-Beratung tile on every level, next to the case sharing. */}
+                            {card.key === 'oneOnOne' && (
+                                <SupervisionSection
+                                    level={policyLevel}
+                                    policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
+                                    pending={policyPending}
+                                    onChange={(changes) => changePolicies(changes, form)}
+                                />
+                            )}
+
                             {/* ORISO-Admin#1242: a direct link opens a 1:1 session. */}
                             {card.key === 'oneOnOne' && (
                                 <TileSections.Section
@@ -818,7 +835,10 @@ export const PermissionsSettingsView = ({
                                     shouldUpdate={(prev, curr) => {
                                         if (!card.masterField) return false;
                                         const [, masterKey] = card.masterField;
-                                        return prev?.settings?.[masterKey] !== curr?.settings?.[masterKey];
+                                        // The Mail-Beratung summary also says whether supervision is on.
+                                        const keys =
+                                            card.key === 'oneOnOne' ? [masterKey, SUPERVISION_MASTER] : [masterKey];
+                                        return keys.some((key) => prev?.settings?.[key] !== curr?.settings?.[key]);
                                     }}
                                 >
                                     {({ getFieldValue }) => {
@@ -831,15 +851,6 @@ export const PermissionsSettingsView = ({
                                 </Form.Item>
                             </CardGrid.Item>
                         ))}
-                        {/* ORISO-Admin#1577: supervision chats, after the conversation types. */}
-                        <CardGrid.Item span={3}>
-                            <SupervisionTile
-                                level={policyLevel}
-                                policyOf={(field) => policyFor(field, form.getFieldValue(['settings', field]))}
-                                pending={policyPending}
-                                onChange={(changes) => changePolicies(changes, form)}
-                            />
-                        </CardGrid.Item>
                         {/* ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat as its own tile, built like supervision. */}
                         <CardGrid.Item span={3}>
                             <TeamChatTile

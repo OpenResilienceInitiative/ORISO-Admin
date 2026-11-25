@@ -157,7 +157,8 @@ describe('Same tiles as the platform page (ORISO-Admin#1577)', () => {
         expect(await findRow('featureAnonymousChatEnabled')).toBeInTheDocument();
     });
 
-    it('shows the same page intro as the platform page, without an extra scope paragraph (Frank, 2026-11-25)', async () => {
+    // Frank, 2026-11-25: this page looks exactly like Einstellungen → Funktionszugriff; no extra intro paragraph.
+    it('shows the same page intro as the settings page, without an extra scope paragraph', async () => {
         serve({ traegerSettings: {} });
         renderPage();
 

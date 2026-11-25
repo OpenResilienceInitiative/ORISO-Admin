@@ -51,14 +51,17 @@ export const PlatformAdmin: Story = {
 };
 
 /**
- * ORISO-Admin#1577: the Supervision tile after the conversation types; "Konfigurieren" opens what the
+ * Supervision, a section of the Mail-Beratung tile (Frank, 2026-11-25); "Konfigurieren" opens what the
  * supervision chat itself offers, each with "Anpassbar"/"Vorgabe". Changes apply on "Speichern" only.
  */
 export const SupervisionDialog: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        const tile = await canvas.findByTestId('supervision-tile', {}, { timeout: 8000 });
-        await userEvent.click(within(tile).getByRole('button', { name: /Konfigurieren|Configure/ }));
+        const mail = await canvas.findByTestId('chat-type-card-oneOnOne', {}, { timeout: 8000 });
+        // Folded at first, like case sharing.
+        await userEvent.click(within(mail).getByRole('button', { name: /^Supervision$/ }));
+        const section = within(mail).getByTestId('supervision-section');
+        await userEvent.click(within(section).getByRole('button', { name: /Konfigurieren|Configure/ }));
         const body = within(canvasElement.ownerDocument.body);
         const dialog = await body.findByRole('dialog');
         await expect(

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -7,8 +7,8 @@ import type { PolicyValue } from '../../../../types/permissionPolicy';
 
 /**
  * ORISO-Admin#1577 (Frank, 2026-11-19): what moved from the former Funktionalitäten tab into
- * Funktionszugriff, on every level: the supervision tile with its dialog, Team-Chat on the Mail
- * Beratung tile, and the two older switches the counselling app still reads, kept in step with the
+ * Funktionszugriff, on every level: supervision with its dialog (since Frank, 2026-11-25, a section of
+ * the Mail-Beratung tile), the Team-Chat tile, and the two older switches the counselling app still reads, kept in step with the
  * tiles (group-chat umbrella, Träger call permission).
  */
 
@@ -68,12 +68,22 @@ const lockOrNull = (field: string, scope?: HTMLElement) =>
 const policy = (value: boolean, mode: 'SUGGESTED' | 'ENFORCED' = 'SUGGESTED', inherited?: boolean) =>
     ({ value, mode, ...(inherited === undefined ? {} : { inherited }) } as PolicyValue<boolean>);
 
-const supervisionTile = () => screen.getByTestId('supervision-tile');
+/** The supervision section of the Mail-Beratung tile, unfolded (it starts folded, like case sharing). */
+const supervisionTile = () => {
+    const mail = screen.getByTestId('chat-type-card-oneOnOne');
+    const toggle = within(mail).getByRole('button', { name: 'tenants.permissions.supervision.title' });
+    if (toggle.getAttribute('aria-expanded') === 'false') fireEvent.click(toggle);
+    return within(mail).getByTestId('supervision-section');
+};
 const dialog = () => document.querySelector<HTMLElement>('[data-testid="supervision-dialog"]');
 
-describe('Supervision tile', () => {
-    it('comes after the four conversation types and names Mail Beratung and Live Chat', () => {
-        render(<PermissionsSettingsView {...baseProps()} />);
+describe('Supervision section of the Mail-Beratung tile', () => {
+    it('sits in the Mail-Beratung tile after case sharing; no tile of its own; Team-Chat keeps its tile', () => {
+        render(
+            <PermissionsSettingsView
+                {...baseProps({ caseSharing: { policy: { value: 'caseHandover', mode: 'SUGGESTED' } } })}
+            />,
+        );
 
         const tiles = [
             ...document.querySelectorAll(
@@ -85,10 +95,21 @@ describe('Supervision tile', () => {
             'chat-type-card-liveChat',
             'chat-type-card-group',
             'chat-type-card-groupInternal',
-            'supervision-tile',
             'team-chat-tile',
         ]);
-        expect(within(supervisionTile()).getByText('tenants.permissions.supervision.description')).toBeVisible();
+        const mail = screen.getByTestId('chat-type-card-oneOnOne');
+        const section = within(mail).getByRole('group', { name: 'tenants.permissions.supervision.title' });
+        const caseSharing = within(mail).getByRole('group', { name: 'tenants.permissions.caseSharing.title' });
+        // eslint-disable-next-line no-bitwise -- DOM position flags
+        expect(caseSharing.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Folded at first, like case sharing; the search finds it by its heading.
+        expect(within(section).getByRole('button', { name: 'tenants.permissions.supervision.title' })).toHaveAttribute(
+            'aria-expanded',
+            'false',
+        );
+        expect(section).toHaveAttribute('data-search-tile', 'tenants.permissions.supervision.title');
+        expect(valueButton(SUPERVISION, supervisionTile())).toBeVisible();
+        expect(within(section).getByText('tenants.permissions.supervision.description')).toBeVisible();
         // The per-type switch stays on Mail Beratung and Live Chat only (Frank, 2026-11-19).
         ['oneOnOne', 'liveChat'].forEach((key) =>
             expect(
@@ -104,6 +125,38 @@ describe('Supervision tile', () => {
                     .querySelector('[data-feature-policy^="featureSupervision"]'),
             ).toBeNull(),
         );
+        // Live Chat has no supervision master or "Konfigurieren" of its own.
+        expect(within(screen.getByTestId('chat-type-card-liveChat')).queryByTestId('supervision-section')).toBeNull();
+        expect(
+            screen.getByTestId('chat-type-card-liveChat').querySelector(`[data-feature-policy="${SUPERVISION}"]`),
+        ).toBeNull();
+    });
+
+    it.each<[Level]>([['platform'], ['tenant'], ['agency']])('%s: the section is there', (policyLevel) => {
+        render(<PermissionsSettingsView {...baseProps({ policyLevel })} />);
+
+        expect(valueButton(SUPERVISION, supervisionTile())).toBeEnabled();
+        expect(
+            within(supervisionTile()).getByRole('button', { name: 'tenants.permissions.supervision.configure' }),
+        ).toBeInTheDocument();
+    });
+
+    it('says on the folded tile whether supervision is on', () => {
+        const { unmount } = render(
+            <PermissionsSettingsView {...baseProps({ permissionPolicies: { [SUPERVISION]: policy(true) } })} />,
+        );
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByText(
+                /tenants.permissions.supervision.summary.on/,
+            ),
+        ).toBeInTheDocument();
+        unmount();
+        render(<PermissionsSettingsView {...baseProps({ permissionPolicies: { [SUPERVISION]: policy(false) } })} />);
+        expect(
+            within(screen.getByTestId('chat-type-card-oneOnOne')).getByText(
+                /tenants.permissions.supervision.summary.off/,
+            ),
+        ).toBeInTheDocument();
     });
 
     it('lists the supervision-chat features in a dialog, not inline', () => {
