@@ -91,7 +91,7 @@ describe('M3RichTextEditor — named fullscreen action', () => {
         await openNamedFullscreen();
         // The reader toolbar and the dialog header each offer a close action.
         const closeActions = screen.getAllByRole('button', { name: 'legal.m3Editor.closeDialog' });
-        expect(closeActions.length).toBeGreaterThan(0);
+        expect(closeActions).toHaveLength(2);
 
         for (let index = 0; index < closeActions.length; index += 1) {
             if (index > 0) {

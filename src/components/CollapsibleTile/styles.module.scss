@@ -249,7 +249,9 @@
 
 .documentMotion .header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+
+    /* The trailing track never gets narrower than chip and chevron, so they never run into the title. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
     gap: 8px 12px;
     text-align: center;
 }
@@ -257,6 +259,7 @@
 .documentMotion .label {
     display: flex;
     grid-column: 2;
+    min-width: 0;
     align-items: center;
     justify-content: center;
     gap: 10px;
