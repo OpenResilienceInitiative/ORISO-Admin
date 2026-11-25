@@ -106,7 +106,8 @@ export const LevelTraeger: Story = {
         const section = await openSupervision(canvasElement);
         await userEvent.click(section.getByRole('button', { name: 'Konfigurieren' }));
         const dialog = within(await within(canvasElement.ownerDocument.body).findByTestId('supervision-dialog'));
-        await expect(dialog.getByText('Was der Supervisions-Chat bietet')).toBeVisible();
+        // The dialog fades in.
+        await waitFor(() => expect(dialog.getByText('Was der Supervisions-Chat bietet')).toBeVisible());
         await userEvent.click(dialog.getByRole('button', { name: 'Abbrechen' }));
         await expect(args.onPolicyChange).not.toHaveBeenCalled();
     },
@@ -175,6 +176,7 @@ export const English: Story = {
     play: async ({ canvasElement }) => {
         const toggle = within(mailTile(canvasElement)).getByRole('button', { name: SECTION });
         await userEvent.click(toggle);
-        await expect(within(canvasElement).getByRole('button', { name: 'Configure' })).toBeEnabled();
+        const section = within(within(canvasElement).getByTestId('supervision-section'));
+        await expect(section.getByRole('button', { name: 'Configure' })).toBeEnabled();
     },
 };
