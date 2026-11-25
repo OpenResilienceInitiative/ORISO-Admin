@@ -327,4 +327,59 @@ describe('TopicCatalogueDialog', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('nicht gespeichert');
         expect(onClose).not.toHaveBeenCalled();
     });
+
+    describe('AI translation of empty languages (Frank, 2026-11-24)', () => {
+        it('has no AI button without a translator', () => {
+            open();
+            expect(screen.queryByTestId('topic-dialog-translate')).not.toBeInTheDocument();
+        });
+
+        it('sends only the texts French lacks and saves the answers', async () => {
+            const onTranslate = vi.fn(async (request: { texts: Record<string, string> }) => ({
+                provider: 'mistral',
+                model: 'mistral-small-latest',
+                translations: {
+                    fr: Object.fromEntries(
+                        Object.entries(request.texts).map(([key, value]) => [key, `<p>FR ${value}</p>`]),
+                    ),
+                },
+            }));
+            const { onSave, u } = open({ onTranslate });
+
+            await u.click(within(screen.getByTestId('topic-dialog-translate')).getByRole('button'));
+
+            await waitFor(() => expect(onTranslate).toHaveBeenCalledTimes(1));
+            expect(onTranslate.mock.calls[0][0]).toEqual({
+                sourceLang: 'de',
+                targetLangs: ['fr'],
+                texts: {
+                    'topic:14:description': 'Hilfe bei Schulden',
+                    'topic:15:name': 'Leben im Alter',
+                    'topic:15:description': 'Alter',
+                    'topic:20:name': 'Migration',
+                    'topic:20:description': 'Ankommen',
+                    'group:g2': 'Krisen',
+                },
+            });
+            await save(u);
+            await waitFor(() => expect(onSave).toHaveBeenCalled());
+            const body = savedBody(onSave);
+            const debt = body.topics.find((topic) => topic.id === 14);
+            expect(debt?.name).toEqual({ de: 'Schulden', fr: 'Dettes' });
+            expect(debt?.description).toEqual({ de: 'Hilfe bei Schulden', fr: 'FR Hilfe bei Schulden' });
+            expect(body.groups.find((group) => group.id === 2)?.name).toEqual({ de: 'Krisen', fr: 'FR Krisen' });
+            expect(body.groups.find((group) => group.id === 1)?.name).toEqual({ de: 'Alter', fr: 'Vieillesse' });
+        });
+
+        it('keeps the dialog usable and says why when the translation fails', async () => {
+            const onTranslate = vi.fn().mockRejectedValue(new Error('down'));
+            const { onSave, u } = open({ onTranslate });
+
+            await u.click(within(screen.getByTestId('topic-dialog-translate')).getByRole('button'));
+
+            await waitFor(() => expect(onTranslate).toHaveBeenCalled());
+            expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+            expect(onSave).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -14,6 +14,7 @@ import {
     getNotificationTemplate,
     isAdviceRequestReason,
     isAdvisorConsentImplicit,
+    missingTemplateLanguages,
     NOTIFICATION_LANGUAGES,
     NotificationLanguage,
     reasonTranslationKey,
@@ -23,6 +24,8 @@ import cardStyles from '../styles.module.scss';
 import { CASE_HANDOVER_HELP } from '../tileHelpTopics';
 import styles from './styles.module.scss';
 import { Notify } from '../../../../Notify';
+import { M3Button } from '../../../../M3Button';
+import { TranslateIcon } from '../../../../Journeys/TranslateIcon';
 
 /*
  * This card previews not-yet-available controls as disabled with a "coming soon"
@@ -62,6 +65,13 @@ export type CaseHandoverCardViewProps = {
      * own, and no master switch: choosing "Fallübergabe" there is the switch.
      */
     embedded?: boolean;
+    /**
+     * Fills the languages of one reason that have no template yet by machine translation of the
+     * German one (POST /tenantadmin/translate). Without it no translate button is shown.
+     */
+    onTranslateTemplates?: (code: string) => void;
+    /** The reason whose templates are being translated right now. */
+    translatingReason?: string | null;
 };
 
 const ConfigureIcon = () => (
@@ -72,6 +82,40 @@ const ConfigureIcon = () => (
         />
     </svg>
 );
+
+/** "Fill the missing languages with AI" under the template; says why when there is nothing to do. */
+const TemplateTranslateAction = ({
+    missing,
+    hasSource,
+    disabled,
+    translating,
+    onTranslate,
+}: {
+    missing: number;
+    hasSource: boolean;
+    disabled: boolean;
+    translating: boolean;
+    onTranslate: () => void;
+}) => {
+    const { t } = useTranslation();
+    let hint: string | undefined;
+    if (!hasSource) hint = t('tenants.permissions.card.caseHandover.translate.needsGerman');
+    else if (missing === 0) hint = t('tenants.permissions.card.caseHandover.translate.complete');
+    return (
+        <div className={styles.translateRow} data-testid="case-handover-template-translate">
+            <M3Button
+                variant="text"
+                icon={<TranslateIcon />}
+                loading={translating}
+                disabled={disabled || !hasSource || missing === 0}
+                onClick={onTranslate}
+            >
+                {t('tenants.permissions.card.caseHandover.translate.action', { count: missing })}
+            </M3Button>
+            {hint && <span className={styles.translateHint}>{hint}</span>}
+        </div>
+    );
+};
 
 export const CaseHandoverCardView = ({
     policies,
@@ -94,6 +138,8 @@ export const CaseHandoverCardView = ({
     onOpenPolicyMenu,
     onFeaturePolicyChange,
     embedded = false,
+    onTranslateTemplates,
+    translatingReason = null,
 }: CaseHandoverCardViewProps) => {
     const { t, i18n } = useTranslation();
     const displayReasons = useMemo(() => buildDisplayReasons(policies), [policies]);
@@ -366,6 +412,15 @@ export const CaseHandoverCardView = ({
                                         }
                                         onBlur={commitDraft}
                                     />
+                                    {onTranslateTemplates && (
+                                        <TemplateTranslateAction
+                                            missing={missingTemplateLanguages(activePolicy).length}
+                                            hasSource={Boolean(getNotificationTemplate(activePolicy, 'de').trim())}
+                                            disabled={!editable}
+                                            translating={translatingReason === activeReason.code}
+                                            onTranslate={() => onTranslateTemplates(activeReason.code)}
+                                        />
+                                    )}
                                 </div>
                             );
                         })()}
