@@ -53,6 +53,8 @@ import { resolveAgencyTenantId } from '../../../api/agency/addAgencyData';
 import { isActiveDeleteDate } from '../../../utils/deleteDate';
 import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIdentity';
 import { focusFirstInvalidField } from '../../../utils/formErrorNavigation';
+import { pictureWriteErrorKey, uploadConsultantPicture } from '../../../api/counselor/consultantPicture';
+import { ConsultantPictureControl } from './ConsultantPictureControl';
 import routePathNames, { appURL } from '../../../appConfig';
 import { CopyLinkRow } from '../../../components/DpaForwardDialog/CopyLinkRow';
 import { buildPublicContactLinkUrl, isValidPublicSlug, PUBLIC_SLUG_MAX_LENGTH } from '../../../utils/publicContactLink';
@@ -235,6 +237,9 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
     const showGrantConsultantIdentity = canGrantConsultantIdentity(isEditing, typeOfUsers, singleData);
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted] = useState(false);
+    // Create mode: the photo chosen before the account exists, stored right after the POST.
+    const [selectedPicture, setSelectedPicture] = useState<File | null>(null);
+    const [storingNewPicture, setStoringNewPicture] = useState(false);
     const [tenantsData, setTenantsData] = useState([]);
     const [userTenantId, setUserTenantId] = useState<number>(0);
     const [filteredAgencies, setFilteredAgencies] = useState([]);
@@ -561,7 +566,31 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
     const { mutate } = useAddOrUpdateConsultantOrAdmin({
         id: isEditing ? id : null,
         typeOfUser: typeOfUsers,
-        onSuccess: (response) => {
+        onSuccess: async (response) => {
+            const createdId = (response as { id?: string } | undefined)?.id;
+            if (!isEditing && isConsultantForm && selectedPicture && createdId) {
+                // The account exists now. A refused photo must not undo that: open the new
+                // consultant instead, where the photo can be added again on its own.
+                setStoringNewPicture(true);
+                try {
+                    await uploadConsultantPicture(createdId, selectedPicture);
+                } catch (error) {
+                    const scanUnavailable =
+                        (await pictureWriteErrorKey(error)) === 'counselor.picture.error.scanUnavailable';
+                    message.warning({
+                        content: t(
+                            scanUnavailable
+                                ? 'message.counselor.picture.partialCreateScanUnavailable'
+                                : 'message.counselor.picture.partialCreate',
+                        ),
+                        duration: 8,
+                    });
+                    navigate(`/admin/users/${typeOfUsers}/${createdId}`);
+                    return;
+                } finally {
+                    setStoringNewPicture(false);
+                }
+            }
             const messagePrefix = isConsultantForm ? 'counselor' : 'agencyAdmin';
             message.success({
                 content: t(`message.${messagePrefix}.${isEditing ? 'update' : 'add'}`),
@@ -1010,7 +1039,7 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                             type="text"
                             className="admin-m3-text-button"
                             onClick={() => form.submit()}
-                            disabled={submitted || savingContactRoles}
+                            disabled={submitted || savingContactRoles || storingNewPicture}
                         >
                             {t('save')}
                         </Button>
@@ -1021,7 +1050,7 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
                     className={profileStyles.form}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || storingNewPicture}
                     labelAlign="left"
                     labelWrap
                     layout="vertical"
@@ -1168,6 +1197,24 @@ const UserEditForm = ({ id, typeOfUsers, can }: UserEditFormProps) => {
                                     />
                                 )}
 
+                                {isConsultantForm && (
+                                    <Card titleKey="counselor.picture.title">
+                                        <ConsultantPictureControl
+                                            consultantId={isEditing ? id : undefined}
+                                            disabled={
+                                                isReadOnly ||
+                                                storingNewPicture ||
+                                                !can(PermissionAction.Update, Resource.Consultant)
+                                            }
+                                            pendingDeletion={
+                                                isEditing &&
+                                                (consultantById?.status === 'IN_DELETION' ||
+                                                    !isActiveDeleteDate(consultantById?.deleteDate))
+                                            }
+                                            onSelectedFileChange={isEditing ? undefined : setSelectedPicture}
+                                        />
+                                    </Card>
+                                )}
                                 {isConsultantForm && (
                                     <Card titleKey="counselor.publicSlug.status.title">
                                         <MuiFormField

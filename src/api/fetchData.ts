@@ -111,6 +111,8 @@ interface FetchDataProps {
     bodyData?: BodyInit;
     skipAuth?: boolean;
     responseHandling?: string[];
+    /** Opt-in binary success body (e.g. a consultant photo). JSON stays the default for GET. */
+    responseType?: 'blob';
     timeout?: number;
     signal?: AbortSignal;
     // Internal flag: set on the single automatic retry after a token refresh so a
@@ -123,6 +125,7 @@ const readResponse = (response: Response, props: FetchDataProps, report: Transpo
     const handling = props.responseHandling;
     if (status === 204) return response;
     if (status >= 200 && status < 300) {
+        if (props.responseType === 'blob') return response.blob();
         if (handling?.includes(FETCH_SUCCESS.TEXT)) return response.text();
         if (props.method === FETCH_METHODS.GET || handling?.includes(FETCH_SUCCESS.CONTENT)) return response.json();
         return response;

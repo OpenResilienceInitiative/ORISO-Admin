@@ -75,7 +75,20 @@
     cursor: pointer;
 }
 
-.uploadButton:hover {
+.uploadButton:disabled {
+    background: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 12%, transparent);
+    color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 38%, transparent);
+    cursor: default;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.uploadButton:not(:disabled):hover {
     background: color-mix(in srgb, var(--m3-primary, #a5000a) 90%, #000000);
 }
 

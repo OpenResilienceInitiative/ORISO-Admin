@@ -44,6 +44,7 @@ import styles from './styles.module.scss';
 import { ReactComponent as CounsellorGlyph } from '../../resources/img/svg/navbar/users_active.svg';
 import { Notify } from '../../components/Notify';
 import { HintText } from '../../components/HintText';
+import { OnboardingPictureField } from './OnboardingPictureField';
 
 interface CounsellorOnboardingProps {
     inviteToken: string;
@@ -101,6 +102,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         data,
         submitError,
         passwordRejection,
+        pictureError,
         busy,
         retryLoad,
         topicLanguageError,
@@ -109,6 +111,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         updatePerson,
         updateNames,
         updateAvatar,
+        updatePicture,
         updateAgency,
         setTopics,
         toggleTopic,
@@ -162,6 +165,13 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         );
     }
 
+    // The account exists; only the photo did not take. Said once, next to the following step.
+    const pictureNotice = pictureError && (
+        <HintText role="status" data-testid="wizard-picture-notice">
+            {t(`counsellorOnboarding.picture.${pictureError}Failed`)}
+        </HintText>
+    );
+
     if (state.phase === 'done') {
         // The persisted allocation origin survives registration and pending-2FA resume.
         // Joining an existing centre and unknown legacy origins retain normal completion.
@@ -172,6 +182,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         };
         return (
             <div className={styles.wizard} data-testid={existingAccountSetup ? undefined : 'onboarding-done'}>
+                {pictureNotice}
                 {existingAccountSetup ? (
                     <DoneStep existingAccountSetup onLogin={signIn} />
                 ) : (
@@ -196,6 +207,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
         }
         return (
             <div className={styles.wizard}>
+                {pictureNotice}
                 <TwoFactorSetup
                     context="onboarding"
                     appLink={
@@ -455,7 +467,7 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
             {/*
               #1047: the avatar step is ON. Still one plain single-column section —
               the picker sits above the two names, exactly where the Figma card puts
-              it. The own-picture upload is the only part still missing (#1049).
+              it. The own-picture upload is the following section (#1049).
             */}
             {counselling && (
                 <Section titleKey="cards.avatarName.title" hintKey="cards.avatarName.subtitle">
@@ -510,6 +522,12 @@ export const CounsellorOnboarding = ({ inviteToken, client }: CounsellorOnboardi
                         value={data.names.internalName}
                         onChange={(e) => updateNames({ ...data.names, internalName: e.target.value })}
                     />
+                </Section>
+            )}
+
+            {counselling && (
+                <Section titleKey="counsellorOnboarding.picture.title" hintKey="counsellorOnboarding.picture.subtitle">
+                    <OnboardingPictureField value={data.picture} disabled={busy} onChange={updatePicture} />
                 </Section>
             )}
 

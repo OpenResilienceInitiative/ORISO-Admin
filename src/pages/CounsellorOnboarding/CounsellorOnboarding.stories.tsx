@@ -5,6 +5,8 @@ import { ThemeProvider } from '@mui/material/styles';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { createStubCounsellorOnboardingClient } from '../../api/counsellorOnboarding/counsellorOnboarding';
 import { CounsellorOnboarding } from './CounsellorOnboarding';
+import i18n from '../../i18n';
+import { portraitFile } from '../../components/ConsultantPictureField/storyFixtures';
 
 const PHONE_390 = {
     globals: { viewport: { value: 'mobile2', isRotated: false } },
@@ -102,6 +104,42 @@ export const AvatarStep: Story = {
         await userEvent.click(canvas.getByRole('radio', { name: 'Symbol fox' }));
         await expect(canvas.getByRole('radio', { name: 'Symbol fox' })).toBeChecked();
         await expect(canvas.getByRole('radio', { name: 'Initialen LB' })).not.toBeChecked();
+    },
+};
+
+/** The invitee's own photo: chosen here, stored after registration, internal only by default. */
+export const PictureStep: Story = {
+    name: 'Picture step',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0 }) },
+    play: async ({ canvas, userEvent }) => {
+        await canvas.findByRole('heading', { name: String(i18n.t('counsellorOnboarding.picture.title')) });
+        await userEvent.upload(canvas.getByTestId('consultant-picture-input') as HTMLInputElement, portraitFile());
+        await expect(
+            canvas.getByRole('switch', { name: String(i18n.t('cards.avatarName.ownPictureInternalOnly')) }),
+        ).toBeChecked();
+        await expect(canvas.getByRole('img', { name: String(i18n.t('counselor.picture.previewAlt')) })).toBeVisible();
+    },
+};
+
+/**
+ * The photo scanner is off (503 PICTURE_SCAN_UNAVAILABLE, ORISO-Helm#672): the account is still
+ * created, 2FA follows, and the invitee is told why the photo is missing.
+ */
+export const PictureRefusedScannerOff: Story = {
+    name: 'Picture refused: scanner off',
+    args: { client: createStubCounsellorOnboardingClient({ latencyMs: 0, pictureUploadFails: true }) },
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.type(await canvas.findByLabelText(String(i18n.t('cards.advisorAccount.username'))), 'lena_b');
+        await userEvent.type(
+            canvas.getByLabelText(String(i18n.t('cards.advisorAccount.password'))),
+            'SecurePassword1!',
+        );
+        await userEvent.upload(canvas.getByTestId('consultant-picture-input') as HTMLInputElement, portraitFile());
+        await userEvent.click(canvas.getByRole('button', { name: String(i18n.t('counsellorOnboarding.submit')) }));
+
+        await expect(await canvas.findByTestId('wizard-picture-notice')).toHaveTextContent(
+            String(i18n.t('counsellorOnboarding.picture.scanUnavailableFailed')),
+        );
     },
 };
 
