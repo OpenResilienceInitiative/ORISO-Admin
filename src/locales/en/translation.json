@@ -4911,6 +4911,7 @@
     "caseSharingLogs.model.NONE": "None",
     "caseSharingLogs.source.AGENCY_SETTINGS": "Settings",
     "caseSharingLogs.source.AGENCY_TYPE": "Type of counselling centre",
+    "caseSharingLogs.source.AGENCY_CREATED": "Counselling centre created",
     "caseSharingLogs.system": "System",
     "caseSharingLogs.agencyFallback": "Counselling centre {{id}}",
     "caseSharingLogs.empty": "No case sharing changes yet",

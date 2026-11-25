@@ -2,7 +2,7 @@
 export type CaseSharingModel = 'CASE_HANDOVER' | 'TEAM_COUNSELLING' | 'NONE';
 
 /** Where the switch was made: the agency settings, or by changing the type of the Beratungsstelle. */
-export type CaseSharingChangeSource = 'AGENCY_SETTINGS' | 'AGENCY_TYPE';
+export type CaseSharingChangeSource = 'AGENCY_SETTINGS' | 'AGENCY_TYPE' | 'AGENCY_CREATED';
 
 /** One switch of a Beratungsstelle's case sharing model. It applies to new cases only. */
 export interface CaseSharingChangeEntry {

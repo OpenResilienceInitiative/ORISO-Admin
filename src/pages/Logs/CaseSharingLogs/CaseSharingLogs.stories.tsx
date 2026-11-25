@@ -41,7 +41,7 @@ const ENTRIES: CaseSharingChangeEntry[] = [
         changedBy: null,
         previousModel: null,
         newModel: 'CASE_HANDOVER',
-        source: 'AGENCY_SETTINGS',
+        source: 'AGENCY_CREATED',
     },
 ];
 
@@ -87,6 +87,7 @@ export const WithChanges: Story = {
         await expect(canvas.getByText('— → Fallübergabe')).toBeInTheDocument();
         await expect(canvas.getByText('System')).toBeInTheDocument();
         await expect(canvas.getByText('Art der Beratungsstelle')).toBeInTheDocument();
+        await expect(canvas.getByText('Beratungsstelle angelegt')).toBeInTheDocument();
     },
 };
 
