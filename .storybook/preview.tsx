@@ -21,6 +21,7 @@ import { createSharedStoryHandlers } from './fixtures';
 import { clearStoryQueryClients, createStoryQueryClient, releaseStoryQueryClient } from './queryClients';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
+import { applyAdminTheme, clearAdminInvertedThemeTokens } from '../src/utils/applyAdminTheme';
 
 // Global Admin styling: antd v5 reset + app less/overrides. Mirrors src/App.tsx.
 import 'antd/dist/reset.css';
@@ -63,7 +64,46 @@ const StoryProviders = ({ children }: { children: React.ReactNode }) => {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
+type StoryScheme = 'light' | 'dark';
+
+/**
+ * The `scheme` global: `dark` renders the story in the personal dark scheme the app applies for
+ * `prefers-color-scheme: dark` (applyAdminTheme on the root + the antd theme for that scheme), on
+ * the dark surface. `light` (default) leaves everything as before, so stories that set their own
+ * tokens are not touched.
+ */
+const StoryScheme = ({ scheme, children }: { scheme: StoryScheme; children: React.ReactNode }) => {
+    React.useLayoutEffect(() => {
+        if (scheme !== 'dark') return undefined;
+        applyAdminTheme(null, document.documentElement, 'dark');
+        return () => clearAdminInvertedThemeTokens();
+    }, [scheme]);
+    if (scheme !== 'dark') return <>{children}</>;
+    return (
+        <div
+            style={{ minHeight: '100vh', padding: 24, background: 'var(--m3-surface)', color: 'var(--m3-on-surface)' }}
+        >
+            {children}
+        </div>
+    );
+};
+
 const preview: Preview = {
+    initialGlobals: { scheme: 'light' },
+    globalTypes: {
+        scheme: {
+            description: 'Admin colour scheme (personal display setting)',
+            toolbar: {
+                title: 'Scheme',
+                icon: 'mirror',
+                items: [
+                    { value: 'light', title: 'Light' },
+                    { value: 'dark', title: 'Dark' },
+                ],
+                dynamicTitle: true,
+            },
+        },
+    },
     parameters: {
         // WCAG 2.2 AA: run axe-core (incl. the 2.2-specific rules) against each
         // story and flag violations as errors (A11y panel + storybook test-runner).
@@ -129,19 +169,28 @@ const preview: Preview = {
         });
     },
     decorators: [
-        (Story, context) => (
-            <StoryProviders>
-                <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <AntdApp component={false}>
-                        {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
-                        <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
-                            <Story />
-                        </MemoryRouter>
-                        {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}
-                    </AntdApp>
-                </ConfigProvider>
-            </StoryProviders>
-        ),
+        (Story, context) => {
+            const scheme: StoryScheme = context.globals.scheme === 'dark' ? 'dark' : 'light';
+            return (
+                <StoryProviders>
+                    <ConfigProvider
+                        locale={de_DE}
+                        theme={buildAdminAntdTheme(scheme === 'dark' ? { scheme } : undefined)}
+                        renderEmpty={() => <AdminEmpty />}
+                    >
+                        <AntdApp component={false}>
+                            {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
+                            <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
+                                <StoryScheme scheme={scheme}>
+                                    <Story />
+                                </StoryScheme>
+                            </MemoryRouter>
+                            {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}
+                        </AntdApp>
+                    </ConfigProvider>
+                </StoryProviders>
+            );
+        },
     ],
 };
 

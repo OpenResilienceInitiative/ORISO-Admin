@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 import type { IdAllocationClient, IdAllocationState, NextFreeIdParams } from '../../api/idAllocation/idAllocation';
 import { IdAllocationField, useIdAllocation, type UseIdAllocationResult } from './index';
-import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 /**
  * Stubbed allocation client with the worked example from ORISO-Admin#570:
@@ -138,11 +138,8 @@ export const AllStates: Story = {
  * sits on the field-selected surface/ink pair. Primary text on primary-fixed was about 1:1 in dark.
  */
 export const DarkSchemeMenuOpen: Story = {
-    render: () => (
-        <DarkSchemeFrame>
-            <InteractiveExample />
-        </DarkSchemeFrame>
-    ),
+    globals: DARK_SCHEME_GLOBALS,
+    render: () => <InteractiveExample />,
     play: async ({ canvas, userEvent }) => {
         await userEvent.click(canvas.getByRole('combobox'));
         const doc = canvas.getByRole('combobox').ownerDocument;

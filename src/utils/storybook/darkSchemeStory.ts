@@ -1,29 +1,11 @@
-import { useLayoutEffect, type ReactNode } from 'react';
-import { ConfigProvider } from 'antd';
-import { applyAdminTheme, clearAdminInvertedThemeTokens } from '../applyAdminTheme';
 import { contrastRatio } from '../contrastRatio';
-import { buildAdminAntdTheme } from '../../theme/antdM3Theme';
 
 /**
- * Storybook-only: renders a story in the personal DARK scheme the app applies for
- * `prefers-color-scheme: dark` (AdminDisplayProvider → useAdminTheme → applyAdminTheme), with the
- * antd theme built for the same scheme. Regression frame for the dark-mode contrast fixes: a text
- * that is hard-coded or on a theme-invariant fill shows up here as an unreadable pair.
+ * Storybook-only: put `globals: { scheme: 'dark' }` on a story to render it in the personal dark
+ * scheme (see the `scheme` global in .storybook/preview.tsx). These helpers measure what the
+ * reader sees: a text that is hard-coded or on a theme-invariant fill shows up as an unreadable pair.
  */
-export const DarkScheme = ({ children }: { children: ReactNode }) => {
-    useLayoutEffect(() => {
-        applyAdminTheme(null, document.documentElement, 'dark');
-        return () => clearAdminInvertedThemeTokens();
-    }, []);
-
-    return (
-        <ConfigProvider theme={buildAdminAntdTheme({ scheme: 'dark' })}>
-            <div style={{ padding: 24, background: 'var(--m3-surface)', color: 'var(--m3-on-surface)' }}>
-                {children}
-            </div>
-        </ConfigProvider>
-    );
-};
+export const DARK_SCHEME_GLOBALS = { scheme: 'dark' } as const;
 
 const rgbToHex = (rgb: string): string => {
     const [r, g, b] = (rgb.match(/\d+(\.\d+)?/g) ?? ['0', '0', '0'])

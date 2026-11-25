@@ -340,7 +340,15 @@ const darkMuted = '#c4c7c8';
 const darkOutline = '#8e9192';
 const darkDivider = '#444748';
 
+/**
+ * Text that keeps its legacy light colour (e.g. #1b1b1c, #273270, #63636a) reads
+ * `var(--admin-scheme-on-surface[-variant], <that literal>)` (borders: `--admin-scheme-outline`).
+ * Only the dark scheme writes these, so light renders exactly as before and dark gets the on-surface roles.
+ */
 const personalDarkSurfaceTokens = {
+    '--admin-scheme-on-surface': darkInk,
+    '--admin-scheme-on-surface-variant': darkMuted,
+    '--admin-scheme-outline': darkOutline,
     '--m3-surface': darkSurface,
     '--m3-background': darkSurface,
     '--m3-on-surface': darkInk,
@@ -401,6 +409,11 @@ const applyPersonalContrast = (tokens: Record<string, string>, contrast: Exclude
         ...tokens,
         '--m3-on-surface': ink,
         '--m3-on-surface-variant': muted,
+        // Dark only: light never writes the scheme ink, so its legacy literals stay as they were.
+        ...(tokens['--admin-scheme-on-surface'] && {
+            '--admin-scheme-on-surface': ink,
+            '--admin-scheme-on-surface-variant': muted,
+        }),
         '--admin-form-field-text': ink,
         '--admin-form-label-text': muted,
         '--admin-form-muted-text': muted,

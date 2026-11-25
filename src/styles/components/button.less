@@ -36,15 +36,15 @@
     }
 
     &__secondary {
-        border: 1px solid #c4c7c8;
+        border: 1px solid var(--admin-scheme-outline, #c4c7c8);
         background-color: transparent;
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--admin-scheme-on-surface-variant, #444748);
         transition: all 0.3s ease;
 
         &:hover {
-            border-color: var(--m3-on-surface-variant, #444748);
-            background-color: rgb(68 71 72 / 8%);
-            color: var(--m3-on-surface-variant, #444748);
+            border-color: var(--admin-scheme-on-surface-variant, #444748);
+            background-color: color-mix(in srgb, var(--admin-scheme-on-surface-variant, #444748) 8%, transparent);
+            color: var(--admin-scheme-on-surface-variant, #444748);
             transition: all 0.3s ease;
         }
     }

@@ -14,7 +14,7 @@
 
 .RichEditor {
     &-root {
-        background: #ffffff;
+        background: var(--m3-surface-container-lowest, #ffffff);
         border-color: #00000099 !important;
         font-size: 14px;
     }
@@ -38,7 +38,7 @@
 
         .RichEditor-blockquote {
             border-left: 5px solid #eeeeee;
-            color: #666666;
+            color: var(--admin-scheme-on-surface-variant, #666666);
             font-family: 'Hoefler Text', Georgia, serif;
             font-style: italic;
             margin: 16px 0;
@@ -113,7 +113,7 @@
     }
 
     &-styleButton {
-        color: #999999;
+        color: var(--admin-scheme-on-surface-variant, #999999);
         cursor: pointer;
         margin-right: 16px;
         padding: 2px 0;
@@ -209,7 +209,7 @@
         border: 0;
         background: transparent;
         border-radius: 50%;
-        color: var(--m3-on-surface-variant, #444748);
+        color: var(--admin-scheme-on-surface-variant, #444748);
         cursor: pointer;
 
         svg {
@@ -293,7 +293,7 @@
     }
 
     &-anchorBubble {
-        background: #ffffff;
+        background: var(--m3-surface-container-lowest, #ffffff);
         border: 1px solid #d9d9d9;
         border-radius: 6px;
         padding: 4px;
@@ -337,7 +337,7 @@
     margin: 12px 0;
     padding: 4px 16px;
     border-left: 4px solid var(--m3-outline-variant, #c4c7c8);
-    color: #3f4852;
+    color: var(--admin-scheme-on-surface-variant, #3f4852);
 
     p {
         margin: 0;
@@ -377,6 +377,6 @@
     content: attr(data-placeholder);
     float: left;
     height: 0;
-    color: rgb(0 0 0 / 40%);
+    color: var(--admin-scheme-on-surface-variant, rgb(0 0 0 / 40%));
     pointer-events: none;
 }

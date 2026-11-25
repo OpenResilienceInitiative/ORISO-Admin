@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect } from 'storybook/test';
 import { DashboardEmptyState } from './DashboardEmptyState';
-import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
 import trackingIllustration from '../../resources/img/tile-help/statistics/tracking.webp';
 
@@ -89,13 +89,7 @@ export const DarkScheme: Story = {
         ...WithIllustrationAndAction.args,
         action: { label: 'Zurück zur Startseite', onClick: () => {} },
     },
-    decorators: [
-        (Story) => (
-            <DarkSchemeFrame>
-                <Story />
-            </DarkSchemeFrame>
-        ),
-    ],
+    globals: DARK_SCHEME_GLOBALS,
     play: async ({ canvas }) => {
         const button = canvas.getByRole('button', { name: 'Zurück zur Startseite' });
         await expect(textContrast(button)).toBeGreaterThanOrEqual(4.5);

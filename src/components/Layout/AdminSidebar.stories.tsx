@@ -8,7 +8,7 @@ import { UserRole } from '../../enums/UserRole';
 import { AdminSidebar, type AdminSidebarNavItem } from './AdminSidebar';
 import { buildAdminNavItems } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
-import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 // Pre-resolved nav items (the wrapper builds these from permissions; the sidebar just renders them).
 const settingsItem: AdminSidebarNavItem = {
@@ -265,13 +265,7 @@ export const DarkSchemeActiveItem: Story = {
     args: {
         items: [settingsItem, tenantsItem, agencyItem, usersItem, statisticsItem, linksItem, logsItem],
     },
-    decorators: [
-        (Story) => (
-            <DarkSchemeFrame>
-                <Story />
-            </DarkSchemeFrame>
-        ),
-    ],
+    globals: DARK_SCHEME_GLOBALS,
     play: async ({ canvasElement }) => {
         const active = canvasElement.querySelector('ul.upperSidebar > li.menuItem > a.active');
         const label = active?.querySelector('span');

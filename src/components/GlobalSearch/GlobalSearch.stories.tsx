@@ -9,7 +9,7 @@ import { FloatingLabelInput } from '../FloatingLabelInput';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { GlobalSearchMenu } from './GlobalSearchMenu';
 import { SplitButton } from './SplitButton';
-import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 /**
  * Global search component family (Figma 1165:17005, "Search Bar Admin Panel"):
@@ -226,11 +226,8 @@ export const MenuOpen: Story = {
  */
 export const DarkSchemeMenuOpen: Story = {
     args: {},
-    render: () => (
-        <DarkSchemeFrame>
-            <MenuExample pinnedOpen />
-        </DarkSchemeFrame>
-    ),
+    globals: DARK_SCHEME_GLOBALS,
+    render: () => <MenuExample pinnedOpen />,
     play: async ({ canvasElement }) => {
         const body = within(canvasElement.ownerDocument.body);
         await waitFor(() => expect(body.getByRole('menu')).toBeVisible());

@@ -4,7 +4,7 @@ import { expect, waitFor, within } from 'storybook/test';
 import { ThemeBuilder } from './index';
 import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { appearanceHandlers, inTheRaster, withAppearanceData } from '../appearanceStoryHarness.matrix';
-import { DarkScheme as DarkSchemeFrame, textContrast } from '../../../../../utils/storybook/darkSchemeStory';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../../../../utils/storybook/darkSchemeStory';
 
 const meta = {
     title: 'Settings/Einstellungen/Erscheinungsbild/ThemeBuilderCard',
@@ -46,13 +46,7 @@ export const HelpSlideshow: Story = {
  * follow on-surface / on-surface-variant. Hard-coded ink sank to 1.2–1.5:1 on the dark card.
  */
 export const DarkScheme: Story = {
-    decorators: [
-        (Story) => (
-            <DarkSchemeFrame>
-                <Story />
-            </DarkSchemeFrame>
-        ),
-    ],
+    globals: DARK_SCHEME_GLOBALS,
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const purpose = await canvas.findByText(
