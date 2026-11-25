@@ -97,6 +97,34 @@
     transform: rotate(180deg);
 }
 
+/*
+ * Open, the header is laid out like every tile (Card): icon centred above the title, the state
+ * under it, the chevron in the corner. Folded it is one row. The switch itself is instant; the
+ * component slides icon and title between the two places (FLIP), and not at all with reduced motion.
+ * A tile whose icon is its own button (#1558) keeps the row.
+ */
+
+.open .heading:not(.withIconButton) .header {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 64px 16px;
+    gap: 8px;
+    text-align: center;
+
+    .title {
+        flex: 0 0 auto;
+    }
+
+    .chevron {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+    }
+}
+
 /* The tile's own header says what the card inside would say again. */
 .body {
     --m3-editor-max-width: none;
@@ -138,6 +166,15 @@
 
     .body {
         padding: 0 8px 12px;
+    }
+
+    .open .heading:not(.withIconButton) .header {
+        padding: 16px 48px 12px;
+
+        .chevron {
+            top: 16px;
+            right: 16px;
+        }
     }
 }
 
