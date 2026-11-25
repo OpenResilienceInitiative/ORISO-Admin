@@ -627,7 +627,7 @@ $amberSoft: #fff3dc;
 .machineMark {
     display: inline-flex;
     margin-left: 6px;
-    color: $brand;
+    color: var(--m3-primary, #a5000a);
     vertical-align: middle;
 
     svg {
@@ -642,8 +642,9 @@ $amberSoft: #fff3dc;
     gap: 2px;
     padding: 0 6px;
     border-radius: 10px;
-    background: #fbe9ea;
-    color: $brand;
+    // Primary-container role: the theme pairs it with its own readable on-colour.
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--m3-on-primary-container, #141c25);
     font-size: 11px;
 
     svg {

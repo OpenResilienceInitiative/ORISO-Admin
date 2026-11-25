@@ -1043,7 +1043,8 @@ export const TopicCatalogueEditor = ({
                                 <M3Button
                                     variant="filled"
                                     loading={saving}
-                                    disabled={!dirty || picturesReading > 0}
+                                    // A running translation still fills the draft: saving now would miss its texts.
+                                    disabled={!dirty || picturesReading > 0 || translating}
                                     onClick={submit}
                                 >
                                     {t('save')}
@@ -1086,7 +1087,12 @@ export const TopicCatalogueEditor = ({
                     <DialogButton onClick={close} disabled={saving}>
                         {t('btn.cancel')}
                     </DialogButton>
-                    <DialogButton primary disabled={!dirty || picturesReading > 0} loading={saving} onClick={submit}>
+                    <DialogButton
+                        primary
+                        disabled={!dirty || picturesReading > 0 || translating}
+                        loading={saving}
+                        onClick={submit}
+                    >
                         {t('save')}
                     </DialogButton>
                 </div>
