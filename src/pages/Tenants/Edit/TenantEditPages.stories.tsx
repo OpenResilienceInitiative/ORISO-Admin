@@ -42,7 +42,7 @@ export const EmailServer: Story = { decorators: [tenantEditDecorator('smtp')] };
 
 /**
  * ORISO-Admin#1577: the same tiles as the platform page. The Live Chat tile is there, with this Träger's chat links
- * on it (not in a card of its own), and the page intro says that changes apply to this Träger only. The former
+ * on it (not in a card of its own), and the page intro is the same as on Einstellungen → Funktionszugriff. The former
  * Funktionalitäten tab (now "Weitere") gave up Team-Chat (its own tile after the conversation types) and
  * supervision (a section of the Mail-Beratung tile, Frank 2026-11-25).
  */
@@ -55,11 +55,12 @@ export const FunctionalityAccess: Story = {
             await within(liveChat).findByRole('region', { name: i18n.t('liveChatLinks.title') }, { timeout: 8000 }),
         ).toBeInTheDocument();
         await expect(canvas.getAllByRole('region', { name: i18n.t('liveChatLinks.title') })).toHaveLength(1);
+        // Frank, 2026-11-25: the same page as Einstellungen → Funktionszugriff, no extra intro paragraph.
         await expect(
-            within(canvas.getByTestId('permissions-intro')).getByText(
+            within(canvas.getByTestId('permissions-intro')).queryByText(
                 String(i18n.t('tenants.globalSettings.superAdminWarning.description')),
             ),
-        ).toBeVisible();
+        ).not.toBeInTheDocument();
         await expect(canvas.queryByTestId('supervision-tile')).not.toBeInTheDocument();
         await expect(
             within(canvas.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: /^Supervision$/ }),
