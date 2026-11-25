@@ -1,6 +1,7 @@
 import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
 import { brandSeedCannotYieldPalette } from './seedUsability';
 import { contrastRatio } from '../contrastRatio';
+import { toneOf } from './neutralTone';
 
 export type OrisoSchemeName = 'light' | 'inverted' | 'dark';
 export type AdminContrast = 'standard' | 'medium' | 'high';
@@ -141,6 +142,11 @@ const resolveErrorSeed = (seeds: TenantSeeds): string => normalizeHex(getSignal(
  * src/app.css, which is the static fallback for exactly this seed.
  */
 const DEFAULT_ACCENT_LIGHT = '#ffe2de';
+/**
+ * Ink on `--m3-primary-fixed` (the sidebar's active pill). #410001 on the default rose; a tenant
+ * that sets a dark light-accent gets it lifted until it reads at 4.5:1 (same rule as `keepReadableOn`).
+ */
+const DEFAULT_ON_PRIMARY_FIXED = '#410001';
 const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 /**
@@ -282,6 +288,7 @@ const invertedTokens = (
         '--m3-on-primary-container': readableOn(primaryContainer),
         '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
         '--m3-primary-fixed': accentLight,
+        '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
         '--m3-secondary': '#cbd6e2',
@@ -340,7 +347,15 @@ const darkMuted = '#c4c7c8';
 const darkOutline = '#8e9192';
 const darkDivider = '#444748';
 
+/**
+ * Text that keeps its legacy light colour (e.g. #1b1b1c, #273270, #63636a) reads
+ * `var(--admin-scheme-on-surface[-variant], <that literal>)` (borders: `--admin-scheme-outline`).
+ * Only the dark scheme writes these, so light renders exactly as before and dark gets the on-surface roles.
+ */
 const personalDarkSurfaceTokens = {
+    '--admin-scheme-on-surface': darkInk,
+    '--admin-scheme-on-surface-variant': darkMuted,
+    '--admin-scheme-outline': darkOutline,
     '--m3-surface': darkSurface,
     '--m3-background': darkSurface,
     '--m3-on-surface': darkInk,
@@ -401,6 +416,11 @@ const applyPersonalContrast = (tokens: Record<string, string>, contrast: Exclude
         ...tokens,
         '--m3-on-surface': ink,
         '--m3-on-surface-variant': muted,
+        // Dark only: light never writes the scheme ink, so its legacy literals stay as they were.
+        ...(tokens['--admin-scheme-on-surface'] && {
+            '--admin-scheme-on-surface': ink,
+            '--admin-scheme-on-surface-variant': muted,
+        }),
         '--admin-form-field-text': ink,
         '--admin-form-label-text': muted,
         '--admin-form-muted-text': muted,
@@ -451,6 +471,7 @@ const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoP
             // Brand-tinted text and icons ON the light container (mobile menu tiles).
             '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
             '--m3-primary-fixed': accentLight,
+            '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
             // Snackbar action text on the success and warning containers, whatever the brand seed.
@@ -484,6 +505,55 @@ const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoP
     };
 };
 
+/**
+ * Ink tones of the personal "high" contrast level, same values as the Frontend
+ * (ORISO-Frontend#2544). Surfaces keep the scheme's own; only text, icons and borders move toward
+ * black (light) or white (dark), so the choice is visible even where the standard palette already
+ * passes 7:1 and `applyPersonalContrast` alone would change nothing.
+ */
+export const HIGH_CONTRAST_INK_TONES = {
+    light: { onSurface: 0, onSurfaceVariant: 20, outline: 30, outlineVariant: 50 },
+    dark: { onSurface: 100, onSurfaceVariant: 92, outline: 80, outlineVariant: 60 },
+} as const;
+
+/** Tokens that paint a fill; the ink remap must never touch them. */
+const isFillToken = (name: string) => /surface|background|scrim|container|picture-filter/.test(name);
+
+/**
+ * Moves the four neutral ink roles to their high-contrast tones, and every text or border token
+ * that shares one of those colours with them (field outline, table and search text, scheme ink).
+ */
+const applyHighContrastInk = (tokens: Record<string, string>, scheme: 'light' | 'dark'): Record<string, string> => {
+    const tones = HIGH_CONTRAST_INK_TONES[scheme];
+    const roles = [
+        ['--m3-on-surface', tones.onSurface],
+        ['--m3-on-surface-variant', tones.onSurfaceVariant],
+        ['--m3-outline', tones.outline],
+        ['--m3-outline-variant', tones.outlineVariant],
+    ] as const;
+    const remap = new Map<string, string>();
+    roles.forEach(([name, tone]) => {
+        const current = tokens[name]?.toLowerCase();
+        if (current && !remap.has(current)) remap.set(current, toneOf(current, tone));
+    });
+    const next: Record<string, string> = {};
+    Object.entries(tokens).forEach(([name, value]) => {
+        const lifted = remap.get(value.toLowerCase());
+        next[name] = lifted && !isFillToken(name) ? lifted : value;
+    });
+    roles.forEach(([name, tone]) => {
+        if (tokens[name]) next[name] = toneOf(tokens[name], tone);
+    });
+    // Fields are drawn with the outline role in high contrast.
+    next['--admin-field-outline'] = next['--m3-outline'];
+    // Texts that keep a legacy literal in light (`var(--admin-scheme-*, <literal>)`) follow high
+    // contrast too; standard and medium light still never write these.
+    next['--admin-scheme-on-surface'] = next['--m3-on-surface'];
+    next['--admin-scheme-on-surface-variant'] = next['--m3-on-surface-variant'];
+    next['--admin-scheme-outline'] = next['--m3-outline'];
+    return next;
+};
+
 export const computeOrisoPalette = (
     seeds: TenantSeeds,
     scheme: OrisoSchemeName = 'light',
@@ -491,6 +561,7 @@ export const computeOrisoPalette = (
 ): OrisoPaletteResult => {
     const palette = computeBasePalette(seeds, scheme);
     if (contrast === 'standard' || scheme === 'inverted') return palette;
+    const inked = contrast === 'high' ? applyHighContrastInk(palette.tokens, scheme) : palette.tokens;
 
-    return { ...palette, tokens: applyPersonalContrast(palette.tokens, contrast) };
+    return { ...palette, tokens: applyPersonalContrast(inked, contrast) };
 };
