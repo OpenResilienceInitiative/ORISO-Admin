@@ -56,6 +56,17 @@ const handlers = [
                 : TENANTS.filter((tenant) => tenant.name.toLowerCase().includes(query.toLowerCase()));
         return HttpResponse.json({ _embedded: rows.map((tenant) => ({ _embedded: tenant })), total: rows.length });
     }),
+    // What the Träger still holds, shown in the deletion dialog before anything is deleted (ORISO-Admin#1525).
+    http.get('*/service/useradmin/tenants/:tenantId/deletion-blockers', () =>
+        HttpResponse.json({
+            agencies: 2,
+            consultants: 0,
+            adviceSeekers: 0,
+            agencyAdmins: 0,
+            tenantAdmins: 1,
+            openInvites: 1,
+        }),
+    ),
 ];
 
 const Route = () => {
@@ -120,6 +131,8 @@ const deleteCaritasNord = async (canvasElement: HTMLElement) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /Caritas Nord löschen/ }));
     const dialog = within(canvasElement.ownerDocument.body).getByRole('dialog');
+    // The confirm stays disabled until the overview of what goes with the Träger has loaded.
+    await within(dialog).findByTestId('tenant-delete-preview');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 };
 

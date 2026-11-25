@@ -1,9 +1,10 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TranslationApiKeysCard } from './index';
 import m3ButtonStyles from '../../M3Button/styles.module.scss';
+import { TranslationApiError } from '../../../api/tenant/translation';
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -83,5 +84,53 @@ describe('TranslationApiKeysCard', () => {
         expect(openrouterSave.querySelector('[role="progressbar"]')).toBeInTheDocument();
         expect(mistralSave).toBeEnabled();
         expect(mistralSave).not.toHaveAttribute('aria-busy');
+    });
+    describe('key test (Frank, 2026-11-24)', () => {
+        const testButton = (provider: string) =>
+            within(screen.getByTestId(`translation-key-actions-${provider}`)).getByRole('button', {
+                name: 'legal.translation.settings.test',
+            });
+
+        it('calls the API for that provider and shows the model reply', async () => {
+            const user = userEvent.setup({ delay: null });
+            const onTest = vi.fn().mockResolvedValue({
+                provider: 'mistral',
+                model: 'mistral-small-latest',
+                sourceText: 'Guten Tag!',
+                reply: 'Good day!',
+                latencyMs: 412,
+            });
+            render(<TranslationApiKeysCard keys={{ mistral: 'sk-…f9x2' }} onSave={() => undefined} onTest={onTest} />);
+
+            await user.click(testButton('mistral'));
+
+            expect(onTest).toHaveBeenCalledWith('mistral');
+            const result = await screen.findByTestId('translation-key-test-result-mistral');
+            expect(result).toHaveTextContent('legal.translation.settings.testOk');
+            expect(result).toHaveTextContent('mistral-small-latest:412:Guten Tag!:Good day!');
+        });
+
+        it('explains a rejected key in plain words', async () => {
+            const user = userEvent.setup({ delay: null });
+            const onTest = vi.fn().mockRejectedValue(new TranslationApiError('TRANSLATION_KEY_INVALID', 'openrouter'));
+            render(
+                <TranslationApiKeysCard keys={{ openrouter: 'sk-…abcd' }} onSave={() => undefined} onTest={onTest} />,
+            );
+
+            await user.click(testButton('openrouter'));
+
+            const result = await screen.findByTestId('translation-key-test-result-openrouter');
+            expect(result).toHaveTextContent('legal.translation.settings.testFailed');
+            expect(result).toHaveTextContent('legal.translation.error.keyInvalid');
+        });
+
+        it('cannot test a provider without a stored key', () => {
+            render(
+                <TranslationApiKeysCard keys={{ openrouter: 'sk-…abcd' }} onSave={() => undefined} onTest={vi.fn()} />,
+            );
+
+            expect(testButton('openrouter')).toBeEnabled();
+            expect(testButton('mistral')).toBeDisabled();
+        });
     });
 });
