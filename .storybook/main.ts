@@ -73,6 +73,62 @@ const config: StorybookConfig = {
             },
         );
     },
+    storySorts: [
+        {
+            order: [
+                'Settings',
+                [
+                    'Einstellungen',
+                    [
+                        'Globale Konfigurationen',
+                        'Stammdaten & Mehr',
+                        'Erscheinungsbild',
+                        'Rechtliches',
+                        'Einführung Ratsuchende',
+                        'Email Server',
+                        'Systemhinweise',
+                        'Funktionszugriff',
+                        'Funktionalitäten',
+                        '*',
+                    ],
+                    'Träger',
+                    [
+                        'Stammdaten & Mehr',
+                        'Erscheinungsbild',
+                        'Rechtliches',
+                        'Einführung Ratsuchende',
+                        'Email Server',
+                        'Funktionszugriff',
+                        'Funktionalitäten',
+                        '*',
+                    ],
+                    'Beratungsstellen',
+                    ['Stammdaten & Mehr', 'Rechtliches', 'Funktionszugriff', '*'],
+                    'Mein Account',
+                    [
+                        'UserProfile',
+                        'PrivateData',
+                        'RolesAndAssignment',
+                        'SelfConsultantIdentity',
+                        'PasswordChange',
+                        'PasswordChangeCounsellorNotice',
+                        'TwoFactorCard',
+                        'LanguageSettings',
+                        'Absence',
+                        'TourOverviewSection',
+                        'Documentation',
+                        '*',
+                    ],
+                    '*',
+                ],
+                'Atoms',
+                'Molecules',
+                'Organisms',
+                'Pages',
+                '*',
+            ],
+        },
+    ],
 };
 
 export default config;

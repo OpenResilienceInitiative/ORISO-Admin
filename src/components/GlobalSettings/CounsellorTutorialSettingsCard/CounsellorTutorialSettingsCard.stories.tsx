@@ -153,7 +153,7 @@ export const PracticeRequiresTours: Story = {
 };
 
 export const Mobile390: Story = {
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [
         (Story) => (
             <div style={{ width: 358, maxWidth: '100%' }}>
@@ -164,16 +164,16 @@ export const Mobile390: Story = {
 };
 
 export const Tablet820: Story = {
+    globals: { viewport: { value: 'tablet820', isRotated: false } },
     parameters: {
         viewport: {
-            defaultViewport: 'tablet820',
             options: { tablet820: { name: 'Tablet 820', styles: { width: '820px', height: '1180px' } } },
         },
     },
 };
 
 export const Desktop1440: Story = {
-    parameters: { viewport: { defaultViewport: 'desktop' } },
+    globals: { viewport: { value: 'desktop', isRotated: false } },
 };
 
 export const English: Story = {
