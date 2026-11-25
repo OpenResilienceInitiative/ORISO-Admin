@@ -293,7 +293,7 @@
 	"src/api/tenant/translation.ts": {
 		"anti-slop(no-runtime-typeof)": 1,
 		"anti-slop(no-unknown-parameters)": 1,
-		"anti-slop(require-safety-comment-for-type-assertion)": 3
+		"anti-slop(require-safety-comment-for-type-assertion)": 4
 	},
 	"src/api/tenant/updateDpiaMasterData.ts": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
@@ -421,6 +421,7 @@
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
 	},
 	"src/components/CollapsibleTile/index.tsx": {
+		"anti-slop(no-runtime-typeof)": 1,
 		"react(set-state-in-effect)": 1
 	},
 	"src/components/ColorSelector/ColorSelector.tsx": {
@@ -594,6 +595,9 @@
 	"src/components/GlobalSettings/StatisticsSettingsCard/index.tsx": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1
 	},
+	"src/components/GlobalSettings/TranslationApiKeysCard/index.tsx": {
+		"jsx-a11y(prefer-tag-over-role)": 2
+	},
 	"src/components/GrantConsultantIdentityModal/index.tsx": {
 		"anti-slop(no-runtime-typeof)": 1
 	},
@@ -613,6 +617,9 @@
 	},
 	"src/components/Journeys/DestinationsDialog.tsx": {
 		"react(set-state-in-effect)": 1
+	},
+	"src/components/Journeys/GreetingTextsForScope.tsx": {
+		"anti-slop(require-safety-comment-for-type-assertion)": 1
 	},
 	"src/components/Journeys/JourneyQuestionsEditor.tsx": {
 		"anti-slop(require-safety-comment-for-type-assertion)": 1,
@@ -663,6 +670,7 @@
 		"anti-slop(no-array-filter-map)": 1,
 		"anti-slop(no-conditional-empty-object-spread)": 1,
 		"anti-slop(no-known-value-widening)": 1,
+		"anti-slop(no-runtime-typeof)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 5
 	},
 	"src/components/Journeys/journeyEditing.ts": {
@@ -852,7 +860,7 @@
 		"anti-slop(no-known-value-widening)": 1,
 		"anti-slop(no-runtime-typeof)": 1,
 		"anti-slop(no-unknown-parameters)": 1,
-		"anti-slop(require-safety-comment-for-type-assertion)": 1,
+		"anti-slop(require-safety-comment-for-type-assertion)": 2,
 		"unicorn(no-useless-fallback-in-spread)": 1
 	},
 	"src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/index.tsx": {
@@ -1114,10 +1122,14 @@
 	"src/components/TopicCatalogue/topicTranslations.ts": {
 		"anti-slop(no-known-value-widening)": 1
 	},
+	"src/components/TopicCatalogueDialog/dialogTranslations.ts": {
+		"anti-slop(no-known-value-widening)": 2
+	},
 	"src/components/TopicCatalogueDialog/index.tsx": {
 		"anti-slop(no-conditional-empty-object-spread)": 1,
 		"anti-slop(require-safety-comment-for-type-assertion)": 1,
-		"jsx-a11y(no-noninteractive-element-interactions)": 4
+		"jsx-a11y(no-noninteractive-element-interactions)": 4,
+		"react(refs)": 1
 	},
 	"src/components/TwoFactorSetup/TwoFactorSetup.tsx": {
 		"eslint(no-unused-vars)": 2
@@ -1770,6 +1782,10 @@
 	},
 	"src/pages/Tenants/List/TenantDeleteErrorMessage.tsx": {
 		"jsx-a11y(prefer-tag-over-role)": 2
+	},
+	"src/pages/Tenants/List/TenantDeletionModal/index.tsx": {
+		"jsx-a11y(prefer-tag-over-role)": 1,
+		"react(set-state-in-effect)": 1
 	},
 	"src/pages/Tenants/List/index.tsx": {
 		"react-hooks(exhaustive-deps)": 1
