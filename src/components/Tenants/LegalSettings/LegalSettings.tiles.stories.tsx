@@ -148,7 +148,7 @@ export const FoldAndUnfold: Story = {
         await userEvent.click(imprint);
         await expect(imprint).toHaveAttribute('aria-expanded', 'true');
         const explanation = await within(tileOf(imprint)).findByRole('button', { name: EXPLANATION });
-        await expect(explanation).toBeVisible();
+        await waitFor(() => expect(explanation).toBeVisible());
         await expect(
             within(imprint.closest('h3') as HTMLElement).queryByRole('button', { name: EXPLANATION }),
         ).toBeNull();

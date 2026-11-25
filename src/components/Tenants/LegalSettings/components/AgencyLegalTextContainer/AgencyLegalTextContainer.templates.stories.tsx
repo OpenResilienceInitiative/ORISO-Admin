@@ -285,14 +285,14 @@ export const ClosedTileNewTemplate: Story = {
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
             LOAD,
         );
-        await expect(reference).toBeVisible();
+        await waitFor(() => expect(reference).toBeVisible(), LOAD);
         const editor = await canvas.findByTestId('m3-editor', {}, LOAD);
         const owner = editor.parentElement!;
         await waitFor(() => expect(owner.contains(canvasElement.ownerDocument.activeElement)).toBe(true), LOAD);
         await userEvent.click(tileButton);
         await expect(tileButton).toHaveAttribute('aria-expanded', 'false');
         await userEvent.click(tileButton);
-        await expect(reference).toBeVisible();
+        await waitFor(() => expect(reference).toBeVisible(), LOAD);
         await expect(page.queryByRole('button', { name: 'Vorschau anzeigen' })).not.toBeInTheDocument();
     },
 };
