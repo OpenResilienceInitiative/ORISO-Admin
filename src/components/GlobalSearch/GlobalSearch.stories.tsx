@@ -9,6 +9,7 @@ import { FloatingLabelInput } from '../FloatingLabelInput';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { GlobalSearchMenu } from './GlobalSearchMenu';
 import { SplitButton } from './SplitButton';
+import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 /**
  * Global search component family (Figma 1165:17005, "Search Bar Admin Panel"):
@@ -216,5 +217,25 @@ export const MenuOpen: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await waitFor(() => expect(body.getByRole('menu')).toBeVisible());
         await expect(body.getByRole('menuitem', { name: 'Neue E-Mail-Vorlage erstellen' })).toBeVisible();
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark): the selected template sits on the
+ * field-selected surface/ink pair. Primary text on primary-fixed was about 1:1 in dark.
+ */
+export const DarkSchemeMenuOpen: Story = {
+    args: {},
+    render: () => (
+        <DarkSchemeFrame>
+            <MenuExample pinnedOpen />
+        </DarkSchemeFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(() => expect(body.getByRole('menu')).toBeVisible());
+        const selected = canvasElement.ownerDocument.querySelector('.ant-dropdown-menu-item-selected');
+        await expect(selected).toBeTruthy();
+        await expect(textContrast(selected as Element)).toBeGreaterThanOrEqual(4.5);
     },
 };

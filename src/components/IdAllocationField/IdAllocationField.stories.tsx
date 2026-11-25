@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { expect, waitFor } from 'storybook/test';
 import type { IdAllocationClient, IdAllocationState, NextFreeIdParams } from '../../api/idAllocation/idAllocation';
 import { IdAllocationField, useIdAllocation, type UseIdAllocationResult } from './index';
+import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 /**
  * Stubbed allocation client with the worked example from ORISO-Admin#570:
@@ -129,4 +131,23 @@ const StateGallery = () => (
 /** All states side by side: Neu (Auto), empty, checking, available, reserved, assigned, service error, existing, locked. */
 export const AllStates: Story = {
     render: () => <StateGallery />,
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark), menu open: the selected entry ("Neu" in Auto)
+ * sits on the field-selected surface/ink pair. Primary text on primary-fixed was about 1:1 in dark.
+ */
+export const DarkSchemeMenuOpen: Story = {
+    render: () => (
+        <DarkSchemeFrame>
+            <InteractiveExample />
+        </DarkSchemeFrame>
+    ),
+    play: async ({ canvas, userEvent }) => {
+        await userEvent.click(canvas.getByRole('combobox'));
+        const doc = canvas.getByRole('combobox').ownerDocument;
+        await waitFor(() => expect(doc.querySelector('[role="option"][aria-selected="true"]')).toBeTruthy());
+        const selected = doc.querySelector('[role="option"][aria-selected="true"]') as Element;
+        await expect(textContrast(selected)).toBeGreaterThanOrEqual(4.5);
+    },
 };
