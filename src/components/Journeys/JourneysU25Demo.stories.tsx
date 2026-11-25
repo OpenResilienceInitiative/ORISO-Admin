@@ -86,9 +86,16 @@ const buildTheBox = async (canvasElement: HTMLElement) => {
     const stepDialog = await body.findByTestId('journey-step-dialog');
     const [aspect] = within(stepDialog).getAllByTestId(/^journey-aspect-/);
     const title = within(aspect).getAllByRole('textbox')[0];
-    await userEvent.type(title, BOX_TITLE);
-    // On a busy CI runner the last keystrokes can still be rendering: apply only the whole title.
-    await waitFor(() => expect(title).toHaveValue(BOX_TITLE));
+    // On a busy CI runner the opening dialog can still take the focus while the title is typed,
+    // and the last keystrokes land elsewhere ("Schön, dass D"). Type again until the whole title is in.
+    await waitFor(
+        async () => {
+            await userEvent.clear(title);
+            await userEvent.type(title, BOX_TITLE);
+            await expect(title).toHaveValue(BOX_TITLE);
+        },
+        { timeout: 10000 },
+    );
     await userEvent.click(within(stepDialog).getByRole('button', { name: 'Übernehmen' }));
 
     // 2. Drag it to the top of the on-board phase.
