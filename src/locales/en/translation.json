@@ -4676,6 +4676,8 @@
     "journeys.question.add": "Add question",
     "journeys.translation.editIn": "Language you are editing in",
     "journeys.stepDialog.descriptionForSeekers": "Description for advice seekers",
+    "journeys.greetingTexts.title": "Greeting texts",
+    "journeys.greetingTexts.help": "These texts belong to “Begrüßung der Beratungsstelle”. They are the same texts as on the greeting page: what you publish here applies there too, at once. “Apply” and “Save” of the journey do not change them.",
     "journeys.profile.about": "Description for editors",
     "journeys.profile.goal": "Goal",
     "journeys.profile.author": "Made by",

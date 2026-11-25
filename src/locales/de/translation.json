@@ -4676,6 +4676,8 @@
     "journeys.question.add": "Frage hinzufügen",
     "journeys.translation.editIn": "Sprache, in der Sie bearbeiten",
     "journeys.stepDialog.descriptionForSeekers": "Beschreibung für Ratsuchende",
+    "journeys.greetingTexts.title": "Texte der Begrüßung",
+    "journeys.greetingTexts.help": "Diese Texte gehören zu „Begrüßung der Beratungsstelle“. Es sind dieselben Texte wie auf der Seite der Begrüßung: Was Sie hier veröffentlichen, gilt dort auch, und zwar sofort. „Übernehmen“ und „Speichern“ der Reise ändern daran nichts.",
     "journeys.profile.about": "Beschreibung für Redaktionen",
     "journeys.profile.goal": "Ziel",
     "journeys.profile.author": "Erstellt von",
