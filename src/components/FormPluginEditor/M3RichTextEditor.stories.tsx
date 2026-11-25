@@ -220,9 +220,26 @@ export const WithAnchorNavigation: Story = {
         const text = paragraph?.firstChild;
         if (!paragraph || !text) throw new Error('Missing anchored editor paragraph');
 
-        editor.focus();
-        document.getSelection()?.setBaseAndExtent(text, 0, text, 'Dieser Vertrag'.length);
-        await userEvent.click(await canvas.findByRole('button', { name: /Mit Abschnitt verknüpfen|Link to section/ }));
+        // "Bearbeiten" flips the editor to editable in an effect, and the anchor bubble menu registers its
+        // plugin in an effect too. Select only once the editor is editable.
+        await waitFor(() => expect(editor).toHaveAttribute('contenteditable', 'true'));
+        const linkName = /Mit Abschnitt verknüpfen|Link to section/;
+        // The bubble menu shows once ProseMirror has read the selection (debounced by its 150ms
+        // `updateDelay`) and hides when the editor loses focus. In the merge queue's full inventory another
+        // story can take focus, so (re)focus and (re)select until the menu is there. The interval is longer
+        // than the debounce, so a retry never cancels a pending show.
+        await waitFor(
+            () => {
+                if (!canvas.queryByRole('button', { name: linkName })) {
+                    editor.focus();
+                    document.getSelection()?.setBaseAndExtent(text, 0, text, 'Dieser Vertrag'.length);
+                }
+                expect(canvas.getByRole('button', { name: linkName })).toBeVisible();
+            },
+            { timeout: 5000, interval: 400 },
+        );
+        const linkToSection = canvas.getByRole('button', { name: linkName });
+        await userEvent.click(linkToSection);
         await userEvent.click(await canvas.findByRole('menuitem', { name: 'Unterauftragsverhältnisse' }));
 
         await waitFor(() => {
