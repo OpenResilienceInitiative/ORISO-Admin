@@ -177,7 +177,7 @@ export const TwoActionsAndJumpAtPhoneWidth: Story = {
 
 /** Longest German text at the narrow width: wraps, never overflows. */
 export const LongestGermanText: Story = {
-    parameters: { viewport: { defaultViewport: 'mobile1' } },
+    globals: { viewport: { value: 'mobile1', isRotated: false } },
     render: () => (
         <Tile>
             <Notify

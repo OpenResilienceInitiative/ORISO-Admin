@@ -5,7 +5,7 @@ import { AppSettingsPage } from '.';
 import { wholeTabHandlers, wholeTabBeforeEach, wholeTabDecorators } from '../wholeTabStory.matrix';
 
 const meta = {
-    title: 'Settings/Einstellungen/Funktionalitäten/Ganze Seite',
+    title: 'Settings/Einstellungen/Weitere/Ganze Seite',
     component: AppSettingsPage,
     parameters: { layout: 'fullscreen', msw: { handlers: wholeTabHandlers } },
     beforeEach: wholeTabBeforeEach,
@@ -16,6 +16,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const TenantAdmin: Story = {
     play: async ({ canvas }) => {
-        await expect(await canvas.findByText(/Sonstige Funktionen|Other features/i)).toBeVisible();
+        await expect(await canvas.findByText(/Weitere Funktionen|More functions/i)).toBeVisible();
     },
 };

@@ -2,6 +2,10 @@
 
 .card {
     container-type: inline-size;
+
+    form + & {
+        margin-top: mui.$mui-unit * 3;
+    }
 }
 
 .header {

@@ -1,4 +1,4 @@
-import { ChangeEvent, ElementType, FocusEvent, useId, useState } from 'react';
+import { ChangeEvent, ElementType, FocusEvent, useId, useLayoutEffect, useRef, useState } from 'react';
 import { ConfigProvider, Form, Input, type InputProps, type InputRef } from 'antd';
 import classNames from 'classnames';
 import styles from './floatingLabelInput.module.scss';
@@ -53,6 +53,22 @@ const FloatingLabelInputControl = ({
     const inputId = id ?? generatedId;
     const supportingTextId = `${inputId}-supporting-text`;
     const [focused, setFocused] = useState(false);
+    const [longLabel, setLongLabel] = useState(false);
+    const measurementRef = useRef<HTMLSpanElement>(null);
+
+    useLayoutEffect(() => {
+        const measurement = measurementRef.current;
+        if (!measurement) return undefined;
+        const update = () => setLongLabel(measurement.scrollWidth > measurement.clientWidth + 1);
+        update();
+        if (typeof ResizeObserver === 'undefined') {
+            window.addEventListener('resize', update);
+            return () => window.removeEventListener('resize', update);
+        }
+        const observer = new ResizeObserver(update);
+        observer.observe(measurement);
+        return () => observer.disconnect();
+    }, [label]);
     const [internalValue, setInternalValue] = useState(defaultValue ?? '');
     // Inside a Form.Item this reflects the validation state; standalone it stays undefined.
     const { status } = Form.Item.useStatus();
@@ -67,6 +83,7 @@ const FloatingLabelInputControl = ({
     // reject the shared borderless/value/handler wiring below.
     const Component = (component ?? Input) as any;
     const isTextArea = component === Input.TextArea;
+    const isPassword = component === Input.Password;
 
     const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
         setFocused(true);
@@ -95,15 +112,24 @@ const FloatingLabelInputControl = ({
                     [styles.fieldError]: hasError,
                     [styles.fieldDisabled]: isDisabled,
                     [styles.fieldMultiline]: isTextArea,
+                    [styles.fieldPassword]: isPassword,
                     [styles.labelFloating]: floating,
+                    [styles.fieldLongLabel]: longLabel,
                 },
                 className,
             )}
         >
-            <div className={styles.outline}>
+            <label className={styles.label} htmlFor={inputId}>
+                {label}
+            </label>
+            <div className={styles.outline} data-field-outline>
+                <span ref={measurementRef} className={styles.measurement} aria-hidden="true">
+                    {label}
+                </span>
                 <Component
                     {...(isTextArea ? { autoSize: { minRows: 3 } } : null)}
                     {...inputProps}
+                    title={inputProps.title ?? label}
                     id={inputId}
                     ref={ref}
                     className={styles.input}
@@ -117,9 +143,6 @@ const FloatingLabelInputControl = ({
                     onChange={handleChange}
                     onFocus={handleFocus}
                 />
-                <label className={styles.label} htmlFor={inputId}>
-                    {label}
-                </label>
             </div>
             {supportingText && (
                 <span className={styles.supportingText} id={supportingTextId}>

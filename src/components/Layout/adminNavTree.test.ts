@@ -9,7 +9,6 @@ const base: Omit<AdminNavTreeContext, 'can' | 'hasRole' | 'isSuperAdmin'> = {
     canManageServiceNotices: false,
     shouldShowThemeSettings: true,
     isTenantSettingsEditEnabled: false,
-    multitenancyWithSingleDomainEnabled: true,
 };
 
 const ids = (tree: ReturnType<typeof buildAdminNavTree>, key: string) => tree[key].map((entry) => entry.id);
@@ -29,6 +28,7 @@ describe('buildAdminNavTree', () => {
             'settings:master-data',
             'settings:general',
             'settings:topics',
+            'settings:greeting',
             'settings:legal',
             'settings:smtp',
             'settings:service-notices',

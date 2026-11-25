@@ -41,19 +41,20 @@ describe('platform admin editing a Träger: Funktionalitäten page', () => {
         expect(gridProps().tenantId).toBe('7');
     });
 
-    it('leaves the SMTP tile to the Email Server tab', () => {
-        render(<TenantAppSettings />);
-
-        expect(gridProps().hideSmtp).toBe(true);
-    });
-
-    // Under single domain the Träger admin sees the topics switch ("Themen nutzen"); the platform
-    // admin editing the same Träger must see it too.
-    it.each([false, true])('keeps the topics switch with multitenancyWithSingleDomainEnabled=%s', (enabled) => {
+    // The platform admin sees every part of the Träger's functionalities, also under single domain
+    // (where the Träger admin sees the topics switch, too).
+    it.each([false, true])('hides nothing with multitenancyWithSingleDomainEnabled=%s', (enabled) => {
         mocks.multitenancyWithSingleDomainEnabled = enabled;
         render(<TenantAppSettings />);
 
-        expect(gridProps().hideTopicsToggle).toBeUndefined();
+        expect(gridProps()).toEqual({ tenantId: '7', withLicenceAndSender: true });
+    });
+
+    // Frank, 2026-11-20: licence and sender of a Träger moved from Stammdaten into this tab.
+    it('shows the licence and sender tile of the Träger', () => {
+        render(<TenantAppSettings />);
+
+        expect(gridProps().withLicenceAndSender).toBe(true);
     });
 
     it('renders nothing for a user who is neither platform nor Träger admin', () => {

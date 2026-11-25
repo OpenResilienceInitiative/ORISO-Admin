@@ -1,4 +1,3 @@
-import set from 'lodash.set';
 import Fingerprint from '@mui/icons-material/Fingerprint';
 import { Spin, Tag } from 'antd';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -110,7 +109,7 @@ interface LegalTextProps {
     templateInbox?: TenantTemplateInbox;
     /** Platform admins may inspect a Träger offer, but only its admin may decide on it. */
     templateCanManage?: boolean;
-    fieldName: string[];
+    fieldName: readonly ['content', 'impressum' | 'imprint' | 'privacy' | 'termsAndConditions'];
     titleKey: string;
     /**
      * Which legal text this card edits — selects the role/state dependent help
@@ -122,7 +121,9 @@ interface LegalTextProps {
     placeHolderKey: string;
     /** Header icon for the M3 shell; defaults to the Impressum fingerprint. */
     icon?: React.ElementType;
-    showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & { field: string[] };
+    showConfirmationModal?: Omit<ModalProps, 'onClose' | 'onConfirm'> & {
+        field: readonly ['content', 'confirmPrivacy' | 'confirmTermsAndConditions'];
+    };
     /**
      * Folds the card up to a tile header (icon, title, publication state). The explanation button and the help
      * text then sit at the top of the unfolded content, and the editor does not repeat the title.
@@ -540,15 +541,18 @@ export const LegalText = ({
                 return;
             }
             if (editorIdentityRef.current !== operationIdentity) return;
-            // Publish exactly the normalized payload returned by the revision-checked
-            // draft write. This keeps the live text and the saved revision identical.
-            const formData = set({}, fieldName, { ...saved.content });
             // The draft PUT may not echo the optional consent map; the one sent is then authoritative.
             const publishedConsentMap = consentEnabled ? { ...(saved.privacyConsent ?? consentByLanguage) } : undefined;
-            if (publishedConsentMap) set(formData, ['content', 'privacyConsent'], publishedConsentMap);
-            if (showConfirmationModal && confirmPrivacy !== undefined) {
-                set(formData, showConfirmationModal.field, confirmPrivacy);
-            }
+            const formData = {
+                content: {
+                    // Publish the exact normalized content saved at this draft revision.
+                    [fieldName[1]]: { ...saved.content },
+                    ...(publishedConsentMap && { privacyConsent: publishedConsentMap }),
+                    ...(showConfirmationModal && confirmPrivacy !== undefined
+                        ? { [showConfirmationModal.field[1]]: confirmPrivacy }
+                        : {}),
+                },
+            };
             try {
                 await publishSavedDraft(formData, saved.revision, operationIdentity);
                 if (editorIdentityRef.current === operationIdentity) {
@@ -973,6 +977,9 @@ export const LegalText = ({
                     icon={icon}
                     // In a tile the header, the explanation button and the help text belong to the tile.
                     hideHeader={collapsible}
+                    fullscreenLabel={t(
+                        canEditLegalText ? 'legal.m3Editor.openFullscreen' : 'legal.m3Editor.readFullscreen',
+                    )}
                     headerAction={
                         collapsible
                             ? undefined

@@ -16,17 +16,24 @@ const requiredRule = { required: true, message: 'required' };
 const renderSections = ({
     sections = TRAEGER_SECTION_ORDER,
     subdomain = { visible: true, editable: true },
+    withLicence = false,
     onFinish = vi.fn(),
 }: {
     sections?: readonly TraegerSectionKey[];
     subdomain?: { visible: boolean; editable: boolean; rules?: Rule[] };
+    withLicence?: boolean;
     onFinish?: (values: unknown) => void;
 } = {}) => {
     const Harness = () => {
         const [form] = Form.useForm();
         return (
             <Form form={form} onFinish={onFinish} initialValues={{ licensing: { allowedNumberOfUsers: 5 } }}>
-                <TraegerFieldSections subdomain={subdomain} requiredRule={requiredRule} sections={sections} />
+                <TraegerFieldSections
+                    subdomain={subdomain}
+                    requiredRule={requiredRule}
+                    sections={sections}
+                    withLicence={withLicence}
+                />
                 <button type="submit">save</button>
             </Form>
         );
@@ -39,15 +46,40 @@ const panelNames = () => screen.getAllByRole('group').map((panel) => panel.getAt
 
 /** ORISO-Admin#1314: the Träger tile and the create dialog share these white panels. */
 describe('TraegerFieldSections', () => {
-    it('shows the edit tile as general, then the short parts, then the data protection officer', () => {
-        renderSections({ sections: ['general', 'sender', 'description', 'dpo'] });
+    it('shows the edit tile as general, then the description, then the data protection officer', () => {
+        renderSections({ sections: ['general', 'description', 'dpo'] });
 
         expect(panelNames()).toEqual([
             'tile-section-traeger-general',
-            'tile-section-traeger-sender',
             'tile-section-traeger-description',
             'tile-section-traeger-dpo',
         ]);
+    });
+
+    // Frank, 2026-11-20: licence and sender go beyond master data; on an existing Träger they live in "Weitere".
+    it('leaves the licence out of the general panel unless the host asks for it', () => {
+        renderSections({ sections: ['general'] });
+
+        expect(screen.queryByLabelText(/tenants.add.form.allowedConsultantsLicense.placeholder/)).toBeNull();
+    });
+
+    it('keeps the licence in the general panel of the create dialog, as a required number', async () => {
+        const onFinish = renderSections({
+            sections: ['general'],
+            subdomain: { visible: false, editable: false },
+            withLicence: true,
+        });
+        const general = screen.getByRole('group', { name: 'tenants.form.section.general' });
+        const licence = within(general).getByLabelText(/tenants.add.form.allowedConsultantsLicense.placeholder/);
+
+        await userEvent.clear(licence);
+        await userEvent.type(licence, '12');
+        await userEvent.type(within(general).getByLabelText(/tenants.add.form.name.placeholder/), 'Caritas Süd');
+        await userEvent.click(screen.getByRole('button', { name: 'save' }));
+
+        await waitFor(() =>
+            expect(onFinish).toHaveBeenCalledWith(expect.objectContaining({ licensing: { allowedNumberOfUsers: 12 } })),
+        );
     });
 
     it('shows the topic in the create dialog and leaves out the data protection officer', () => {

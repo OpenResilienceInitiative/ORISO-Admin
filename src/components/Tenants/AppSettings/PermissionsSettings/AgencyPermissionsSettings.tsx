@@ -11,11 +11,18 @@ import { useQueuedPermissionPolicies } from '../../../../hooks/useQueuedPermissi
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import { agencyPermissionPolicies } from './agencyPermissionPolicies';
 import {
+    type CaseSharingMode,
+    caseSharingModeToApi,
+    caseSharingPolicyFromApi,
+} from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
+import {
     applyPermissionConstraintsToSettings,
     getRestrictedFields,
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import { TRAEGER_UNAVAILABLE_ATTRIBUTE } from './traegerUnavailable';
 import type { ChatTypeCardKey, ToggleAfterChangeHandler } from './types';
 
@@ -43,6 +50,8 @@ export const AgencyPermissionsSettings = ({
     // Channel switches are not stored per centre (AgencyService); show the Träger's, read-only.
     // A failed read (e.g. 403) says so on the tiles, without a toast — never defaults as the Träger's.
     const traegerId = agencyData?.tenantId ? String(agencyData.tenantId) : '';
+    // The centre's journeys: the platform's with its Träger's layer and its own (ADR-036 decision 29).
+    const journeys = useJourneysInTiles({ level: 'agency', tenantId: traegerId, agencyId });
     const {
         data: traegerPolicies,
         status: traegerPoliciesQueryStatus,
@@ -102,6 +111,22 @@ export const AgencyPermissionsSettings = ({
         confirmedPolicies,
         savePolicy,
     );
+    // ORISO-TenantService#374: the centre's own choice; the AgencyService refuses it against a
+    // requirement and answers with the effective mode.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing(agencyId);
+    const handleCaseSharingChange = useCallback(
+        (next: PolicyValue<CaseSharingMode>) => {
+            // the agency mutation queue keeps the saves in click order
+            const save = updateAgency({ settings: { caseSharingMode: caseSharingModeToApi(next.value) } });
+            trackCaseSharing(next, save);
+            save.then(() =>
+                snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 }),
+            ).catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
+        },
+        [t, trackCaseSharing, updateAgency],
+    );
+    const caseSharingPolicy = agencyData?.settings?.caseSharing;
+
     const handleToggleUpdate = useCallback<ToggleAfterChangeHandler>(
         (fieldPath, value) => {
             const field = Array.isArray(fieldPath) ? fieldPath.at(-1) : fieldPath;
@@ -124,6 +149,8 @@ export const AgencyPermissionsSettings = ({
                     {t('tenants.permissions.traegerUnavailable')}
                 </Notify>
             )}
+            {/* No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
+                that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value. */}
             <PermissionsSettingsView
                 tenantId={`agency-${agencyId}`}
                 caseHandoverTenantId={agencyData?.tenantId}
@@ -134,6 +161,7 @@ export const AgencyPermissionsSettings = ({
                 traegerDirectInvitePolicies={traegerPolicies?.policies}
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
+                renderJourneys={journeys.renderJourneys}
                 isLoading={isLoading}
                 initialValues={initialValues}
                 formStateKey={formStateKey}
@@ -143,7 +171,16 @@ export const AgencyPermissionsSettings = ({
                 permissionPolicies={policies}
                 onPolicyChange={changePolicy}
                 pendingPolicyFields={pendingFields}
+                caseSharing={
+                    caseSharingPolicy
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingChange,
+                          }
+                        : undefined
+                }
             />
+            {journeys.dialog}
         </>
     );
 };

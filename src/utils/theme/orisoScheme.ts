@@ -2,7 +2,8 @@ import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeS
 import { brandSeedCannotYieldPalette } from './seedUsability';
 import { contrastRatio } from '../contrastRatio';
 
-export type OrisoSchemeName = 'light' | 'inverted';
+export type OrisoSchemeName = 'light' | 'inverted' | 'dark';
+export type AdminContrast = 'standard' | 'medium' | 'high';
 
 /**
  * Angular hue distance (degrees) below which error and brand read as the same family.
@@ -60,12 +61,13 @@ const mix = (a: string, b: string, amount: number) => {
  * Keeps the hue as long as possible instead of jumping to black or white; the
  * default seed already passes and comes back unchanged.
  */
-const keepReadableOn = (foreground: string, background: string, target = 4.5): string => {
-    const towards =
-        contrastRatio('#000000', background) >= contrastRatio('#ffffff', background) ? '#000000' : '#ffffff';
+const keepReadableOn = (foreground: string, background: string | string[], target = 4.5): string => {
+    const fills = typeof background === 'string' ? [background] : background;
+    const lowestContrast = (color: string) => Math.min(...fills.map((fill) => contrastRatio(color, fill)));
+    const towards = lowestContrast('#000000') >= lowestContrast('#ffffff') ? '#000000' : '#ffffff';
     for (let step = 0; step <= 20; step += 1) {
         const candidate = step === 0 ? foreground : mix(foreground, towards, step / 20);
-        if (contrastRatio(candidate, background) >= target) {
+        if (lowestContrast(candidate) >= target) {
             return candidate;
         }
     }
@@ -325,7 +327,92 @@ const invertedTokens = (
     };
 };
 
-export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName = 'light'): OrisoPaletteResult => {
+// Neutral roles match the ORISO Frontend Dark fixture. The admin-specific
+// aliases below describe where these surfaces are used in the workspace.
+const darkSurface = '#131314';
+const darkLowest = '#0e0e0f';
+const darkLow = '#1b1b1c';
+const darkContainer = '#1f1f20';
+const darkHigh = '#2a2a2b';
+const darkHighest = '#353535';
+const darkInk = '#e4e2e2';
+const darkMuted = '#c4c7c8';
+const darkOutline = '#8e9192';
+const darkDivider = '#444748';
+
+const personalDarkSurfaceTokens = {
+    '--m3-surface': darkSurface,
+    '--m3-background': darkSurface,
+    '--m3-on-surface': darkInk,
+    '--m3-surface-container-lowest': darkLowest,
+    '--m3-surface-container-low': darkLow,
+    '--m3-surface-container': darkContainer,
+    '--m3-surface-container-high': darkHigh,
+    '--m3-surface-container-highest': darkHighest,
+    '--m3-on-surface-variant': darkMuted,
+    '--m3-outline': darkOutline,
+    '--m3-outline-variant': darkDivider,
+    '--m3-surface-variant': darkDivider,
+    '--admin-workspace-background': darkSurface,
+    '--admin-picture-filter': PICTURE_FILTER_ON_DARK,
+    '--admin-search-surface': darkHigh,
+    '--admin-search-text': darkMuted,
+    '--admin-search-placeholder': darkMuted,
+    '--admin-search-icon': darkMuted,
+    '--admin-search-hover-surface': darkHighest,
+    '--admin-table-surface': darkLow,
+    '--admin-table-header-surface': darkHighest,
+    '--admin-table-row-hover-surface': darkContainer,
+    '--admin-table-footer-surface': darkHighest,
+    '--admin-table-border': darkDivider,
+    '--admin-table-text': darkMuted,
+    '--admin-table-header-text': darkInk,
+    '--admin-table-chip-surface': darkHighest,
+    '--admin-table-chip-border': darkOutline,
+    '--admin-table-chip-text': darkMuted,
+    '--admin-form-card-surface': darkHigh,
+    '--admin-form-field-surface': darkLowest,
+    '--admin-form-field-text': darkInk,
+    '--admin-form-muted-text': darkMuted,
+    '--admin-form-disabled-text': darkMuted,
+    '--admin-form-label-text': darkMuted,
+    '--admin-field-surface': darkLowest,
+    '--admin-field-outline': darkOutline,
+    '--admin-field-surface-hover': darkLow,
+    '--admin-dialog-scrim': 'rgba(0, 0, 0, 0.7)',
+};
+
+const applyPersonalContrast = (tokens: Record<string, string>, contrast: Exclude<AdminContrast, 'standard'>) => {
+    const minimum = contrast === 'high' ? 7 : 5.5;
+    const surfaces = [
+        tokens['--admin-form-card-surface'],
+        tokens['--admin-field-surface'],
+        tokens['--admin-field-surface-hover'],
+        tokens['--m3-surface-container'],
+    ];
+    const ink = keepReadableOn(tokens['--m3-on-surface'], surfaces, minimum);
+    const muted = keepReadableOn(tokens['--m3-on-surface-variant'], surfaces, minimum);
+    const link = keepReadableOn(tokens['--m3-primary'], surfaces, minimum);
+    const selectedSurface = tokens['--admin-field-selected-surface'];
+    const selectedInk = keepReadableOn(tokens['--admin-field-selected-text'], selectedSurface, minimum);
+    const readableSelection = keepReadableOn(selectedSurface, selectedInk, minimum);
+
+    return {
+        ...tokens,
+        '--m3-on-surface': ink,
+        '--m3-on-surface-variant': muted,
+        '--admin-form-field-text': ink,
+        '--admin-form-label-text': muted,
+        '--admin-form-muted-text': muted,
+        '--admin-link-text': link,
+        '--admin-field-outline': keepReadableOn(tokens['--admin-field-outline'], surfaces, 3),
+        '--admin-field-focus': keepReadableOn(tokens['--m3-primary'], surfaces, 3),
+        '--admin-field-selected-surface': readableSelection,
+        '--admin-field-selected-text': selectedInk,
+    };
+};
+
+const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoPaletteResult => {
     const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
     const explicitAccentLight = normalizeHex(getAccentLight(seeds));
     const errorSeed = resolveErrorSeed(seeds);
@@ -339,11 +426,14 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
     const tooPale = brandSeedCannotYieldPalette(getAccentDark(seeds));
     const signalTooClose = signalTooCloseToBrand(seeds);
 
-    if (scheme === 'inverted') {
+    if (scheme !== 'light') {
         return {
             tooPale,
             signalTooClose,
-            tokens: invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant, errorSeed),
+            tokens: {
+                ...invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant, errorSeed),
+                ...(scheme === 'dark' && personalDarkSurfaceTokens),
+            },
         };
     }
 
@@ -392,4 +482,15 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--oriso-app-on-action': onAccentAction,
         },
     };
+};
+
+export const computeOrisoPalette = (
+    seeds: TenantSeeds,
+    scheme: OrisoSchemeName = 'light',
+    contrast: AdminContrast = 'standard',
+): OrisoPaletteResult => {
+    const palette = computeBasePalette(seeds, scheme);
+    if (contrast === 'standard' || scheme === 'inverted') return palette;
+
+    return { ...palette, tokens: applyPersonalContrast(palette.tokens, contrast) };
 };

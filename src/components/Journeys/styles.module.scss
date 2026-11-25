@@ -1,0 +1,1837 @@
+@use '../../styles/muiSpacing' as mui;
+
+/* Journeys (ADR-036 amendment). Frank's review of 2026-11-18: outlines instead of white boxes.
+ * Everything sits on the surface it is shown on and is told apart by a hairline outline; only a
+ * selected state is filled. A journey reads left to right like a flight, the stops joined by a
+ * dashed route. Must steps carry the error colour AND a lock and a word, never the colour alone. */
+
+$outline: var(--m3-outline-variant, #c4c7c7);
+$route: var(--m3-outline, #747878);
+$muted: var(--m3-on-surface-variant, #444748);
+$text: var(--m3-on-surface, #1b1b1c);
+$primary: var(--m3-primary, #a5000a);
+$error: var(--m3-error, #ba1a1a);
+$selected: color-mix(in srgb, var(--m3-primary, #a5000a) 12%, transparent);
+$focus-ring: var(--admin-focus-ring-width, 2px) solid var(--admin-focus-ring-color, #a5000a);
+
+@mixin focus-ring {
+    outline: $focus-ring;
+    outline-offset: 2px;
+}
+
+@mixin hover-tint {
+    background: color-mix(in srgb, $primary 5%, transparent);
+}
+
+.srOnly {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    border: 0;
+    margin: -1px;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.page,
+.dialogBody,
+.section,
+.entry {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.page {
+    gap: mui.$mui-unit * 3;
+}
+
+.section {
+    gap: mui.$mui-unit * 1.5;
+}
+
+.intro,
+.help {
+    margin: 0;
+    color: $muted;
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+}
+
+.help {
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.grid {
+    display: grid;
+    gap: mui.$mui-unit * 3;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+}
+
+code {
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 0.92em;
+}
+
+/* ---- the flight: take-off, in the air, landing, destinations ---- */
+.flightPath {
+    display: grid;
+    padding: 0;
+    margin: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    list-style: none;
+}
+
+.flightStop {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+
+    &:not(:last-child):after {
+        position: absolute;
+        top: 19px;
+        right: calc(-50% + 26px);
+        left: calc(50% + 26px);
+        border-top: 2px dashed $route;
+        content: '';
+    }
+}
+
+.flightIcon {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid $primary;
+    border-radius: 20px;
+    color: $primary;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .flightStopOff & {
+        border-style: dashed;
+        border-color: $outline;
+        color: $muted;
+        opacity: 0.6;
+    }
+}
+
+.flightName {
+    color: $text;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+
+    .flightStopOff & {
+        color: $muted;
+    }
+}
+
+.flightCaption {
+    color: $muted;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+}
+
+.flightPathCaptions .flightName {
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* ---- the entry on a conversation type's tile ---- */
+.entryCount {
+    margin: 0;
+    color: $text;
+    font-size: 16px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+
+    strong {
+        font-size: 22px;
+        font-weight: 500;
+        line-height: 28px;
+    }
+}
+
+.entryWarning,
+.phaseWarning {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    color: $error;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    line-height: 16px;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.entryActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: mui.$mui-unit;
+}
+
+/* ---- chips ---- */
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    gap: 6px;
+    list-style: none;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    line-height: 16px;
+    white-space: nowrap;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+.chipMust,
+.chipUsed {
+    border-color: $error;
+    color: $error;
+}
+
+.chipCore {
+    border-color: $muted;
+    color: $text;
+}
+
+/* ---- one journey: header, then the flight from left to right ---- */
+.journeys {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: mui.$mui-unit * 2;
+    list-style: none;
+}
+
+.journey {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.journeyHeader {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.journeyTitle {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: baseline;
+    margin: 0;
+    color: $text;
+    font-size: 18px;
+    font-weight: 500;
+    gap: 4px mui.$mui-unit;
+    line-height: 24px;
+}
+
+.journeyNumber {
+    color: $primary;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.phases {
+    display: grid;
+    gap: mui.$mui-unit * 3;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.phase {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    padding: mui.$mui-unit * 1.5;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    background: none;
+    color: $text;
+    font: inherit;
+    gap: mui.$mui-unit;
+    text-align: left;
+
+    &:not(:last-child):after {
+        position: absolute;
+        top: 30px;
+        right: -25px;
+        width: 24px;
+        border-top: 2px dashed $route;
+        content: '';
+    }
+}
+
+button.phase {
+    cursor: pointer;
+
+    &:hover {
+        border-color: $primary;
+
+        @include hover-tint;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.phaseLocked {
+    border-style: dashed;
+}
+
+.phaseOff {
+    border-style: dashed;
+    color: $muted;
+}
+
+.phaseHead {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px mui.$mui-unit;
+}
+
+.phaseIcon {
+    display: inline-flex;
+    color: $primary;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .phaseOff & {
+        color: $muted;
+        opacity: 0.6;
+    }
+}
+
+.phaseName {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.1px;
+    line-height: 20px;
+}
+
+.phaseValue {
+    margin-left: auto;
+    color: $muted;
+    font-size: 12px;
+    letter-spacing: 0.4px;
+    line-height: 16px;
+    white-space: nowrap;
+}
+
+.tileList {
+    display: flex;
+    flex-direction: column;
+    padding: 0 0 0 20px;
+    margin: 0;
+    color: $text;
+    font-size: 13px;
+    gap: 2px;
+    letter-spacing: 0.2px;
+    line-height: 18px;
+
+    li {
+        hyphens: auto;
+        overflow-wrap: break-word;
+    }
+}
+
+ul.tileList {
+    padding-left: 0;
+    list-style: none;
+}
+
+.tileMore {
+    color: $muted;
+    list-style: none;
+}
+
+.tileLock {
+    width: 14px !important;
+    height: 14px !important;
+    margin-right: 4px;
+    color: $error;
+    vertical-align: -2px;
+}
+
+.tileEmpty {
+    color: $muted;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.tileRoute {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    color: $muted;
+    font-size: 12px;
+    gap: 6px;
+    line-height: 16px;
+
+    code {
+        padding: 1px 6px;
+        border: 1px solid $outline;
+        border-radius: 6px;
+        color: $text;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* ---- notices ---- */
+.notice,
+.warning {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-left: 4px solid $route;
+    border-radius: 12px;
+    color: $text;
+    gap: 4px;
+
+    p {
+        margin: 0;
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+.warning {
+    border-left-color: $error;
+}
+
+.noticeTitle {
+    font-weight: 600;
+}
+
+.warning .noticeTitle {
+    color: $error;
+}
+
+/* The greeting step's own words (ORISO-Admin#1660): the level's greeting editor, inline. */
+.greetingTexts {
+    display: flex;
+    flex-direction: column;
+    padding-top: mui.$mui-unit * 2;
+    border-top: 1px solid $outline;
+    gap: mui.$mui-unit;
+
+    h3 {
+        margin: 0;
+        font-size: 16px;
+        line-height: 24px;
+    }
+}
+
+/* ---- the steps of a phase ---- */
+.steps {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: 0;
+    list-style: none;
+}
+
+.stepItem {
+    position: relative;
+    display: grid;
+    align-items: center;
+    gap: 2px mui.$mui-unit * 0.5;
+    grid-template-columns: 40px minmax(0, 1fr);
+}
+
+.stepLabel {
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    grid-column: 2;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+
+.dropLine {
+    position: absolute;
+    top: -8px;
+    right: 0;
+    left: 44px;
+    height: 3px;
+    border-radius: 2px;
+    background: $primary;
+    pointer-events: none;
+}
+
+.dropLineAfter {
+    top: auto;
+    bottom: -8px;
+}
+
+.handle,
+.lock {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    border-radius: 20px;
+    background: transparent;
+    color: $muted;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.handle {
+    cursor: grab;
+    touch-action: none;
+
+    &:hover {
+        background: color-mix(in srgb, $text 8%, transparent);
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.lock {
+    color: $error;
+}
+
+.step {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    gap: mui.$mui-unit;
+}
+
+.stepMust {
+    border-color: color-mix(in srgb, $error 55%, transparent);
+}
+
+.stepDragging {
+    opacity: 0.4;
+}
+
+.stepTop {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.stepMain {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: mui.$mui-unit;
+}
+
+.stepOpen {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 2px 0;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    gap: 2px;
+    text-align: left;
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+
+    &:hover .stepTitle {
+        text-decoration: underline;
+    }
+}
+
+.stepTitle {
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+}
+
+.stepDescription {
+    color: $muted;
+    font-size: 14px;
+    letter-spacing: 0.25px;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+}
+
+/* ---- translation state of one step ---- */
+.translation {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+}
+
+.translationCounts {
+    display: inline-flex;
+    height: 28px;
+    align-items: center;
+    padding: 0 mui.$mui-unit;
+    border: 0;
+    border-radius: 16px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: 6px;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover {
+        background: color-mix(in srgb, $text 6%, transparent);
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.translationCount {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.translationDone {
+    color: $text;
+}
+
+.translationMachine {
+    color: var(--warning-text, #8a5100);
+}
+
+.translationMissing {
+    color: $error;
+}
+
+.translationAi {
+    display: inline-flex;
+    height: 28px;
+    align-items: center;
+    padding: 0 mui.$mui-unit;
+    border: 0;
+    border-left: 1px solid $outline;
+    border-radius: 0 16px 16px 0;
+    background: none;
+    color: $primary;
+    cursor: pointer;
+    font: inherit;
+    gap: 4px;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover {
+        background: color-mix(in srgb, $primary 8%, transparent);
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+/* ---- adding a step ---- */
+.addStep {
+    display: flex;
+    justify-content: center;
+    padding-left: 44px;
+}
+
+.picker {
+    display: grid;
+    align-items: start;
+    gap: mui.$mui-unit * 2;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.pickerColumn {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: mui.$mui-unit;
+    list-style: none;
+}
+
+.pickerHeading {
+    margin: 0;
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+
+.pick {
+    display: flex;
+    width: 100%;
+    min-height: 56px;
+    align-items: center;
+    padding: mui.$mui-unit mui.$mui-unit * 1.5;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    gap: mui.$mui-unit * 1.5;
+    text-align: left;
+
+    &:hover:not(:disabled) {
+        border-color: $primary;
+
+        @include hover-tint;
+    }
+
+    &:disabled {
+        border-style: dashed;
+        cursor: default;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.pickSelected {
+    border-color: $primary;
+    background: $selected;
+}
+
+.pickIcon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: $primary;
+
+    .pick:disabled & {
+        color: $muted;
+        opacity: 0.6;
+    }
+}
+
+.pickText {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+
+    strong {
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 20px;
+    }
+
+    span {
+        color: $muted;
+        font-size: 12px;
+        line-height: 16px;
+    }
+}
+
+/* ---- editing one step ---- */
+.block,
+.link {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.blockHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.blockTitle {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.fieldRow {
+    display: grid;
+    gap: mui.$mui-unit * 1.5;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+}
+
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: mui.$mui-unit;
+}
+
+/* ---- destinations: routes as buttons, one row per topic ---- */
+.sectionTitle {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+
+.routes {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0;
+    margin: 0;
+    gap: mui.$mui-unit;
+    list-style: none;
+}
+
+.route {
+    display: inline-flex;
+    min-height: 40px;
+    align-items: center;
+    padding: 0 mui.$mui-unit * 2 0 mui.$mui-unit * 1.5;
+    border: 1px solid $route;
+    border-radius: 20px;
+    background: none;
+    color: $text;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    gap: mui.$mui-unit;
+    line-height: 20px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: $primary;
+    }
+}
+
+button.route {
+    cursor: pointer;
+
+    &:hover {
+        @include hover-tint;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.routeCount {
+    color: $muted;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.routeOff {
+    border-style: dashed;
+    color: $muted;
+
+    svg {
+        color: $muted;
+    }
+}
+
+.routeAdd {
+    border-style: dashed;
+    color: $primary;
+}
+
+.topics {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.topic {
+    display: grid;
+    min-height: 56px;
+    align-items: center;
+    padding: mui.$mui-unit 0;
+    border-top: 1px solid $outline;
+    gap: mui.$mui-unit;
+    grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) 40px;
+
+    &:last-child {
+        border-bottom: 1px solid $outline;
+    }
+}
+
+.topicName {
+    min-width: 0;
+    font-size: 16px;
+    letter-spacing: 0.15px;
+    line-height: 24px;
+    overflow-wrap: anywhere;
+}
+
+.topicRoutes {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.routeToggle {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 mui.$mui-unit * 1.5 0 mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    gap: 4px;
+    line-height: 18px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.routeToggleOn {
+    border-color: transparent;
+    background: $selected;
+}
+
+.topicElsewhere {
+    color: $muted;
+    font-size: 12px;
+    line-height: 16px;
+}
+
+.linkHeader {
+    display: flex;
+    align-items: center;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.linkPath {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    color: $muted;
+    font-size: 12px;
+    gap: 6px;
+    line-height: 16px;
+
+    code {
+        color: $text;
+        font-size: 14px;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+        color: $primary;
+    }
+}
+
+/* Phone: the four tiles of a journey become two rows without the route between them; the picker
+ * columns stack; a topic row puts its routes under its name. */
+@media (max-width: 719px) {
+    .phases {
+        gap: mui.$mui-unit;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .phase:not(:last-child):after {
+        display: none;
+    }
+
+    .picker {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .topic {
+        grid-template-columns: minmax(0, 1fr) 40px;
+    }
+
+    .topicRoutes {
+        grid-column: 1;
+        grid-row: 2;
+    }
+}
+
+.phaseDestinations {
+    border-color: $route;
+}
+
+/* ---- the language menu of a step ---- */
+.languageMenu {
+    min-width: 300px;
+    max-width: calc(100vw - 32px);
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border-radius: 12px !important;
+}
+
+.languageMenuTitle {
+    margin: 0 0 mui.$mui-unit;
+    color: $text;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+}
+
+.languageList {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.languageRow {
+    display: flex;
+    min-height: 40px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-top: 1px solid $outline;
+    gap: 4px mui.$mui-unit;
+
+    &:first-child {
+        border-top: 0;
+    }
+}
+
+.languageName {
+    min-width: 0;
+    flex: 1;
+    color: $text;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.languageState {
+    display: inline-flex;
+    align-items: center;
+    color: $muted;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+    line-height: 16px;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.languageState_checked,
+.languageState_source {
+    color: $text;
+}
+
+.languageState_machine {
+    color: var(--warning-text, #8a5100);
+}
+
+.languageState_missing {
+    color: $error;
+}
+
+.languageMenuFooter {
+    display: flex;
+    padding-top: mui.$mui-unit * 1.5;
+    margin-top: mui.$mui-unit;
+    border-top: 1px solid $outline;
+}
+
+/* ---- the step dialog: what the block is for ---- */
+.about {
+    display: flex;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 12px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.aboutIcon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    color: $primary;
+
+    svg {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+.aboutText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+
+    p {
+        margin: 0;
+        color: $muted;
+        font-size: 14px;
+        line-height: 20px;
+    }
+}
+
+p.aboutTitle {
+    color: $text;
+    font-weight: 500;
+}
+
+/* ---- a text in several languages ---- */
+.translatable {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.originalLine {
+    display: flex;
+    min-height: 32px;
+    align-items: center;
+    padding-left: mui.$mui-unit * 2;
+    gap: 4px;
+}
+
+.originalText {
+    overflow: hidden;
+    min-width: 0;
+    flex: 1;
+    color: $text;
+    font-size: 12px;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.originalLabel {
+    margin-right: 6px;
+    color: $muted;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.machineMark {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    color: var(--warning-text, #8a5100);
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+/* ---- questions: the look as a choice with icons, answers with the person's marks ---- */
+.questions {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: mui.$mui-unit * 2;
+}
+
+.looks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.look {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 mui.$mui-unit * 1.5 0 mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    gap: 6px;
+    line-height: 18px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: $muted;
+    }
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.lookOn {
+    border-color: transparent;
+    background: $selected;
+
+    svg {
+        color: $primary;
+    }
+}
+
+.lookPlus {
+    margin-right: -4px;
+}
+
+.answers {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    margin: 0;
+    gap: mui.$mui-unit * 2;
+    list-style: none;
+}
+
+.answer {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+
+    > .translatable {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.answerMark {
+    display: inline-flex;
+    width: 24px;
+    height: 56px;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    color: $muted;
+
+    svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+.answerNumber {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.answerOther {
+    align-items: center;
+}
+
+.answerOtherText {
+    flex: 1;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px dashed $outline;
+    border-radius: 4px;
+    color: $muted;
+    font-size: 14px;
+    font-style: italic;
+}
+
+.answerPreview {
+    display: flex;
+    align-items: center;
+    padding: mui.$mui-unit * 1.5 mui.$mui-unit * 2;
+    border: 1px dashed $outline;
+    border-radius: 4px;
+    color: $muted;
+    font-size: 14px;
+    gap: mui.$mui-unit;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+.questionActions {
+    display: flex;
+    padding-left: 32px;
+}
+
+.addQuestion {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit;
+}
+
+/* ---- the languages of a step, side by side ---- */
+.languageTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.languageTab {
+    display: inline-flex;
+    height: 32px;
+    align-items: center;
+    padding: 0 mui.$mui-unit;
+    border: 1px solid $outline;
+    border-radius: 8px;
+    background: none;
+    color: $text;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    gap: 4px;
+
+    span {
+        display: inline-flex;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.languageTab_machine svg {
+    color: var(--warning-text, #8a5100);
+}
+
+.languageTab_missing svg {
+    color: $error;
+}
+
+.languageTabOn {
+    border-color: $primary;
+    background: $selected;
+}
+
+/* The controls of an answer stand beside the field, centred on its height (56 px), not on the
+ * original line below it. */
+
+.answerActions,
+.rowActions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+}
+
+.answerActions {
+    height: 56px;
+}
+
+/* ---- the profile card of a block ---- */
+.profileFacts {
+    display: grid;
+    margin: 4px 0 0;
+    color: $text;
+    font-size: 14px;
+    gap: 2px mui.$mui-unit * 1.5;
+    grid-template-columns: max-content minmax(0, 1fr);
+    line-height: 20px;
+
+    dt {
+        color: $muted;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+
+    dd {
+        margin: 0;
+    }
+}
+
+.profileTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.profileToggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit 4px 0;
+    border: 0;
+    background: none;
+    color: $primary;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 4px;
+
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.profileForm {
+    display: flex;
+    flex-direction: column;
+    padding-top: mui.$mui-unit;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.tagInput {
+    display: flex;
+    align-items: flex-start;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        min-width: 0;
+        flex: 1;
+    }
+}
+
+.chipRemove {
+    display: inline-flex;
+    padding: 0;
+    border: 0;
+    margin-left: 2px;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+/* ---- the plus line between steps ----
+ * Collapsed it is the 12 px gap between two steps. Hover or focus opens it to 36 px, so the steps
+ * move apart, and a grey line with a plus fades in. While its add-step dialog is open it stays
+ * open. Secondary colour, not the primary red: it is an offer, not an alert. */
+
+$secondary: var(--m3-secondary, #5d5f5f);
+
+.insertLine {
+    position: relative;
+    display: flex;
+    width: calc(100% - 44px);
+    height: 12px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    margin: 0 0 0 44px;
+    background: none;
+    cursor: pointer;
+    grid-column: 1 / -1;
+    transition: height 180ms cubic-bezier(0.2, 0, 0, 1);
+
+    &:before {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        left: 0;
+        border-top: 2px solid $secondary;
+        content: '';
+        opacity: 0;
+        transform: scaleX(0.6);
+        transition: opacity 140ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    &:hover,
+    &:focus-visible,
+    &.insertLineActive {
+        height: 36px;
+
+        &:before {
+            opacity: 1;
+            transform: scaleX(1);
+        }
+
+        .insertPlus {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    &:active .insertPlus {
+        transform: scale(0.88);
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.insertLineStart {
+    margin-bottom: 0;
+}
+
+.insertPlus {
+    position: relative;
+    display: inline-flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: $secondary;
+    color: var(--m3-on-secondary, #ffffff);
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 140ms ease, transform 180ms cubic-bezier(0.2, 0, 0, 1);
+
+    svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .insertLineActive & {
+        transform: rotate(90deg) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .insertLine,
+    .insertLine:before,
+    .insertPlus {
+        transition: none;
+    }
+}
+
+/* ---- search terms: a cloud of words per language ---- */
+.searchPill {
+    height: 30px;
+    padding: 0 mui.$mui-unit;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    gap: 4px;
+
+    > span {
+        display: inline-flex;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    &:hover:not(:disabled) {
+        border-color: $primary;
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.searchPillDone {
+    color: $text;
+}
+
+.languageTab_checked svg {
+    color: $text;
+}
+
+.keywordCloud {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+    gap: 6px mui.$mui-unit;
+    list-style: none;
+}
+
+.keyword {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit * 1.25;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    color: $text;
+    font-size: 14px;
+    gap: 4px;
+    line-height: 20px;
+}
+
+button.keyword {
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+
+    &:hover {
+        border-color: $primary;
+    }
+
+    &:focus-visible {
+        @include focus-ring;
+    }
+}
+
+.keywordSuggestion {
+    border-style: dashed;
+    color: $muted;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* Profile dialog: two tabs, search terms grouped as "yours" and "suggested". */
+.termLanguages {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: mui.$mui-unit;
+}
+
+.termGroup {
+    display: flex;
+    flex-direction: column;
+    padding: mui.$mui-unit * 2;
+    border: 1px solid $outline;
+    border-radius: 16px;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.termGroupHead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: mui.$mui-unit;
+
+    > :first-child {
+        flex: 1;
+    }
+}
+
+.termGroupTitle {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    color: $text;
+    font-size: 14px;
+    font-weight: 500;
+    gap: 6px;
+    line-height: 20px;
+
+    svg {
+        width: 18px;
+        height: 18px;
+        color: $muted;
+    }
+}
+
+.keywordAdd {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px mui.$mui-unit * 1.25;
+    border: 1px dashed $outline;
+    border-radius: 16px;
+    color: $muted;
+    gap: 4px;
+
+    &:focus-within {
+        border-style: solid;
+        border-color: $primary;
+    }
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    input {
+        width: 16ch;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: $text;
+        font: inherit;
+        font-size: 14px;
+        line-height: 20px;
+        outline: none;
+    }
+}
+
+.busyIcon svg {
+    animation: busy-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes busy-pulse {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .busyIcon svg {
+        animation: none;
+        opacity: 0.5;
+    }
+}
+
+/* The one way on after a failed save: as wide as its label. */
+.failureActions {
+    display: flex;
+    justify-content: flex-start;
+    margin-top: 8px;
+}

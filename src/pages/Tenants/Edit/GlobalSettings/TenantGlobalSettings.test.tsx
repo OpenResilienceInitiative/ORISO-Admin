@@ -143,11 +143,141 @@ describe('Platform admin on /admin/tenants/<id>/global-settings (ORISO-Admin#989
     });
 });
 
+describe('Same tiles as the platform page (ORISO-Admin#1577)', () => {
+    it('shows the Live Chat tile, with the chat links of this Träger on it', async () => {
+        serve({ traegerSettings: {} });
+        mocks.routes.set('GET /service/useradmin/invitelinks/topics', () => []);
+        mocks.routes.set('GET /service/useradmin/invitelinks', () => ({ content: [], totalElements: 0 }));
+        renderPage();
+
+        const tile = await screen.findByTestId('chat-type-card-liveChat');
+        expect(await within(tile).findByRole('region', { name: 'Live chat links' })).toBeInTheDocument();
+        // The links live on the tile only, not in a card of their own above the tiles.
+        expect(screen.getAllByRole('region', { name: 'Live chat links' })).toHaveLength(1);
+        expect(await findRow('featureAnonymousChatEnabled')).toBeInTheDocument();
+    });
+
+    // Frank, 2026-11-25: this page looks exactly like Einstellungen → Funktionszugriff; no extra intro paragraph.
+    it('shows the same page intro as the settings page, without an extra scope paragraph', async () => {
+        serve({ traegerSettings: {} });
+        renderPage();
+
+        const intro = await screen.findByTestId('permissions-intro');
+        expect(within(intro).getByText(i18n.t('tenants.permissions.intro.lead'))).toBeVisible();
+        expect(within(intro).getByText(i18n.t('tenants.permissions.intro.hint'))).toBeVisible();
+        // Lead and hint, nothing else outside the list of conversation types.
+        expect(intro.querySelectorAll(':scope > p')).toHaveLength(2);
+    });
+});
+
+describe('Settings that moved here from the former Funktionalitäten tab (ORISO-Admin#1577)', () => {
+    const VIDEO = 'featureVideoCallsOneOnOneChatsEnabled';
+    // Only Mail Beratung video is on, so switching it off leaves no conversation type with calls.
+    const lastCallOn = {
+        featureCallsEnabled: policy(true),
+        [VIDEO]: policy(true),
+        featureAudioCallsOneOnOneChatsEnabled: policy(false),
+        featureVideoCallsAnonymousChatsEnabled: policy(false),
+        featureAudioCallsAnonymousChatsEnabled: policy(false),
+        featureVideoCallsGroupChatsEnabled: policy(false),
+        featureAudioCallsGroupChatsEnabled: policy(false),
+    };
+    const tenantPuts = () => requestsTo('/service/tenantadmin/7').filter(({ method }) => method === 'PUT');
+
+    it('switches the Träger call permission off after the last call switch was saved off', async () => {
+        serve({ traegerSettings: { extendedSettings: { isVideoCallAllowed: true } }, policies: lastCallOn });
+        mocks.routes.set('PUT /service/tenantadmin/7', () => ({}));
+        const user = userEvent.setup();
+        renderPage();
+
+        await user.click(within(await findRow(VIDEO)).getByRole('button', { name: /: Active – Deactivate$/ }));
+
+        await waitFor(() => expect(tenantPuts()).toHaveLength(1));
+        const policyPut = mocks.requests.findIndex(
+            (request) => request.method === 'PUT' && request.url.endsWith('/permission-policies'),
+        );
+        // The tile is saved first; the call permission follows it.
+        expect(policyPut).toBeGreaterThan(-1);
+        expect(mocks.requests.indexOf(tenantPuts()[0])).toBeGreaterThan(policyPut);
+        expect(JSON.parse(tenantPuts()[0].bodyData ?? '{}').settings.extendedSettings).toMatchObject({
+            isVideoCallAllowed: false,
+        });
+    });
+
+    it('leaves the call permission alone when the tile could not be saved', async () => {
+        serve({ traegerSettings: { extendedSettings: { isVideoCallAllowed: true } }, policies: lastCallOn });
+        mocks.routes.set('PUT /service/tenantadmin/7/permission-policies', () => {
+            throw new Error('FORBIDDEN');
+        });
+        mocks.routes.set('PUT /service/tenantadmin/7', () => ({}));
+        const user = userEvent.setup();
+        renderPage();
+
+        await user.click(within(await findRow(VIDEO)).getByRole('button', { name: /: Active – Deactivate$/ }));
+
+        await waitFor(() =>
+            expect(
+                requestsTo('/service/tenantadmin/7/permission-policies').filter(({ method }) => method === 'PUT'),
+            ).toHaveLength(1),
+        );
+        await new Promise((resolve) => {
+            setTimeout(resolve, 50);
+        });
+        expect(tenantPuts()).toHaveLength(0);
+    });
+
+    it('does not write the call permission when it already matches', async () => {
+        serve({ traegerSettings: { extendedSettings: { isVideoCallAllowed: false } }, policies: lastCallOn });
+        mocks.routes.set('PUT /service/tenantadmin/7', () => ({}));
+        const user = userEvent.setup();
+        renderPage();
+
+        await user.click(within(await findRow(VIDEO)).getByRole('button', { name: /: Active – Deactivate$/ }));
+
+        await waitFor(() =>
+            expect(
+                requestsTo('/service/tenantadmin/7/permission-policies').filter(({ method }) => method === 'PUT'),
+            ).toHaveLength(1),
+        );
+        await new Promise((resolve) => {
+            setTimeout(resolve, 50);
+        });
+        expect(tenantPuts()).toHaveLength(0);
+    });
+
+    // ORISO-Frontend#2491: the Team-Chat is a permission policy like supervision, never a raw setting.
+    it('saves the Team-Chat tile as a Träger policy (ORISO-Frontend#2491)', async () => {
+        serve({
+            traegerSettings: { featureTeamDiscussionEnabled: true },
+            policies: { featureTeamDiscussionEnabled: policy(true) },
+        });
+        mocks.routes.set('PUT /service/tenantadmin/7', () => ({}));
+        const user = userEvent.setup();
+        renderPage();
+
+        const tile = await screen.findByTestId('team-chat-tile');
+        const teamChat = await waitFor(() => {
+            const control = tile.querySelector<HTMLElement>('[data-feature-policy="featureTeamDiscussionEnabled"]');
+            expect(control).not.toBeNull();
+            return control as HTMLElement;
+        });
+        await user.click(within(teamChat).getByRole('button', { name: /: Active – Deactivate$/ }));
+
+        const puts = () =>
+            requestsTo('/service/tenantadmin/7/permission-policies').filter(({ method }) => method === 'PUT');
+        await waitFor(() => expect(puts()).toHaveLength(1));
+        expect(JSON.parse(puts()[0].bodyData ?? '{}')).toMatchObject({
+            tenantId: 7,
+            policies: { featureTeamDiscussionEnabled: policy(false) },
+        });
+        expect(tenantPuts()).toHaveLength(0);
+    });
+});
+
 describe('Live-chat links for the selected Träger (ORISO-Admin#1321)', () => {
     it.each(['abc', '0'])('does not mount or request live-chat links for invalid tenant ID %s', (id) => {
         renderPage(id);
 
-        expect(screen.getByText(i18n.t('tenants.globalSettings.superAdminWarning.title'))).toBeInTheDocument();
         expect(screen.queryByRole('region', { name: 'Live chat links' })).not.toBeInTheDocument();
         expect(
             mocks.requests.filter(({ url }) => /\/service\/useradmin\/invitelinks(?:[/?]|$)/.test(url)),

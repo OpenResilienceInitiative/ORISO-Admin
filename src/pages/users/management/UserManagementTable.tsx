@@ -9,7 +9,6 @@ import { useAdminFeedback } from '../../../hooks/useAdminFeedback';
 import { useListQuery, useListTableState } from '../../../hooks/useListQuery';
 import { ListSearchBar } from '../../../components/ListSearchBar';
 import routePathNames from '../../../appConfig';
-import { Modal } from '../../../components/Modal';
 import { canSeeLinksSection } from '../../../constants/linksAccess';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { PermissionAction } from '../../../enums/PermissionAction';
@@ -18,6 +17,8 @@ import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { useAdminListPreferences, useSaveAdminListSort } from '../../../hooks/useAdminListPreferences';
 import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdminsData';
 import { useDeleteTenant } from '../../../hooks/useDeleteTenant';
+import { TenantDeleteErrorMessage } from '../../Tenants/List/TenantDeleteErrorMessage';
+import { TenantDeletionModal } from '../../Tenants/List/TenantDeletionModal';
 import { useReleasesToggle } from '../../../hooks/useReleasesToggle.hook';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantAdminsData } from '../../../hooks/useTenantUserAdminsData';
@@ -28,7 +29,6 @@ import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { CounselorData } from '../../../types/counselor';
 import { TenantData } from '../../../types/tenant';
 import { useAppConfigContext } from '../../../context/useAppConfig';
-import decodeHTML from '../../../utils/decodeHTML';
 import { hasUserSearchFilters, type UserSearchFilters } from '../../../utils/userSearchFilters';
 import { DeleteUserModal } from '../List/components/DeleteUser';
 import { DeleteTenantAdminModal } from '../List/components/DeleteTenantAdmin';
@@ -170,9 +170,9 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
             notification.success({ message: t('tenants.list.deleteMessage.success') });
             refetch();
         },
-        onError: () => {
+        onError: (error) => {
             notification.error({
-                description: t('tenants.list.deleteMessage.error.description'),
+                description: <TenantDeleteErrorMessage error={error} />,
                 message: t('tenants.list.deleteMessage.error.title'),
             });
         },
@@ -474,7 +474,8 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                         sortBy={shownSortBy}
                         order={shownOrder}
                         onEdit={onEditTenant}
-                        onDelete={onDeleteTenant}
+                        // Deleting a Träger is the platform administrator's act alone (ORISO-Admin#1525).
+                        onDelete={isSuperAdmin ? onDeleteTenant : undefined}
                     />
                 )}
             </div>
@@ -506,14 +507,10 @@ export const UserManagementTable = ({ figmaTableHeader = false }: UserManagement
                 <DeleteStatisticsReaderModal user={deleteStatisticsReader} onClose={onCloseDelete} />
             )}
             {tenantToDelete !== null && (
-                <Modal
-                    titleKey="tenants.list.deleteModal.title"
-                    titleKeyOptions={{ name: decodeHTML(tenantToDelete.name) }}
-                    contentKey="tenants.list.deleteModal.description"
-                    okLabelKey="tenants.list.deleteModal.confirm"
-                    cancelLabelKey="tenants.list.deleteModal.cancel"
-                    onConfirm={() => {
-                        deleteTenant(tenantToDelete.id);
+                <TenantDeletionModal
+                    tenant={tenantToDelete}
+                    onConfirm={(id) => {
+                        deleteTenant(id);
                         setTenantToDelete(null);
                     }}
                     onClose={() => setTenantToDelete(null)}

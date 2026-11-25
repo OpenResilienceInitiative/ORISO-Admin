@@ -36,5 +36,6 @@
     "tenants.permissions.asker.collection.agencyCounselling": "E-Mail-Adresse in der 1:1-Beratung",
     "tenants.permissions.asker.collection.selfHelp": "E-Mail-Adresse in Selbsthilfegruppen",
     "tenants.permissions.asker.collection.masterOff": "Zuerst E-Mail-Adressen für das Konto erlauben. Diese Auswahl bleibt erhalten.",
-    "tenants.permissions.asker.collection.description": "Diese Einstellungen erlauben die Erfassung. Sie machen eine Adresse nicht verpflichtend und ändern keine Benachrichtigungen."
+    "tenants.permissions.asker.collection.description": "Diese Einstellungen erlauben die Erfassung. Sie machen eine Adresse nicht verpflichtend und ändern keine Benachrichtigungen.",
+    "message.error.tenantSettingsOutcomeUnknown": "Speichern konnte nicht bestätigt werden. Prüfe die aktuellen Einstellungen, bevor du es erneut versuchst."
 }

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- exports-map subpath resolves in Storybook/Vite
-import { expect, userEvent, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import i18n from '../../../i18n';
 import {
     applyAdminInvertedTheme,
     applyAdminTheme,
@@ -20,7 +21,16 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const MasterData: Story = { decorators: [tenantEditDecorator('general')] };
+/** Master data only (Frank, 2026-11-20): licence and sender moved to the tab "Weitere". */
+export const MasterData: Story = {
+    decorators: [tenantEditDecorator('general')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('group', { name: String(i18n.t('tenants.form.section.general')) }, { timeout: 8000 });
+        await expect(canvas.queryByRole('group', { name: String(i18n.t('tenants.form.section.sender')) })).toBeNull();
+        await expect(canvas.queryByDisplayValue('40')).toBeNull();
+    },
+};
 
 export const Appearance: Story = { decorators: [tenantEditDecorator('theme-settings')] };
 
@@ -30,9 +40,54 @@ export const Introduction: Story = { decorators: [tenantEditDecorator('erstantwo
 
 export const EmailServer: Story = { decorators: [tenantEditDecorator('smtp')] };
 
-export const FunctionalityAccess: Story = { decorators: [tenantEditDecorator('global-settings')] };
+/**
+ * ORISO-Admin#1577: the same tiles as the platform page. The Live Chat tile is there, with this Träger's chat links
+ * on it (not in a card of its own), and the page intro is the same as on Einstellungen → Funktionszugriff. The former
+ * Funktionalitäten tab (now "Weitere") gave up Team-Chat (its own tile after the conversation types) and
+ * supervision (a section of the Mail-Beratung tile, Frank 2026-11-25).
+ */
+export const FunctionalityAccess: Story = {
+    decorators: [tenantEditDecorator('global-settings')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const liveChat = await canvas.findByTestId('chat-type-card-liveChat', {}, { timeout: 8000 });
+        await expect(
+            await within(liveChat).findByRole('region', { name: i18n.t('liveChatLinks.title') }, { timeout: 8000 }),
+        ).toBeInTheDocument();
+        await expect(canvas.getAllByRole('region', { name: i18n.t('liveChatLinks.title') })).toHaveLength(1);
+        // Frank, 2026-11-25: the same page as Einstellungen → Funktionszugriff: lead and hint, no extra paragraph.
+        await expect(canvas.getByTestId('permissions-intro').querySelectorAll(':scope > p')).toHaveLength(2);
+        await expect(canvas.queryByTestId('supervision-tile')).not.toBeInTheDocument();
+        await expect(
+            within(canvas.getByTestId('chat-type-card-oneOnOne')).getByRole('group', { name: /^Supervision$/ }),
+        ).toBeVisible();
+        await expect(canvas.getByTestId('team-chat-tile')).toBeVisible();
+        const page = canvasElement.ownerDocument.documentElement;
+        await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    },
+};
 
-export const Functionalities: Story = { decorators: [tenantEditDecorator('functionalities')] };
+/**
+ * ORISO-Admin#1577: the tab "Weitere" (formerly Funktionalitäten): topics and counsellor statistics; since
+ * Frank's decision of 2026-11-20 also licence and sender of the Träger, as a tile with its own save.
+ */
+export const More: Story = {
+    decorators: [tenantEditDecorator('functionalities')],
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const section = await canvas.findByRole(
+            'group',
+            { name: String(i18n.t('tileHelp.otherFunctions.general.title')) },
+            { timeout: 8000 },
+        );
+        await expect(within(section).getAllByRole('switch')).toHaveLength(2);
+        await canvas.findByDisplayValue('40', {}, { timeout: 8000 });
+        await expect(canvas.getByRole('group', { name: String(i18n.t('tenants.form.section.sender')) })).toBeVisible();
+        await expect(canvas.getAllByText(String(i18n.t('tenants.edit.tabs.appSettings'))).length).toBeGreaterThan(0);
+        const page = canvasElement.ownerDocument.documentElement;
+        await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+    },
+};
 
 /** The platform admin's "create Träger" dialog (`/admin/tenants/add`): the Träger's parts and the first admin as panels. */
 export const CreateTenant: Story = { decorators: [tenantEditDecorator('general', 'add')] };

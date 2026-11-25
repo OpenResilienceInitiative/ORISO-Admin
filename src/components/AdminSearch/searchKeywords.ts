@@ -545,6 +545,9 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'ask for email',
     ],
     'access:mail-counselling': [
+        'videotelefonie',
+        'jitsi',
+        'telefonieren',
         'mailberatung',
         'einzelberatung',
         'einzelchat',
@@ -627,38 +630,26 @@ export const SEARCH_KEYWORDS: Record<string, string[]> = {
         'staff chat',
     ],
 
-    // ── Functionalities (Träger) ─────────────────────────────────────────────
-    'app:communication': [
-        'video',
-        'videoberatung',
-        'videoanruf',
-        'videotelefonie',
-        'video call',
-        'video counselling',
-        'video counseling',
-        'jitsi',
-        'telefonieren',
-        'kommunikation',
-    ],
-    'app:other': [
-        'gruppenchat',
-        'gruppenchats',
+    // ── Moved from the former Funktionalitäten tab (ORISO-Admin#1577) ─────────
+    'access:team-chat': [
         'teamdiskussion',
-        'teamberatung',
-        'team besprechung',
-        'supervision',
+        'team chat',
+        'team discussion',
+        'teamchat',
+        'nach der annahme',
+        'after acceptance',
+    ],
+    'access:supervision': ['supervision', 'supervisor', 'supervisorin', 'mitlesen', 'supervision chat', 'read along'],
+
+    // ── Weitere (Träger) ─────────────────────────────────────────────────────
+    'app:other': [
         'statistik für berater',
         'themen',
         'fachbereiche',
         'themen aktivieren',
-        'group chat',
-        'team discussion',
-        'team counselling',
-        'supervision',
         'show statistics',
         'use topics',
         'topics',
-        'features',
     ],
 
     // ── Beratungsstelle ──────────────────────────────────────────────────────

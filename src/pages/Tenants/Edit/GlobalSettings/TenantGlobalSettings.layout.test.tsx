@@ -9,16 +9,14 @@ vi.mock('../../../../components/Tenants/AppSettings/PermissionsSettings/TenantPe
 }));
 
 describe('TenantGlobalSettings layout', () => {
-    it('has no horizontal gutter, so the page is not wider than its host (no sideways scroll)', () => {
+    it('has no antd Row around the tiles, whose gutter made the page wider than its host (sideways scroll)', () => {
         const { container } = render(
             <MemoryRouter>
                 <TenantGlobalSettings />
             </MemoryRouter>,
         );
-        const row = container.querySelector<HTMLElement>('.ant-row');
 
-        expect(row).not.toBeNull();
-        // An antd Row with a horizontal gutter sets negative side margins on itself.
-        expect(row?.getAttribute('style') ?? '').not.toMatch(/margin/);
+        expect(container.querySelector('[data-testid="permissions"]')).not.toBeNull();
+        expect(container.querySelector('.ant-row')).toBeNull();
     });
 });

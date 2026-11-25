@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { http, HttpResponse } from 'msw';
 import { Route, Routes, useNavigate } from 'react-router-dom';
+import { LONG_DPA_HTML } from '../../../components/DpaLegalForm/dpaStoryText';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
@@ -121,7 +122,9 @@ export const agencyEditHandlers = [
         HttpResponse.json([
             {
                 activationDate: '2026-07-13T10:22:00',
-                content: JSON.stringify({ de: '<h1>Vertragsunterlagen</h1><p>Veröffentlichte Fassung.</p>' }),
+                content: JSON.stringify({
+                    de: LONG_DPA_HTML.replace('<h1>Vertragsunterlagen</h1>', '<h1>Auftragsverarbeitungsvertrag</h1>'),
+                }),
             },
         ]),
     ),

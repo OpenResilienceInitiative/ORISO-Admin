@@ -1,0 +1,5 @@
+// The snackbar renders its description inside a <p>, so the list is built from spans.
+.list,
+.item {
+    display: block;
+}

@@ -56,6 +56,9 @@ import pageStyles from '../../../components/Page/styles.module.scss';
 import { AgencyPermissionsSettings } from '../../../components/Tenants/AppSettings/PermissionsSettings/AgencyPermissionsSettings';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { useUserPermissions } from '../../../hooks/useUserPermission';
+import { useSingleTenantData } from '../../../hooks/useSingleTenantData';
+import { AgencyErstantwortSettings } from '../../../components/Tenants/AppSettings/ErstantwortSettings/AgencyErstantwort';
+import type { ErstantwortContentMap } from '../../../components/Tenants/AppSettings/ErstantwortSettings/ErstantwortTextsCard';
 import { PermissionAction } from '../../../enums/PermissionAction';
 import { Resource } from '../../../enums/Resource';
 import { AgencyContactPersonTile } from './components/ContactPersonSettings/AgencyContactPersonTile';
@@ -83,7 +86,7 @@ function hasOnlyDefaultRangeDefined(data: PostCodeRange[]) {
 const DEFAULT_MIN_AGE = 18;
 const DEFAULT_MAX_AGE = 100;
 
-type AgencySettingsSection = 'general' | 'legal' | 'functionalities';
+type AgencySettingsSection = 'general' | 'legal' | 'functionalities' | 'erstantwort';
 
 interface AgencyPageEditProps {
     section?: AgencySettingsSection;
@@ -123,6 +126,8 @@ const AgencyPageEditForm = ({
     const isEditing = id !== 'add';
     const isLegalSection = section === 'legal';
     const isFunctionalitiesSection = section === 'functionalities';
+    const isErstantwortSection = section === 'erstantwort';
+    const { can: canDo } = useUserPermissions();
     const [isReadOnly, setReadOnly] = useState(isEditing);
     const [submitted, setSubmitted] = useState(false);
     const [pendingNoTopicForm, setPendingNoTopicForm] = useState<Record<string, unknown> | null>(null);
@@ -171,6 +176,13 @@ const AgencyPageEditForm = ({
     else if (hasNewLegalTemplate) legalTabIcon = <LegalTemplateUnreadMarker />;
     const agencyTenantId = getEntityId(agencyData?.tenantId);
     const { data: traegerDpo } = useTraegerDataProtectionOfficer(agencyTenantId);
+    /* The centre writes the Träger's single German variant and translates into its languages. An
+       agency admin may not read the Träger: then German formal and no translation targets apply. */
+    const { data: traegerSettings } = useSingleTenantData({
+        id: agencyTenantId ?? '',
+        enabled: isErstantwortSection && agencyTenantId != null,
+        retry: false,
+    });
     const agencySettingsTabs = isAgencyInaccessible
         ? []
         : [
@@ -185,6 +197,12 @@ const AgencyPageEditForm = ({
                   to: `${routePathNames.agency}/${id}/legal-settings`,
                   iconName: 'legal',
                   icon: legalTabIcon,
+              },
+              // ADR-018 §6: the centre's own Erstantwort texts, above the Träger's.
+              isEditing && {
+                  titleKey: 'settings.subhead.agencyErstantwort',
+                  to: `${routePathNames.agency}/${id}/erstantwort`,
+                  iconName: 'erstantwort',
               },
               isEditing && {
                   titleKey: 'settings.subhead.functionAccess',
@@ -540,7 +558,6 @@ const AgencyPageEditForm = ({
                             initialValues={initialValues}
                             onSave={onSaveCard}
                             departmentFieldRequest={departmentFieldRequest}
-                            persistedTeamAgency={initialValues.teamAgency}
                             status={
                                 <ManagedEntityStatus
                                     embedded
@@ -607,7 +624,7 @@ const AgencyPageEditForm = ({
                     <CardGrid minCardWidth={425} maxColumns={2}>
                         <AgencyGeneralInformation />
                         <RegistrationSettings />
-                        <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                        <AgencySettings isEditMode={isEditing} />
                         <ContactPersonCreateCard />
                     </CardGrid>
                 </Form>
@@ -642,7 +659,7 @@ const AgencyPageEditForm = ({
             {/* #620: a single card in a fixed 392px deck rendered needlessly narrow —
                 the grid lets it use the row up to the shared card floor. */}
             <CardGrid minCardWidth={425} maxColumns={2}>
-                <AgencySettings isEditMode={isEditing} persistedTeamAgency={initialValues.teamAgency} />
+                <AgencySettings isEditMode={isEditing} />
             </CardGrid>
         </Form>
     );
@@ -676,6 +693,7 @@ const AgencyPageEditForm = ({
             },
             {
                 id: 'contract-documents',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(
                     <DescriptionOutlinedIcon />,
                     'tenants.legal.dataProcessingAgreement.title',
@@ -684,10 +702,17 @@ const AgencyPageEditForm = ({
                 document: true,
                 span: 3,
                 // The DPA is managed at tenant (Träger) level — agency admins get a read-only view.
-                node: <DataProcessingAgreementContainer tenantId={agencyTenantId} readOnly />,
+                node: (
+                    <DataProcessingAgreementContainer
+                        tenantId={agencyTenantId}
+                        readOnly
+                        collapsible={legalLayout === 'collapsible'}
+                    />
+                ),
             },
             {
                 id: 'imprint',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(<ImprintIcon />, 'tenants.legal.agencyImprint.title', imprintTileStatus(agencyData)),
                 document: true,
                 span: 3,
@@ -696,6 +721,7 @@ const AgencyPageEditForm = ({
                    with "Alle Fachbereiche" editing the inheritable agency-wide text. */
                 node: (
                     <AgencyLegalTextWithTemplates
+                        collapsible={legalLayout === 'collapsible'}
                         agencyData={agencyData}
                         field="imprint"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -705,6 +731,7 @@ const AgencyPageEditForm = ({
             },
             {
                 id: 'privacy',
+                ownCollapsibleTile: legalLayout === 'collapsible',
                 summary: summary(
                     <GdprIcon />,
                     'tenants.legal.agencyDataProtection.title',
@@ -714,6 +741,7 @@ const AgencyPageEditForm = ({
                 span: 3,
                 node: (
                     <AgencyLegalTextWithTemplates
+                        collapsible={legalLayout === 'collapsible'}
                         agencyData={agencyData}
                         field="privacy"
                         onSaveAgencyWide={onSaveAgencyWide}
@@ -731,7 +759,16 @@ const AgencyPageEditForm = ({
             {isLegalSection && renderLegalSettings()}
             {isFunctionalitiesSection &&
                 (isEditing ? renderFunctionalitiesSettings() : renderLegacyFunctionalitiesSettings())}
-            {!isLegalSection && !isFunctionalitiesSection && renderGeneralSettings()}
+            {isErstantwortSection && isEditing && id && (
+                <AgencyErstantwortSettings
+                    agencyId={id}
+                    languageFormal={traegerSettings?.settings?.extendedSettings?.languageFormal}
+                    activeLanguages={traegerSettings?.settings?.activeLanguages}
+                    traegerContent={traegerSettings?.content as ErstantwortContentMap | undefined}
+                    readOnly={!canDo(PermissionAction.Update, Resource.Agency)}
+                />
+            )}
+            {!isLegalSection && !isFunctionalitiesSection && !isErstantwortSection && renderGeneralSettings()}
         </>
     );
 
@@ -818,7 +855,7 @@ const AgencyPageEditForm = ({
     );
 };
 
-export const AgencyPageEdit = ({ section = 'general', legalLayout = 'raster' }: AgencyPageEditProps) => {
+export const AgencyPageEdit = ({ section = 'general', legalLayout = 'collapsible' }: AgencyPageEditProps) => {
     const { id } = useParams();
     const { can } = useUserPermissions();
     const canCreateAgency = can(PermissionAction.Create, Resource.Agency);

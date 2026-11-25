@@ -9,7 +9,7 @@ import {
     getAgencyLegalDraft,
     putAgencyLegalDraft,
 } from '../../../../api/agency/legalDrafts';
-import { useAgencyLegalDraft } from './useAgencyLegalDraft';
+import { agencyLegalDraftKey, useAgencyLegalDraft } from './useAgencyLegalDraft';
 
 vi.mock('../../../../api/agency/legalDrafts', async () => {
     const actual = await vi.importActual<typeof import('../../../../api/agency/legalDrafts')>(
@@ -23,8 +23,7 @@ vi.mock('../../../../api/agency/legalDrafts', async () => {
     };
 });
 
-const createWrapper = () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+const createWrapper = (client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
     return ({ children }: React.PropsWithChildren) => (
         <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
@@ -212,6 +211,46 @@ describe('useAgencyLegalDraft', () => {
         await act(async () => pendingOldSave);
 
         expect(result.current.draft).toEqual(newA);
+    });
+
+    it.each(['save', 'discard'] as const)('ignores a stale %s after query cancellation was pending', async (action) => {
+        const original = imprintDraft('agency-a:0');
+        const newer = imprintDraft('agency-a:2');
+        const key = agencyLegalDraftKey(10, 'IMPRINT');
+        const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        let finishCancellation: () => void = () => undefined;
+        const cancellation = new Promise<void>((resolve) => {
+            finishCancellation = resolve;
+        });
+        const cancelQueries = vi.spyOn(client, 'cancelQueries').mockReturnValueOnce(cancellation);
+        vi.mocked(getAgencyLegalDraft)
+            .mockResolvedValueOnce(original)
+            .mockResolvedValueOnce(imprintDraft('agency-b:0'))
+            .mockResolvedValueOnce(newer);
+        vi.mocked(putAgencyLegalDraft).mockResolvedValueOnce(imprintDraft('agency-a:1'));
+        vi.mocked(deleteAgencyLegalDraft).mockResolvedValueOnce(undefined);
+        const { result, rerender } = renderHook(({ agencyId }) => useAgencyLegalDraft(agencyId, 'IMPRINT', true), {
+            initialProps: { agencyId: 10 },
+            wrapper: createWrapper(client),
+        });
+        await waitFor(() => expect(result.current.draft).toEqual(original));
+        const pendingWrite =
+            action === 'save'
+                ? result.current.save({ content: { de: '<p>Bearbeitet</p>' }, revision: original.revision })
+                : result.current.discard(original.revision);
+        await waitFor(() => expect(cancelQueries).toHaveBeenCalledWith({ queryKey: key }));
+
+        rerender({ agencyId: 11 });
+        await waitFor(() => expect(result.current.draft?.revision).toBe('agency-b:0'));
+        rerender({ agencyId: 10 });
+        await waitFor(() => expect(result.current.draft).toEqual(newer));
+
+        await act(async () => {
+            finishCancellation();
+            await pendingWrite;
+        });
+
+        expect(client.getQueryData(key)).toEqual(newer);
     });
 
     it('keeps the saved draft when a read was still in flight', async () => {

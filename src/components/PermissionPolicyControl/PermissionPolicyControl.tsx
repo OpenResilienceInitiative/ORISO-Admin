@@ -18,6 +18,11 @@ type PermissionPolicyControlProps = {
     supportingText?: string;
     /** Smaller button and label, for settings laid out as compact cards. */
     compact?: boolean;
+    /**
+     * A setting only one level stores (ORISO-Admin#1577): no lock, because
+     * there is no level below to require it from and none above to inherit it from.
+     */
+    withoutRule?: boolean;
 };
 
 /**
@@ -34,6 +39,7 @@ export const PermissionPolicyControl = ({
     disabled = false,
     supportingText,
     compact = false,
+    withoutRule = false,
 }: PermissionPolicyControlProps) => {
     const { t } = useTranslation();
     const enforced = policy.mode === 'ENFORCED';
@@ -63,7 +69,7 @@ export const PermissionPolicyControl = ({
         <div className={classNames(styles.control, { [styles.compact]: compact })} data-feature-policy={featureKey}>
             <div className={styles.copy}>
                 <span className={styles.label}>{label}</span>
-                {canSetRule ? (
+                {!withoutRule && canSetRule && (
                     <button
                         type="button"
                         className={classNames(styles.meta, styles.modeButton)}
@@ -75,9 +81,8 @@ export const PermissionPolicyControl = ({
                     >
                         {lock}
                     </button>
-                ) : (
-                    <span className={styles.meta}>{lock}</span>
                 )}
+                {!withoutRule && !canSetRule && <span className={styles.meta}>{lock}</span>}
                 {supportingText && <span className={styles.supportingText}>{supportingText}</span>}
             </div>
             <button

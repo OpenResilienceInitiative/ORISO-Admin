@@ -30,6 +30,11 @@ interface TraegerFieldSectionsProps {
     requiredRule: Rule;
     /** Which sections to show; the edit tile has the data protection officer, the create dialog the topic. */
     sections: readonly TraegerSectionKey[];
+    /**
+     * The licence number in the general panel. Only the create dialog asks for it: on an existing Träger
+     * it has its own tile in the tab "Weitere" (Frank, 2026-11-20).
+     */
+    withLicence?: boolean;
     /** Sections before the Träger's own ones, e.g. the status of the existing Träger. */
     leading?: ReactNode;
     /** Extra sections after the Träger's own ones, e.g. the first admin in the create dialog. */
@@ -41,6 +46,7 @@ export const TraegerFieldSections = ({
     subdomain,
     requiredRule,
     sections,
+    withLicence = false,
     leading,
     children,
 }: TraegerFieldSectionsProps) => {
@@ -69,15 +75,17 @@ export const TraegerFieldSections = ({
                             />
                         </div>
                     )}
-                    <div className={styles.fieldGroup}>
-                        <MuiNumberFormField
-                            name={['licensing', 'allowedNumberOfUsers']}
-                            label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
-                            required
-                            min={1}
-                            rules={[requiredRule]}
-                        />
-                    </div>
+                    {withLicence && (
+                        <div className={styles.fieldGroup}>
+                            <MuiNumberFormField
+                                name={['licensing', 'allowedNumberOfUsers']}
+                                label={t('tenants.add.form.allowedConsultantsLicense.placeholder')}
+                                required
+                                min={1}
+                                rules={[requiredRule]}
+                            />
+                        </div>
+                    )}
                     <div className={styles.fieldGroup}>
                         <MuiFormField
                             name="address"

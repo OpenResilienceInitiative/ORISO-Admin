@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GrantConsultantIdentityModal } from './index';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
@@ -64,6 +64,28 @@ describe('topicOptionsForAgencies', () => {
 describe('GrantConsultantIdentityModal', () => {
     beforeEach(() => {
         mocks.grant.mockReset().mockResolvedValue({});
+    });
+
+    it.each(['Escape', 'Cancel'])('returns focus to the trigger after %s', async (dismissal) => {
+        mocks.agencies = [];
+        const user = userEvent.setup();
+        render(<GrantConsultantIdentityModal adminId="admin-1" tenantId={1} />);
+        const trigger = screen.getByRole('button', { name: 'grantConsultantIdentity.button' });
+        trigger.focus();
+        await user.keyboard('{Enter}');
+        const cancel = await screen.findByRole('button', { name: 'btn.cancel' });
+        if (dismissal === 'Escape') {
+            cancel.focus();
+            // rc-dialog checks the native Escape key code.
+            fireEvent.keyDown(cancel, { key: 'Escape', keyCode: 27 });
+        } else {
+            await user.click(cancel);
+        }
+        await waitFor(() => {
+            expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+            expect(trigger).toHaveFocus();
+        });
+        expect(mocks.grant).not.toHaveBeenCalled();
     });
 
     it('assigns the only topic of the Beratungsstelle automatically and sends it', async () => {

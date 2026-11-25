@@ -1,0 +1,13 @@
+// "Rundgang-Knopf anzeigen": label and switch on one row, the hint below.
+.launcherSwitch {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--spacing-m, 20px);
+    gap: var(--spacing-s, 10px);
+}
+
+.launcherSwitchHint {
+    margin: var(--spacing-xxs, 4px) 0 0;
+    color: var(--m3-on-surface-variant, #444748);
+}

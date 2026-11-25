@@ -1437,18 +1437,22 @@ describe('AgencyPageEdit section menu', () => {
         mocks.agencyData = { id: 282, name: 'E2E Agency', tenantId: 84, topics: [] };
     });
 
-    it.each(Object.entries(roles))('offers Stammdaten, Rechtliches and Funktionszugang to the %s', (_name, flags) => {
-        mocks.userRoles = { ...mocks.userRoles, ...flags, tenantId: flags.isTenantScopedAdmin ? 84 : 0 };
-        mocks.routeId = '282';
+    it.each(Object.entries(roles))(
+        'offers Stammdaten, Rechtliches, Einführung Ratsuchende and Funktionszugang to the %s',
+        (_name, flags) => {
+            mocks.userRoles = { ...mocks.userRoles, ...flags, tenantId: flags.isTenantScopedAdmin ? 84 : 0 };
+            mocks.routeId = '282';
 
-        renderWithClient(<AgencyPageEdit />);
+            renderWithClient(<AgencyPageEdit />);
 
-        expect(tabTargets()).toEqual([
-            '/admin/agency/282/general',
-            '/admin/agency/282/legal-settings',
-            '/admin/agency/282/functionalities',
-        ]);
-    });
+            expect(tabTargets()).toEqual([
+                '/admin/agency/282/general',
+                '/admin/agency/282/legal-settings',
+                '/admin/agency/282/erstantwort',
+                '/admin/agency/282/functionalities',
+            ]);
+        },
+    );
 
     it('offers only Stammdaten while the Beratungsstelle is being created (the other sections need a saved one)', () => {
         mocks.userRoles = { ...mocks.userRoles, ...roles['platform admin'], tenantId: 0 };

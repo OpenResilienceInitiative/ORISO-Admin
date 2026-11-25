@@ -97,6 +97,38 @@ describe('AgencyPermissionsSettings per-feature policies', () => {
         await waitFor(() => expect(within(control).getByRole('button', { name: /: \S/ })).toBeEnabled());
     });
 
+    // ORISO-Frontend#2491: the Team-Chat is the centre's own policy value, like supervision.
+    it("saves the centre's own Team-Chat value into its settings", async () => {
+        const user = userEvent.setup();
+        mocks.useAgencyData.mockReturnValue(agency({ featureTeamDiscussionEnabled: true }));
+        render(<AgencyPermissionsSettings agencyId="55" />);
+
+        const control = policy('featureTeamDiscussionEnabled');
+        expect(within(control).queryByRole('button', { name: LOCK_BUTTON })).toBeNull();
+        await user.click(within(control).getByRole('button', { name: SWITCH_OFF }));
+
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalledTimes(1));
+        expect(mocks.mutate).toHaveBeenCalledWith({ settings: { featureTeamDiscussionEnabled: false } });
+    });
+
+    it('shows a Team-Chat the Träger requires off as locked, with no edit path', async () => {
+        const user = userEvent.setup();
+        mocks.useAgencyData.mockReturnValue(
+            agency({
+                featureTeamDiscussionEnabled: true,
+                permissionPolicies: {
+                    featureTeamDiscussionEnabled: { value: false, mode: 'ENFORCED', inherited: true },
+                },
+            }),
+        );
+        render(<AgencyPermissionsSettings agencyId="55" />);
+
+        const round = within(policy('featureTeamDiscussionEnabled')).getByRole('button', { name: LOCKED_OFF });
+        expect(round).toBeDisabled();
+        await user.click(round);
+        expect(mocks.mutate).not.toHaveBeenCalled();
+    });
+
     it('projects tenant-enforced-on values as locked active controls', () => {
         mocks.useAgencyData.mockReturnValue(
             agency({

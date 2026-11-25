@@ -14,7 +14,6 @@ type SettingsTabsContext = {
     shouldShowThemeSettings: boolean;
     can: (action: PermissionAction | PermissionAction[], resource: Resource) => boolean;
     isTenantSettingsEditEnabled: boolean;
-    multitenancyWithSingleDomainEnabled: boolean;
 };
 
 const compactTabs = (tabs: Array<SettingsTab | false | null | undefined>): SettingsTab[] =>
@@ -26,7 +25,6 @@ export const getSettingsTabs = ({
     shouldShowThemeSettings,
     can,
     isTenantSettingsEditEnabled,
-    multitenancyWithSingleDomainEnabled,
 }: SettingsTabsContext): SettingsTab[] => {
     const base = routePathNames.themeSettings;
 
@@ -53,6 +51,12 @@ export const getSettingsTabs = ({
                 titleKey: 'settings.subhead.topics',
                 iconName: 'topics',
             },
+            // Platform level of the Erstantwort chain: overrides the built-in Caritas texts.
+            can(PermissionAction.Update, Resource.Tenant) && {
+                to: `${base}/greeting`,
+                titleKey: 'settings.subhead.greeting',
+                iconName: 'erstantwort',
+            },
             (can(PermissionAction.Read, Resource.LegalText) || can(PermissionAction.Update, Resource.LegalText)) && {
                 to: `${base}/legal`,
                 titleKey: 'settings.subhead.legal',
@@ -78,8 +82,8 @@ export const getSettingsTabs = ({
 
     // Tenant / Träger tab order per Figma Admin.ORISO node 465-27854, level 2:
     // Stammdaten & Mehr · Erscheinungsbild · Rechtliches · Email Server · Funktionszugriff.
-    // `app-settings` is not in the design but is the only entry point for the tenant feature
-    // toggles, so it trails the designed set until that is decided (#58).
+    // `app-settings` ("Weitere", ORISO-Admin#1577: same name on every level and domain) is not in
+    // the design but holds topics and counsellor statistics, so it trails the designed set (#58).
     return compactTabs([
         shouldShowThemeSettings &&
             can(PermissionAction.Update, Resource.Tenant) && {
@@ -116,8 +120,8 @@ export const getSettingsTabs = ({
         can(PermissionAction.Update, Resource.Tenant) &&
             isTenantSettingsEditEnabled && {
                 to: `${base}/app-settings`,
-                titleKey: `tenants.edit.tabs.${multitenancyWithSingleDomainEnabled ? 'globalSettings' : 'appSettings'}`,
-                iconName: multitenancyWithSingleDomainEnabled ? 'global_settings' : 'functionalities',
+                titleKey: 'tenants.edit.tabs.appSettings',
+                iconName: 'functionalities',
             },
     ]);
 };

@@ -16,7 +16,6 @@ interface AgencyMasterDataTileProps {
     onSave: <T>(formData: T, options?: { onError?: () => void }) => void;
     /** Counts up each time the Fachbereich tile asks for the department field to open. */
     departmentFieldRequest: number;
-    persistedTeamAgency: boolean;
     /** The confirmed status of the centre; sits as a wide panel on top, outside the form fields. */
     status?: ReactNode;
 }
@@ -30,7 +29,6 @@ export const AgencyMasterDataTile = ({
     initialValues,
     onSave,
     departmentFieldRequest,
-    persistedTeamAgency,
     status,
 }: AgencyMasterDataTileProps) => {
     const { t } = useTranslation();
@@ -70,7 +68,7 @@ export const AgencyMasterDataTile = ({
                                 <RegistrationSettings asFields editing={editing} />
                             </TileSections.Section>
                             <TileSections.Section id="agency-offer" title={t('agency.edit.settings.title')}>
-                                <AgencySettings isEditMode asFields persistedTeamAgency={persistedTeamAgency} />
+                                <AgencySettings isEditMode asFields />
                             </TileSections.Section>
                         </TileSections.Stack>
                     </TileSections>

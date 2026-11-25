@@ -269,4 +269,51 @@ describe('platformPresetValues guest account modes', () => {
         expect(preset.featureGuestAccountPermanentChatEnabled).toBe(false);
         expect(preset.featureGuestAccountPermanentAudioEnabled).toBe(true);
     });
+
+    // ORISO-Frontend#2491: the team chat on an enquiry is governed like supervision.
+    describe('team chat on an enquiry (like supervision)', () => {
+        const TEAM = [
+            'featureVideoCallsTeamDiscussionsEnabled',
+            'featureAudioCallsTeamDiscussionsEnabled',
+            'featureVoiceMessagesTeamDiscussionsEnabled',
+            'featureThreadsTeamDiscussionsEnabled',
+            'featureMediaUploadTeamDiscussionsEnabled',
+            'featureMediaInlineDisplayTeamDiscussionsEnabled',
+        ];
+
+        it('starts on with every feature on and the AI scan off, as supervision', () => {
+            expect(DEFAULT_PERMISSION_SETTINGS.featureTeamDiscussionEnabled).toBe(true);
+            TEAM.forEach((field) =>
+                expect(DEFAULT_PERMISSION_SETTINGS[field as keyof typeof DEFAULT_PERMISSION_SETTINGS]).toBe(true),
+            );
+            expect(DEFAULT_PERMISSION_SETTINGS.featureMediaAiScanTeamDiscussionsEnabled).toBe(false);
+        });
+
+        it('a platform "off" of the team chat locks the master and its chat features, like supervision', () => {
+            const off = getForcedOffFields({ teamDiscussion: false });
+            expect(off.has('featureTeamDiscussionEnabled')).toBe(true);
+            expect(off.has('featureVideoCallsTeamDiscussionsEnabled')).toBe(true);
+            expect(off.has('featureThreadsTeamDiscussionsEnabled')).toBe(true);
+            // The supervision family stays untouched.
+            expect(off.has('featureSupervisionEnabled')).toBe(false);
+        });
+
+        it('the feature families include the team chat, as they include supervision chats', () => {
+            expect(getForcedOffFields({ videoCalls: false }).has('featureVideoCallsTeamDiscussionsEnabled')).toBe(true);
+            expect(getForcedOffFields({ mediaUpload: false }).has('featureMediaUploadTeamDiscussionsEnabled')).toBe(
+                true,
+            );
+            const single = getForcedOffFields({ mediaAiScanTeamDiscussions: false });
+            expect([...single]).toEqual(['featureMediaAiScanTeamDiscussionsEnabled']);
+        });
+
+        it('round-trips the team-chat toggles of the platform', () => {
+            const settings = applyVisibleTogglesAsValues({ teamDiscussion: true, threadsTeamDiscussions: false });
+            const encoded = syncMasterTogglesToTenantAdminControls({ settings }).settings?.tenantAdminControls as {
+                allowedPermissionToggles: Record<string, boolean>;
+            };
+            expect(encoded.allowedPermissionToggles.teamDiscussion).toBe(true);
+            expect(encoded.allowedPermissionToggles.threadsTeamDiscussions).toBe(false);
+        });
+    });
 });

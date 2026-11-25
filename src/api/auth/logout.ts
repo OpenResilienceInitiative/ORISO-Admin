@@ -41,24 +41,33 @@ export const installAdminTabLogoutListener = (): (() => void) => {
     return () => window.removeEventListener('storage', onStorage);
 };
 
-const redirectAfterLogout = (altRedirectUrl?: string) => {
-    const redirectUrl = altRedirectUrl || routePathNames.login;
+export type LogoutDestination = string | { url: string; replace: true };
+
+const redirectAfterLogout = (destination: LogoutDestination) => {
     setTimeout(() => {
-        window.location.href = redirectUrl;
+        if (typeof destination === 'string') {
+            window.location.href = destination || routePathNames.login;
+        } else {
+            window.location.replace(destination.url);
+        }
     }, 100);
 };
 
-const invalidateCookies = async (withRedirect = true, redirectUrl?: string, signedOutSession?: string | null) => {
+const invalidateCookies = async (
+    withRedirect: boolean,
+    destination: LogoutDestination,
+    signedOutSession: string | null,
+) => {
     await invalidateAuthSession();
     removeAllCookies();
     removeTokenExpiryFromLocalStorage();
     if (signedOutSession) publishAdminTabLogout(signedOutSession);
     if (withRedirect) {
-        redirectAfterLogout(redirectUrl);
+        redirectAfterLogout(destination);
     }
 };
 
-const logout = (withRedirect = true, redirectUrl?: string, source?: 'explicit'): null => {
+const logout = (withRedirect = true, redirect?: LogoutDestination, source?: 'explicit'): null => {
     if (peerLogoutApplied) return null;
     const loggedOutSession = getLoggedOutAdminSessionKey();
     if (loggedOutSession !== null) {
@@ -71,7 +80,7 @@ const logout = (withRedirect = true, redirectUrl?: string, source?: 'explicit'):
     isRequestInProgress = true;
     // Capture the internal continuation before asynchronous cleanup or route changes.
     // Explicit destinations (including login after a role denial) retain their intent.
-    const destination = redirectUrl ?? agencySetupLoginFromPath(window.location.pathname);
+    const destination = redirect ?? agencySetupLoginFromPath(window.location.pathname);
     const signedOutSession = source === 'explicit' ? getAdminSessionKey() : null;
     const clearUserData = () => {
         clearAdminLocalStorage();

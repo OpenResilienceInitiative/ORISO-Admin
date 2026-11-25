@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import CloseIcon from '@mui/icons-material/Close';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -7,6 +8,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CircularProgress from '@mui/material/CircularProgress';
+import { ToneBadge } from '../../../components/UserTable/StatusBadge';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
     DataTable,
@@ -221,9 +223,15 @@ export const TenantDataTable = ({
             </Link>
         ) : null;
 
-    const statusCell = (row: TenantRow) => (
-        <span {...entityStatusListAttributes('tenant', row.id, row.active)}>{t(statusLabel(row.active))}</span>
-    );
+    const statusCell = (row: TenantRow) =>
+        // A Träger in deletion is shown as such until the nightly run removes it (ORISO-Admin#1525).
+        row.deleteDate ? (
+            <ToneBadge tone="ended" Icon={CloseIcon}>
+                {t('userTable.status.IN_DELETION', 'Wird gelöscht')}
+            </ToneBadge>
+        ) : (
+            <span {...entityStatusListAttributes('tenant', row.id, row.active)}>{t(statusLabel(row.active))}</span>
+        );
 
     const details = (row: TenantRow, { withSummary }: { withSummary: boolean }) => {
         const admins = adminsOf(row);

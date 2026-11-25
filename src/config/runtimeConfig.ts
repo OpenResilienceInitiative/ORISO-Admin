@@ -114,7 +114,22 @@ const otelMetricsUrl = (() => {
     }
 })();
 
+// ORISO-Admin#1558: ORISO Understand, where a feature page explains a setting. Unset: no link.
+const understandUrl = (() => {
+    const configured = readConfigValue('UNDERSTAND_URL') ?? '';
+    try {
+        const url = new URL(configured);
+        // Origin and path only: a query or hash would end up in front of the feature path.
+        return url.protocol === 'http:' || url.protocol === 'https:'
+            ? `${url.origin}${url.pathname.replace(/\/+$/, '')}`
+            : '';
+    } catch {
+        return '';
+    }
+})();
+
 export const runtimeConfig = {
+    understandUrl,
     useHttps,
     useApiUrl,
     apiBaseUrl,
@@ -146,6 +161,9 @@ export const runtimeConfig = {
     // (ADR-019, ORISO-Admin#734). Opt-in, so an unconfigured environment is
     // honest by default rather than by accident.
     mediaAiScanAvailable: readExplicitTrueConfig('MEDIA_AI_SCAN_AVAILABLE'),
+    // Journeys on the conversation type tiles of Funktionszugriff (ADR-036 part E,
+    // ORISO-Admin#1571). Opt-in until UserService stores them everywhere.
+    journeysEnabled: readExplicitTrueConfig('JOURNEYS_ENABLED'),
     otelMetricsUrl,
     otelExportIntervalMillis,
     platformVersion: readConfigValue('PLATFORM_VERSION') ?? '',

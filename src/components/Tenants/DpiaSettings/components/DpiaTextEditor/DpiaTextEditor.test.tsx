@@ -86,7 +86,7 @@ beforeAll(() => {
 });
 
 const openChapterMenu = async (user: ReturnType<typeof userEvent.setup>) => {
-    await user.click(screen.getByRole('button', { name: 'dpia.sections.choose' }));
+    await user.click(screen.getByRole('button', { name: /dpia\.sections\.choose/ }));
 };
 
 const editorValue = () => screen.getByTestId('editor').getAttribute('data-value');
@@ -95,7 +95,7 @@ describe('DpiaTextEditor split-button chapter navigation', () => {
     it('opens on chapter 4 and labels the split button with chapter number and short title', () => {
         render(<DpiaTextEditor onSave={vi.fn()} />);
 
-        expect(screen.getByRole('button', { name: 'dpia.sections.choose' })).toHaveTextContent(
+        expect(screen.getByRole('button', { name: /dpia\.sections\.choose/ })).toHaveTextContent(
             '4 dpia.sections.governance.title',
         );
     });

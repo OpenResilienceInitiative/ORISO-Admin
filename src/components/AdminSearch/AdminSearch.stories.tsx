@@ -267,7 +267,7 @@ const OverlayDemo = ({ corner }: { corner: 'bottom-right' | 'top-centre' }) => {
 export const PhoneGrowsOutOfTheRoundButton: Story = {
     name: 'Animation: phone, circle from the round button',
     render: () => <OverlayDemo corner="bottom-right" />,
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
 };
 
 export const DesktopGrowsOutOfTheSearchBar: Story = {
@@ -340,7 +340,7 @@ export const ShowAllInTheListPhone: Story = {
 
 export const Phone390: Story = {
     args: { initialQuery: 'daten', height: 780 },
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [
         (Story) => (
             <div style={{ width: 390 }}>
@@ -353,7 +353,7 @@ export const Phone390: Story = {
 export const Phone390German: Story = {
     name: 'Phone 390, German UI',
     args: { initialQuery: 'daten', height: 780, fixture: { role: 'platform', language: 'de', singleDomain: false } },
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [
         (Story) => (
             <div style={{ width: 390 }}>
