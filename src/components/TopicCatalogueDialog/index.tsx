@@ -20,10 +20,10 @@ import { EditButton } from '../EditButton';
 import { M3Button } from '../M3Button';
 import { M3Switch } from '../M3Switch';
 import { TranslateIcon } from '../Journeys/TranslateIcon';
-import { plain } from '../Journeys/stepText';
 import { DialogButton, Modal } from '../Modal';
 import { ICON_MAX_BYTES, ICON_TYPES } from '../TopicCatalogue/TopicIconSlot';
 import { assistantIconUploadPolicy } from '../../utils/assistantIconUploadPolicy';
+import { machineText } from './machineText';
 import styles from './styles.module.scss';
 
 export interface TopicCatalogueDialogProps {
@@ -343,7 +343,7 @@ export const TopicCatalogueEditor = ({
                 if (text(value, sourceLanguage).trim() !== texts[key]) return value;
                 let next = value;
                 (wanted[key] ?? []).forEach((code) => {
-                    const translated = plain(translations[code]?.[key]);
+                    const translated = machineText(translations[code]?.[key]);
                     if (!translated || text(next, code).trim()) return;
                     next = { ...next, [code]: translated };
                     marks.push(mark(code, key));
