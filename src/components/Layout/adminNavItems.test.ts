@@ -234,16 +234,29 @@ describe('buildAdminNavItems', () => {
         expect(items.some((item) => item.key === 'agency')).toBe(false);
     });
 
-    it('shows no log entry for an admin without consultant read', () => {
+    it('shows no log entry for an admin who can read neither consultants nor Beratungsstellen', () => {
         const items = build({
             isSuperAdmin: false,
             hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin),
-            can: canFor(Resource.Agency),
+            can: canFor({ action: PermissionAction.Update, resource: Resource.Agency }),
             labels,
             settingsPath: '/admin/theme-settings/legal',
         });
 
         expect(items.some((item) => item.key === 'logs')).toBe(false);
+    });
+
+    it('lands an admin who reads Beratungsstellen but not consultants on the case sharing log', () => {
+        // ORISO-Frontend#2494: the tab follows the Beratungsstellen list gate (Agency.read).
+        const items = build({
+            isSuperAdmin: false,
+            hasRole: hasRoleFor(UserRole.RestrictedAgencyAdmin),
+            can: canFor({ action: PermissionAction.Read, resource: Resource.Agency }),
+            labels,
+            settingsPath: '/admin/theme-settings/legal',
+        });
+
+        expect(items.find((item) => item.key === 'logs')?.to).toBe(routePathNames.caseSharingLogs);
     });
 
     it('lands the users entry on the first readable section', () => {
