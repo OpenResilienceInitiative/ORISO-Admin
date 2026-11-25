@@ -97,6 +97,34 @@
     transform: rotate(180deg);
 }
 
+/*
+ * Open, the header is laid out like every tile (Card): icon centred above the title, the state
+ * under it, the chevron in the corner. Folded it is one row. The switch itself is instant; the
+ * component slides icon and title between the two places (FLIP), and not at all with reduced motion.
+ * A tile whose icon is its own button (#1558) keeps the row.
+ */
+
+.open .heading:not(.withIconButton) .header {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 64px 16px;
+    gap: 8px;
+    text-align: center;
+
+    .title {
+        flex: 0 0 auto;
+    }
+
+    .chevron {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+    }
+}
+
 /* The tile's own header says what the card inside would say again. */
 .body {
     --m3-editor-max-width: none;
@@ -117,10 +145,13 @@
         grid-template-columns: auto minmax(0, 1fr) auto;
     }
 
+    /* A long summary wraps instead of pushing the page sideways (#1558). */
     .chip {
+        max-width: 100%;
         grid-column: 2;
         grid-row: 2;
         justify-self: start;
+        white-space: normal;
     }
 
     .chevron {
@@ -135,6 +166,79 @@
 
     .body {
         padding: 0 8px 12px;
+    }
+
+    .open .heading:not(.withIconButton) .header {
+        padding: 16px 48px 12px;
+
+        .chevron {
+            top: 16px;
+            right: 16px;
+        }
+    }
+}
+
+/* ORISO-Admin#1558: the icon as its own button (rename the subject); the header button beside it folds. */
+.withIconButton {
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+
+    .header {
+        padding-left: 4px;
+    }
+}
+
+.iconButton {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 auto;
+    padding: 8px;
+    border: 0;
+    background: none;
+    border-radius: 50%;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+/* A small pencil says the icon can be clicked, without colour alone. */
+.iconButtonBadge {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    padding: 2px;
+    border-radius: 50%;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px !important;
+}
+
+@media (max-width: 599px) {
+    /* The icon sits outside the header button: title and chip take its first column. */
+    .withIconButton {
+        padding-left: 8px;
+
+        .header {
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .chip {
+            grid-column: 1;
+        }
+
+        .chevron {
+            grid-column: 2;
+        }
     }
 }
 
@@ -215,5 +319,13 @@
     .motionBody,
     .motionClip {
         transition: none;
+    }
+}
+
+/* Open, a document tile uses the shared open header (icon above title); the centred grid is the folded row. */
+.documentMotion.open .heading:not(.withIconButton) {
+    .label,
+    .trailing {
+        display: contents;
     }
 }

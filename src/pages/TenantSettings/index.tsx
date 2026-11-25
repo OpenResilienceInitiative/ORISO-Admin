@@ -38,7 +38,6 @@ export const TenantSettingsLayout = () => {
                 shouldShowThemeSettings,
                 can,
                 isTenantSettingsEditEnabled: isEnabled(ReleaseToggle.TENANT_ADMIN_SETTINGS_EDIT),
-                multitenancyWithSingleDomainEnabled: settings.multitenancyWithSingleDomainEnabled,
             }).map((tab) =>
                 hasNewLegalTemplate && tab.to.endsWith('/legal')
                     ? { ...tab, icon: <LegalTemplateUnreadMarker /> }
@@ -51,7 +50,6 @@ export const TenantSettingsLayout = () => {
             isSuperAdmin,
             isTechnicalAccount,
             tokenUnreadable,
-            settings.multitenancyWithSingleDomainEnabled,
             shouldShowThemeSettings,
         ],
     );

@@ -56,6 +56,17 @@ const handlers = [
                 : TENANTS.filter((tenant) => tenant.name.toLowerCase().includes(query.toLowerCase()));
         return HttpResponse.json({ _embedded: rows.map((tenant) => ({ _embedded: tenant })), total: rows.length });
     }),
+    // What the Träger still holds, shown in the deletion dialog before anything is deleted (ORISO-Admin#1525).
+    http.get('*/service/useradmin/tenants/:tenantId/deletion-blockers', () =>
+        HttpResponse.json({
+            agencies: 2,
+            consultants: 0,
+            adviceSeekers: 0,
+            agencyAdmins: 0,
+            tenantAdmins: 1,
+            openInvites: 1,
+        }),
+    ),
 ];
 
 const Route = () => {
@@ -120,6 +131,8 @@ const deleteCaritasNord = async (canvasElement: HTMLElement) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /Caritas Nord löschen/ }));
     const dialog = within(canvasElement.ownerDocument.body).getByRole('dialog');
+    // The confirm stays disabled until the overview of what goes with the Träger has loaded.
+    await within(dialog).findByTestId('tenant-delete-preview');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Löschen' }));
 };
 
@@ -138,19 +151,53 @@ export const DeleteSucceeded: Story = {
     },
 };
 
-/** T1: the delete was refused (open chats) - one error pop-up that stays until it is closed. */
+/** T1: the delete was refused - the error pop-up lists what is still left in the Träger (UserService#1466). */
 export const DeleteRefused: Story = {
     beforeEach: asPlatformAdmin,
     parameters: {
         msw: {
-            handlers: [http.delete('*/service/tenant/21', () => new HttpResponse(null, { status: 409 })), ...handlers],
+            handlers: [
+                http.delete('*/service/tenant/21', () =>
+                    HttpResponse.json(
+                        {
+                            deletable: false,
+                            agencies: 2,
+                            consultants: 0,
+                            adviceSeekers: 0,
+                            agencyAdmins: 0,
+                            tenantAdmins: 1,
+                            openInvites: 1,
+                        },
+                        { status: 409, headers: { 'X-Reason': 'TENANT_HAS_DEPENDENTS' } },
+                    ),
+                ),
+                ...handlers,
+            ],
         },
     },
     play: async ({ canvasElement }) => {
         await deleteCaritasNord(canvasElement);
         const popup = await findPopup(canvasElement, 'Träger konnte nicht gelöscht werden.', 'error');
-        await expect(popup).toHaveTextContent('aktive Chats');
+        await expect(popup).toHaveTextContent('2 Beratungsstellen');
+        await expect(popup).toHaveTextContent('1 Träger-Admin');
+        await expect(popup).toHaveTextContent('1 offene Einladung');
+        await expect(popup).not.toHaveTextContent('aktive Chats');
         await expect(popupsOf(canvasElement)).toHaveLength(1);
+    },
+};
+
+/** T1: TenantService could not check what is left (503) - the pop-up says nothing was deleted. */
+export const DeleteCheckUnavailable: Story = {
+    beforeEach: asPlatformAdmin,
+    parameters: {
+        msw: {
+            handlers: [http.delete('*/service/tenant/21', () => new HttpResponse(null, { status: 503 })), ...handlers],
+        },
+    },
+    play: async ({ canvasElement }) => {
+        await deleteCaritasNord(canvasElement);
+        const popup = await findPopup(canvasElement, 'Träger konnte nicht gelöscht werden.', 'error');
+        await expect(popup).toHaveTextContent('Es wurde nichts gelöscht.');
     },
 };
 

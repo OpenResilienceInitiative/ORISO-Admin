@@ -38,6 +38,11 @@ export type AskerPermissionsCardProps = {
     onPolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
     /** Channel switches whose conversation-type tile is not shown on this page. */
     channelToggles?: Array<{ field: string; labelKey: string; defaultValue?: boolean }>;
+    /**
+     * ORISO-Admin#1558: shown as a section of the Mailberatung tile (where the permanent account is
+     * created) instead of a tile of its own.
+     */
+    embedded?: boolean;
 };
 
 export const AskerPermissionsCard = ({
@@ -48,6 +53,7 @@ export const AskerPermissionsCard = ({
     pendingPolicyFields,
     onPolicyChange,
     channelToggles = [],
+    embedded = false,
 }: AskerPermissionsCardProps) => {
     const { t } = useTranslation();
 
@@ -84,12 +90,8 @@ export const AskerPermissionsCard = ({
             <p className={styles.restrictedReason}>{t('tenants.permissions.asker.restrictedReason')}</p>
         ) : null;
 
-    return (
-        <Card
-            headerIcon={<AskerAccountIcon width={40} height={40} />}
-            titleKey="tenants.permissions.asker.title"
-            help={ASKER_HELP}
-        >
+    const content = (
+        <>
             <div className={styles.columns}>
                 <div className={styles.setting}>
                     <div className={styles.settingHeader}>
@@ -122,6 +124,29 @@ export const AskerPermissionsCard = ({
                     ))}
                 </>
             )}
+        </>
+    );
+
+    if (embedded) {
+        return (
+            // Admin search jumps to this key; as a section it no longer has a Card that carries it (#1558).
+            <div
+                className={styles.embedded}
+                data-testid="asker-account-settings"
+                data-search-tile="tenants.permissions.asker.title"
+            >
+                {content}
+            </div>
+        );
+    }
+
+    return (
+        <Card
+            headerIcon={<AskerAccountIcon width={40} height={40} />}
+            titleKey="tenants.permissions.asker.title"
+            help={ASKER_HELP}
+        >
+            {content}
         </Card>
     );
 };

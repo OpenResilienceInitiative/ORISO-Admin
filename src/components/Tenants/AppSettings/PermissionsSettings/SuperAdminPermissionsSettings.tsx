@@ -14,12 +14,19 @@ import {
     platformPresetValues,
 } from './permissionsSettingsUtils';
 import { PermissionsSettingsView } from './PermissionsSettingsView';
+import { useJourneysInTiles } from '../../../Journeys/JourneysInTiles';
 import {
     toRecipientScopeWrite,
     withStoredScopeOnly,
     withoutInternalGroupChat,
 } from './RecipientScope/recipientScopePolicy';
 import { type CalendarPolicyChange, toCalendarWrite, withoutCalendar } from './Calendar/calendarPolicy';
+import {
+    type CaseSharingMode,
+    caseSharingPolicyFromApi,
+    caseSharingPolicyToApi,
+} from './CaseSharingSection/caseSharingMode';
+import { usePendingCaseSharing } from './CaseSharingSection/usePendingCaseSharing';
 import type { PermissionsSettingsCommonArgs, ToggleAfterChangeHandler } from './types';
 import type { PolicyValue, RecipientScopePolicy } from '../../../../types/permissionPolicy';
 import type { TenantAdminControls } from '../../../../types/TenantAdminControls';
@@ -30,13 +37,14 @@ export const SuperAdminPermissionsSettings = ({
     liveChatLinks,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
+    const journeys = useJourneysInTiles({ level: 'platform' });
     const { data: platformControls, isLoading } = useTenantAdminControls(true);
     const [pendingPolicyFields, setPendingPolicyFields] = useState<ReadonlySet<string>>(new Set());
     const [effectivePlatformControls, setEffectivePlatformControls] = useState<TenantAdminControls | undefined>(
         platformControls,
     );
     const confirmedPlatformControls = useRef<TenantAdminControls | undefined>(platformControls);
-    const pendingPolicyOperations = useRef<{ id: number; fieldKey: string; policy: PolicyValue<boolean> }[]>([]);
+    const pendingPolicyOperations = useRef<{ id: number; changes: Record<string, PolicyValue<boolean>> }[]>([]);
     const nextPolicyOperationId = useRef(0);
     const policyMutationQueue = useRef<Promise<void>>(Promise.resolve());
     const updateTenantAdminControls = useTenantAdminControlsMutation({
@@ -58,11 +66,11 @@ export const SuperAdminPermissionsSettings = ({
         const confirmed = confirmedPlatformControls.current;
         if (!confirmed) return;
         const permissionPolicies = pendingPolicyOperations.current.reduce(
-            (current, operation) => ({ ...current, [operation.fieldKey]: operation.policy }),
+            (current, operation) => ({ ...current, ...operation.changes }),
             { ...confirmed.permissionPolicies },
         );
         setEffectivePlatformControls({ ...confirmed, permissionPolicies });
-        setPendingPolicyFields(new Set(pendingPolicyOperations.current.map(({ fieldKey }) => fieldKey)));
+        setPendingPolicyFields(new Set(pendingPolicyOperations.current.flatMap(({ changes }) => Object.keys(changes))));
     }, []);
 
     const allowedPermissionToggles = platformControls?.allowedPermissionToggles;
@@ -88,10 +96,11 @@ export const SuperAdminPermissionsSettings = ({
         ],
     );
 
-    const handlePolicyChange = useCallback(
-        (fieldKey: string, policy: PolicyValue<boolean>) => {
+    // Several fields in one operation are one request: they are saved, or rolled back, together (#1560).
+    const handlePoliciesChange = useCallback(
+        (changes: Record<string, PolicyValue<boolean>>) => {
             if (!confirmedPlatformControls.current) return;
-            const operation = { id: nextPolicyOperationId.current, fieldKey, policy };
+            const operation = { id: nextPolicyOperationId.current, changes };
             nextPolicyOperationId.current += 1;
             pendingPolicyOperations.current.push(operation);
             rebuildEffectivePlatformControls();
@@ -102,7 +111,7 @@ export const SuperAdminPermissionsSettings = ({
                 const next = withoutCalendar(
                     withStoredScopeOnly({
                         ...confirmed,
-                        permissionPolicies: { ...confirmed.permissionPolicies, [fieldKey]: policy },
+                        permissionPolicies: { ...confirmed.permissionPolicies, ...changes },
                     }),
                 );
                 try {
@@ -119,6 +128,10 @@ export const SuperAdminPermissionsSettings = ({
             policyMutationQueue.current = policyMutationQueue.current.then(run, run);
         },
         [rebuildEffectivePlatformControls, updateTenantAdminControls],
+    );
+    const handlePolicyChange = useCallback(
+        (fieldKey: string, policy: PolicyValue<boolean>) => handlePoliciesChange({ [fieldKey]: policy }),
+        [handlePoliciesChange],
     );
 
     // Same queue as the switches, so a scope save and a switch save never overtake each other.
@@ -173,6 +186,37 @@ export const SuperAdminPermissionsSettings = ({
         [rebuildEffectivePlatformControls, t, updateCalendar],
     );
 
+    // Same queue again (ORISO-TenantService#374). The group-chat scope is left out and kept as stored;
+    // caseHandoverEnabled follows the mode on the server and is read back from the answer.
+    const { pending: pendingCaseSharing, track: trackCaseSharing } = usePendingCaseSharing('platform');
+    const handleCaseSharingSave = useCallback(
+        (next: PolicyValue<CaseSharingMode>) => {
+            const save = policyMutationQueue.current.then(async () => {
+                const confirmed = confirmedPlatformControls.current;
+                if (!confirmed) throw new Error('Platform controls are not loaded');
+                confirmedPlatformControls.current = await updateCalendar.mutateAsync(
+                    // the calendar and group-chat presets are left out and kept as stored
+                    withoutCalendar(
+                        withoutInternalGroupChat({
+                            ...confirmed,
+                            caseSharing: { mode: caseSharingPolicyToApi(next) },
+                        }),
+                    ),
+                );
+                rebuildEffectivePlatformControls();
+                snackbar.success({ message: t('tenants.permissions.caseSharing.saved'), duration: 3 });
+            });
+            policyMutationQueue.current = save.then(
+                () => undefined,
+                () => undefined,
+            );
+            trackCaseSharing(next, save);
+            save.catch(() => snackbar.error({ message: t('tenants.permissions.policy.saveError') }));
+        },
+        [rebuildEffectivePlatformControls, t, trackCaseSharing, updateCalendar],
+    );
+    const caseSharingPolicy = (effectivePlatformControls ?? platformControls)?.caseSharing?.mode;
+
     // The form starts from the platform preset (initial preset ← allowed toggles ← stored platform
     // policies), never from a hard-coded all-on default that would contradict a stored policy.
     const initialValues = useMemo(
@@ -196,28 +240,43 @@ export const SuperAdminPermissionsSettings = ({
         [allowedPermissionToggles, persistPlatformControls],
     );
 
+    // No `callsPermission`: this level cannot write a Träger's `isVideoCallAllowed`, so a stored "off"
+    // that contradicts the tiles goes unsaid here until ORISO-TenantService#380 retires the value.
     return (
-        <PermissionsSettingsView
-            tenantId={tenantId}
-            excludeCardKeys={excludeCardKeys}
-            liveChatLinks={liveChatLinks}
-            isLoading={isLoading}
-            initialValues={initialValues}
-            formStateKey="platform"
-            restrictedFields={restrictedFields}
-            onToggleUpdate={handleToggleUpdate}
-            policyLevel="platform"
-            permissionPolicies={effectivePlatformControls?.permissionPolicies}
-            pendingPolicyFields={pendingPolicyFields}
-            onPolicyChange={handlePolicyChange}
-            recipientScope={{
-                policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
-                onSave: handleRecipientScopeSave,
-            }}
-            calendar={{
-                policies: (effectivePlatformControls ?? platformControls)?.calendar,
-                onSave: handleCalendarSave,
-            }}
-        />
+        <>
+            <PermissionsSettingsView
+                tenantId={tenantId}
+                excludeCardKeys={excludeCardKeys}
+                liveChatLinks={liveChatLinks}
+                renderJourneys={journeys.renderJourneys}
+                isLoading={isLoading}
+                initialValues={initialValues}
+                formStateKey="platform"
+                restrictedFields={restrictedFields}
+                onToggleUpdate={handleToggleUpdate}
+                policyLevel="platform"
+                permissionPolicies={effectivePlatformControls?.permissionPolicies}
+                pendingPolicyFields={pendingPolicyFields}
+                onPolicyChange={handlePolicyChange}
+                onPoliciesChange={handlePoliciesChange}
+                recipientScope={{
+                    policy: (effectivePlatformControls ?? platformControls)?.internalGroupChat?.recipientScope,
+                    onSave: handleRecipientScopeSave,
+                }}
+                calendar={{
+                    policies: (effectivePlatformControls ?? platformControls)?.calendar,
+                    onSave: handleCalendarSave,
+                }}
+                caseSharing={
+                    caseSharingPolicy
+                        ? {
+                              policy: pendingCaseSharing ?? caseSharingPolicyFromApi(caseSharingPolicy),
+                              onChange: handleCaseSharingSave,
+                          }
+                        : undefined
+                }
+            />
+            {journeys.dialog}
+        </>
     );
 };

@@ -76,6 +76,8 @@ const NavItemLink = ({
         end={item.end}
         aria-label={item.label}
         title={item.label}
+        // Inert product-tour anchor (`admin-nav-<key>`); the account item's key is `account`.
+        data-tour-target={`admin-nav-${item.key}`}
         className={({ isActive }) => (isActive || isPathMatch(currentPath, item.activeMatch) ? 'active' : '')}
     >
         <NavIcon path={item.iconPath} />
@@ -93,7 +95,7 @@ const NavItemLink = ({
 export const AdminSidebar = ({ items, activityLogs, account, logout, lang, currentPath }: AdminSidebarProps) => (
     <Sider width={96}>
         <div className="logo" />
-        <nav className="mainMenu">
+        <nav className="mainMenu" data-tour-target="admin-navigation">
             <ul className="upperSidebar">
                 {items.map((item) => (
                     <li key={item.key} className="menuItem">

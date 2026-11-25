@@ -6,6 +6,8 @@ import type { ReactNode } from 'react';
 const mocks = vi.hoisted(() => ({ getTopicByTenantData: vi.fn() }));
 vi.mock('../api/topic/getTopicByTenantData', () => ({ default: mocks.getTopicByTenantData }));
 
+vi.mock('./useLanguage', () => ({ useLanguage: () => ({ language: 'de' }) }));
+
 import { useTenantTopics } from './useTenantTopics';
 
 const renderTopics = (...args: Parameters<typeof useTenantTopics>) => {
@@ -48,11 +50,24 @@ describe('useTenantTopics', () => {
         expect(result.current.data).toBeUndefined();
     });
 
+    it('keys the topic list by UI language so a language switch refetches the translated names (#564)', async () => {
+        mocks.getTopicByTenantData.mockResolvedValue([]);
+        const { client } = renderTopics(true);
+
+        await waitFor(() => expect(client.getQueryData(['ALL_TOPICS', true, 'de'])).toEqual([]));
+        expect(client.getQueryData(['ALL_TOPICS', true, 'en'])).toBeUndefined();
+    });
+
     it('does not share a cached result between the default and the fail-closed mode', async () => {
         mocks.getTopicByTenantData.mockResolvedValue([]);
         const { client } = renderTopics(true, true, { failClosed: true });
 
-        await waitFor(() => expect(client.getQueryData(['ALL_TOPICS', true, 'fail-closed'])).toEqual([]));
-        expect(client.getQueryData(['ALL_TOPICS', true])).toBeUndefined();
+        await waitFor(() => expect(client.getQueryCache().getAll()).toHaveLength(1));
+        const keys = client
+            .getQueryCache()
+            .getAll()
+            .map((query) => query.queryKey);
+        expect(keys[0]).toEqual(['ALL_TOPICS', true, 'de', 'fail-closed']);
+        expect(client.getQueryCache().find({ queryKey: ['ALL_TOPICS', true, 'de'], exact: true })).toBeUndefined();
     });
 });

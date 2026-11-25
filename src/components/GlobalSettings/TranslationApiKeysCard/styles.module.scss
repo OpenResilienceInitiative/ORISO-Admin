@@ -17,3 +17,9 @@
         margin: 0;
     }
 }
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: mui.$mui-unit;
+}

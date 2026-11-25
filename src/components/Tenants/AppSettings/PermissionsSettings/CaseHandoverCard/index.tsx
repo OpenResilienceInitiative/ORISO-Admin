@@ -15,10 +15,19 @@ import {
     applyClientConsentPolicy,
     applyMaxAccessDuration,
     applyNotificationTemplate,
+    applyNotificationTemplates,
+    getNotificationTemplate,
     isHandoverModuleEnabled,
+    missingTemplateLanguages,
     NotificationLanguage,
+    protectPlaceholders,
+    restorePlaceholders,
+    TEMPLATE_SOURCE_LANGUAGE,
 } from './caseHandoverCardUtils';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
+import { translateLegalTexts } from '../../../../../api/tenant/translation';
+import { snackbar } from '../../../../Snackbar';
+import { getTranslationErrorKey } from '../../../LegalSettings/utils/translationErrors';
 
 /**
  * Wires the canonical handover master and Träger-owned reason policies.
@@ -36,6 +45,8 @@ export type CaseHandoverCardProps = {
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Inside the Mailberatung tile's case-sharing choice instead of a tile of its own (#1558). */
+    embedded?: boolean;
 };
 
 export const CaseHandoverCard = ({
@@ -47,6 +58,7 @@ export const CaseHandoverCard = ({
     openPolicyMenu,
     onOpenPolicyMenu,
     onFeaturePolicyChange,
+    embedded,
 }: CaseHandoverCardProps = {}) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
@@ -104,6 +116,53 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
+    const [translatingReason, setTranslatingReason] = useState<string | null>(null);
+
+    /** Machine-translates the German template of one reason into every language still empty. */
+    const handleTranslateTemplates = useCallback(
+        async (code: string) => {
+            const policy = policies.find((candidate) => candidate.code === code) ?? null;
+            const source = getNotificationTemplate(policy, TEMPLATE_SOURCE_LANGUAGE).trim();
+            const targets = missingTemplateLanguages(policy);
+            if (!source || targets.length === 0) return;
+            setTranslatingReason(code);
+            try {
+                const response = await translateLegalTexts({
+                    sourceLang: TEMPLATE_SOURCE_LANGUAGE,
+                    targetLangs: [...targets],
+                    texts: { template: protectPlaceholders(source) },
+                });
+                const texts: Partial<Record<NotificationLanguage, string>> = {};
+                targets.forEach((language) => {
+                    const translated = response.translations?.[language]?.template;
+                    const restored = translated ? restorePlaceholders(translated, source) : undefined;
+                    if (restored) texts[language] = restored;
+                });
+                const filled = Object.keys(texts).length;
+                if (filled > 0) persist(applyNotificationTemplates(policies, code, texts));
+                if (filled < targets.length) {
+                    snackbar.warning({
+                        title: t('tenants.permissions.card.caseHandover.translate.partial', {
+                            filled,
+                            total: targets.length,
+                            newAdvisor: '{{newAdvisor}}',
+                        }),
+                    });
+                } else {
+                    snackbar.success(t('tenants.permissions.card.caseHandover.translate.done', { count: filled }));
+                }
+            } catch (error) {
+                snackbar.error({
+                    title: t('tenants.permissions.card.caseHandover.translate.failed'),
+                    description: t(getTranslationErrorKey(error)),
+                });
+            } finally {
+                setTranslatingReason(null);
+            }
+        },
+        [persist, policies, t],
+    );
+
     const handleMaxAccessDurationChange = useCallback(
         (code: string, minutes: number) => persist(applyMaxAccessDuration(policies, code, minutes)),
         [persist, policies],
@@ -130,6 +189,9 @@ export const CaseHandoverCard = ({
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}
             onFeaturePolicyChange={onFeaturePolicyChange}
+            embedded={embedded}
+            onTranslateTemplates={canEdit ? handleTranslateTemplates : undefined}
+            translatingReason={translatingReason}
         />
     );
 };

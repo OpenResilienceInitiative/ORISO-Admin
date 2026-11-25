@@ -44,7 +44,7 @@ export interface SearchContext {
 }
 
 /** Who sees a tile on top of its tab. */
-export type TileGate = 'platform' | 'singleDomain' | 'multiTenant' | 'notTenantAdmin' | 'selfCounsel' | 'documentation';
+export type TileGate = 'platform' | 'singleDomain' | 'notTenantAdmin' | 'selfCounsel' | 'documentation';
 
 /** The admin roles that see "make me a counsellor" on the account page (rule of `SelfConsultantIdentity`). */
 export const SELF_COUNSEL_ROLES = [
@@ -57,7 +57,6 @@ export const SELF_COUNSEL_ROLES = [
 export const TILE_GATES: Record<TileGate, (context: SearchContext) => boolean> = {
     platform: (context) => context.isSuperAdmin,
     singleDomain: (context) => context.singleDomain,
-    multiTenant: (context) => !context.singleDomain,
     notTenantAdmin: (context) => !context.isTenantAdmin,
     // The card renders nothing for platform admins, service accounts and accounts without an admin role.
     selfCounsel: (context) =>
@@ -93,8 +92,6 @@ const tile = (
 ): RegistryTile => ({ id, titleKey, parents, source, ...options });
 
 const PERMISSIONS = ['settings:permissions', 'tenant:global-settings', 'agency:functionalities'];
-// The Träger page (`TenantGlobalSettings`) passes `excludeCardKeys={['liveChat']}`: no live-chat card there.
-const PERMISSIONS_WITHOUT_LIVE_CHAT = PERMISSIONS.filter((parent) => parent !== 'tenant:global-settings');
 const CHAT = 'src/components/Tenants/AppSettings/PermissionsSettings';
 const FEATURE_LABELS = [
     'tenants.permissions.feature.videoCalls',
@@ -344,6 +341,19 @@ export const SEARCH_TILES: RegistryTile[] = [
 
     // ── Introduction for advice seekers, e-mail, notices ─────────────────────
     tile(
+        'greeting:platform',
+        'settings.greeting.title',
+        ['settings:greeting'],
+        'src/components/Tenants/AppSettings/ErstantwortSettings/PlatformGreeting/index.tsx',
+        {
+            fieldKeys: [
+                'settings.greeting.greeting.label',
+                'settings.greeting.closing.label',
+                'settings.greeting.emergencyNumbers.label',
+            ],
+        },
+    ),
+    tile(
         'erstantwort:texts',
         'tenants.erstantwort.title',
         ['settings:erstantwort', 'tenant:erstantwort'],
@@ -449,18 +459,19 @@ export const SEARCH_TILES: RegistryTile[] = [
         PERMISSIONS,
         `${CHAT}/chatTypeCards.ts`,
         {
-            fieldKeys: [...FEATURE_LABELS, ...NOTIFICATION_LABELS],
+            fieldKeys: [
+                ...FEATURE_LABELS,
+                ...NOTIFICATION_LABELS,
+                // ORISO-Frontend#2494: Teamberatung is chosen here only, as one case sharing option.
+                // Team-Chat has its own tile since ORISO-Admin#1640.
+                'tenants.permissions.caseSharing.title',
+                'teamFunctions.counselling.name',
+            ],
         },
     ),
-    tile(
-        'access:live-chat',
-        'tenants.permissions.card.liveChat.title',
-        PERMISSIONS_WITHOUT_LIVE_CHAT,
-        `${CHAT}/chatTypeCards.ts`,
-        {
-            fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
-        },
-    ),
+    tile('access:live-chat', 'tenants.permissions.card.liveChat.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
+        fieldKeys: [...FEATURE_LABELS, ...BROWSER_NOTIFICATION, 'liveChatLinks.title'],
+    }),
     tile('access:group', 'tenants.permissions.card.group.title', PERMISSIONS, `${CHAT}/chatTypeCards.ts`, {
         fieldKeys: [...WITHOUT_SUPERVISION, ...NOTIFICATION_LABELS],
     }),
@@ -474,17 +485,29 @@ export const SEARCH_TILES: RegistryTile[] = [
         },
     ),
 
-    // ── Functionalities (Träger) ─────────────────────────────────────────────
+    // ORISO-Admin#1577: supervision chats, a tile of Funktionszugriff after the conversation types.
     tile(
-        'app:communication',
-        'tenants.appSettings.communications.title',
-        ['settings:app-settings', 'tenant:functionalities'],
-        'src/components/Tenants/AppSettings/CommunicationSettings/index.tsx',
+        'access:supervision',
+        'tenants.permissions.supervision.title',
+        PERMISSIONS,
+        `${CHAT}/SupervisionTile/index.tsx`,
         {
-            fieldKeys: ['tenants.appSettings.communications.video.title'],
-            gate: 'multiTenant',
+            fieldKeys: ['tenants.permissions.supervision.configure', 'tenants.permissions.supervision.dialogTitle'],
         },
     ),
+
+    // ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat, its own tile after supervision, built the same way.
+    tile('access:team-chat', 'teamFunctions.chat.name', PERMISSIONS, `${CHAT}/TeamChatTile/index.tsx`, {
+        fieldKeys: [
+            'tenants.permissions.teamChat.configure',
+            'tenants.permissions.teamChat.configureDialogTitle',
+            'tenants.permissions.teamChat.afterAccept.label',
+            // The dialog offers the chat features without supervision (TEAM_CHAT_FEATURES).
+            ...WITHOUT_SUPERVISION,
+        ],
+    }),
+
+    // ── Weitere (Träger; ORISO-Admin#1577, formerly Funktionalitäten) ───────────
     tile(
         'app:other',
         'tenants.appSettings.otherFunctions.title',
@@ -492,11 +515,25 @@ export const SEARCH_TILES: RegistryTile[] = [
         'src/components/Tenants/AppSettings/OtherFunctionsSettings/index.tsx',
         {
             fieldKeys: [
-                'tenants.appSettings.otherFunctions.statistics.title',
-                'tenants.appSettings.otherFunctions.groupChat.title',
-                'teamFunctions.chat.name',
-                'tenants.appSettings.otherFunctions.supervision.title',
                 'tileHelp.otherFunctions.general.title',
+                'tenants.appSettings.otherFunctions.allowTopicCreation.title',
+                'tenants.appSettings.otherFunctions.statistics.title',
+            ],
+        },
+    ),
+    // Frank, 2026-11-20: licence and sender of a Träger moved here from Stammdaten (Träger page only).
+    tile(
+        'app:licence-sender',
+        'tenants.appSettings.licenceSender.title',
+        ['tenant:functionalities'],
+        'src/components/Tenants/AppSettings/TraegerLicenceSenderSettings/index.tsx',
+        {
+            fieldKeys: [
+                'tenants.form.section.licence',
+                'tenants.form.section.sender',
+                'tenants.form.sender.legalName',
+                'tenants.form.sender.contactEmail',
+                'tenants.form.sender.contactPhone',
             ],
         },
     ),
@@ -524,7 +561,6 @@ export const SEARCH_TILES: RegistryTile[] = [
                 'agency.form.registrationSettings.onlineDescription',
                 'agency.form.registrationSettings.postCodeTitle',
                 'agency.edit.settings.title',
-                'teamFunctions.counselling.name',
                 'agency.edit.general.more_settings.tenant.title',
                 'agency.edit.settings.departments',
                 'agency.form.settings.counsellorTopicPermission.title',

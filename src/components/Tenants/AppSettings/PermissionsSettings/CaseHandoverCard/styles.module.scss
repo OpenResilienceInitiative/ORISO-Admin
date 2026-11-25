@@ -76,13 +76,18 @@
     font-weight: 600;
 }
 
-/* Placeholder reason (not backend-seeded yet): selectable to inspect, greyed out. */
+/* Placeholder reason (not backend-seeded yet): selectable to inspect. Set apart by a dashed
+   underline and italics, not by faded text: it must stay readable (WCAG 1.4.3, #1558). */
+
 .reasonTabPlaceholder {
-    color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
+    color: var(--admin-form-muted-text, #444748);
+    font-style: italic;
+    text-decoration: underline dashed;
+    text-underline-offset: 4px;
 
     &.reasonTabActive {
-        border-bottom-color: color-mix(in srgb, var(--admin-form-muted-text, #444748) 45%, transparent);
-        color: color-mix(in srgb, var(--m3-on-surface, #1b1b1c) 55%, transparent);
+        border-bottom-color: var(--admin-form-muted-text, #444748);
+        color: var(--admin-form-muted-text, #444748);
     }
 }
 
@@ -276,4 +281,25 @@
     color: var(--m3-on-surface, #1b1b1c);
     font-size: 14px;
     line-height: 20px;
+}
+
+/* ORISO-Admin#1558: inside the Mailberatung tile, no card shell of its own. */
+.embedded {
+    display: flex;
+    flex-direction: column;
+    gap: mui.$mui-unit * 1.5;
+}
+
+.translateRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 8px;
+}
+
+.translateHint {
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 12px;
+    line-height: 16px;
 }

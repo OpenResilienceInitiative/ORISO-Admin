@@ -24,6 +24,9 @@ export const storyTenant = {
     subdomain: 'caritas-sued',
     address: 'Musterstraße 1, 80331 München',
     description: 'Beratung für Familien und Jugendliche im Süden.',
+    legalName: 'Caritasverband für die Erzdiözese Süd e.V.',
+    contactEmail: 'beratung@caritas-sued.de',
+    contactPhone: '+49 89 1234-0',
     adminEmails: [],
     licensing: { allowedNumberOfUsers: 40 },
     settings: {
@@ -43,10 +46,20 @@ export const storyTenant = {
 /** Every call the Träger edit pages make, answered with the story tenant (other calls are not needed to render). */
 export const tenantEditHandlers = [
     ...contactPersonReadHandlers(),
+    // The Träger admins tile (#1575).
+    http.get('*/service/useradmin/tenantadmins', () => HttpResponse.json([])),
     http.get('*/service/tenantadmin/controls', () =>
         HttpResponse.json({ allowedPermissionToggles: { appearance: true }, permissionPolicies: {} }),
     ),
     http.get('*/service/tenantadmin/:id/permission-policies', () => HttpResponse.json({ tenantId: 7, policies: {} })),
+    // Funktionszugriff: the case-handover rules and the live-chat links of this Träger.
+    http.get('*/service/users/case-handover/reason-policies', () => HttpResponse.json([])),
+    http.get('*/service/useradmin/invitelinks/topics', () =>
+        HttpResponse.json([{ id: 5, name: 'Schuldnerberatung', status: 'ACTIVE' }]),
+    ),
+    http.get('*/service/useradmin/invitelinks', () =>
+        HttpResponse.json({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 }),
+    ),
     http.get('*/service/tenantadmin/:id/dpa/versions', () =>
         HttpResponse.json([
             {

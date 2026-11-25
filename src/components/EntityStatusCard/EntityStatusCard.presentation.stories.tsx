@@ -26,7 +26,7 @@ const textBaseline = (element: HTMLElement) => {
 const informationalStatusHeader = async (canvasElement: HTMLElement) => {
     const canvas = within(canvasElement);
     await canvasElement.ownerDocument.fonts.ready;
-    const title = canvas.getByRole('heading', { name: i18n.t('entityStatus.title'), level: 5 });
+    const title = canvas.getByRole('heading', { name: i18n.t('entityStatus.account.title'), level: 5 });
     const status = canvas.getByTestId('entity-status-confirmed');
     const appearance = getComputedStyle(status);
     await expect({
@@ -44,7 +44,7 @@ const informationalStatusHeader = async (canvasElement: HTMLElement) => {
         weight: '400',
         baselineOffset: 0,
     });
-    await expect(status).toHaveAccessibleName(i18n.t('entityStatus.confirmed'));
+    await expect(status).toHaveAccessibleName(i18n.t('entityStatus.account.confirmed'));
     await expect(status).not.toHaveAttribute('role', 'button');
     await expect(status).not.toHaveAttribute('tabindex');
 };

@@ -442,7 +442,10 @@ describe('user editor route access', () => {
 
         renderEditorRoute(`/admin/users/${section}/account-42`);
 
-        expect(await screen.findByDisplayValue('Ada')).toBeVisible();
+        const name = await screen.findByDisplayValue('Ada');
+        expect(name).toBeVisible();
+        const accountAccess = screen.getByTestId('entity-status-card');
+        expect(name.closest('form')?.nextElementSibling).toBe(accountAccess);
         expect(useConsultantsOrAdminsData).toHaveBeenCalledWith(
             expect.objectContaining({ typeOfUser: section, search: 'account-42', enabled: true }),
         );

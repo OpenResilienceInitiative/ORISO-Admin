@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import i18n from '../../i18n';
 import type { TopicCatalogueDto } from '../../types/TopicCatalogue';
-import { TopicCatalogueDialog } from '.';
+import { TopicCatalogueDialog, TopicCatalogueEditor } from '.';
 
 vi.setConfig({ testTimeout: 60_000 });
 
@@ -326,5 +326,155 @@ describe('TopicCatalogueDialog', () => {
 
         expect(await screen.findByRole('alert')).toHaveTextContent('nicht gespeichert');
         expect(onClose).not.toHaveBeenCalled();
+    });
+
+    describe('AI translation of empty languages (Frank, 2026-11-24)', () => {
+        it('has no AI button without a translator', () => {
+            open();
+            expect(screen.queryByRole('button', { name: 'Fehlende Texte mit KI übersetzen' })).not.toBeInTheDocument();
+        });
+
+        it('sends only the texts French lacks and saves the answers', async () => {
+            const onTranslate = vi.fn(async (request: { texts: Record<string, string> }) => ({
+                provider: 'mistral',
+                model: 'mistral-small-latest',
+                translations: {
+                    fr: Object.fromEntries(
+                        Object.entries(request.texts).map(([key, value]) => [key, `<p>FR ${value}</p>`]),
+                    ),
+                },
+            }));
+            const { onSave, u } = open({ onTranslate });
+
+            await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+            await waitFor(() => expect(onTranslate).toHaveBeenCalledTimes(1));
+            expect(onTranslate.mock.calls[0][0]).toEqual({
+                sourceLang: 'de',
+                targetLangs: ['fr'],
+                texts: {
+                    'topicDescription:14': 'Hilfe bei Schulden',
+                    'topicName:15': 'Leben im Alter',
+                    'topicDescription:15': 'Alter',
+                    'topicName:20': 'Migration',
+                    'topicDescription:20': 'Ankommen',
+                    'group:g2': 'Krisen',
+                },
+            });
+            await save(u);
+            await waitFor(() => expect(onSave).toHaveBeenCalled());
+            const body = savedBody(onSave);
+            const debt = body.topics.find((topic) => topic.id === 14);
+            expect(debt?.name).toEqual({ de: 'Schulden', fr: 'Dettes' });
+            expect(debt?.description).toEqual({ de: 'Hilfe bei Schulden', fr: 'FR Hilfe bei Schulden' });
+            expect(body.groups.find((group) => group.id === 2)?.name).toEqual({ de: 'Krisen', fr: 'FR Krisen' });
+            expect(body.groups.find((group) => group.id === 1)?.name).toEqual({ de: 'Alter', fr: 'Vieillesse' });
+        });
+
+        /** A translation that answers only when the test says so. */
+        const heldTranslation = () => {
+            let answer: () => void = () => undefined;
+            const onTranslate = vi.fn(
+                (request: { targetLangs: string[]; texts: Record<string, string> }) =>
+                    new Promise<{
+                        provider: string;
+                        model: string;
+                        translations: Record<string, Record<string, string>>;
+                    }>((resolve) => {
+                        answer = () =>
+                            resolve({
+                                provider: 'mistral',
+                                model: 'mistral-small-latest',
+                                translations: Object.fromEntries(
+                                    request.targetLangs.map((code) => [
+                                        code,
+                                        Object.fromEntries(
+                                            Object.entries(request.texts).map(([key, value]) => [key, `FR ${value}`]),
+                                        ),
+                                    ]),
+                                ),
+                            });
+                    }),
+            );
+            return { onTranslate, answer: () => answer() };
+        };
+
+        it('keeps what the admin types while the translation runs, and saves only after it answered', async () => {
+            const { onTranslate, answer } = heldTranslation();
+            const { onSave, u } = open({ onTranslate });
+
+            await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+            await waitFor(() => expect(onTranslate).toHaveBeenCalledTimes(1));
+            await u.click(screen.getByRole('button', { name: /Französisch/ }));
+            await u.click(within(pool()).getByRole('button', { name: /Leben im Alter/ }));
+            await u.type(screen.getByRole('textbox', { name: 'Beschreibung' }), 'Vieillir');
+            expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+
+            answer();
+            await waitFor(() => expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled());
+            await save(u);
+
+            await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+            const old = savedBody(onSave).topics.find((topic) => topic.id === 15);
+            expect(old?.description).toEqual({ de: 'Alter', fr: 'Vieillir' });
+            expect(old?.name).toEqual({ de: 'Leben im Alter', fr: 'FR Leben im Alter' });
+        });
+
+        it('ignores an answer that arrives after the edit was cancelled', async () => {
+            const { onTranslate, answer } = heldTranslation();
+            const props = {
+                catalogue: catalogue(),
+                languages: LANGUAGES,
+                onSave: vi.fn().mockResolvedValue(undefined),
+                onCancel: vi.fn(),
+                onTranslate,
+            };
+            const u = userEvent.setup({ delay: null });
+            const { rerender } = render(<TopicCatalogueEditor {...props} editing />);
+
+            await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+            await waitFor(() => expect(onTranslate).toHaveBeenCalledTimes(1));
+            await u.click(screen.getByRole('button', { name: 'Abbrechen' }));
+            expect(props.onCancel).toHaveBeenCalled();
+            rerender(<TopicCatalogueEditor {...props} editing={false} />);
+            rerender(<TopicCatalogueEditor {...props} editing />);
+
+            answer();
+            await waitFor(() => expect(onTranslate.mock.results[0].value).resolves.toBeDefined());
+            await u.click(screen.getByRole('button', { name: /Französisch/ }));
+            expect(screen.queryByText(/FR /)).not.toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+        });
+
+        it('says that nothing is missing when every language is complete', async () => {
+            const complete = catalogue();
+            complete.groups = complete.groups.map((group) => ({
+                ...group,
+                name: { ...group.name, fr: `${group.name.de} (fr)` },
+            }));
+            complete.topics = complete.topics.map((topic) => ({
+                ...topic,
+                name: { ...topic.name, fr: `${topic.name.de} (fr)` },
+                description: { ...topic.description, fr: `${topic.description?.de} (fr)` },
+            }));
+            const onTranslate = vi.fn();
+            const { u } = open({ catalogue: complete, onTranslate });
+
+            await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+            expect(await screen.findByText('Es fehlt keine Übersetzung.')).toBeInTheDocument();
+            expect(onTranslate).not.toHaveBeenCalled();
+        });
+
+        it('keeps the dialog usable and says why when the translation fails', async () => {
+            const onTranslate = vi.fn().mockRejectedValue(new Error('down'));
+            const { onSave, u } = open({ onTranslate });
+
+            await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+            await waitFor(() => expect(onTranslate).toHaveBeenCalled());
+            expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+            expect(onSave).not.toHaveBeenCalled();
+        });
     });
 });

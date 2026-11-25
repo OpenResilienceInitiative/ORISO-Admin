@@ -3,7 +3,8 @@ import { MuiSwitchField } from '../mui/MuiSwitchField';
 import { TEAM_FUNCTIONS, type TeamFunctionId } from './teamFunctions';
 
 interface TeamFunctionSwitchProps {
-    fn: TeamFunctionId;
+    /** Only a team function with a form field; the Team-Chat is a policy (ORISO-Frontend#2491). */
+    fn: Exclude<TeamFunctionId, 'chat'>;
     className?: string;
     disabled?: boolean;
 }

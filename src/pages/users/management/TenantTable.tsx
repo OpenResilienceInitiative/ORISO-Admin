@@ -22,7 +22,7 @@ interface TenantTableProps {
     sortBy?: string;
     order?: string;
     onEdit: (record: TenantData) => void;
-    onDelete: (record: TenantData) => void;
+    onDelete?: (record: TenantData) => void;
 }
 
 /** The Träger tab keeps the AntD table; the person tabs use `UserDataTable`. */

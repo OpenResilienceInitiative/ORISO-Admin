@@ -18,7 +18,7 @@ let editors: Editor[] = [];
 const createEditor = (content: string, editable = true): Editor => {
     const editor = new Editor({
         element: document.createElement('div'),
-        extensions: [StarterKit, TrailingParagraph],
+        extensions: [StarterKit.configure({ trailingNode: false }), TrailingParagraph],
         content,
         editable,
     });

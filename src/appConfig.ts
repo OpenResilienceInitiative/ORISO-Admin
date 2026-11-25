@@ -36,10 +36,19 @@ export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agen
 export const agencyIdNextFreeEndpoint = `${agencyServiceURL}/service/agencyadmin/agencyids/next-free`;
 export const consultantsHasAgencyEndpoint = (agencyId: string) =>
     `${userServiceURL}/service/useradmin/agencies/${agencyId}/consultants`;
+/** What deleting a counselling centre takes with it (ORISO-Admin#1524). */
+export const agencyDeletionPreviewEndpoint = (agencyId: string | number) =>
+    `${userServiceURL}/service/useradmin/agencies/${agencyId}/deletion`;
 export const consultingTypeEndpoint = `${consultingTypeServiceURL}/service/consultingtypes`;
 export const accountStatusEndpoint = (accountId: string) =>
     `${userServiceURL}/service/useradmin/accounts/${encodeURIComponent(accountId)}/status`;
 export const erstantwortDefaultsEndpoint = `${userServiceURL}/service/useradmin/erstantwort/defaults`;
+/** Platform admin's own Erstantwort texts (Settings → Begrüßung), above the built-in default. */
+/** A Beratungsstelle's own Erstantwort texts: `${erstantwortAgencyEndpoint}/{agencyId}`. */
+export const erstantwortAgencyEndpoint = `${userServiceURL}/service/useradmin/erstantwort/agencies`;
+export const erstantwortPlatformEndpoint = `${userServiceURL}/service/useradmin/erstantwort/platform`;
+/** Journeys per conversation type and the layers of Träger and Beratungsstelle (ADR-036 part E, ORISO-UserService#1689). */
+export const journeysEndpoint = `${userServiceURL}/service/useradmin/journeys`;
 export const counselorEndpoint = `${userServiceURL}/service/useradmin/consultants`;
 /** Advice seekers for the admin interface: GET lists, DELETE /{id} marks one for deletion (ORISO-Admin#1521). */
 export const adviceSeekerAdminEndpoint = `${userServiceURL}/service/useradmin/askers`;
@@ -52,6 +61,9 @@ export const grantConsultantIdentityEndpoint = (adminId: string) =>
 export const loginEndpoint = keycloakAuthPath('/protocol/openid-connect/token');
 export const logoutEndpoint = keycloakAuthPath('/protocol/openid-connect/logout');
 export const tenantEndpoint = `${tenantServiceURL}/service/tenant/`;
+/** What a Träger still holds, counted before it is deleted (ORISO-Admin#1525). */
+export const tenantDeletionPreviewEndpoint = (tenantId: number) =>
+    `${userServiceURL}/service/useradmin/tenants/${tenantId}/deletion-blockers`;
 export const tenantAccessEndpoint = `${tenantServiceURL}/service/tenant/access`;
 export const tenantAdminEndpoint = `${tenantServiceURL}/service/tenantadmin`;
 /**

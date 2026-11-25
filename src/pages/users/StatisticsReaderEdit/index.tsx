@@ -21,6 +21,7 @@ import {
 import { useUserPermissions } from '../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import profileStyles from '../accountProfile.module.scss';
 import { extractApiErrorMessage } from '../../../utils/extractApiErrorMessage';
 import { AccessDenied } from '../../ErrorPages/AccessDenied';
 
@@ -150,6 +151,7 @@ const StatisticsReaderEditor = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
+                    className={profileStyles.form}
                     disabled={fieldsDisabled}
                     labelAlign="left"
                     labelWrap

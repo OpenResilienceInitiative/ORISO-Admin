@@ -1,51 +1,33 @@
 import { CardGrid } from '../../../CardGrid';
-import { CommunicationSettings } from '../CommunicationSettings';
 import { OtherFunctionsSettings } from '../OtherFunctionsSettings';
-import { SmtpSettings } from '../SmtpSettings';
+import { TraegerLicenceSenderSettings } from '../TraegerLicenceSenderSettings';
 
 interface FunctionalitiesGridProps {
     tenantId: string;
-    /** Tiles a level does not offer. Every flag defaults to showing the tile. */
-    hideSmtp?: boolean;
-    hideCommunication?: boolean;
-    /** Flags of the "Sonstige Funktionen" tile itself. */
-    hideTopicsToggle?: boolean;
+    /** The counsellor statistics switch; not offered to a Träger admin on the single domain. */
     hideStatistics?: boolean;
-    hideGroupChatToggle?: boolean;
+    /**
+     * The Träger page (`/admin/tenants/:id`): licence and sender block of the Träger, moved here from
+     * Stammdaten (Frank, 2026-11-20). The Träger admin's own settings keep the sender in their own
+     * Träger information and have no licence to edit.
+     */
+    withLicenceAndSender?: boolean;
 }
 
 /**
- * The tiles of the Träger "Funktionalitäten" tab in the settings raster. One grid for the
- * Träger admin's own settings and for the platform admin editing a Träger, so both levels
- * show the same tiles in the same places; each level only passes what it hides.
+ * The Träger "Weitere" tab (ORISO-Admin#1577; route `functionalities` / `app-settings`): one grid for the
+ * Träger admin's own settings and for the platform admin editing a Träger, so both levels see the same
+ * tile; each level only passes what it hides. Settings of a conversation type live in Funktionszugriff.
  */
-export const FunctionalitiesGrid = ({
-    tenantId,
-    hideSmtp,
-    hideCommunication,
-    hideTopicsToggle,
-    hideStatistics,
-    hideGroupChatToggle,
-}: FunctionalitiesGridProps) => (
+export const FunctionalitiesGrid = ({ tenantId, hideStatistics, withLicenceAndSender }: FunctionalitiesGridProps) => (
     <CardGrid raster>
-        {!hideSmtp && (
-            <CardGrid.Item span={3}>
-                <SmtpSettings tenantId={tenantId} />
-            </CardGrid.Item>
-        )}
-        {!hideCommunication && (
-            <CardGrid.Item>
-                <CommunicationSettings tenantId={tenantId} />
-            </CardGrid.Item>
-        )}
-        {/* Two columns wide, so its panels sit side by side instead of in one tall column. */}
-        <CardGrid.Item span={2}>
-            <OtherFunctionsSettings
-                tenantId={tenantId}
-                hideTopics={hideTopicsToggle}
-                hideStatistics={hideStatistics}
-                hideGroupChatToggle={hideGroupChatToggle}
-            />
+        <CardGrid.Item span={3}>
+            <OtherFunctionsSettings tenantId={tenantId} hideStatistics={hideStatistics} />
         </CardGrid.Item>
+        {withLicenceAndSender && (
+            <CardGrid.Item span={3}>
+                <TraegerLicenceSenderSettings tenantId={tenantId} />
+            </CardGrid.Item>
+        )}
     </CardGrid>
 );

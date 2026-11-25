@@ -60,10 +60,11 @@ export const clearAuthTokensViaBff = async (): Promise<void> => {
     await postJson(authClearTokenEndpoint, {});
 };
 
-export const bootstrapAuthSessionViaBff = async (): Promise<LoginData | null> => {
+export const bootstrapAuthSessionViaBff = async (signal?: AbortSignal): Promise<LoginData | null> => {
     const response = await fetch(authSessionEndpoint, {
         method: 'GET',
         credentials: 'include',
+        signal,
     });
 
     if (response.status === 204 || response.status === 401) {

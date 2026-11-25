@@ -469,6 +469,24 @@ export const TemplateEditing: Story = {
     },
 };
 
+/** "Fehlende Sprachen mit KI übersetzen" under the template: German is the source, every empty language is filled (Frank, 2026-11-24). */
+export const TemplateTranslate: Story = {
+    args: {
+        policies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onTranslateTemplates: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(canvas.getByRole('tab', { name: /Ungeplant verhindert|Unplanned unavailability/i }));
+        const row = canvas.getByTestId('case-handover-template-translate');
+        await userEvent.click(within(row).getByRole('button'));
+        await expect(args.onTranslateTemplates).toHaveBeenCalled();
+    },
+};
+
 export const Loading: Story = {
     args: {
         policies: [],

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CaseHandoverCard } from './index';
 import { CaseHandoverCardView, type CaseHandoverCardViewProps } from './CaseHandoverCardView';
@@ -74,6 +74,12 @@ vi.mock('../../../../../hooks/useCaseHandoverReasonPolicies', async (importOrigi
         isPending: mocks.mutationState.isPending,
         mutate: mocks.mutate,
     }),
+}));
+
+const translateLegalTexts = vi.hoisted(() => vi.fn());
+vi.mock('../../../../../api/tenant/translation', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../../../../api/tenant/translation')>()),
+    translateLegalTexts,
 }));
 
 vi.mock('../../../../../hooks/useUserPermission', () => ({
@@ -218,6 +224,44 @@ describe('CaseHandoverCard', () => {
         const payload = mocks.mutate.mock.calls.at(-1)?.[0];
         const illPolicy = payload.find((policy: { code: string }) => policy.code === 'COUNSELLOR_IS_ILL');
         expect(illPolicy.clientNotificationTemplates).toEqual({ de: 'Eigener Uebergabetext.' });
+    });
+
+    it('translates the German template into every empty language and keeps {{newAdvisor}} (Frank, 2026-11-24)', async () => {
+        const user = userEvent.setup();
+        translateLegalTexts.mockReset();
+        translateLegalTexts.mockImplementation(async (request: { targetLangs: string[] }) => ({
+            provider: 'mistral',
+            model: 'mistral-small-latest',
+            translations: Object.fromEntries(
+                request.targetLangs.map((language) => [
+                    language,
+                    { template: `<p>[${language}] <code>{{newAdvisor}}</code> takes over.</p>` },
+                ]),
+            ),
+        }));
+        render(<CaseHandoverCard tenantId={7} />);
+
+        await user.click(screen.getByRole('tab', { name: 'Counsellor is ill' }));
+        const input = screen.getByTestId('case-handover-template-input');
+        await user.clear(input);
+        await user.type(input, 'Ab jetzt berät dich {{{{newAdvisor}}.');
+        await user.tab();
+        await waitFor(() => expect(mocks.mutate).toHaveBeenCalled());
+
+        await user.click(within(screen.getByTestId('case-handover-template-translate')).getByRole('button'));
+
+        await waitFor(() => expect(translateLegalTexts).toHaveBeenCalledTimes(1));
+        const request = translateLegalTexts.mock.calls[0][0];
+        expect(request.sourceLang).toBe('de');
+        expect(request.targetLangs).toEqual(['en', 'fr', 'ru', 'tr', 'uk', 'ti']);
+        expect(request.texts.template).toBe('Ab jetzt berät dich <code>{{newAdvisor}}</code>.');
+        await waitFor(() => {
+            const payload = mocks.mutate.mock.calls.at(-1)?.[0];
+            const ill = payload.find((policy: { code: string }) => policy.code === 'COUNSELLOR_IS_ILL');
+            expect(ill.clientNotificationTemplates.en).toBe('[en] {{newAdvisor}} takes over.');
+            expect(ill.clientNotificationTemplates.ti).toBe('[ti] {{newAdvisor}} takes over.');
+            expect(ill.clientNotificationTemplates.de).toBe('Ab jetzt berät dich {{newAdvisor}}.');
+        });
     });
 
     it('shows the legal-violation placeholder tab with disabled consent controls and no persistence', async () => {
@@ -475,6 +519,30 @@ describe('reason state is independent from the canonical master view', () => {
             expect(screen.getByTestId('case-handover-card-error')).toBeVisible();
         },
     );
+});
+
+// ORISO-Admin#1558: inside the Mailberatung tile the choice "Fallübergabe" is the master switch.
+describe('embedded in the case-sharing choice', () => {
+    const props: CaseHandoverCardViewProps = {
+        policies: mocks.defaultPolicies,
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        onClientConsentPolicyChange: vi.fn(),
+        onNotificationTemplateChange: vi.fn(),
+        onMaxAccessDurationChange: vi.fn(),
+        onFeaturePolicyChange: vi.fn(),
+        permissionPolicies: { caseHandoverEnabled: { value: true, mode: 'SUGGESTED', inherited: false } },
+    };
+
+    it('shows the reasons without a tile or master switch of its own', () => {
+        render(<CaseHandoverCardView {...props} embedded />);
+
+        expect(screen.queryByTestId('case-handover-card')).not.toBeInTheDocument();
+        expect(screen.getByTestId('case-handover-settings')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: /caseHandover.enabled:/ })).not.toBeInTheDocument();
+        expect(screen.getAllByRole('tablist').length).toBeGreaterThan(0);
+    });
 });
 
 it('withholds stale canonical master authority until the owning Träger is resolved', async () => {

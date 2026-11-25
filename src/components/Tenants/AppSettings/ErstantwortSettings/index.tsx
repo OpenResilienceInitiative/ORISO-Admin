@@ -132,8 +132,9 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
 
     const handleDeadline = (days: number | undefined) => setDeadlineEdit({ days });
 
-    const publish = async (publishedContent: ErstantwortContentMap) => {
+    const publish = async (publishedContent: ErstantwortContentMap, sentEdits: ErstantwortContentMap = edits) => {
         const { generation } = scopeRef.current;
+        const sentDeadline = deadlineEdit;
         const deadlinePayload = deadlineEdit ? deadlineEdit.days ?? null : undefined;
         try {
             await saveTenant({
@@ -144,8 +145,9 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
             });
             if (scopeRef.current.generation !== generation) return;
             setTranslatedRetry(null);
-            setEdits({});
-            setDeadlineEdit(null);
+            // A keystroke during the request replaces the state. Clearing only what we sent keeps that keystroke.
+            setEdits((current) => (current === sentEdits ? {} : current));
+            setDeadlineEdit((current) => (current === sentDeadline ? null : current));
         } catch {
             // The tenant mutation already shows the error; the edits stay for another attempt.
         }
@@ -189,7 +191,7 @@ const TenantErstantwortSettings = ({ tenantId, readOnly = false }: ErstantwortSe
                 texts: collectSourceTexts(content, sourceLanguage),
             }),
         });
-        await publish(translated);
+        await publish(translated, translated);
     };
 
     const requestPublish = () => {

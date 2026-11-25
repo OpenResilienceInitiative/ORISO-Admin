@@ -5,6 +5,7 @@ import { useSetTranslationKey } from '../../../hooks/useSetTranslationKey.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TranslationApiKeysCard } from '../TranslationApiKeysCard';
 import { TranslationProvider } from '../../../types/translation';
+import { testTranslationKey } from '../../../api/tenant/translation';
 
 /**
  * Container for the machine-translation API keys card: loads the masked keys (only for
@@ -33,6 +34,7 @@ export const TranslationApiKeysCardContainer = () => {
             onSave={handleSave}
             savingProvider={isPending ? variables?.provider ?? null : null}
             disabled={!isSuperAdmin}
+            onTest={testTranslationKey}
         />
     );
 };

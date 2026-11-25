@@ -48,11 +48,24 @@ export type CalendarPolicies = {
     showAskerUsernames?: PolicyValue<boolean>;
 };
 
+/**
+ * How counsellors of a centre share a Mailberatung case, as the APIs name it
+ * (ORISO-TenantService#374). Exactly one applies.
+ */
+export type CaseSharingApiMode = 'CASE_HANDOVER' | 'TEAM_COUNSELLING' | 'NONE';
+
+/** `caseSharing` block of the tenant settings API. `inherited` is read-only and never written. */
+export type CaseSharingPolicies = {
+    mode?: PolicyValue<CaseSharingApiMode>;
+};
+
 export type TenantPermissionPolicies = {
     tenantId: number;
     policies: Record<string, PolicyValue<boolean>>;
     internalGroupChat?: InternalGroupChatPolicies;
     calendar?: CalendarPolicies;
+    /** Absent from a TenantService before #374: the page then keeps the separate handover tile. */
+    caseSharing?: CaseSharingPolicies;
     caseHandoverPolicies?: {
         reasons: Record<string, CaseHandoverReasonPermissionPolicy>;
     };

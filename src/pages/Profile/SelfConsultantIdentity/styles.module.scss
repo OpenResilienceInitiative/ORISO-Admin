@@ -3,6 +3,18 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+
+    :global(.ant-btn) {
+        block-size: auto;
+        max-inline-size: 100%;
+        min-block-size: 40px;
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    :global(.ant-btn) > span {
+        min-inline-size: 0;
+    }
 }
 
 .note {

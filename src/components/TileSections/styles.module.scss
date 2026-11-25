@@ -164,3 +164,84 @@
     font-size: 14px;
     line-height: 20px;
 }
+
+/* ORISO-Admin#1558: a panel that folds up to its heading; its toggle takes the heading row. */
+.heading .collapsibleHeading {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border: 0;
+    background: none;
+    border-radius: 12px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: 8px;
+    text-align: left;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.chevron {
+    flex: none;
+    color: var(--m3-on-surface-variant, #444748);
+    transform: rotate(180deg);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}
+
+.folded .chevron {
+    transform: none;
+}
+
+.learnMore {
+    display: inline-flex;
+    align-items: center;
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+    gap: 2px;
+    text-decoration: underline;
+}
+
+.learnMoreIcon {
+    font-size: 14px !important;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
