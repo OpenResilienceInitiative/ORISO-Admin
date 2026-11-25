@@ -35,7 +35,10 @@ export const PlatformAdmin: Story = {
         // The editor is inside the shared tile: no second nested tile or repeated title.
         const imprintTile = imprint.closest('[data-collapsible-tile]')!;
         await expect(imprintTile.querySelectorAll('[data-collapsible-tile]')).toHaveLength(0);
-        await expect(within(imprintTile as HTMLElement).getByText(/Impressum der Beratungsstelle\./)).toBeVisible();
+        // The document tile unfolds with an animation; wait until it is open.
+        await waitFor(() =>
+            expect(within(imprintTile as HTMLElement).getByText(/Impressum der Beratungsstelle\./)).toBeVisible(),
+        );
     },
 };
 export const AgencyAdmin: Story = { beforeEach: () => installAgencyStoryAuth('agencyAdmin') };

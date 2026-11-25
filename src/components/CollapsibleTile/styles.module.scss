@@ -241,3 +241,94 @@
         }
     }
 }
+
+.label,
+.trailing {
+    display: contents;
+}
+
+.documentMotion .header {
+    display: grid;
+
+    /* The trailing track never gets narrower than chip and chevron, so they never run into the title. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+    gap: 8px 12px;
+    text-align: center;
+}
+
+.documentMotion .label {
+    display: flex;
+    grid-column: 2;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.documentMotion .trailing {
+    display: flex;
+    grid-column: 3;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.motionBody {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.open .motionBody {
+    grid-template-rows: 1fr;
+}
+
+.motionClip {
+    min-height: 0;
+    opacity: 0;
+    overflow: clip;
+    transform: scale(0.98);
+    transform-origin: top center;
+    transition: transform 320ms cubic-bezier(0.2, 0, 0, 1), opacity 260ms ease;
+}
+
+.open .motionClip {
+    opacity: 1;
+    transform: none;
+}
+
+@media (max-width: 860px) {
+    .documentMotion .header {
+        grid-template-columns: 24px minmax(0, 1fr) 24px;
+    }
+
+    .documentMotion .trailing {
+        display: contents;
+    }
+
+    .documentMotion .chip {
+        grid-column: 2;
+        grid-row: 2;
+        justify-self: center;
+    }
+
+    .documentMotion .chevron {
+        grid-column: 3;
+        grid-row: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .motionBody,
+    .motionClip {
+        transition: none;
+    }
+}
+
+/* Open, a document tile uses the shared open header (icon above title); the centred grid is the folded row. */
+.documentMotion.open .heading:not(.withIconButton) {
+    .label,
+    .trailing {
+        display: contents;
+    }
+}

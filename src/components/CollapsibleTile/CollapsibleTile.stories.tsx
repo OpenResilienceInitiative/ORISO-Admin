@@ -89,3 +89,34 @@ export const IconSlidesWhenFolding: Story = {
         });
     },
 };
+
+/**
+ * A folded document tile in a card narrower than its title, in a window wider than the 860px stack
+ * breakpoint: the state chip and chevron keep their own track and never run into the title.
+ */
+export const DocumentTileNarrowCard: Story = {
+    args: {
+        documentMotion: true,
+        title: 'Auftragsverarbeitungsvertrag zwischen Träger und Beratungsstelle mit allen Anlagen',
+        status: 'Entwurf, nicht veröffentlicht',
+    },
+    decorators: [
+        (Story) => (
+            <div style={{ width: 420 }}>
+                <Story />
+            </div>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const tile = canvasElement.querySelector<HTMLElement>('[data-collapsible-tile]')!;
+        const title = tile.querySelector<HTMLElement>('[data-collapsible-tile-title]')!;
+        const chip = within(tile).getByText('Entwurf, nicht veröffentlicht');
+        const header = within(tile).getByRole('button', { name: /Auftragsverarbeitungsvertrag/ });
+        await expect(header).toHaveAttribute('aria-expanded', 'false');
+        const titleBox = title.getBoundingClientRect();
+        const chipBox = chip.getBoundingClientRect();
+        const apart = chipBox.left >= titleBox.right || chipBox.top >= titleBox.bottom;
+        await expect(apart).toBe(true);
+        await expect(header.scrollWidth).toBeLessThanOrEqual(header.clientWidth + 1);
+    },
+};

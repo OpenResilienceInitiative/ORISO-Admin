@@ -41,6 +41,7 @@ export const LegalDocumentTile = ({
     return (
         <CollapsibleTile
             icon={<Icon />}
+            documentMotion
             title={title}
             status={status?.label}
             statusTone={status?.tone}
