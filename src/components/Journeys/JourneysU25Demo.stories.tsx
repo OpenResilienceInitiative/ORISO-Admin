@@ -85,7 +85,10 @@ const buildTheBox = async (canvasElement: HTMLElement) => {
     await userEvent.click(await body.findByTestId('journey-add-panel'));
     const stepDialog = await body.findByTestId('journey-step-dialog');
     const [aspect] = within(stepDialog).getAllByTestId(/^journey-aspect-/);
-    await userEvent.type(within(aspect).getAllByRole('textbox')[0], BOX_TITLE);
+    const title = within(aspect).getAllByRole('textbox')[0];
+    await userEvent.type(title, BOX_TITLE);
+    // On a busy CI runner the last keystrokes can still be rendering: apply only the whole title.
+    await waitFor(() => expect(title).toHaveValue(BOX_TITLE));
     await userEvent.click(within(stepDialog).getByRole('button', { name: 'Übernehmen' }));
 
     // 2. Drag it to the top of the on-board phase.
