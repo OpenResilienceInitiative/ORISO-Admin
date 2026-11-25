@@ -3,9 +3,10 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
-import { compareLegacyButtonUsage, countLegacyButtons, readLegacyButtonUsage } from './verify-legacy-buttons.mjs';
+import { compareLegacyButtonUsage, inspectLegacyAntd, readLegacyAntdUsage } from './verify-legacy-buttons.mjs';
 
 const legacyFile = 'src/components/CreateAgencyModal/index.tsx';
+const countLegacyButtons = (source, filename) => inspectLegacyAntd(source, filename).buttons;
 const legacyForm = "import { Form, Button as LegacyButton } from 'antd';\n";
 const oldAction = 'export const Action = () => <LegacyButton />;\n';
 assert.equal(countLegacyButtons(legacyForm + oldAction, legacyFile), 2);
@@ -31,6 +32,40 @@ assert.equal(
     ),
     0,
 );
+
+const blockedRuntime = [
+    "import('antd/es/slider');",
+    "import('antd/lib/button');",
+    "const { Slider: Range } = await import('antd');",
+    "const { Button } = require('antd/lib');",
+    "const { Button } = await import('antd/es/index.js');",
+    "const components = await import('antd');",
+    "const { Form, ...components } = await import('antd');",
+    "const { default: components } = require('antd');",
+    "const Range = (await import('antd/es'))['Slider'];",
+    "import LegacyButton = require('antd/es/button');",
+    "import('an\\u0074d/lib/slider');",
+    'import(`antd/es/slider`);',
+    'import(`antd/es/${component}`);',
+];
+for (const source of blockedRuntime) {
+    const [violation, ...other] = inspectLegacyAntd(source, legacyFile).runtimeImports;
+    assert.equal(violation?.file, legacyFile, `Expected the runtime import to fail: ${source}`);
+    assert.equal(violation.line, 1);
+    assert.ok(violation.column > 0);
+    assert.deepEqual(other, []);
+}
+for (const source of [
+    "const { Form, theme: designTheme } = await import('antd');",
+    "const Form = (await import('antd')).Form;",
+    "const { Form } = require('antd/lib');",
+    "type Legacy = typeof import('antd');",
+    "import type Legacy = require('antd');",
+    "// import('antd/es/slider');",
+    "const hint = 'antd/es/slider';",
+]) {
+    assert.deepEqual(inspectLegacyAntd(source, legacyFile).runtimeImports, [], `Unexpected failure: ${source}`);
+}
 
 const controls = [
     {
@@ -101,7 +136,13 @@ for (const control of controls) {
         `${control.name} did not trigger ${control.rule}`,
     );
 }
-const buttonUsage = readLegacyButtonUsage('src');
+const { buttonUsage, runtimeImports } = readLegacyAntdUsage(['src', '.storybook']);
+writeFileSync(path.join(artifacts, 'runtime-antd-imports.json'), JSON.stringify(runtimeImports));
+assert.deepEqual(
+    runtimeImports,
+    [],
+    'Use MuiSliderField from src/components/mui/MuiSliderField or M3Button from src/components/M3Button. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default and https://dev.oriso.org/storybook-admin/?path=/story/atoms-m3button--filled.',
+);
 const budgetFile = 'scripts/legacy-button-usage.json';
 const allowedButtonUsage = JSON.parse(readFileSync(budgetFile, 'utf8'));
 const buttonViolations = compareLegacyButtonUsage(buttonUsage, allowedButtonUsage);
@@ -110,13 +151,23 @@ let baselineIncreases = [];
 if (baseSha) {
     assert.match(baseSha, /^[a-f0-9]{40}$/, 'Expected the PR base commit for legacy button verification');
     const git = (...args) => execFileSync('git', args, { encoding: 'utf8' });
-    // On the first rollout the baseline file does not exist on the base branch.
+    let previous;
     if (git('ls-tree', baseSha, '--', budgetFile).trim()) {
-        const previous = JSON.parse(git('show', `${baseSha}:${budgetFile}`));
-        baselineIncreases = compareLegacyButtonUsage(allowedButtonUsage, previous).filter(
-            ({ allowed, found }) => found > allowed,
+        previous = JSON.parse(git('show', `${baseSha}:${budgetFile}`));
+    } else {
+        // The first rollout must take its allowance from the unmodified PR base.
+        const tracked = new Set(
+            git('ls-tree', '-r', '-z', '--name-only', baseSha, '--', 'src', '.storybook').split('\0'),
+        );
+        previous = Object.fromEntries(
+            Object.keys(allowedButtonUsage)
+                .filter((file) => tracked.has(file))
+                .map((file) => [file, countLegacyButtons(git('show', `${baseSha}:${file}`), file)]),
         );
     }
+    baselineIncreases = compareLegacyButtonUsage(allowedButtonUsage, previous).filter(
+        ({ allowed, found }) => found > allowed,
+    );
 }
 writeFileSync(
     path.join(artifacts, 'legacy-buttons.json'),
@@ -128,4 +179,4 @@ assert.deepEqual(
     [],
     'Use M3Button from src/components/M3Button for Admin actions. See https://dev.oriso.org/storybook-admin/?path=/story/atoms-m3button--filled. Lower the legacy count when migrating an existing action.',
 );
-console.log('Lint gate verified: accessibility, Storybook, asynchronous queries, sliders and legacy buttons.');
+console.log('Lint gate verified: accessibility, Storybook, asynchronous queries, sliders and legacy Ant Design usage.');
