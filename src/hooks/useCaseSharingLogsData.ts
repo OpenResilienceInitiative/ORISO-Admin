@@ -11,6 +11,7 @@ interface CaseSharingLogsDataProps extends Omit<UseQueryOptions<CaseSharingChang
     agencyId?: number | string;
 }
 
+// The AgencyService answers 400 to perPage > 100 or a negative page, so both are clamped here.
 export const caseSharingLogsUrl = ({
     page,
     perPage,

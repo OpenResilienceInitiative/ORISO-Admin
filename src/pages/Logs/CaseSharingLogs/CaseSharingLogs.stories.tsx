@@ -15,7 +15,7 @@ const ENTRIES: CaseSharingChangeEntry[] = [
         agencyName: 'Beratungsstelle Mitte',
         tenantId: 1,
         changedAt: '2026-11-25T09:00:00Z',
-        changedBy: 'Anna Admin',
+        changedBy: 'anna.admin',
         previousModel: 'CASE_HANDOVER',
         newModel: 'TEAM_COUNSELLING',
         source: 'AGENCY_SETTINGS',
@@ -26,7 +26,7 @@ const ENTRIES: CaseSharingChangeEntry[] = [
         agencyName: 'Suchtberatung am Hauptbahnhof',
         tenantId: 1,
         changedAt: '2026-11-18T14:30:00Z',
-        changedBy: 'Ben Beispiel',
+        changedBy: 'ben.beispiel',
         previousModel: 'TEAM_COUNSELLING',
         newModel: 'NONE',
         source: 'AGENCY_TYPE',
@@ -67,7 +67,7 @@ type Story = StoryObj<typeof meta>;
 export const WithChanges: Story = {
     parameters: { msw: { handlers: [http.get(ENDPOINT, () => changesResponse(ENTRIES))] } },
     play: async ({ canvas }) => {
-        await expect(await canvas.findByText('Anna Admin')).toBeInTheDocument();
+        await expect(await canvas.findByText('anna.admin')).toBeInTheDocument();
         await expect(canvas.getByText(/Jeder Fall behält das Modell/)).toBeInTheDocument();
         await expect(canvas.getByText('Fallübergabe → Teamberatung')).toBeInTheDocument();
         await expect(canvas.getByText('— → Fallübergabe')).toBeInTheDocument();

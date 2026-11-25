@@ -10,8 +10,9 @@ export interface CaseSharingChangeEntry {
     agencyId: number;
     agencyName?: string | null;
     tenantId?: number | null;
+    /** Whole-second UTC instant, e.g. "2026-11-25T09:30:00Z". */
     changedAt: string;
-    /** null when the system made the change. */
+    /** Username from the admin's token; null when the system made the change. */
     changedBy?: string | null;
     /** null for the first recorded model of a Beratungsstelle. */
     previousModel?: CaseSharingModel | string | null;

@@ -46,7 +46,7 @@ const ENTRIES: CaseSharingChangeEntry[] = [
         agencyName: 'Beratungsstelle Mitte',
         tenantId: 1,
         changedAt: '2026-11-25T09:00:00Z',
-        changedBy: 'Anna Admin',
+        changedBy: 'anna.admin',
         previousModel: 'CASE_HANDOVER',
         newModel: 'TEAM_COUNSELLING',
         source: 'AGENCY_SETTINGS',
@@ -81,7 +81,7 @@ describe('CaseSharingLogsPage', () => {
         render(<CaseSharingLogsPage />);
 
         const row = rowFor('Beratungsstelle Mitte');
-        expect(within(row).getByText('Anna Admin')).toBeInTheDocument();
+        expect(within(row).getByText('anna.admin')).toBeInTheDocument();
         expect(within(row).getByText('Fallübergabe → Teamberatung')).toBeInTheDocument();
         expect(within(row).getByText('Einstellungen')).toBeInTheDocument();
         expect(within(row).getByText('ID 5')).toBeInTheDocument();
