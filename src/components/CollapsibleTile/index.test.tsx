@@ -77,14 +77,23 @@ describe('CollapsibleTile', () => {
     });
 
     describe('icon slide when folding (Frank, 2026-11-24)', () => {
-        // jsdom draws nothing: the icon "moves" 100px between the open and the folded layout.
-        const fakeLayout = () =>
-            vi
-                .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-                .mockImplementation(function rect(this: HTMLElement) {
-                    const open = !!this.closest('section')?.className.includes('open');
-                    return { left: open ? 100 : 0, top: open ? 0 : 20, width: 32, height: 32 } as DOMRect;
-                });
+        // jsdom lays out nothing: the icon "moves" 100px between the open and the folded layout.
+        const isOpen = (element: HTMLElement) => !!element.closest('section')?.className.includes('open');
+        const fakeLayout = () => {
+            vi.spyOn(HTMLElement.prototype, 'offsetLeft', 'get').mockImplementation(function left(this: HTMLElement) {
+                return isOpen(this) ? 100 : 0;
+            });
+            vi.spyOn(HTMLElement.prototype, 'offsetTop', 'get').mockImplementation(function top(this: HTMLElement) {
+                return isOpen(this) ? 0 : 20;
+            });
+            // What a running slide reports: the transformed position. It must never be the start of a slide.
+            vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+                left: 999,
+                top: 999,
+                width: 32,
+                height: 32,
+            } as DOMRect);
+        };
         const reducedMotion = (reduce: boolean) =>
             vi
                 .spyOn(window, 'matchMedia')
@@ -104,6 +113,25 @@ describe('CollapsibleTile', () => {
 
             expect(animate).toHaveBeenCalledTimes(2);
             expect(animate.mock.calls[0][0][0]).toEqual({ transform: 'translate(100px, -20px)' });
+            vi.restoreAllMocks();
+            delete (HTMLElement.prototype as { animate?: unknown }).animate;
+        });
+
+        it('folds and reopens with a full slide each way, even while a slide is still running', async () => {
+            const user = userEvent.setup();
+            fakeLayout();
+            reducedMotion(false);
+            const animate = vi.fn();
+            Object.defineProperty(HTMLElement.prototype, 'animate', { value: animate, configurable: true });
+            renderTile(true);
+            const header = screen.getByRole('button', { name: /Impressum/ });
+
+            await user.click(header);
+            await user.click(header);
+
+            expect(animate).toHaveBeenCalledTimes(4);
+            expect(animate.mock.calls[0][0][0]).toEqual({ transform: 'translate(100px, -20px)' });
+            expect(animate.mock.calls[2][0][0]).toEqual({ transform: 'translate(-100px, 20px)' });
             vi.restoreAllMocks();
             delete (HTMLElement.prototype as { animate?: unknown }).animate;
         });

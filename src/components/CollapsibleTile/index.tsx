@@ -34,13 +34,22 @@ export const HEADER_MOTION = { duration: 320, easing: 'cubic-bezier(0.2, 0, 0, 1
 const prefersReducedMotion = () =>
     typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+type Place = { left: number; top: number };
+
 /**
- * Moves an element from where it was drawn last time to where it is drawn now (FLIP): the layout
- * jumps, the eye sees a slide. Without Web Animations (jsdom) or with reduced motion it just jumps.
+ * Where the layout puts an element inside its header. Offsets ignore transforms, so a slide that is
+ * still running (or one this render starts) never becomes the start of the next one.
  */
-const slideFrom = (element: HTMLElement | null, before: DOMRect | undefined) => {
-    if (!element || !before || prefersReducedMotion() || typeof element.animate !== 'function') return;
-    const after = element.getBoundingClientRect();
+const placeOf = (element: HTMLElement | null): Place | undefined =>
+    element ? { left: element.offsetLeft, top: element.offsetTop } : undefined;
+
+/**
+ * Moves an element from where it was laid out last time to where it is laid out now (FLIP): the
+ * layout jumps, the eye sees a slide. Without Web Animations (jsdom) or with reduced motion it just
+ * jumps.
+ */
+const slideFrom = (element: HTMLElement | null, before: Place | undefined, after: Place | undefined) => {
+    if (!element || !before || !after || prefersReducedMotion() || typeof element.animate !== 'function') return;
     const dx = before.left - after.left;
     const dy = before.top - after.top;
     if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
@@ -74,19 +83,17 @@ export const CollapsibleTile = ({
     const bodyId = useId();
     const iconRef = useRef<HTMLSpanElement>(null);
     const titleRef = useRef<HTMLSpanElement>(null);
-    // Where icon and title were drawn after the last render: the start of the slide when `open` flips.
-    const drawn = useRef<{ icon?: DOMRect; title?: DOMRect; open: boolean }>({ open });
+    // Where icon and title were laid out after the last render: the start of the slide when `open` flips.
+    const drawn = useRef<{ icon?: Place; title?: Place; open: boolean }>({ open });
     useLayoutEffect(() => {
         const last = drawn.current;
+        // Measured before any slide starts: the next fold starts from the layout, not a transform.
+        const now = { icon: placeOf(iconRef.current), title: placeOf(titleRef.current), open };
+        drawn.current = now;
         if (last.open !== open) {
-            slideFrom(iconRef.current, last.icon);
-            slideFrom(titleRef.current, last.title);
+            slideFrom(iconRef.current, last.icon, now.icon);
+            slideFrom(titleRef.current, last.title, now.title);
         }
-        drawn.current = {
-            icon: iconRef.current?.getBoundingClientRect(),
-            title: titleRef.current?.getBoundingClientRect(),
-            open,
-        };
     });
     useEffect(() => {
         if (open) setMounted(true);
