@@ -27,6 +27,18 @@ describe('buildAdminAntdTheme', () => {
         mocks.tokensOverride = null;
     });
 
+    it('gives primary buttons the scheme ink in dark, so the label reads on the pale primary', () => {
+        const { tokens } = computeOrisoPalette({}, 'dark');
+        const { components } = buildAdminAntdTheme({ scheme: 'dark' });
+
+        expect(components?.Button?.primaryColor).toBe(tokens['--m3-on-primary']);
+        expect(components?.Button?.dangerColor).toBe(tokens['--m3-on-error']);
+    });
+
+    it("leaves the light primary button label at antd's default white", () => {
+        expect(buildAdminAntdTheme().components?.Button).toBeUndefined();
+    });
+
     it('derives the antd colour tokens from the M3 light palette (single source of truth)', () => {
         const { tokens } = computeOrisoPalette({}, 'light');
         const { token, algorithm } = buildAdminAntdTheme();

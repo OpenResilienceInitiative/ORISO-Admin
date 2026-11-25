@@ -18,7 +18,7 @@
     border-radius: 100px;
     appearance: none;
     background: transparent;
-    color: #273270;
+    color: var(--m3-on-surface, #273270);
     cursor: pointer;
     font-family: var(--m3-body-font-family);
     font-size: 14px;
@@ -87,12 +87,12 @@
     svg {
         width: 40px;
         height: 40px;
-        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
     }
 
     h2 {
         margin: 0;
-        color: #1b1b1c;
+        color: var(--m3-on-surface, #1b1b1c);
         font-family: var(--m3-body-font-family);
         font-size: 32px;
         font-weight: 400;
@@ -102,7 +102,7 @@
 
     p {
         margin: 0;
-        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
         font-size: 14px;
         font-weight: 400;
         letter-spacing: 0.25px;
@@ -180,7 +180,7 @@
 }
 
 .phonePreviewLabel {
-    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     font-weight: 700;
@@ -305,7 +305,7 @@
 
         // The colour's name; the purpose line under it is a <p> with its own style.
         .colorSelector span {
-            color: #1b1b1c;
+            color: var(--m3-on-surface, #1b1b1c);
             font-size: 14px;
             font-weight: 500;
             line-height: 20px;
@@ -314,7 +314,7 @@
         .colorSelector h4 {
             overflow: hidden;
             margin: 0;
-            color: #1b1b1c;
+            color: var(--m3-on-surface, #1b1b1c);
             font-size: 12px;
             font-variant-numeric: tabular-nums;
             font-weight: 400;
@@ -382,7 +382,7 @@
 }
 
 .colorHex {
-    color: #1b1b1c;
+    color: var(--m3-on-surface, #1b1b1c);
     font-family: var(--m3-body-font-family);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
@@ -405,7 +405,7 @@
 }
 
 .colorLabel {
-    color: #1b1b1c;
+    color: var(--m3-on-surface, #1b1b1c);
     font-size: 14px;
     font-weight: 500;
     line-height: 20px;
@@ -413,7 +413,7 @@
 
 // What the colour is used for, one line under its name (#1374).
 .colorDescription {
-    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
     font-size: 12px;
     letter-spacing: 0.4px;
     line-height: 16px;
@@ -446,7 +446,7 @@
     padding: 0;
     border: 0;
     margin: 0 0 10px;
-    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
     float: left;
     font-family: var(--m3-body-font-family);
     font-size: 12px;
@@ -526,7 +526,7 @@
 
 .presetStatus {
     margin: 10px 0 0;
-    color: #444748;
+    color: var(--m3-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 12px;
     font-variant-numeric: tabular-nums;

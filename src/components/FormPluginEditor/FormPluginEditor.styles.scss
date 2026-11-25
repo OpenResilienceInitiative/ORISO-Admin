@@ -209,7 +209,7 @@
         border: 0;
         background: transparent;
         border-radius: 50%;
-        color: #444748;
+        color: var(--m3-on-surface-variant, #444748);
         cursor: pointer;
 
         svg {

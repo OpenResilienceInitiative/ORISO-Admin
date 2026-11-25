@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import { DashboardEmptyState } from './DashboardEmptyState';
+import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
 import { ReactComponent as ConversationsIcon } from '../../resources/img/svg/statistics-dashboard/conversations.svg';
 import trackingIllustration from '../../resources/img/tile-help/statistics/tracking.webp';
 
@@ -73,5 +76,31 @@ export const WithIllustrationAndAction: Story = {
         title: 'Ihr Dashboard füllt sich mit der ersten Beratung',
         highlights: STATISTICS_HIGHLIGHTS,
         action: { label: 'Beratende verwalten', onClick: () => {} },
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark), as on /admin/topics: the card follows the
+ * surface tokens and the primary button label follows on-primary. Before, antd's fixed white
+ * label sat on the pale dark-scheme primary at 1.7:1, and the card stayed white.
+ */
+export const DarkScheme: Story = {
+    args: {
+        ...WithIllustrationAndAction.args,
+        action: { label: 'Zurück zur Startseite', onClick: () => {} },
+    },
+    decorators: [
+        (Story) => (
+            <DarkSchemeFrame>
+                <Story />
+            </DarkSchemeFrame>
+        ),
+    ],
+    play: async ({ canvas }) => {
+        const button = canvas.getByRole('button', { name: 'Zurück zur Startseite' });
+        await expect(textContrast(button)).toBeGreaterThanOrEqual(4.5);
+        await expect(textContrast(canvas.getByRole('heading'))).toBeGreaterThanOrEqual(4.5);
+        const highlightTexts = canvas.getAllByRole('listitem').flatMap((item) => [...item.children]);
+        await expect(Math.min(...highlightTexts.map(textContrast))).toBeGreaterThanOrEqual(4.5);
     },
 };

@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Layout } from 'antd';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import routePathNames from '../../appConfig';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
 import { AdminSidebar, type AdminSidebarNavItem } from './AdminSidebar';
 import { buildAdminNavItems } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
+import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 // Pre-resolved nav items (the wrapper builds these from permissions; the sidebar just renders them).
 const settingsItem: AdminSidebarNavItem = {
@@ -250,5 +253,29 @@ export const WithActivityLogs: Story = {
         items: [settingsItem, usersItem],
         activityLogs,
         currentPath: routePathNames.caseHandoverLogs,
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark). The active pill sits on primary-FIXED with
+ * on-primary-fixed ink, a pair that keeps its tone in every scheme. On primary-container the dark
+ * ink fell to 2.1:1, because that container turns deep red in dark.
+ */
+export const DarkSchemeActiveItem: Story = {
+    args: {
+        items: [settingsItem, tenantsItem, agencyItem, usersItem, statisticsItem, linksItem, logsItem],
+    },
+    decorators: [
+        (Story) => (
+            <DarkSchemeFrame>
+                <Story />
+            </DarkSchemeFrame>
+        ),
+    ],
+    play: async ({ canvasElement }) => {
+        const active = canvasElement.querySelector('ul.upperSidebar > li.menuItem > a.active');
+        const label = active?.querySelector('span');
+        await expect(label).toBeTruthy();
+        await expect(textContrast(label as Element)).toBeGreaterThanOrEqual(4.5);
     },
 };

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { expect, userEvent, within } from 'storybook/test';
 import { PermissionPolicyControl } from './PermissionPolicyControl';
 import type { PolicyValue } from '../../types/permissionPolicy';
+import { DarkScheme as DarkSchemeFrame, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 const Preview = ({ initial, level }: { initial: PolicyValue<boolean>; level: 'platform' | 'tenant' | 'agency' }) => {
     const [policy, setPolicy] = useState(initial);
@@ -181,5 +182,26 @@ export const AgencyDisabled: Story = {
     play: async ({ canvasElement }) => {
         expectValueTone(canvasElement, false);
         await expect(lockButton(within(canvasElement))).toBeNull();
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark): the round button's icon follows on-primary /
+ * on-secondary. A fixed white icon sat on the pale dark-scheme primary and secondary fills.
+ */
+export const DarkScheme: Story = {
+    render: () => (
+        <DarkSchemeFrame>
+            <Preview initial={{ value: true, mode: 'SUGGESTED' }} level="tenant" />
+        </DarkSchemeFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        (document.activeElement as HTMLElement | null)?.blur();
+        await expect(textContrast(roundButton(canvas))).toBeGreaterThanOrEqual(3);
+        await userEvent.click(roundButton(canvas));
+        (document.activeElement as HTMLElement | null)?.blur();
+        await expect(roundButton(canvas)).toHaveAttribute('aria-pressed', 'false');
+        await expect(textContrast(roundButton(canvas))).toBeGreaterThanOrEqual(3);
     },
 };
