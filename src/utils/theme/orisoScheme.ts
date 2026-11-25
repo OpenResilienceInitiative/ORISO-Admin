@@ -141,6 +141,11 @@ const resolveErrorSeed = (seeds: TenantSeeds): string => normalizeHex(getSignal(
  * src/app.css, which is the static fallback for exactly this seed.
  */
 const DEFAULT_ACCENT_LIGHT = '#ffe2de';
+/**
+ * Ink on `--m3-primary-fixed` (the sidebar's active pill). #410001 on the default rose; a tenant
+ * that sets a dark light-accent gets it lifted until it reads at 4.5:1 (same rule as `keepReadableOn`).
+ */
+const DEFAULT_ON_PRIMARY_FIXED = '#410001';
 const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 /**
@@ -282,6 +287,7 @@ const invertedTokens = (
         '--m3-on-primary-container': readableOn(primaryContainer),
         '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
         '--m3-primary-fixed': accentLight,
+        '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
         '--m3-secondary': '#cbd6e2',
@@ -464,6 +470,7 @@ const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoP
             // Brand-tinted text and icons ON the light container (mobile menu tiles).
             '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
             '--m3-primary-fixed': accentLight,
+            '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
             // Snackbar action text on the success and warning containers, whatever the brand seed.

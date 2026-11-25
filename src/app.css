@@ -177,8 +177,8 @@
     --m3-on-primary-container: #141c25;
     --m3-primary-fixed: #ffe2de;
 
-    /* Ink on the fixed rose in every scheme (sidebar active pill). Not written by the
-       runtime palette, so this static value is the one in use. */
+    /* Ink on the fixed rose in every scheme (sidebar active pill). Static fallback for the
+       default seed; the runtime palette keeps it readable on a tenant's own light accent. */
     --m3-on-primary-fixed: #410001;
     --m3-tertiary-container: #ffdad6;
     --m3-on-tertiary-container: #410005;

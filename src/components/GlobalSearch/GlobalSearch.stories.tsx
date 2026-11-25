@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within, waitFor } from 'storybook/test';
+import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
@@ -234,5 +234,8 @@ export const DarkSchemeMenuOpen: Story = {
         const selected = canvasElement.ownerDocument.querySelector('.ant-dropdown-menu-item-selected');
         await expect(selected).toBeTruthy();
         await expect(textContrast(selected as Element)).toBeGreaterThanOrEqual(4.5);
+        // Hovered, the selected item shows the hover surface; its text must still read.
+        await userEvent.hover(selected as Element);
+        await waitFor(() => expect(textContrast(selected as Element)).toBeGreaterThanOrEqual(4.5));
     },
 };
