@@ -157,12 +157,15 @@ describe('Same tiles as the platform page (ORISO-Admin#1577)', () => {
         expect(await findRow('featureAnonymousChatEnabled')).toBeInTheDocument();
     });
 
-    it('says in the page intro that the changes apply to this Träger only', async () => {
+    it('shows the same page intro as the platform page, without an extra scope paragraph (Frank, 2026-11-25)', async () => {
         serve({ traegerSettings: {} });
         renderPage();
 
         const intro = await screen.findByTestId('permissions-intro');
-        expect(within(intro).getByText(i18n.t('tenants.globalSettings.superAdminWarning.description'))).toBeVisible();
+        expect(within(intro).getByText(i18n.t('tenants.permissions.intro.lead'))).toBeVisible();
+        expect(within(intro).getByText(i18n.t('tenants.permissions.intro.hint'))).toBeVisible();
+        // Lead and hint, nothing else outside the list of conversation types.
+        expect(intro.querySelectorAll(':scope > p')).toHaveLength(2);
     });
 });
 

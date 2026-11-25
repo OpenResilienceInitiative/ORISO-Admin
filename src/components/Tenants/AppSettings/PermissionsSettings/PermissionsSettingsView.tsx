@@ -150,8 +150,6 @@ export type PermissionsSettingsViewProps = {
     liveChatLinks?: ReactNode;
     /** The way into the journeys of a conversation type, shown on its tile (ADR-036 amendment). */
     renderJourneys?: (cardKey: ChatTypeCardKey) => ReactNode;
-    /** What this page applies to, said in the page intro (e.g. one Träger, ORISO-Admin#1577). */
-    introScopeNote?: ReactNode;
     /**
      * Träger page only, where the former "Anrufe" switch was offered: the Träger's
      * `isVideoCallAllowed`, which follows the call switches of the tiles. Without it the page cannot
@@ -187,7 +185,6 @@ export const PermissionsSettingsView = ({
     traegerDirectInvitePolicies,
     liveChatLinks,
     renderJourneys,
-    introScopeNote,
     callsPermission,
 }: PermissionsSettingsViewProps) => {
     const { t } = useTranslation();
@@ -780,7 +777,6 @@ export const PermissionsSettingsView = ({
             {({ form }) => (
                 <div className={styles.cardGridOuter}>
                     <PermissionsIntro
-                        scopeNote={introScopeNote}
                         cards={cardsToRender.map((card) => ({
                             key: card.key,
                             name: typeNames?.[card.key] ?? t(card.titleKey),
