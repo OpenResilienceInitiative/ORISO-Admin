@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 // The bundled person_search_filled.svg is a 5%-opacity illustration, not a tab glyph.
 import PersonSearchIcon from '@mui/icons-material/PersonSearchOutlined';
+import HistoryIcon from '@mui/icons-material/HistoryOutlined';
 import { Page } from '../../components/Page';
 import { AdminSegmentedTabs, AdminSegmentedTabItem } from '../../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { useRegisterMobileNav } from '../../components/AdminMobileNav/MobileNavContext';
@@ -18,6 +19,8 @@ interface LogsTabsLayoutProps {
     showSupervisor: boolean;
     /** Case-handover audit requires the case-handover admin permission. */
     showCaseHandover: boolean;
+    /** Case sharing model per Beratungsstelle over time: admins who may edit Beratungsstellen. */
+    showCaseSharing?: boolean;
     /** Inactive-account audit is super-admin only. */
     showInactive: boolean;
     /** Deletion log (who deleted what) is platform-admin only. */
@@ -35,6 +38,7 @@ interface LogsTabsLayoutProps {
 export const LogsTabsLayout = ({
     showSupervisor,
     showCaseHandover,
+    showCaseSharing = false,
     showInactive,
     showDeletion,
     showAddons = false,
@@ -61,6 +65,14 @@ export const LogsTabsLayout = ({
             label: t('sidebar.caseHandoverLogs', String(t('caseHandoverLogs.title'))),
             icon: <FaceNodIcon />,
             to: routePathNames.caseHandoverLogs,
+        });
+    }
+    if (showCaseSharing) {
+        tabs.push({
+            id: 'case-sharing',
+            label: t('sidebar.caseSharingLogs', String(t('caseSharingLogs.title'))),
+            icon: <HistoryIcon />,
+            to: routePathNames.caseSharingLogs,
         });
     }
     if (showInactive) {

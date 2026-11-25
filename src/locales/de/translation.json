@@ -4897,5 +4897,22 @@
     "tenants.permissions.teamChat.configureDialogDescription": "Hier legen Sie fest, ob der Chat nach der Annahme weiterläuft und was er bietet. Jede Einstellung hat ihr eigenes „Anpassbar“ oder „Vorgabe“. Änderungen werden erst mit „Speichern“ übernommen.",
     "tenants.permissions.teamChat.afterAccept.description": "Aus: Bei der Annahme schließt der {{name}}, der Verlauf bleibt lesbar. An: Das Team schreibt im Fall weiter – nur Beratende, nie die ratsuchende Person.",
     "tenants.permissions.feature.planned": "Vorbereitet",
-    "tenants.permissions.feature.notStoredYet": "Noch nicht einstellbar: Der Server speichert diese Auswahl noch nicht."
+    "tenants.permissions.feature.notStoredYet": "Noch nicht einstellbar: Der Server speichert diese Auswahl noch nicht.",
+    "sidebar.caseSharingLogs": "Fallteilung",
+    "caseSharingLogs.title": "Fallteilung",
+    "caseSharingLogs.intro": "Jeder Fall behält das Modell, unter dem er begonnen wurde. Eine Änderung gilt nur für neue Fälle.",
+    "caseSharingLogs.table.changedAt": "Zeitpunkt",
+    "caseSharingLogs.table.agency": "Beratungsstelle",
+    "caseSharingLogs.table.changedBy": "Geändert von",
+    "caseSharingLogs.table.change": "Vorher → Nachher",
+    "caseSharingLogs.table.source": "Quelle",
+    "caseSharingLogs.model.CASE_HANDOVER": "Fallübergabe",
+    "caseSharingLogs.model.TEAM_COUNSELLING": "Teamberatung",
+    "caseSharingLogs.model.NONE": "Keine",
+    "caseSharingLogs.source.AGENCY_SETTINGS": "Einstellungen",
+    "caseSharingLogs.source.AGENCY_TYPE": "Art der Beratungsstelle",
+    "caseSharingLogs.system": "System",
+    "caseSharingLogs.agencyFallback": "Beratungsstelle {{id}}",
+    "caseSharingLogs.empty": "Noch keine Änderung der Fallteilung",
+    "caseSharingLogs.error.forbidden": "Sie haben keine Berechtigung, das Fallteilungs-Protokoll zu sehen."
 }

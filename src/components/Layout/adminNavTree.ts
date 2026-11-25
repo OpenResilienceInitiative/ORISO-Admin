@@ -1,6 +1,7 @@
 import routePathNames from '../../appConfig';
 import {
     canReadCaseHandoverAdmin,
+    canSeeCaseSharingLogsFor,
     canSeeDeletionAuditLogsFor,
     canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
@@ -88,6 +89,14 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
             to: routePathNames.caseHandoverLogs,
             labelKey: 'sidebar.caseHandoverLogs',
             fallbackKey: 'caseHandoverLogs.title',
+        });
+    }
+    if (canSeeCaseSharingLogsFor(isSuperAdmin, can)) {
+        logs.push({
+            id: 'logs:case-sharing',
+            to: routePathNames.caseSharingLogs,
+            labelKey: 'sidebar.caseSharingLogs',
+            fallbackKey: 'caseSharingLogs.title',
         });
     }
     if (canSeeInactiveAuditLogsFor(isSuperAdmin, can)) {

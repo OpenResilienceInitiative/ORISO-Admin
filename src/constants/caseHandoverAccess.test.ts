@@ -4,6 +4,7 @@ import { Resource } from '../enums/Resource';
 import {
     canEditCaseHandoverReasonPolicies,
     canReadCaseHandoverAdmin,
+    canSeeCaseSharingLogsFor,
     canSeeDeletionAuditLogsFor,
     canSeeSupervisorLogs,
 } from './caseHandoverAccess';
@@ -64,5 +65,22 @@ describe('canSeeDeletionAuditLogsFor', () => {
         expect(canSeeDeletionAuditLogsFor(false, canUpdateTenant)).toBe(false);
         expect(canSeeDeletionAuditLogsFor(false, canReadConsultant)).toBe(false);
         expect(canSeeDeletionAuditLogsFor(true, () => false)).toBe(false);
+    });
+});
+
+describe('canSeeCaseSharingLogsFor', () => {
+    const canUpdateAgency = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Update && resource === Resource.Agency;
+    const canReadAgency = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Read && resource === Resource.Agency;
+
+    it('allows platform admins and every admin who may edit Beratungsstellen', () => {
+        expect(canSeeCaseSharingLogsFor(true, () => false)).toBe(true);
+        expect(canSeeCaseSharingLogsFor(false, canUpdateAgency)).toBe(true);
+    });
+
+    it('denies admins who may only read Beratungsstellen or consultants', () => {
+        expect(canSeeCaseSharingLogsFor(false, canReadAgency)).toBe(false);
+        expect(canSeeCaseSharingLogsFor(false, canReadConsultant)).toBe(false);
     });
 });

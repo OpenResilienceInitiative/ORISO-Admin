@@ -2,6 +2,7 @@ import routePathNames from '../../appConfig';
 import { canOpenTenantLegalSettings } from '../../constants/agencyAdminLanding';
 import {
     canReadCaseHandoverAdmin,
+    canSeeCaseSharingLogsFor,
     canSeeDeletionAuditLogsFor,
     canSeeInactiveAuditLogsFor,
     canSeeSupervisorLogs,
@@ -65,12 +66,16 @@ export const resolveLogsPage = (
     canReadInactiveAuditLogs: boolean,
     canReadDeletionAuditLogs = false,
     canReadAddonAuditLogs = false,
+    canReadCaseSharingLogs = false,
 ): string | null => {
     if (canReadSupervisorLogs) {
         return routePathNames.logs;
     }
     if (canReadCaseHandoverLogs) {
         return routePathNames.caseHandoverLogs;
+    }
+    if (canReadCaseSharingLogs) {
+        return routePathNames.caseSharingLogs;
     }
     if (canReadInactiveAuditLogs) {
         return routePathNames.inactiveAccountAuditLogs;
@@ -132,6 +137,7 @@ export const buildAdminNavItems = ({
         canSeeInactiveAuditLogs,
         canSeeDeletionAuditLogsFor(isSuperAdmin, can),
         canSeeAddonsSection({ isSuperAdmin, can }),
+        canSeeCaseSharingLogsFor(isSuperAdmin, can),
     );
 
     if (canSeeSettingsMenu) {

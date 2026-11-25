@@ -95,6 +95,28 @@ describe('LogsTabsLayout', () => {
         ]);
     });
 
+    it('puts the case sharing tab right after case handover for admins who may edit Beratungsstellen', () => {
+        renderLayout({
+            showSupervisor: true,
+            showCaseHandover: true,
+            showCaseSharing: true,
+            showInactive: false,
+            showDeletion: false,
+        });
+
+        expect(tabTargets()).toEqual([
+            routePathNames.logs,
+            routePathNames.caseHandoverLogs,
+            routePathNames.caseSharingLogs,
+        ]);
+    });
+
+    it('hides the case sharing tab from admins who may not edit Beratungsstellen', () => {
+        renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
+
+        expect(tabTargets()).not.toContain(routePathNames.caseSharingLogs);
+    });
+
     it('hides the add-on log tab when the Add-ons section is hidden', () => {
         renderLayout({ showSupervisor: true, showCaseHandover: true, showInactive: false, showDeletion: false });
 

@@ -26,6 +26,7 @@ import { canSeeAddonsSection } from './constants/addonsAccess';
 import { UserRole } from './enums/UserRole';
 import {
     canReadCaseHandoverAdmin,
+    canSeeCaseSharingLogsFor,
     canSeeDeletionAuditLogsFor,
     canSeeSupervisorLogs,
 } from './constants/caseHandoverAccess';
@@ -43,6 +44,7 @@ import {
     LazyAgencyPageEdit,
     LazyAppSettingsPage,
     LazyCaseHandoverLogsPage,
+    LazyCaseSharingLogsPage,
     LazyCounsellorInvitesTab,
     LazyErstantwortSettingsPage,
     LazyGreetingSettingsPage,
@@ -195,6 +197,7 @@ export const App = () => {
     ];
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
+    const showCaseSharingLogs = canSeeCaseSharingLogsFor(isSuperAdmin, can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     // Platform admins only — the backend answers 403 to every other role.
@@ -373,6 +376,7 @@ export const App = () => {
                                         <LogsTabsLayout
                                             showSupervisor={showSupervisorLogs}
                                             showCaseHandover={showCaseHandoverLogs}
+                                            showCaseSharing={showCaseSharingLogs}
                                             showInactive={isSuperAdmin}
                                             showDeletion={canSeeDeletionAuditLogs}
                                             showAddons={showAddons}
@@ -403,6 +407,10 @@ export const App = () => {
                                     <Route
                                         path={routePathNames.caseHandoverLogs}
                                         element={requireRouteAccess(showCaseHandoverLogs, <LazyCaseHandoverLogsPage />)}
+                                    />
+                                    <Route
+                                        path={routePathNames.caseSharingLogs}
+                                        element={requireRouteAccess(showCaseSharingLogs, <LazyCaseSharingLogsPage />)}
                                     />
                                     <Route
                                         path={routePathNames.addonAuditLogs}

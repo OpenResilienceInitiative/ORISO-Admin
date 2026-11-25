@@ -76,6 +76,7 @@ export const SECOND_ROW_BY_PAGE: Record<string, SecondRowCapabilities> = {
         note: 'Account-id search plus a role select and a reset button. No create.',
     },
     'logs/case-handover': { search: false, add: false, filters: false, source: 'pages/Logs/CaseHandoverLogs' },
+    'logs/case-sharing': { search: false, add: false, filters: false, source: 'pages/Logs/CaseSharingLogs' },
     'links/invites': {
         search: true,
         add: true,

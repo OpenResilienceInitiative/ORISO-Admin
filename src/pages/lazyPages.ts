@@ -57,6 +57,7 @@ export const LazyUnifiedSmtpSettingsPage = lazyNamed(
 export const LazyServiceNoticesPage = lazyNamed(() => import('./TenantSettings/ServiceNotices'), 'ServiceNoticesPage');
 export const LazySupervisorLogsPage = lazyNamed(() => import('./Logs/SupervisorLogs'), 'SupervisorLogsPage');
 export const LazyCaseHandoverLogsPage = lazyNamed(() => import('./Logs/CaseHandoverLogs'), 'CaseHandoverLogsPage');
+export const LazyCaseSharingLogsPage = lazyNamed(() => import('./Logs/CaseSharingLogs'), 'CaseSharingLogsPage');
 export const LazyInactiveAccountAuditLogsPage = lazyNamed(
     () => import('./Logs/InactiveAccountAuditLogs'),
     'InactiveAccountAuditLogsPage',
