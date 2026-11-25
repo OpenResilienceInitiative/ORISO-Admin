@@ -197,7 +197,7 @@ export const App = () => {
     ];
     const canReadStatistic = can(PermissionAction.Read, Resource.Statistic);
     const showCaseHandoverLogs = canReadCaseHandoverAdmin(isSuperAdmin, can);
-    const showCaseSharingLogs = canSeeCaseSharingLogsFor(isSuperAdmin, can);
+    const showCaseSharingLogs = canSeeCaseSharingLogsFor(can);
     const visibleLinksTabs = resolveVisibleLinksTabs({ isSuperAdmin, hasRole });
     const showSupervisorLogs = canSeeSupervisorLogs(isSuperAdmin, can);
     // Platform admins only — the backend answers 403 to every other role.

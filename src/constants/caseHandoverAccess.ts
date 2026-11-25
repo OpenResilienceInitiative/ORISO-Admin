@@ -16,11 +16,11 @@ export const canSeeSupervisorLogs = (isSuperAdmin: boolean, can: CanFn): boolean
 export const canReadCaseHandoverAdmin = (isSuperAdmin: boolean, can: CanFn): boolean =>
     isSuperAdmin || can(PermissionAction.Read, Resource.Consultant);
 
-// Which case sharing model applied in which Beratungsstelle (ORISO-Frontend#2494): the admins who
-// may edit Beratungsstellen — the same `Update Agency` check the Beratungsstelle edit page uses for
-// its read-only switch — plus platform admins, mirroring `canReadCaseHandoverAdmin`.
-export const canSeeCaseSharingLogsFor = (isSuperAdmin: boolean, can: CanFn): boolean =>
-    isSuperAdmin || can(PermissionAction.Update, Resource.Agency);
+// Which case sharing model applied in which Beratungsstelle (ORISO-Frontend#2494). The endpoint
+// checks the AgencyService authority SEARCH_AGENCIES, the same as the Beratungsstellen list
+// (`GET /agencyadmin/agencies`), so the tab uses exactly the list's gate: `Agency.read`
+// (adminNavItems, AdminSearch). The server narrows the entries to the caller's agencies.
+export const canSeeCaseSharingLogsFor = (can: CanFn): boolean => can(PermissionAction.Read, Resource.Agency);
 
 // The handover rules are Träger settings (FE#1725): writing them needs Träger write access.
 // A BST admin (restricted-agency-admin + user-admin) has none and sees them read-only.

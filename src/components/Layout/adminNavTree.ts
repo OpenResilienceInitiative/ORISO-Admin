@@ -91,7 +91,7 @@ export const buildAdminNavTree = (context: AdminNavTreeContext): Record<string, 
             fallbackKey: 'caseHandoverLogs.title',
         });
     }
-    if (canSeeCaseSharingLogsFor(isSuperAdmin, can)) {
+    if (canSeeCaseSharingLogsFor(can)) {
         logs.push({
             id: 'logs:case-sharing',
             to: routePathNames.caseSharingLogs,

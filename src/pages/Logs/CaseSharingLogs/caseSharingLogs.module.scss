@@ -4,7 +4,7 @@
 }
 
 .intro {
-    margin: 0 0 16px;
+    margin-bottom: 16px;
 }
 
 .table {
@@ -28,22 +28,11 @@
 }
 
 .secondary {
-    color: var(--m3-on-surface-variant, #444748);
+    color: var(--m3-on-surface-variant);
     font: 400 13px/18px var(--m3-body-font-family);
 }
 
-/* Header cells name the columns in the table; cards have no visible header, so each value carries its label. */
-.cellLabel {
-    display: none;
-}
-
-.cards table td {
+/* Centre names and usernames may be long and unbroken: they wrap instead of widening the table. */
+.wrap {
     overflow-wrap: anywhere;
-}
-
-.cards .cellLabel {
-    display: block;
-    margin-bottom: 2px;
-    color: var(--m3-on-surface-variant, #444748);
-    font: 500 12px/16px var(--m3-body-font-family);
 }

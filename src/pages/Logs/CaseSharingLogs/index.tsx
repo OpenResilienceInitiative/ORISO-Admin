@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AdminEmpty } from '../../../components/AdminEmpty';
 import {
@@ -11,41 +11,15 @@ import {
     type DataTableColumn,
 } from '../../../components/DataTable';
 import { Notify } from '../../../components/Notify';
-import { Typography } from '../../../components/Typography';
+import { HintText } from '../../../components/HintText';
 import { FETCH_ERRORS } from '../../../api/fetchData';
 import { useCaseSharingLogsData } from '../../../hooks/useCaseSharingLogsData';
+import { useMeasuredListLayout } from '../../../hooks/useMeasuredListLayout';
 import { CaseSharingChangeEntry } from '../../../types/caseSharingLogs';
 import { toIntlLocale } from '../../../utils/language';
+import logCards from '../logCards.module.scss';
+import { CASE_SHARING_LIST_BANDS } from './caseSharingListBands';
 import styles from './caseSharingLogs.module.scss';
-
-/**
- * Below this list-container width every row becomes a stacked card (docs/responsive-tables.md:
- * measure the container, not the viewport). Estimate for five one-line columns with the longest
- * German labels ("Art der Beratungsstelle", "Fallübergabe → Teamberatung"); not yet browser-measured.
- */
-const CASE_SHARING_TABLE_MIN = 780;
-
-const useStackedRows = (container: RefObject<HTMLElement | null>) => {
-    const [stacked, setStacked] = useState(
-        () =>
-            typeof window !== 'undefined' &&
-            typeof window.matchMedia === 'function' &&
-            window.matchMedia('(max-width: 767px)').matches,
-    );
-
-    useEffect(() => {
-        const element = container.current;
-        if (!element || typeof ResizeObserver === 'undefined') return undefined;
-        const observer = new ResizeObserver(([entry]) => {
-            const width = entry?.contentRect.width ?? 0;
-            if (width > 0) setStacked(width < CASE_SHARING_TABLE_MIN);
-        });
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, [container]);
-
-    return stacked;
-};
 
 /**
  * Which case sharing model applied in which Beratungsstelle from when to when (ORISO-Frontend#2494).
@@ -58,7 +32,8 @@ export const CaseSharingLogsPage = () => {
     const { data, isLoading, isError, error } = useCaseSharingLogsData({ page, perPage });
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const stacked = useStackedRows(containerRef);
+    const layout = useMeasuredListLayout(containerRef, CASE_SHARING_LIST_BANDS);
+    const stacked = layout === 'phone';
 
     const isForbidden = error instanceof Error && error.message === FETCH_ERRORS.FORBIDDEN;
     const modelLabel = (model: string | null | undefined) =>
@@ -82,13 +57,13 @@ export const CaseSharingLogsPage = () => {
                 );
             case 'agency':
                 return (
-                    <span className={styles.pair}>
+                    <span className={classNames(styles.pair, styles.wrap)}>
                         <span>{row.agencyName || t('caseSharingLogs.agencyFallback', { id: row.agencyId })}</span>
                         <span className={styles.secondary}>ID {row.agencyId}</span>
                     </span>
                 );
             case 'changedBy':
-                return row.changedBy || t('caseSharingLogs.system');
+                return <span className={styles.wrap}>{row.changedBy || t('caseSharingLogs.system')}</span>;
             case 'change':
                 return (
                     <span className={styles.nowrap}>
@@ -105,7 +80,13 @@ export const CaseSharingLogsPage = () => {
     const rows = data?.entries ?? [];
 
     return (
-        <div ref={containerRef} id="case-sharing-logs" className={styles.list} data-testid="case-sharing-log">
+        <div
+            ref={containerRef}
+            id="case-sharing-logs"
+            className={styles.list}
+            data-testid="case-sharing-log"
+            data-layout={layout}
+        >
             {isError && (
                 <Notify
                     retry={!isForbidden}
@@ -117,12 +98,10 @@ export const CaseSharingLogsPage = () => {
                     {t(isForbidden ? 'caseSharingLogs.error.forbidden' : 'error.loading')}
                 </Notify>
             )}
-            <Typography variant="body-medium" color="var(--m3-on-surface-variant, #444748)" className={styles.intro}>
-                {t('caseSharingLogs.intro')}
-            </Typography>
+            <HintText className={styles.intro}>{t('caseSharingLogs.intro')}</HintText>
             <DataTable
                 ariaLabel={t('caseSharingLogs.title')}
-                className={classNames(styles.table, { [styles.cards]: stacked })}
+                className={classNames(styles.table, { [logCards.cards]: stacked })}
                 stacked={stacked}
                 header={<DataTableHeader columns={columns} />}
                 loading={isLoading}
@@ -154,7 +133,7 @@ export const CaseSharingLogsPage = () => {
                     <DataTableRow key={row.id}>
                         {columns.map((column) => (
                             <DataTableCell key={column.key}>
-                                <span className={styles.cellLabel}>{column.label}</span>
+                                <span className={logCards.cellLabel}>{column.label}</span>
                                 {renderCell(column.key, row)}
                             </DataTableCell>
                         ))}

@@ -74,13 +74,13 @@ describe('canSeeCaseSharingLogsFor', () => {
     const canReadAgency = (action: PermissionAction | PermissionAction[], resource: Resource) =>
         action === PermissionAction.Read && resource === Resource.Agency;
 
-    it('allows platform admins and every admin who may edit Beratungsstellen', () => {
-        expect(canSeeCaseSharingLogsFor(true, () => false)).toBe(true);
-        expect(canSeeCaseSharingLogsFor(false, canUpdateAgency)).toBe(true);
+    it('follows the Beratungsstellen list gate (Agency.read, backed by SEARCH_AGENCIES)', () => {
+        expect(canSeeCaseSharingLogsFor(canReadAgency)).toBe(true);
     });
 
-    it('denies admins who may only read Beratungsstellen or consultants', () => {
-        expect(canSeeCaseSharingLogsFor(false, canReadAgency)).toBe(false);
-        expect(canSeeCaseSharingLogsFor(false, canReadConsultant)).toBe(false);
+    it('denies admins who cannot read Beratungsstellen, whatever else they may do', () => {
+        expect(canSeeCaseSharingLogsFor(canUpdateAgency)).toBe(false);
+        expect(canSeeCaseSharingLogsFor(canReadConsultant)).toBe(false);
+        expect(canSeeCaseSharingLogsFor(() => false)).toBe(false);
     });
 });

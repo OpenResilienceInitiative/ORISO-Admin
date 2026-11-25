@@ -137,7 +137,7 @@ export const buildAdminNavItems = ({
         canSeeInactiveAuditLogs,
         canSeeDeletionAuditLogsFor(isSuperAdmin, can),
         canSeeAddonsSection({ isSuperAdmin, can }),
-        canSeeCaseSharingLogsFor(isSuperAdmin, can),
+        canSeeCaseSharingLogsFor(can),
     );
 
     if (canSeeSettingsMenu) {
