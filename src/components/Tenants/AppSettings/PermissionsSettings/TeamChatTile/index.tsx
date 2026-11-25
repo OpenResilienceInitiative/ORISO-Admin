@@ -16,7 +16,7 @@ import { ChatFeaturesDialog, type ChatFeature } from '../ChatFeaturesDialog';
 import type { EffectivePolicy } from '../permissionsSettingsUtils';
 import { TEAM_CHAT_AFTER_ACCEPT, TEAM_CHAT_FEATURES, TEAM_CHAT_MASTER } from '../traegerFunctions';
 import permissionStyles from '../styles.module.scss';
-import styles from '../SupervisionTile/styles.module.scss';
+import styles from '../SupervisionSection/styles.module.scss';
 
 type TeamChatTileProps = {
     level: 'platform' | 'tenant' | 'agency';
@@ -31,7 +31,7 @@ const unavailable = (feature: ChatFeature) =>
 
 /**
  * ORISO-Frontend#2491 (Frank, 2026-11-24): the Team-Chat tile follows the supervision tile exactly
- * (`SupervisionTile`): icon, title and a status chip; only the master switch in the tile; "Konfigurieren"
+ * (then `SupervisionTile`; supervision is now `SupervisionSection` in the Mail-Beratung tile): icon, title and a status chip; only the master switch in the tile; "Konfigurieren"
  * opens the same dialog. In the dialog: "läuft nach der Annahme weiter" (with its data-protection question,
  * default off) and what the side chat offers, each with its own "Anpassbar"/"Vorgabe".
  */

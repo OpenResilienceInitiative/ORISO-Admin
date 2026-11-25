@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 export const PlatformAdmin: Story = { beforeEach: () => installAgencyStoryAuth('platformAdmin') };
 /**
- * ORISO-Admin#1577: the centre sees the Supervision tile like every level. ORISO-Frontend#2491: the Team-Chat
+ * The centre sees the Supervision section in the Mail-Beratung tile like every level (Frank, 2026-11-25). ORISO-Frontend#2491: the Team-Chat
  * tile is the centre's own policy value, like supervision — a switch, but no requirement lock (there is no
  * level below a Beratungsstelle).
  */
@@ -40,7 +40,9 @@ export const AgencyAdmin: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByTestId('supervision-tile', {}, { timeout: 8000 });
+        const mail = await canvas.findByTestId('chat-type-card-oneOnOne', {}, { timeout: 8000 });
+        await expect(within(mail).getByRole('group', { name: /^Supervision$/ })).toBeVisible();
+        await expect(canvas.queryByTestId('supervision-tile')).not.toBeInTheDocument();
         const teamChat = canvas.getByTestId('team-chat-tile');
         const buttons = within(teamChat).getAllByRole('button', { name: /^(Aktiviert|Enabled): / });
         await expect(buttons).toHaveLength(1);

@@ -13,7 +13,7 @@ import { TenantPermissionsSettings } from './TenantPermissionsSettings';
  * ORISO-Admin#988 — Frank's 2026-09-16 correction: "Internal group chats" and "Conversation
  * circles" are two separate cards on Functionality access, each with its own master switch
  * (featureInternalGroupChatEnabled / featureSelfHelpGroupsEnabled). Supervision is not part of
- * either card any more — it has a tile of its own (SupervisionTile, ORISO-Admin#1577).
+ * either card any more — it is a section of the Mail-Beratung tile (SupervisionSection, ORISO-Admin#1577).
  */
 
 const INTERNAL = 'featureInternalGroupChatEnabled';
