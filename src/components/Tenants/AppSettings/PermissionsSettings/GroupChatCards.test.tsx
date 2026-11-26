@@ -9,7 +9,7 @@ import i18n from '../../../../i18n';
  * ORISO-Admin#988 — Frank's 2026-09-16 correction: "Internal group chats" and "Conversation
  * circles" are two separate CARDS (conversation types), not two rows inside one "group formats"
  * card. Supervision is a feature inside conversation types, not a conversation type of its own, so
- * it must never appear wired to either card — it has a tile of its own (SupervisionTile,
+ * it must never appear wired to either card — it is a section of the Mail-Beratung tile (SupervisionSection,
  * ORISO-Admin#1577).
  *
  * Reads and writes are mocked at the request boundary (`fetchData`); the agency write goes through

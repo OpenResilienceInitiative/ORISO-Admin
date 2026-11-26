@@ -280,23 +280,27 @@
 
                     &.active {
                         /* The rose pill surface — the token, not a copy of its
-                           value (#594.13b). */
-                        background: var(--m3-primary-container, #ffe2de);
-                        color: #410001;
+                           value (#594.13b). primary-FIXED, not primary-container: the
+                           ink below is on-primary-fixed (#410001), and only the fixed
+                           role keeps its tone in every scheme. In dark, primary-container
+                           turns deep red and the dark ink fell to 2.1:1. Light is
+                           unchanged: there both tokens are the same accent. */
+                        background: var(--m3-primary-fixed, #ffe2de);
+                        color: var(--m3-on-primary-fixed, #410001);
                         border-radius: 50px;
                         padding: 32px 4px;
                         box-shadow: inset 4px 4px 12px rgb(0 0 0 / 25%);
 
                         > div {
-                            color: #410001;
+                            color: var(--m3-on-primary-fixed, #410001);
                         }
 
                         svg path {
-                            fill: #410001;
+                            fill: var(--m3-on-primary-fixed, #410001);
                         }
 
                         span {
-                            color: #410001;
+                            color: var(--m3-on-primary-fixed, #410001);
                             font-weight: 700;
                         }
                     }

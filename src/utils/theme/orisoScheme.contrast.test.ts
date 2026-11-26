@@ -24,6 +24,25 @@ describe('computeOrisoPalette — contrast on the light brand container', () => 
         },
     );
 
+    it.each([
+        ['default rose', undefined],
+        ['dark tenant light-accent', '#202020'],
+        ['mid tenant light-accent', '#7a2d36'],
+    ] as const)('keeps the sidebar active pill readable on primary-fixed (%s) in light and dark', (_, accentLight) => {
+        (['light', 'dark'] as const).forEach((scheme) => {
+            const { tokens } = computeOrisoPalette({ accentDark: '#a5000a', accentLight }, scheme);
+
+            expect(contrastRatio(tokens['--m3-on-primary-fixed'], tokens['--m3-primary-fixed'])).toBeGreaterThanOrEqual(
+                TEXT,
+            );
+        });
+    });
+
+    it('keeps the default pill ink at #410001 in both schemes', () => {
+        expect(computeOrisoPalette({ accentDark: '#a5000a' }, 'light').tokens['--m3-on-primary-fixed']).toBe('#410001');
+        expect(computeOrisoPalette({ accentDark: '#a5000a' }, 'dark').tokens['--m3-on-primary-fixed']).toBe('#410001');
+    });
+
     it('keeps the brand tint instead of falling back to black', () => {
         const { tokens } = computeOrisoPalette({ accentDark: '#ffe066' });
 

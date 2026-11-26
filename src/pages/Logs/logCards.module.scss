@@ -1,0 +1,17 @@
+/* Shared by log pages that stack rows into cards (DataTable `stacked`): header cells name the columns in
+   the table; cards have no visible header, so each value carries its own label. */
+
+.cellLabel {
+    display: none;
+}
+
+.cards table td {
+    overflow-wrap: anywhere;
+}
+
+.cards .cellLabel {
+    display: block;
+    margin-bottom: 2px;
+    color: var(--m3-on-surface-variant);
+    font: 500 12px/16px var(--m3-body-font-family);
+}

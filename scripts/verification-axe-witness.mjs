@@ -8,8 +8,8 @@ import { validateControlCapsule } from './verification-profile.mjs';
 const require = createRequire(import.meta.url);
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 export const callsiteSignature = 'axe.run(context, optionsWithDisabledRules)';
-const runnerRelative = './_browser-chunks/chunk-5WURYCET.js';
-const pinnedAddonHash = '0e9751fb5459103c79562d33617b7e8773deeeaa04a49c40ca9ec9afa4fab5d7';
+const runnerRelative = './_browser-chunks/chunk-2GOJIXVN.js';
+const pinnedAddonHash = '7c6b816f85256b13960fc7a7f95418be33d029c13eb9f48437d53c0ceb29398e';
 const pinnedAxeHash = 'aae0b8b36278089962105b2351ea64f4da7d3d440b54e162e21616d597aa0d6f';
 const readerSignature = 'export const readInstalledAxeWitness = () => undefined;';
 
@@ -26,7 +26,7 @@ export const installedAxeWitness = (root = process.cwd()) => {
     });
     const addon = { ...identity('@storybook/addon-a11y', runner), callsiteSignature };
     const axe = identity('axe-core', axePath);
-    assert.equal(addon.version, '10.6.7', 'Unreviewed addon version');
+    assert.equal(addon.version, '11.0.0-beta.5', 'Unreviewed addon version');
     assert.equal(addon.sha256, pinnedAddonHash, 'Installed addon source changed');
     assert.equal(axe.version, '4.14.0', 'Unreviewed axe version');
     assert.equal(axe.sha256, pinnedAxeHash, 'Installed axe source changed');

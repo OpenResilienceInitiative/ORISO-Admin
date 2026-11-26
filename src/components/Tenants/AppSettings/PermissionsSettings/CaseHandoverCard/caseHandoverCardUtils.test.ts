@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     applyClientConsent,
     applyClientConsentPolicy,
+    applyExplanationLevel,
+    resolvedExplanationLevel,
     applyModuleEnabled,
     buildDisplayReasons,
     canonicalReasonCode,
@@ -346,5 +348,26 @@ describe('machine translation of the notification templates', () => {
         expect(missingTemplateLanguages(illPolicy)).toEqual(['fr', 'ru', 'tr', 'uk', 'ti']);
         const [next] = applyNotificationTemplates([illPolicy], 'COUNSELLOR_IS_ILL', { fr: 'Bonjour', tr: 'Merhaba' });
         expect(next.clientNotificationTemplates).toEqual({ de: 'Hallo', en: 'Hello', fr: 'Bonjour', tr: 'Merhaba' });
+    });
+});
+
+describe('explanation level (FE#2040)', () => {
+    it('reads an absent or unknown level as OFF', () => {
+        expect(resolvedExplanationLevel(policy({}))).toBe('OFF');
+        expect(resolvedExplanationLevel(policy({ explanationLevel: null }))).toBe('OFF');
+        expect(resolvedExplanationLevel(null)).toBe('OFF');
+    });
+
+    it('keeps a stored level', () => {
+        expect(resolvedExplanationLevel(policy({ explanationLevel: 'REQUIRED' }))).toBe('REQUIRED');
+    });
+
+    it('writes the level on the chosen reason only', () => {
+        const updated = applyExplanationLevel(
+            [policy({ code: 'PLANNED_ABSENCE' }), policy({ code: 'UNPLANNED_ABSENCE' })],
+            'PLANNED_ABSENCE',
+            'OPTIONAL',
+        );
+        expect(updated.map((item) => item.explanationLevel)).toEqual(['OPTIONAL', undefined]);
     });
 });

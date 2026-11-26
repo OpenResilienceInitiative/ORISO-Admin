@@ -14,6 +14,8 @@ export interface CollapsibleTileProps {
     statusTone?: 'neutral' | 'attention';
     /** Open on first render, or controlled by an owning surface. */
     defaultOpen?: boolean;
+    /** Centre the document heading and animate its body into the folded tile. */
+    documentMotion?: boolean;
     open?: boolean;
     /** Called with the new state when the header is toggled, so a parent that rebuilds the tile can keep it open. */
     onOpenChange?: (open: boolean) => void;
@@ -70,6 +72,7 @@ export const CollapsibleTile = ({
     status,
     statusTone = 'neutral',
     defaultOpen = false,
+    documentMotion = false,
     open: controlledOpen,
     onOpenChange,
     children,
@@ -107,7 +110,14 @@ export const CollapsibleTile = ({
     };
 
     return (
-        <section className={classNames(styles.tile, { [styles.open]: open }, className)} data-collapsible-tile>
+        <section
+            className={classNames(
+                styles.tile,
+                { [styles.open]: open, [styles.documentMotion]: documentMotion },
+                className,
+            )}
+            data-collapsible-tile
+        >
             <h3 className={classNames(styles.heading, { [styles.withIconButton]: onIconClick })}>
                 {onIconClick && (
                     <button type="button" className={styles.iconButton} aria-label={iconLabel} onClick={onIconClick}>
@@ -124,27 +134,47 @@ export const CollapsibleTile = ({
                     aria-controls={bodyId}
                     onClick={toggle}
                 >
-                    {!onIconClick && (
-                        <span ref={iconRef} className={styles.icon} aria-hidden data-collapsible-tile-icon>
-                            {icon}
+                    <span className={styles.label}>
+                        {!onIconClick && (
+                            <span ref={iconRef} className={styles.icon} aria-hidden data-collapsible-tile-icon>
+                                {icon}
+                            </span>
+                        )}
+                        <span ref={titleRef} className={styles.title} data-collapsible-tile-title>
+                            {title}
                         </span>
-                    )}
-                    <span ref={titleRef} className={styles.title} data-collapsible-tile-title>
-                        {title}
                     </span>
-                    {status && (
-                        <span
-                            className={classNames(styles.chip, { [styles.chipAttention]: statusTone === 'attention' })}
-                        >
-                            {status}
-                        </span>
-                    )}
-                    <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                    <span className={styles.trailing}>
+                        {status && (
+                            <span
+                                className={classNames(styles.chip, {
+                                    [styles.chipAttention]: statusTone === 'attention',
+                                })}
+                            >
+                                {status}
+                            </span>
+                        )}
+                        <ExpandMoreIcon className={styles.chevron} aria-hidden />
+                    </span>
                 </button>
             </h3>
-            <div id={bodyId} className={styles.body} hidden={!open} data-collapsible-tile-body>
-                {(mounted || open) && children}
-            </div>
+            {documentMotion ? (
+                <div
+                    id={bodyId}
+                    className={styles.motionBody}
+                    aria-hidden={!open}
+                    inert={!open}
+                    data-collapsible-tile-body
+                >
+                    <div className={styles.motionClip}>
+                        <div className={styles.body}>{(mounted || open) && children}</div>
+                    </div>
+                </div>
+            ) : (
+                <div id={bodyId} className={styles.body} hidden={!open} data-collapsible-tile-body>
+                    {(mounted || open) && children}
+                </div>
+            )}
         </section>
     );
 };

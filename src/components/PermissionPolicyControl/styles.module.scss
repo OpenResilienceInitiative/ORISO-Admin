@@ -138,8 +138,10 @@
 
 .active {
     background: var(--m3-primary, #a5000a);
+    color: var(--m3-on-primary, #ffffff);
 }
 
 .inactive {
     background: var(--m3-secondary, #4c555f);
+    color: var(--m3-on-secondary, #ffffff);
 }

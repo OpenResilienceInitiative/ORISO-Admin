@@ -42,7 +42,7 @@ export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile
                 {tiles.map(({ id, summary, document, node, ownCollapsibleTile }, index) => (
                     <CardGrid.Item key={id} span={3}>
                         {summary && !ownCollapsibleTile ? (
-                            <CollapsibleTile {...summary} defaultOpen={index === 0}>
+                            <CollapsibleTile {...summary} defaultOpen={index === 0} documentMotion={document}>
                                 {/* A form stays form-wide; only a document uses the whole row. */}
                                 <div className={document ? styles.collapsedDocument : styles.collapsedForm}>{node}</div>
                             </CollapsibleTile>
@@ -57,9 +57,15 @@ export const AgencyTileGrid = ({ tiles, layout = 'raster' }: { tiles: AgencyTile
 
     return (
         <CardGrid raster>
-            {tiles.map(({ id, span, document, node }) => (
+            {tiles.map(({ id, span, document, ownCollapsibleTile, summary, node }) => (
                 <CardGrid.Item key={id} span={span} className={classNames({ [styles.documentTile]: document })}>
-                    {node}
+                    {document && summary && !ownCollapsibleTile ? (
+                        <CollapsibleTile {...summary} documentMotion>
+                            <div className={styles.collapsedDocument}>{node}</div>
+                        </CollapsibleTile>
+                    ) : (
+                        node
+                    )}
                 </CardGrid.Item>
             ))}
         </CardGrid>

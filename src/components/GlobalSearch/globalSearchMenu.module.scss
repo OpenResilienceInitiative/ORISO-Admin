@@ -33,8 +33,14 @@
     }
 
     :global(.ant-dropdown-menu .ant-dropdown-menu-item-selected) {
-        background: var(--m3-primary-fixed, #ffe2de);
-        color: var(--m3-primary, #a5000a);
+        background: var(--admin-field-selected-surface, #ffe2de);
+        color: var(--admin-field-selected-text, #930008);
+
+        // Hover swaps in the hover surface (rule above). In dark that surface is dark, so the
+        // selected ink switches to the scheme ink; light keeps the selected ink as before.
+        &:hover {
+            color: var(--admin-scheme-on-surface, var(--admin-field-selected-text, #930008));
+        }
     }
 
     :global(.ant-dropdown-menu .ant-dropdown-menu-item-group-title) {

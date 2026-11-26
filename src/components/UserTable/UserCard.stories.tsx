@@ -10,7 +10,8 @@ import { UserCard } from './UserCard';
 const meta = {
     title: 'Molecules/UserTable/UserCard',
     component: UserCard,
-    parameters: { layout: 'padded', viewport: { defaultViewport: 'phone' } },
+    parameters: { layout: 'padded' },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [(Story) => <div style={{ maxWidth: 390 }}>{Story()}</div>],
     args: {
         name: 'Maria Huber',

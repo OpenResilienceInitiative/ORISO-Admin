@@ -104,6 +104,7 @@ export const navIconSetFor = (path: string): IconSet | null => {
             return { active: StatisticsActiveIcon, hover: StatisticsHoverIcon, inactive: StatisticsInactiveIcon };
         case routePathNames.logs:
         case routePathNames.caseHandoverLogs:
+        case routePathNames.caseSharingLogs:
         case routePathNames.inactiveAccountAuditLogs:
         case routePathNames.deletionAuditLogs:
         case routePathNames.addonAuditLogs:

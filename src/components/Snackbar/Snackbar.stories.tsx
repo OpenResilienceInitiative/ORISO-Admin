@@ -245,7 +245,7 @@ const LONG_DE =
     'Die Zugangsdaten konnten nicht gesendet werden, weil der E-Mail-Server der Beratungsstelle die Verbindung abgelehnt hat. Bitte prüfen Sie die Einstellungen unter „E-Mail-Server“ und versuchen Sie es erneut.';
 
 export const LongestGermanText: Story = {
-    parameters: { viewport: { defaultViewport: 'phone' } },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     render: () => (
         <div style={{ display: 'grid', gap: 16, maxWidth: 672 }}>
             <Snackbar message={LONG_DE} severity="error" dismissible />

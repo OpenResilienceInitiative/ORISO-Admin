@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
-import { expect, within, waitFor } from 'storybook/test';
+import { expect, userEvent, within, waitFor } from 'storybook/test';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as MailFilledIcon } from '../../resources/img/svg/oriso/mail_filled_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
@@ -9,6 +9,7 @@ import { FloatingLabelInput } from '../FloatingLabelInput';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { GlobalSearchMenu } from './GlobalSearchMenu';
 import { SplitButton } from './SplitButton';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 /**
  * Global search component family (Figma 1165:17005, "Search Bar Admin Panel"):
@@ -216,5 +217,25 @@ export const MenuOpen: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await waitFor(() => expect(body.getByRole('menu')).toBeVisible());
         await expect(body.getByRole('menuitem', { name: 'Neue E-Mail-Vorlage erstellen' })).toBeVisible();
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark): the selected template sits on the
+ * field-selected surface/ink pair. Primary text on primary-fixed was about 1:1 in dark.
+ */
+export const DarkSchemeMenuOpen: Story = {
+    args: {},
+    globals: DARK_SCHEME_GLOBALS,
+    render: () => <MenuExample pinnedOpen />,
+    play: async ({ canvasElement }) => {
+        const body = within(canvasElement.ownerDocument.body);
+        await waitFor(() => expect(body.getByRole('menu')).toBeVisible());
+        const selected = canvasElement.ownerDocument.querySelector('.ant-dropdown-menu-item-selected');
+        await expect(selected).toBeTruthy();
+        await expect(textContrast(selected as Element)).toBeGreaterThanOrEqual(4.5);
+        // Hovered, the selected item shows the hover surface; its text must still read.
+        await userEvent.hover(selected as Element);
+        await waitFor(() => expect(textContrast(selected as Element)).toBeGreaterThanOrEqual(4.5));
     },
 };

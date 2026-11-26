@@ -86,3 +86,8 @@ export const VersionListUnavailable: Story = {
         await expect(await canvas.findByRole('button', { name: 'Bearbeiten' }, { timeout: 8000 })).toBeVisible();
     },
 };
+
+/** Leaves the real outage pop-up open for visual review, without auto-retrying. */
+export const FehlerVorschau: Story = {
+    args: { collapsible: true, defaultOpen: true },
+};
