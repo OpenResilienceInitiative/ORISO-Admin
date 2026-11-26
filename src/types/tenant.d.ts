@@ -5,6 +5,8 @@ export interface TenantSettings {
     featureTopicsEnabled?: boolean | null;
     topicsInRegistrationEnabled?: boolean | null;
     featureStatisticsEnabled?: boolean | null;
+    /** ORISO-Frontend#1870: label on Erstanfragen from the agency link; default on. */
+    featureAgencyLinkLabelEnabled?: boolean | null;
     featureGroupChatV2Enabled?: boolean | null;
     featureTeamDiscussionEnabled?: boolean | null;
     /** ORISO-Frontend#2491: the team chat of a case stays open after the enquiry is accepted. */

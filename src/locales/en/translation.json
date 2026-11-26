@@ -1403,6 +1403,8 @@
     "tenants.appSettings.notifications.option.allTeamConsultants": "All team counsellors",
     "tenants.appSettings.notifications.option.onlyConsultant": "Only the responsible counsellor",
     "tenants.appSettings.otherFunctions.statistics.description": "Counsellors see their own figures on their start page and in their profile.",
+    "tenants.appSettings.otherFunctions.agencyLinkLabel.title": "“Via counselling centre link” label",
+    "tenants.appSettings.otherFunctions.agencyLinkLabel.description": "Enquiries that come in through a counselling centre’s link show counsellors the label “via counselling centre link”. Only the channel is stored, no personal data.",
     "tenants.appSettings.smtp.smtpToggle.description": "Off: use the platform server. On: enter a complete own SMTP configuration. A failed own server never silently sends through the platform.",
     "tenants.appSettings.smtp.mode": "Email server for this provider",
     "tenants.appSettings.smtp.platformMode": "Use platform email server",

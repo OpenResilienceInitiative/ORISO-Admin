@@ -88,7 +88,11 @@ describe('Träger tabs Funktionszugriff and Weitere (ORISO-Admin#1577)', () => {
             .filter(Boolean);
 
         expect(accessSettings.size).toBeGreaterThan(20);
-        expect(functionalitySettings.sort()).toEqual(['featureStatisticsEnabled', 'featureTopicsEnabled']);
+        expect(functionalitySettings.sort()).toEqual([
+            'featureAgencyLinkLabelEnabled',
+            'featureStatisticsEnabled',
+            'featureTopicsEnabled',
+        ]);
         ['featureSupervisionEnabled', 'featureTeamDiscussionEnabled', 'featureSupervisionOneOnOneChatsEnabled'].forEach(
             (setting) => expect(accessSettings).toContain(setting),
         );

@@ -80,7 +80,8 @@ export const More: Story = {
             { name: String(i18n.t('tileHelp.otherFunctions.general.title')) },
             { timeout: 8000 },
         );
-        await expect(within(section).getAllByRole('switch')).toHaveLength(2);
+        // Topics, statistics and the agency-link label (ORISO-Frontend#1870).
+        await expect(within(section).getAllByRole('switch')).toHaveLength(3);
         await canvas.findByDisplayValue('40', {}, { timeout: 8000 });
         await expect(canvas.getByRole('group', { name: String(i18n.t('tenants.form.section.sender')) })).toBeVisible();
         await expect(canvas.getAllByText(String(i18n.t('tenants.edit.tabs.appSettings'))).length).toBeGreaterThan(0);
