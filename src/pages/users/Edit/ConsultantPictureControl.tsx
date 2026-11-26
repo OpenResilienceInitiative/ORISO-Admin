@@ -130,6 +130,9 @@ const ControlForConsultant = ({
             picture.error instanceof Error && picture.error.message === FETCH_ERRORS.NOT_ALLOWED
                 ? 'counselor.picture.error.forbidden'
                 : 'counselor.picture.error.readFailed';
+    } else if (visibility.isError) {
+        // An unknown decision is never shown as "internal only": the switch is hidden and the failure announced.
+        readErrorKey = 'counselor.picture.error.visibilityReadFailed';
     }
     // A write error is newer than the read state; otherwise a failed read must stay visible.
     let shown: Feedback = feedback;
@@ -154,9 +157,9 @@ const ControlForConsultant = ({
             onDiscard={discard}
             onRemove={createMode ? undefined : removePicture}
             visibility={
-                storedPicture
+                storedPicture && !visibility.isError
                     ? {
-                          // Unknown reads as internal: the switch never claims a photo is public on a guess.
+                          // While loading the switch is locked; a failed read hides it (see readErrorKey).
                           internalOnly: visibility.data !== false,
                           onChange: changeVisibility,
                           disabled: !visibility.isSuccess,

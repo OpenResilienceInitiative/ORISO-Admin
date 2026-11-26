@@ -4942,6 +4942,7 @@
     "counselor.picture.error.rejected": "Die Virenprüfung hat dieses Foto abgelehnt. Das bisherige Foto bleibt unverändert.",
     "counselor.picture.error.scanUnavailable": "Fotos können gerade nicht gespeichert werden: Die Virenprüfung für Fotos ist nicht verfügbar. Mit Ihrem Foto ist alles in Ordnung. Bitte versuchen Sie es später erneut.",
     "counselor.picture.error.failed": "Das Foto konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "counselor.picture.error.visibilityReadFailed": "Die Sichtbarkeit des Fotos konnte nicht geladen werden. Bitte laden Sie die Seite neu und versuchen Sie es erneut.",
     "counselor.picture.error.visibilityFailed": "Die Sichtbarkeit konnte nicht geändert werden. Bitte versuchen Sie es erneut.",
     "message.counselor.picture.partialCreate": "Das Konto wurde angelegt, das Foto aber nicht gespeichert. Fügen Sie es auf dieser Seite erneut hinzu.",
     "message.counselor.picture.partialCreateScanUnavailable": "Das Konto wurde angelegt, das Foto aber nicht gespeichert, weil die Virenprüfung für Fotos nicht verfügbar ist. Fügen Sie es später auf dieser Seite erneut hinzu.",

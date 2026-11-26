@@ -4942,6 +4942,7 @@
     "counselor.picture.error.rejected": "The virus check refused this photo. The previous photo stays unchanged.",
     "counselor.picture.error.scanUnavailable": "Photos cannot be saved right now: the virus check for photos is not available. Nothing is wrong with your photo. Please try again later.",
     "counselor.picture.error.failed": "The photo could not be saved. Please try again.",
+    "counselor.picture.error.visibilityReadFailed": "The visibility of the photo could not be loaded. Please reload the page and try again.",
     "counselor.picture.error.visibilityFailed": "The visibility could not be changed. Please try again.",
     "message.counselor.picture.partialCreate": "The account was created, but the photo was not stored. Add it again on this page.",
     "message.counselor.picture.partialCreateScanUnavailable": "The account was created, but the photo was not stored because the virus check for photos is not available. Add it again later on this page.",

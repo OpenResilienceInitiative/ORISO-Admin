@@ -140,6 +140,15 @@ describe('ConsultantPictureControl', () => {
         expect(screen.queryByText('No photo stored yet.')).not.toBeInTheDocument();
     });
 
+    it('never claims "internal only" when the visibility read failed', async () => {
+        vi.mocked(api.getConsultantPictureVisibility).mockRejectedValue(new Error('CATCH_ALL'));
+        renderControl();
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('The visibility of the photo could not be loaded.');
+        expect(screen.queryByRole('switch', { name: 'Own picture visible internally only' })).not.toBeInTheDocument();
+        expect(screen.queryByText(/Advice seekers keep seeing the avatar/)).not.toBeInTheDocument();
+    });
+
     it('hands the chosen file to the form while a consultant is being created', async () => {
         const user = userEvent.setup();
         const onSelectedFileChange = vi.fn();
