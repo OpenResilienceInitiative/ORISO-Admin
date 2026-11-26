@@ -1,4 +1,8 @@
-import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import {
+    CASE_HANDOVER_EXPLANATION_LEVELS,
+    type CaseHandoverExplanationLevel,
+    type CaseHandoverReasonPolicy,
+} from '../../../../../types/caseHandoverReasonPolicy';
 import type {
     CaseHandoverConsentPolicy,
     CaseHandoverConsentValue,
@@ -157,6 +161,16 @@ export const applyClientConsentPolicy = (
               }
             : policy,
     );
+
+/** The explanation level of one reason; absent or unknown reads as OFF, the default (FE#2040). */
+export const resolvedExplanationLevel = (policy: CaseHandoverReasonPolicy | null): CaseHandoverExplanationLevel =>
+    CASE_HANDOVER_EXPLANATION_LEVELS.find((level) => level === policy?.explanationLevel) ?? 'OFF';
+
+export const applyExplanationLevel = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    explanationLevel: CaseHandoverExplanationLevel,
+) => policies.map((policy) => (policy.code === code ? { ...policy, explanationLevel } : policy));
 
 export const applyMaxAccessDuration = (
     policies: CaseHandoverReasonPolicy[],
