@@ -9,10 +9,14 @@ import {
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { canEditCaseHandoverReasonPolicies } from '../../../../../constants/caseHandoverAccess';
-import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type {
+    CaseHandoverExplanationLevel,
+    CaseHandoverReasonPolicy,
+} from '../../../../../types/caseHandoverReasonPolicy';
 import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     applyClientConsentPolicy,
+    applyExplanationLevel,
     applyMaxAccessDuration,
     applyNotificationTemplate,
     applyNotificationTemplates,
@@ -110,6 +114,12 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
+    const handleExplanationLevelChange = useCallback(
+        (code: string, explanationLevel: CaseHandoverExplanationLevel) =>
+            persist(applyExplanationLevel(policies, code, explanationLevel)),
+        [persist, policies],
+    );
+
     const handleNotificationTemplateChange = useCallback(
         (code: string, language: NotificationLanguage, text: string) =>
             persist(applyNotificationTemplate(policies, code, language, text)),
@@ -181,6 +191,7 @@ export const CaseHandoverCard = ({
             onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}
             onClientConsentPolicyChange={handleClientConsentPolicyChange}
+            onExplanationLevelChange={handleExplanationLevelChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}

@@ -90,6 +90,7 @@ const meta = {
     args: {
         onFeaturePolicyChange: () => undefined,
         onClientConsentPolicyChange: () => undefined,
+        onExplanationLevelChange: () => undefined,
         onNotificationTemplateChange: () => undefined,
         onMaxAccessDurationChange: () => undefined,
     },
@@ -367,6 +368,31 @@ export const MasterPolicyButtons: Story = {
 
 /** Figma 1812:12416 — the advice-seeker consent row reuses the FAB menu core,
  * but exposes the five consent-specific states and the information action. */
+/** FE#2040: per reason, the counsellor's explanation text is off (default), optional or required. */
+export const ExplanationLevelMenuOpen: Story = {
+    args: {
+        policies: policies.map((policy) =>
+            policy.code === 'PLANNED_ABSENCE' ? { ...policy, explanationLevel: 'REQUIRED' as const } : policy,
+        ),
+        isLoading: false,
+        canEdit: true,
+        moduleEnabled: true,
+        openPolicyMenu: 'explanation:ADVICE_REQUESTED',
+        onExplanationLevelChange: fn(),
+    },
+    play: async ({ canvasElement, args }) => {
+        const canvas = within(canvasElement);
+        await expect(canvas.getByText(/^(Explanation text|Begründungstext)$/i)).toBeVisible();
+        await Promise.all(
+            [/^(Off|Aus)$/i, /^(Optional|Freiwillig)$/i, /^(Required|Pflicht)$/i].map(async (name) => {
+                await expect(canvas.getByRole('button', { name })).toBeVisible();
+            }),
+        );
+        await userEvent.click(canvas.getByRole('button', { name: /^(Required|Pflicht)$/i }));
+        await expect(args.onExplanationLevelChange).toHaveBeenCalledWith('ADVICE_REQUESTED', 'REQUIRED');
+    },
+};
+
 export const AdviceSeekerConsentMenuOpen: Story = {
     parameters: {
         design: {

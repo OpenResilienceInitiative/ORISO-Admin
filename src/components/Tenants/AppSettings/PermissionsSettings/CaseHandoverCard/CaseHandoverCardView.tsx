@@ -6,7 +6,11 @@ import { Card } from '../../../../Card';
 import { M3DurationField } from '../../../../M3NumberField';
 import { CaseHandoverConsentPolicyControl } from '../../../../CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl';
 import { PermissionPolicyControl } from '../../../../PermissionPolicyControl/PermissionPolicyControl';
-import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type {
+    CaseHandoverExplanationLevel,
+    CaseHandoverReasonPolicy,
+} from '../../../../../types/caseHandoverReasonPolicy';
+import { CaseHandoverExplanationLevelControl } from './CaseHandoverExplanationLevelControl';
 import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     buildDisplayReasons,
@@ -19,6 +23,7 @@ import {
     NotificationLanguage,
     reasonTranslationKey,
     resolvedClientConsentPolicy,
+    resolvedExplanationLevel,
 } from './caseHandoverCardUtils';
 import cardStyles from '../styles.module.scss';
 import { CASE_HANDOVER_HELP } from '../tileHelpTopics';
@@ -54,6 +59,8 @@ export type CaseHandoverCardViewProps = {
     onClientConsentPolicyChange: (code: string, clientConsent: CaseHandoverConsentPolicy) => void;
     onNotificationTemplateChange: (code: string, language: NotificationLanguage, text: string) => void;
     onMaxAccessDurationChange: (code: string, minutes: number) => void;
+    /** FE#2040; without it the explanation row is not shown. */
+    onExplanationLevelChange?: (code: string, explanationLevel: CaseHandoverExplanationLevel) => void;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
@@ -129,6 +136,7 @@ export const CaseHandoverCardView = ({
     noTenant = false,
     moduleEnabled,
     onClientConsentPolicyChange,
+    onExplanationLevelChange,
     onNotificationTemplateChange,
     onMaxAccessDurationChange,
     policyLevel = 'tenant',
@@ -301,6 +309,26 @@ export const CaseHandoverCardView = ({
                                     }
                                 />
                             </div>
+                            {onExplanationLevelChange && (
+                                <div className={cardStyles.toggleRow}>
+                                    <CaseHandoverExplanationLevelControl
+                                        label={t('tenants.permissions.card.caseHandover.explanation.label')}
+                                        value={resolvedExplanationLevel(activePolicy)}
+                                        open={currentOpenPolicyMenu === `explanation:${activeReason.code}`}
+                                        pending={isSaving}
+                                        disabled={
+                                            activeReason.isPlaceholder || !activePolicy || !canEdit || !moduleEnabled
+                                        }
+                                        onOpenChange={(open) =>
+                                            setOpenPolicyMenu(open ? `explanation:${activeReason.code}` : null)
+                                        }
+                                        onChange={(next) => {
+                                            setOpenPolicyMenu(null);
+                                            if (activePolicy) onExplanationLevelChange(activePolicy.code, next);
+                                        }}
+                                    />
+                                </div>
+                            )}
                             {isAdviceRequestReason(activeReason.code) && (
                                 <div className={styles.durationField}>
                                     <M3DurationField
