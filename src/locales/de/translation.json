@@ -1887,6 +1887,8 @@
     "home.settings.description.app-settings": "Themen und Statistik für Beratende",
     "tenants.appSettings.otherFunctions.topicsStatistics.note": "Gelten für den ganzen Träger und alle seine Beratungsstellen.",
     "tenants.appSettings.otherFunctions.statistics.description": "Beratende sehen ihre eigenen Zahlen auf ihrer Startseite und in ihrem Profil.",
+    "tenants.appSettings.otherFunctions.agencyLinkLabel.title": "Hinweis „über Beratungsstellen-Link“",
+    "tenants.appSettings.otherFunctions.agencyLinkLabel.description": "Erstanfragen, die über den Link einer Beratungsstelle kommen, zeigen Beratenden den Hinweis „über Beratungsstellen-Link“. Gespeichert wird nur der Weg der Anfrage, keine persönlichen Daten.",
     "tenants.permissions.title": "Berechtigungen",
     "tenants.permissions.anonymousChat.title": "Anonyme Beratung erlauben",
     "tenants.permissions.anonymousChat.description": "Diese Einstellung wird derzeit von keiner Anwendung ausgewertet. Sie blendet die anonyme Beratung auf der Login-Seite nicht aus. Ob anonyme Beratung angeboten wird, ergibt sich aus den Chat-Arten weiter unten.",
