@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
 
@@ -20,6 +20,12 @@ export interface ImageUploadFieldProps {
     helper?: ReactNode;
     shape?: 'rounded' | 'circle';
     className?: string;
+    /** Disables the upload action (read-only form, a pending save). */
+    disabled?: boolean;
+    /** Lets the owner return focus to the upload action after an asynchronous step. */
+    uploadButtonRef?: Ref<HTMLButtonElement>;
+    /** Further actions under the upload button (e.g. save or remove the photo). */
+    actions?: ReactNode;
 }
 
 const Placeholder = () => (
@@ -42,6 +48,9 @@ export const ImageUploadField = ({
     helper,
     shape = 'rounded',
     className,
+    disabled = false,
+    uploadButtonRef,
+    actions,
 }: ImageUploadFieldProps) => (
     <div className={classNames(styles.field, className)}>
         <div className={styles.row}>
@@ -50,10 +59,17 @@ export const ImageUploadField = ({
             </div>
             <div className={styles.side}>
                 {title && <span className={styles.title}>{title}</span>}
-                <button type="button" className={styles.uploadButton} onClick={onUpload}>
+                <button
+                    ref={uploadButtonRef}
+                    type="button"
+                    className={styles.uploadButton}
+                    onClick={onUpload}
+                    disabled={disabled}
+                >
                     <UploadIcon />
                     {uploadLabel}
                 </button>
+                {actions && <div className={styles.actions}>{actions}</div>}
             </div>
         </div>
         {helper && <span className={styles.helper}>{helper}</span>}

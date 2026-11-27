@@ -76,9 +76,12 @@ const createClient = (overrides: Partial<CounsellorOnboardingClient> = {}): Coun
         twoFactor: { secret: 'SECRET234567ABCDEFG', qrCodeBase64: null },
     }),
     activateTwoFactor: vi.fn().mockResolvedValue(undefined),
+    uploadOnboardingPicture: vi.fn().mockResolvedValue(undefined),
+    setOnboardingPictureVisibility: vi.fn().mockResolvedValue(undefined),
     ...overrides,
 });
 
+const PHOTO = () => new File(['photo-bytes'], 'me.png', { type: 'image/png' });
 const LoginDestination = () => <h1>Sign in{useLocation().search}</h1>;
 
 const renderFlow = (client: CounsellorOnboardingClient, token = 'raw-token') =>
@@ -314,8 +317,8 @@ describe('CounsellorOnboarding', () => {
         expect(screen.getByLabelText('cards.personalInfo.firstName')).toBeDisabled();
         await user.type(screen.getByLabelText('cards.personalInfo.position'), 'Leitung');
 
-        // Avatar step is on (#1047); only the own-picture upload is still missing (#1049).
-        expect(screen.queryByText('cards.avatarName.ownPicture')).not.toBeInTheDocument();
+        // The avatar grid is #1046/#1047; the own-picture upload is its own section (#1049).
+        expect(screen.getByRole('heading', { name: 'counsellorOnboarding.picture.title' })).toBeInTheDocument();
         await user.type(screen.getByLabelText('cards.avatarName.publicName'), 'Lena');
         // The initials tile mirrors the public display name as it is typed.
         await user.click(screen.getByRole('radio', { name: 'counselor.avatar.initials' }));
@@ -806,6 +809,153 @@ describe('CounsellorOnboarding', () => {
         expect(screen.getByText('cards.success.title')).toBeInTheDocument();
         // The notes textarea is deliberately absent — no backend channel exists (#997 design gap).
         expect(screen.queryByLabelText('cards.success.notes')).not.toBeInTheDocument();
+    });
+
+    describe('#1049 picture step', () => {
+        // The invite coverage arrives preselected, so credentials are all that is still required.
+        const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
+            await user.type(await screen.findByLabelText('cards.advisorAccount.username'), 'lena_b');
+            await user.type(screen.getByLabelText('cards.advisorAccount.password'), 'SecurePassword1!');
+            await waitFor(() => expect(submit()).toBeEnabled());
+        };
+
+        it('offers the picture step, with the publish switch hidden until a photo is chosen', async () => {
+            const user = userEvent.setup();
+            renderFlow(createClient());
+
+            expect(
+                await screen.findByRole('heading', { name: 'counsellorOnboarding.picture.title' }),
+            ).toBeInTheDocument();
+            expect(
+                screen.queryByRole('switch', { name: 'cards.avatarName.ownPictureInternalOnly' }),
+            ).not.toBeInTheDocument();
+
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+
+            // Internal only is the default: switched on until the counsellor decides otherwise.
+            const toggle = await screen.findByRole('switch', { name: 'cards.avatarName.ownPictureInternalOnly' });
+            expect(toggle).toBeChecked();
+            expect(screen.getByText('counselor.picture.visibility.internalHint')).toBeInTheDocument();
+        });
+
+        it('stores an internal photo after registration and never publishes it', async () => {
+            const client = createClient();
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+            await user.click(submit());
+
+            await waitFor(() => expect(client.uploadOnboardingPicture).toHaveBeenCalledTimes(1));
+            expect(client.setOnboardingPictureVisibility).not.toHaveBeenCalled();
+            expect(client.registerCounsellor).toHaveBeenCalledTimes(1);
+            expect(vi.mocked(client.registerCounsellor).mock.invocationCallOrder[0]).toBeLessThan(
+                vi.mocked(client.uploadOnboardingPicture).mock.invocationCallOrder[0],
+            );
+            expect(await screen.findByText('counsellorOnboarding.twoFactor.title')).toBeInTheDocument();
+        });
+
+        it('publishes the photo only when the counsellor asked for it', async () => {
+            const client = createClient();
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+            await user.click(screen.getByRole('switch', { name: 'cards.avatarName.ownPictureInternalOnly' }));
+            expect(screen.getByText('counselor.picture.visibility.publicHint')).toBeInTheDocument();
+            await user.click(submit());
+
+            await waitFor(() => expect(client.setOnboardingPictureVisibility).toHaveBeenCalledWith('raw-token', false));
+        });
+
+        it('sends no photo call at all when none was chosen', async () => {
+            const client = createClient();
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.click(submit());
+
+            expect(await screen.findByText('counsellorOnboarding.twoFactor.title')).toBeInTheDocument();
+            expect(client.uploadOnboardingPicture).not.toHaveBeenCalled();
+            expect(client.setOnboardingPictureVisibility).not.toHaveBeenCalled();
+        });
+
+        it('keeps the created account when the virus check is unavailable, and names that cause', async () => {
+            const client = createClient({
+                uploadOnboardingPicture: vi.fn().mockRejectedValue(new Error('PICTURE_SCAN_UNAVAILABLE')),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+            await user.click(submit());
+
+            // The 2FA step still follows: a refused photo never costs the invitee their account.
+            expect(await screen.findByText('counsellorOnboarding.twoFactor.title')).toBeInTheDocument();
+            expect(await screen.findByTestId('wizard-picture-notice')).toHaveTextContent(
+                'counsellorOnboarding.picture.scanUnavailableFailed',
+            );
+            expect(screen.queryByTestId('wizard-registration-error')).not.toBeInTheDocument();
+        });
+
+        it('reports any other refused photo with the general notice', async () => {
+            const client = createClient({
+                uploadOnboardingPicture: vi.fn().mockRejectedValue(new Error('PICTURE_REJECTED')),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+            await user.click(submit());
+
+            expect(await screen.findByTestId('wizard-picture-notice')).toHaveTextContent(
+                'counsellorOnboarding.picture.uploadFailed',
+            );
+        });
+
+        it('reports a photo that was stored but could not be published', async () => {
+            const client = createClient({
+                setOnboardingPictureVisibility: vi.fn().mockRejectedValue(new Error('nope')),
+            });
+            const user = userEvent.setup();
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(screen.getByTestId('consultant-picture-input'), PHOTO());
+            await user.click(screen.getByRole('switch', { name: 'cards.avatarName.ownPictureInternalOnly' }));
+            await user.click(submit());
+
+            expect(await screen.findByTestId('wizard-picture-notice')).toHaveTextContent(
+                'counsellorOnboarding.picture.visibilityFailed',
+            );
+        });
+
+        it('refuses an unsupported file locally, without sending anything', async () => {
+            const client = createClient();
+            // applyAccept: false reproduces a browser that let a wrong type through the picker —
+            // the component's own guard, not the accept attribute, must be what refuses it.
+            const user = userEvent.setup({ applyAccept: false });
+            renderFlow(client);
+
+            await fillRequired(user);
+            await user.upload(
+                await screen.findByTestId('consultant-picture-input'),
+                new File(['<svg/>'], 'me.svg', { type: 'image/svg+xml' }),
+            );
+
+            expect(await screen.findByRole('alert')).toHaveTextContent('counselor.picture.error.unsupportedType');
+            expect(
+                screen.queryByRole('switch', { name: 'cards.avatarName.ownPictureInternalOnly' }),
+            ).not.toBeInTheDocument();
+            await user.click(submit());
+            await waitFor(() => expect(client.registerCounsellor).toHaveBeenCalled());
+            expect(client.uploadOnboardingPicture).not.toHaveBeenCalled();
+        });
     });
 });
 

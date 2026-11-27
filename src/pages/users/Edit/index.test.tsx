@@ -27,6 +27,9 @@ import { useConsultantsOrAdminsData } from '../../../hooks/useConsultantsOrAdmin
 
 const mocks = vi.hoisted(() => ({
     mutate: vi.fn(),
+    // The options the form handed to the save mutation, so a test can play the server's answer.
+    mutationOptions: undefined as undefined | { onSuccess?: (response: unknown) => Promise<void> | void },
+    uploadConsultantPicture: vi.fn(),
     navigate: vi.fn(),
     getSingleTenantData: vi.fn(),
     searchTenantData: vi.fn(),
@@ -218,8 +221,18 @@ vi.mock('../../../hooks/useUserPermission', () => ({
 }));
 
 vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
-    useAddOrUpdateConsultantOrAdmin: () => ({ mutate: mocks.mutate }),
+    useAddOrUpdateConsultantOrAdmin: (options: typeof mocks.mutationOptions) => {
+        mocks.mutationOptions = options;
+        return { mutate: mocks.mutate };
+    },
 }));
+
+vi.mock('../../../api/counselor/consultantPicture', async () => {
+    const actual = await vi.importActual<typeof import('../../../api/counselor/consultantPicture')>(
+        '../../../api/counselor/consultantPicture',
+    );
+    return { ...actual, uploadConsultantPicture: mocks.uploadConsultantPicture };
+});
 
 vi.mock('../../../hooks/useConsultantsOrAdminsData', () => ({
     // The page runs this hook twice: once searching for the edited consultant (`search: id`) and
@@ -2251,5 +2264,67 @@ describe('platform admin changes the Träger of a counsellor (Admin#1216)', () =
             expect(mocks.changeTenant).not.toHaveBeenCalled();
             expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
         });
+    });
+});
+
+describe('a photo chosen while creating a counsellor', () => {
+    const png = () => new File(['photo'], 'portrait.png', { type: 'image/png' });
+
+    beforeEach(() => {
+        mocks.uploadConsultantPicture.mockReset();
+        URL.createObjectURL = vi.fn(() => 'blob:preview');
+        URL.revokeObjectURL = vi.fn();
+    });
+
+    const createWithPhoto = async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await user.upload(screen.getByTestId('consultant-picture-input'), png());
+        await fillMandatoryFields();
+        await submit(user);
+        return user;
+    };
+
+    it('stores the photo on the new account, then returns to the list', async () => {
+        mocks.uploadConsultantPicture.mockResolvedValue(new Response(null, { status: 204 }));
+        await createWithPhoto();
+
+        await mocks.mutationOptions?.onSuccess?.({ id: 'new-7' });
+
+        expect(mocks.uploadConsultantPicture).toHaveBeenCalledWith('new-7', expect.any(File));
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants');
+    });
+
+    it('keeps the new account and opens it when the virus check is unavailable (503)', async () => {
+        const warning = vi.spyOn(message, 'warning');
+        mocks.uploadConsultantPicture.mockRejectedValue(
+            new Response(JSON.stringify({ reason: 'PICTURE_SCAN_UNAVAILABLE' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+        await createWithPhoto();
+
+        await mocks.mutationOptions?.onSuccess?.({ id: 'new-7' });
+
+        expect(warning).toHaveBeenCalledWith(
+            expect.objectContaining({ content: 'message.counselor.picture.partialCreateScanUnavailable' }),
+        );
+        // The account is not created again: the admin lands on it to add the photo later.
+        expect(mocks.mutate).toHaveBeenCalledTimes(1);
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants/new-7');
+        expect(mocks.navigate).not.toHaveBeenCalledWith('/admin/users/consultants');
+    });
+
+    it('sends no photo request when none was chosen', async () => {
+        const user = userEvent.setup();
+        renderForm();
+        await fillMandatoryFields();
+        await submit(user);
+
+        await mocks.mutationOptions?.onSuccess?.({ id: 'new-7' });
+
+        expect(mocks.uploadConsultantPicture).not.toHaveBeenCalled();
+        expect(mocks.navigate).toHaveBeenCalledWith('/admin/users/consultants');
     });
 });

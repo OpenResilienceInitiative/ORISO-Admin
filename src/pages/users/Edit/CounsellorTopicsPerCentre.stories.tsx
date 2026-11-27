@@ -7,6 +7,7 @@ import { expect, screen, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { UserEditOrAdd } from '.';
+import { noConsultantPictureHandler } from '../../../utils/storybook/consultantPictureHandlers';
 
 const TENANT_ID = 7;
 const CONSULTANT_ID = 'consultant-7';
@@ -69,6 +70,7 @@ const handlers = (
         formalLanguage: true,
     };
     return [
+        noConsultantPictureHandler,
         http.get('*/service/tenantadmin/:id', () => HttpResponse.json({ id: TENANT_ID, name: 'Demo-Träger' })),
         http.get('*/service/topic/', () => HttpResponse.json([SUCHT, SCHULDEN, FAMILIE])),
         http.get('*/service/users/consultants/search', async () => {

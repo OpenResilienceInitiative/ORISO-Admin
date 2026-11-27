@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { ImageUploadField } from './index';
+import { M3Button } from '../M3Button';
 
 const meta = {
     title: 'Molecules/ImageUploadField',
@@ -33,6 +34,31 @@ export const OwnPicture: Story = {
 /** Individuelle Bilder logo tile (Figma 1-34189). */
 export const Logo: Story = {
     args: { title: 'Logo · 512×512px', shape: 'rounded', uploadLabel: 'Upload' },
+    render: (args) => (
+        <div style={{ maxWidth: 340 }}>
+            <ImageUploadField {...args} />
+        </div>
+    ),
+};
+
+/** Locked, e.g. while the form is read-only or a save runs. */
+export const Disabled: Story = {
+    args: { title: 'Own picture', disabled: true },
+    render: (args) => (
+        <div style={{ maxWidth: 340 }}>
+            <ImageUploadField {...args} />
+        </div>
+    ),
+};
+
+/** Further actions under the upload button (consultant photo: save, discard, remove). */
+export const WithActions: Story = {
+    args: {
+        title: 'Own picture',
+        shape: 'circle',
+        uploadLabel: 'Choose a different photo',
+        actions: <M3Button variant="text">Remove photo</M3Button>,
+    },
     render: (args) => (
         <div style={{ maxWidth: 340 }}>
             <ImageUploadField {...args} />

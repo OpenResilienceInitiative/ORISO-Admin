@@ -1,0 +1,10 @@
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* The visible "choose" action is the ImageUploadField button; the native input stays out of the tab order. */
+.fileInput {
+    display: none;
+}

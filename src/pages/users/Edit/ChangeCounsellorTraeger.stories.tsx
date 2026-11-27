@@ -9,6 +9,7 @@ import { findPopup } from '../../../test/storyPopups';
 import { setStoryAuth, withAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { contactPersonReadHandlers } from '../../../utils/storybook/contactPersonStoryHandlers';
 import { UserEditOrAdd } from '.';
+import { noConsultantPictureHandler } from '../../../utils/storybook/consultantPictureHandlers';
 
 /**
  * Admin#1216: a platform admin changes the Träger of a counsellor. The dialog says that open cases
@@ -83,6 +84,7 @@ const handlers = (answer: MoveAnswer) => {
         formalLanguage: true,
     };
     return [
+        noConsultantPictureHandler,
         http.get('*/service/tenantadmin/search', () =>
             HttpResponse.json({ total: 2, _embedded: [OLD_TENANT, NEW_TENANT] }),
         ),
