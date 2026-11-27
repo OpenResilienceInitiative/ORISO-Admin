@@ -44,9 +44,8 @@ describe('M3FabMenu action colour roles', () => {
         expect(styles).toMatch(
             /@media screen and \(max-width:\s*767px\)[\s\S]*\.action[\s\S]*\.stack[\s\S]*max-width:\s*calc\(100vw - 12px\)/i,
         );
-        expect(styles).toMatch(
-            /@media screen and \(max-width:\s*767px\)[\s\S]*\.action[\s\S]*\.item[\s\S]*max-width:\s*calc\(100vw - 12px\)/i,
-        );
+        // The item follows its containing stack, including narrower scroll decks.
+        expect(actionBlock).toMatch(/\.item\s*\{\s*max-width:\s*100%/i);
     });
 });
 

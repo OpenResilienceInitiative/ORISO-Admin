@@ -56,7 +56,8 @@ export const LegalContentLanguageSelect = ({
         <SplitDropdown
             icon={<Language />}
             label={value.toUpperCase()}
-            title={`${t('languages')}: ${labelFor(value)}`}
+            title={`${t('languages')}: ${labelFor(value)} · ${value.toUpperCase()}`}
+            tooltip={`${t('languages')}: ${labelFor(value)}`}
             // Disable, never hide: with one active language the switcher stays
             // visible and inert so the level still shows which language it holds.
             disabled={languages.length <= 1}

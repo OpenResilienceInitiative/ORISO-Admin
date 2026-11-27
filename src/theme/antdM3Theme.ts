@@ -104,6 +104,15 @@ export const buildAdminAntdTheme = ({
             controlHeight: M3_CONTROL_HEIGHT,
         },
         components: {
+            // Dark/inverted primary is the pale accent, so antd's fixed white label sank to 1.7:1
+            // ("Back to homepage" on the topics empty state). Ink follows the scheme's on-* roles;
+            // light keeps antd's default white, so it renders unchanged.
+            ...(scheme !== 'light' && {
+                Button: {
+                    primaryColor: t('--m3-on-primary', '#141c25'),
+                    dangerColor: t('--m3-on-error', '#141c25'),
+                },
+            }),
             // Every tooltip is solid black with white text, whatever the tenant theme (#1299).
             Tooltip: {
                 colorBgSpotlight: '#000000',

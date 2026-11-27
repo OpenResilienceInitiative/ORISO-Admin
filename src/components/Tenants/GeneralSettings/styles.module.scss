@@ -59,14 +59,14 @@
 }
 
 .masterDataToggleTitle {
-    color: #1b1b1c;
+    color: var(--admin-scheme-on-surface, #1b1b1c);
     font-size: 16px;
     font-weight: 700;
     line-height: 20px;
 }
 
 .masterDataToggleDescription {
-    color: #444748;
+    color: var(--admin-scheme-on-surface-variant, #444748);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;

@@ -37,7 +37,6 @@ export const TenantPermissionsSettings = ({
     tenantId,
     excludeCardKeys,
     liveChatLinks,
-    introScopeNote,
 }: PermissionsSettingsCommonArgs) => {
     const { t } = useTranslation();
     // The Träger's journeys: the platform's with its own layer for An Bord and Ankunft (ADR-036 decision 29).
@@ -409,7 +408,6 @@ export const TenantPermissionsSettings = ({
                 caseHandoverTenantId={Number(tenantId) || undefined}
                 excludeCardKeys={excludeCardKeys}
                 liveChatLinks={liveChatLinks}
-                introScopeNote={introScopeNote}
                 callsPermission={callsPermission}
                 renderJourneys={journeys.renderJourneys}
                 isLoading={isLoading || policiesLoading}

@@ -48,7 +48,7 @@
 }
 
 .switchTitle {
-    color: #1b1b1c;
+    color: var(--admin-scheme-on-surface, #1b1b1c);
     font-family: var(--m3-body-font-family);
     font-size: 16px;
     font-weight: 400;
@@ -57,7 +57,7 @@
 }
 
 .switchDescription {
-    color: #444748;
+    color: var(--admin-scheme-on-surface-variant, #444748);
     font-family: var(--m3-body-font-family);
     font-size: 14px;
     font-weight: 400;

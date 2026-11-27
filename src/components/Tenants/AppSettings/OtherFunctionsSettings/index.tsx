@@ -71,6 +71,18 @@ export const OtherFunctionsSettings = ({ tenantId, hideStatistics }: OtherFuncti
                             </p>
                         </div>
                     )}
+                    {/* ORISO-Frontend#1870: label on Erstanfragen that came through the agency link. */}
+                    <div className={styles.checkGroup}>
+                        <FormSwitchField
+                            labelKey="tenants.appSettings.otherFunctions.agencyLinkLabel.title"
+                            name={['settings', 'featureAgencyLinkLabelEnabled']}
+                            inline
+                            disableLabels
+                        />
+                        <p className={styles.checkInfo}>
+                            {t('tenants.appSettings.otherFunctions.agencyLinkLabel.description')}
+                        </p>
+                    </div>
                 </TileSections.Section>
             </TileSections>
         </CardEditable>

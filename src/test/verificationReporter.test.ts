@@ -7,6 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 // eslint-disable-next-line import/extensions -- The native Node reporter has an explicit ESM entry.
 import VerificationReporter from '../../scripts/verification-reporter.mjs';
 
+// The manifest records the installed Storybook; read it instead of pinning a
+// version here, so a Storybook upgrade does not break this test.
+const installedStorybookVersion: string = JSON.parse(
+    readFileSync(path.resolve(process.cwd(), 'node_modules/storybook/package.json'), 'utf8'),
+).version;
+
 const directories: string[] = [];
 let initialExitCode: typeof process.exitCode;
 beforeEach(() => {
@@ -184,7 +190,7 @@ describe('durable verification inventory', () => {
                 },
             },
             runtime: { node: process.version, platform: process.platform, arch: process.arch },
-            toolchain: { vitePlus: '1.6.0', vitest: '5.1.0', storybook: '10.6.7' },
+            toolchain: { vitePlus: '1.6.0', vitest: '5.1.0', storybook: installedStorybookVersion },
             invocation: { command: expect.any(Array), projects: ['storybook'] },
         });
         reporter.onTestCaseResult(test);

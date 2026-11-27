@@ -16,7 +16,13 @@ vi.mock('react-i18next', () => {
 
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
     useSingleTenantData: () => ({
-        data: { settings: { featureTopicsEnabled: false, featureStatisticsEnabled: true } },
+        data: {
+            settings: {
+                featureTopicsEnabled: false,
+                featureStatisticsEnabled: true,
+                featureAgencyLinkLabelEnabled: true,
+            },
+        },
         isLoading: false,
     }),
 }));
@@ -49,6 +55,7 @@ Object.defineProperty(window, 'matchMedia', {
 
 const TOPICS = 'tenants.appSettings.otherFunctions.allowTopicCreation.title';
 const STATISTICS = 'tenants.appSettings.otherFunctions.statistics.title';
+const AGENCY_LINK_LABEL = 'tenants.appSettings.otherFunctions.agencyLinkLabel.title';
 
 /**
  * The tile of the Träger tab "Weitere" (ORISO-Admin#1577, Frank 2026-11-19): topics and counsellor
@@ -73,13 +80,31 @@ describe('OtherFunctionsSettings ("Weitere")', () => {
     it('offers nothing that moved to Funktionszugriff', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getAllByRole('switch')).toHaveLength(2);
+        // Topics, statistics and the agency-link label (ORISO-Frontend#1870).
+        expect(screen.getAllByRole('switch')).toHaveLength(3);
         [
             'teamFunctions.chat.name',
             'tenants.appSettings.otherFunctions.supervision.title',
             'tenants.appSettings.otherFunctions.groupChat.title',
             'tenants.appSettings.communications.video.title',
         ].forEach((label) => expect(screen.queryByText(label)).toBeNull());
+    });
+
+    it('lets the Träger switch off the agency-link label on Erstanfragen (ORISO-Frontend#1870)', async () => {
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        expect(screen.getByRole('switch', { name: AGENCY_LINK_LABEL })).toBeChecked();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.agencyLinkLabel.description')).toBeVisible();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: AGENCY_LINK_LABEL }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
+        expect(mutate.mock.calls.at(-1)?.[0]).toMatchObject({
+            settings: { featureAgencyLinkLabelEnabled: false },
+        });
     });
 
     it('hides the statistics switch when the level does not offer it', () => {

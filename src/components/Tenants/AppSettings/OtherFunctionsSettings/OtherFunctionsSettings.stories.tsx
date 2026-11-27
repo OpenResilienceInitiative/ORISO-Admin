@@ -61,3 +61,25 @@ export const HelpSlideshow: Story = {
         await waitFor(() => expect(dialog).toBeVisible());
     },
 };
+
+/** ORISO-Frontend#1870: the Träger switched the agency-link label on Erstanfragen off. */
+export const AgencyLinkLabelOff: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers({
+                featureTopicsEnabled: true,
+                featureStatisticsEnabled: true,
+                featureAgencyLinkLabelEnabled: false,
+            }),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const toggle = await canvas.findByRole(
+            'switch',
+            { name: /beratungsstellen-link|counselling centre link/i },
+            { timeout: 8000 },
+        );
+        await expect(toggle).not.toBeChecked();
+    },
+};

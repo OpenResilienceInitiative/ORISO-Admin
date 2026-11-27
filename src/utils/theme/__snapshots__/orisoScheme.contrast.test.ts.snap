@@ -35,6 +35,7 @@ exports[`computeOrisoPalette — contrast on the light brand container > leaves 
   "--m3-on-error": "#ffffff",
   "--m3-on-primary": "#ffffff",
   "--m3-on-primary-container": "#141c25",
+  "--m3-on-primary-fixed": "#410001",
   "--m3-on-primary-fixed-variant": "#930008",
   "--m3-on-secondary": "#ffffff",
   "--m3-on-secondary-container": "#e7effc",

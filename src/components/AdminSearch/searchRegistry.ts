@@ -485,18 +485,18 @@ export const SEARCH_TILES: RegistryTile[] = [
         },
     ),
 
-    // ORISO-Admin#1577: supervision chats, a tile of Funktionszugriff after the conversation types.
+    // Supervision: a section of the Mail-Beratung tile (Frank, 2026-11-25, ORISO-Admin#1577 decision update).
     tile(
         'access:supervision',
         'tenants.permissions.supervision.title',
         PERMISSIONS,
-        `${CHAT}/SupervisionTile/index.tsx`,
+        `${CHAT}/SupervisionSection/index.tsx`,
         {
             fieldKeys: ['tenants.permissions.supervision.configure', 'tenants.permissions.supervision.dialogTitle'],
         },
     ),
 
-    // ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat, its own tile after supervision, built the same way.
+    // ORISO-Frontend#2491 (Frank, 2026-11-24): Team-Chat, its own tile after the conversation types.
     tile('access:team-chat', 'teamFunctions.chat.name', PERMISSIONS, `${CHAT}/TeamChatTile/index.tsx`, {
         fieldKeys: [
             'tenants.permissions.teamChat.configure',

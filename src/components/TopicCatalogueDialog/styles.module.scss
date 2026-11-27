@@ -559,7 +559,8 @@ $amberSoft: #fff3dc;
 }
 
 .footerHint {
-    color: $muted;
+    // On the dialog's surface-container-high sheet $muted reaches only 4.33:1.
+    color: var(--m3-on-surface-variant, #444748);
 }
 
 .problem {
@@ -601,7 +602,53 @@ $amberSoft: #fff3dc;
     }
 }
 
-/* The AI button sits at the end of the language bar. */
-.translate {
-    margin-left: auto;
+// Inline on the Settings page: the same sheet, a little taller, in read or edit mode.
+.sheetInline {
+    height: min(78vh, 880px);
+}
+
+.tileStatic {
+    cursor: default;
+}
+
+.categoryName {
+    margin: 0;
+    padding: 4px 0;
+    color: $ink;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.rowReadOnly {
+    padding-left: 20px;
+}
+
+// The translate mark of the Journeys: a text a machine wrote and nobody has checked yet.
+.machineMark {
+    display: inline-flex;
+    margin-left: 6px;
+    color: var(--m3-primary, #a5000a);
+    vertical-align: middle;
+
+    svg {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+.languageMachine {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border-radius: 10px;
+    // Primary-container role: the theme pairs it with its own readable on-colour.
+    background: var(--m3-primary-container, #ffe2de);
+    color: var(--m3-on-primary-container, #141c25);
+    font-size: 11px;
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
 }

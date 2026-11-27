@@ -5,7 +5,6 @@ import { DpaIcon } from '../../../../CustomIcons/LegalIcons';
 import { EditorVersion, M3RichTextEditor } from '../../../../FormPluginEditor/M3RichTextEditor';
 import { EditorHelpText } from '../../../../FormPluginEditor/EditorHelpText';
 import { EditorHintSnackbar } from '../../../../FormPluginEditor/EditorHintSnackbar';
-import { EditorStatusLine } from '../../../../FormPluginEditor/EditorStatusLine';
 import { EditorSnackbarQueue } from '../../../../FormPluginEditor/EditorSnackbarQueue';
 import { Notify } from '../../../../Notify';
 import { TenantDpaStatus } from '../../../../../types/dpa';
@@ -25,10 +24,8 @@ import { dpaState, legalDocumentStatus } from '../LegalDocumentTile/legalDocumen
 import { contractHelp } from './help';
 import styles from './styles.module.scss';
 
-// "Nicht mehr anzeigen" on the tile's tip and confirmation line persists across sessions (an older
-// session-only close is still honoured). The blocker ("publish a DPA
-// first") and the signed confirmation are dismissed independently.
-type SnackbarKind = 'blocker' | 'signed';
+// The platform tip can be hidden across sessions. Earlier session-only dismissals still apply.
+type SnackbarKind = 'blocker';
 
 const dismissedKey = (kind: SnackbarKind, scope: string) => `oriso-admin.legal.dpa.${kind}.dismissed.${scope}`;
 const sessionKey = (kind: SnackbarKind, scope: string) => `oriso-admin.legal.dpa.${kind}.closed.${scope}`;
@@ -200,10 +197,7 @@ export const DataProcessingAgreementCard = ({
         onPublish,
     });
 
-    // Role/state dependent help texts (Figma 457-13255): description under the
-    // header. For platform (super) admins the bold CTA tip lives ONLY in the
-    // dismissible snackbar (Figma 1229-17864) — empty or published — once
-    // dismissed it is gone for good. Tenant/agency roles keep the inline hint.
+    // Role-specific guidance stays inline. Publication failures use the shared pop-up channel.
     const help = useLegalHelp(
         'dpa',
         { empty: versions.length === 0, readOnly: !!readOnly, signed: dpaSigned },
@@ -212,12 +206,8 @@ export const DataProcessingAgreementCard = ({
     const [blockerHidden, setBlockerHidden] = useState(() =>
         dismissalScope ? isSnackbarDismissed('blocker', dismissalScope) : false,
     );
-    const [signedHidden, setSignedHidden] = useState(() =>
-        dismissalScope ? isSnackbarDismissed('signed', dismissalScope) : false,
-    );
     useEffect(() => {
         setBlockerHidden(dismissalScope ? isSnackbarDismissed('blocker', dismissalScope) : false);
-        setSignedHidden(dismissalScope ? isSnackbarDismissed('signed', dismissalScope) : false);
     }, [dismissalScope]);
     // Gate snackbar vs inline hint on the resolved help role (platform = super admin).
     const isPlatformAdmin = help.role === 'platform';
@@ -226,17 +216,9 @@ export const DataProcessingAgreementCard = ({
     const showBlockerHint = isPlatformAdmin && !blockerHidden;
     // Platform admins can hide the hint for good; everyone else always reads it.
     const blockerHint = isPlatformAdmin && !showBlockerHint ? undefined : help.hint;
-    // The signed confirmation belongs in the editor's own snackbar (Figma 1261-51137,
-    // success tone) rather than in a separate alert below the card — same field, one
-    // message. Platform admins never see it: they publish the DPA, they do not sign it.
-    const showSignedStatus = !isPlatformAdmin && !!dpaSigned && !signedHidden;
     const dismissBlockerHint = () => {
         if (dismissalScope) persistSnackbarDismissed('blocker', dismissalScope);
         setBlockerHidden(true);
-    };
-    const dismissSignedStatus = () => {
-        if (dismissalScope) persistSnackbarDismissed('signed', dismissalScope);
-        setSignedHidden(true);
     };
     // The editor's version select browses the versions in the ACTIVE language; a version
     // that was never stored in that language falls back to its first stored language
@@ -273,15 +255,8 @@ export const DataProcessingAgreementCard = ({
                 text={help.text}
                 hint={blockerHint}
                 onDismissHint={showBlockerHint ? dismissBlockerHint : undefined}
+                dismissHintLabel={t('legal.dpa.hideHint')}
             />
-            {showSignedStatus && (
-                <EditorStatusLine
-                    data-testid="dpa-signed-status"
-                    actions={[{ label: t('legal.help.snackbar.dismiss'), onClick: dismissSignedStatus }]}
-                >
-                    {t('legal.dpa.sign.complete')}
-                </EditorStatusLine>
-            )}
             {!readOnly && onDiscardDraft && (
                 <LegalDraftStatus
                     savedAt={draftSavedAt}
@@ -294,7 +269,7 @@ export const DataProcessingAgreementCard = ({
             )}
             <DpaDeadlineInfo
                 signingDeadlineAt={signingDeadlineAt}
-                status={dpaStatus}
+                status={help.role === 'tenant' && dpaSigned && dpaStatus === 'VALID' ? undefined : dpaStatus}
                 newCounsellingAllowed={newCounsellingAllowed}
                 renewalGraceActive={renewalGraceActive}
             />
@@ -317,6 +292,7 @@ export const DataProcessingAgreementCard = ({
                 title={title}
                 // In a tile the header, the explanation button and the help text belong to the tile.
                 hideHeader={collapsible}
+                fullscreenLabel={t(readOnly ? 'legal.m3Editor.readFullscreen' : 'legal.m3Editor.openFullscreen')}
                 headerAction={
                     collapsible ? undefined : (
                         <TileHelpButton topic={contractHelp} tileTitle={title} tileIcon={<DpaIcon />} />
@@ -353,6 +329,7 @@ export const DataProcessingAgreementCard = ({
                                     <EditorHintSnackbar
                                         layout="long"
                                         tone="error"
+                                        title={t('legal.dpa.publishErrorTitle')}
                                         text={errorMessage}
                                         onClose={onCloseError}
                                     />

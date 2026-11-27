@@ -1,5 +1,5 @@
 import '@ant-design/v5-patch-for-react-19';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -133,15 +133,34 @@ it('shows the saved categories in their order, with their topics in order and th
     expect(document.querySelector(`img[src="${OWN_ICON}"]`)).not.toBeNull();
 });
 
-it('edits in the dialog and saves the whole catalogue through the catalogue endpoint', async () => {
+it('shows one view: no dialog and no editing controls until "Bearbeiten"', async () => {
+    showTab();
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    expect(screen.queryByRole('button', { name: 'Kategorie nach unten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Neue Kategorie/ })).toBeNull();
+    expect(document.querySelector('[draggable="true"]')).toBeNull();
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Kategorie nach unten' }).length).toBeGreaterThan(0);
+    expect(document.querySelector('[draggable="true"]')).not.toBeNull();
+
+    await u.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('button', { name: 'Kategorie nach unten' })).toBeNull();
+    expect(screen.getByLabelText('Bearbeiten')).toBeInTheDocument();
+});
+
+it('edits in place and saves the whole catalogue through the catalogue endpoint', async () => {
     showTab();
     const u = userEvent.setup({ delay: null });
     await waitFor(() => expect(groupItems('1')).toHaveLength(2));
 
     await u.click(screen.getByLabelText('Bearbeiten'));
-    const dialog = await screen.findByRole('dialog');
-    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
-    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await u.click(screen.getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => expect(savedCatalogue).toBeDefined());
     expect(savedCatalogue).toEqual({
@@ -161,24 +180,24 @@ it('edits in the dialog and saves the whole catalogue through the catalogue endp
         ],
         topics: [],
     });
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull());
     await waitFor(() => expect(groupOrder()).toEqual(['5', '1']));
 });
 
-it('keeps the dialog and the edit open when saving fails', async () => {
+it('keeps the edit open when saving fails', async () => {
     server.use(http.put('*/service/topicadmin/catalogue', () => new HttpResponse(null, { status: 500 })));
     showTab();
     const u = userEvent.setup({ delay: null });
     await waitFor(() => expect(groupItems('1')).toHaveLength(2));
 
     await u.click(screen.getByLabelText('Bearbeiten'));
-    const dialog = await screen.findByRole('dialog');
-    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
-    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await u.click(screen.getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('nicht gespeichert');
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled();
-    expect(groupOrder()).toEqual(['1', '5']);
+    expect(await screen.findByRole('alert')).toHaveTextContent('nicht gespeichert');
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    // The unsaved draft stays on screen.
+    expect(groupOrder()).toEqual(['5', '1']);
 });
 
 it('shows a topic that is in no category, so it can still be switched on or off', async () => {
@@ -194,10 +213,9 @@ it('offers every active language for a first translation, even without any text 
     const u = userEvent.setup({ delay: null });
     await waitFor(() => expect(groupItems('1')).toHaveLength(2));
 
+    expect(screen.getByRole('button', { name: /Französisch/ })).toBeInTheDocument();
     await u.click(screen.getByLabelText('Bearbeiten'));
-    const dialog = await screen.findByRole('dialog');
-
-    expect(within(dialog).getByRole('button', { name: /Französisch/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Französisch/ })).toBeInTheDocument();
 });
 
 it('keeps the switch for the topic step of the registration, since /admin/topics redirects here', async () => {
@@ -236,14 +254,16 @@ it('opens the editor only once a running visibility change and its reload are do
     await waitFor(() => expect(groupItems('5')).toHaveLength(1));
 
     await u.click(screen.getByRole('switch', { name: /Migration/ }));
-    await u.click(screen.getByLabelText('Bearbeiten'));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByLabelText('Bearbeiten')).toBeDisabled();
 
     const readsBefore = catalogueReads;
     finishPut();
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText('Bearbeiten')).toBeEnabled());
     expect(catalogueReads).toBeGreaterThan(readsBefore);
+    expect(screen.getByRole('switch', { name: /Migration/ })).toBeChecked();
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeInTheDocument();
 });
 
 it('says the name is taken when the service rejects a rename with 409, and keeps the edit', async () => {
@@ -253,10 +273,62 @@ it('says the name is taken when the service rejects a rename with 409, and keeps
     await waitFor(() => expect(groupItems('1')).toHaveLength(2));
 
     await u.click(screen.getByLabelText('Bearbeiten'));
-    const dialog = await screen.findByRole('dialog');
-    await u.click(within(dialog).getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
-    await u.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await u.click(screen.getAllByRole('button', { name: 'Kategorie nach unten' })[0]);
+    await u.click(screen.getByRole('button', { name: 'Speichern' }));
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Diesen Namen hat schon ein anderes Thema');
-    expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Diesen Namen hat schon ein anderes Thema');
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeEnabled();
+});
+
+it('fills missing translations with AI in edit mode, marks them and saves them', async () => {
+    let asked: { targetLangs: string[]; texts: Record<string, string> } | undefined;
+    server.use(
+        http.post('*/service/tenantadmin/translate', async ({ request }) => {
+            asked = (await request.json()) as typeof asked;
+            const fr = Object.fromEntries(Object.entries(asked!.texts).map(([key, value]) => [key, `${value} (fr)`]));
+            return HttpResponse.json({ translations: { fr }, provider: 'openrouter', model: 'm' });
+        }),
+    );
+    showTab(['de', 'en', 'fr']);
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    expect(screen.queryByRole('button', { name: 'Fehlende Texte mit KI übersetzen' })).toBeNull();
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+    await waitFor(() => expect(asked).toBeDefined());
+    expect(asked!.targetLangs).toEqual(['fr']);
+    expect(asked!.texts['topicName:14']).toBe('Schulden');
+    expect(await screen.findByText(/Texte übersetzt/)).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: /Französisch/ }));
+    expect(groupItems('1')[1]).toContain('Schulden (fr)');
+    expect(screen.getAllByRole('img', { name: 'Maschinell übersetzt, noch nicht geprüft' }).length).toBeGreaterThan(0);
+
+    await u.click(screen.getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(savedCatalogue).toBeDefined());
+    const saved = savedCatalogue as typeof catalogue;
+    expect(saved.topics.find((topic) => topic.id === 14)?.name).toEqual({
+        de: 'Schulden',
+        en: 'Debt',
+        fr: 'Schulden (fr)',
+    });
+    expect(saved.groups[0].name).toEqual({ de: 'Alter', en: 'Ageing, Older Adults', fr: 'Alter (fr)' });
+});
+
+it('says so when the AI translation has no API key', async () => {
+    server.use(
+        http.post('*/service/tenantadmin/translate', () =>
+            HttpResponse.json({ errorCode: 'TRANSLATION_NOT_CONFIGURED' }, { status: 400 }),
+        ),
+    );
+    showTab(['de', 'en', 'fr']);
+    const u = userEvent.setup({ delay: null });
+    await waitFor(() => expect(groupItems('1')).toHaveLength(2));
+
+    await u.click(screen.getByLabelText('Bearbeiten'));
+    await u.click(screen.getByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('API-Schlüssel fehlt');
 });

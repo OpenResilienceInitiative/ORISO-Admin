@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useState } from 'react';
 import { expect, fn, userEvent, within } from 'storybook/test';
 import type { TopicCatalogueDto } from '../../types/TopicCatalogue';
 import {
@@ -7,7 +8,7 @@ import {
     FIXTURE_LAYOUT,
     FIXTURE_TOPICS,
 } from '../TopicCatalogue/topicCatalogueFixtures';
-import { TopicCatalogueDialog } from '.';
+import { TopicCatalogueDialog, TopicCatalogueEditor } from '.';
 
 /** The dev topics as GET /topicadmin/catalogue answers them; two own pictures, one topic without any. */
 const catalogue: TopicCatalogueDto = {
@@ -70,6 +71,73 @@ export const SaveError: Story = {
     },
 };
 
+/** The page itself (Settings → Themen): one view, read mode first; "Bearbeiten" turns on the editing in place. */
+const InlineHarness = ({ startEditing = false }: { startEditing?: boolean }) => {
+    const [editing, setEditing] = useState(startEditing);
+    return (
+        <div style={{ padding: 24 }}>
+            <TopicCatalogueEditor
+                variant="inline"
+                catalogue={catalogue}
+                languages={FIXTURE_LANGUAGES}
+                editing={editing}
+                onEdit={() => setEditing(true)}
+                onCancel={() => setEditing(false)}
+                onSave={async () => setEditing(false)}
+                onToggleActive={() => undefined}
+                onTranslate={async ({ targetLangs, texts }) => ({
+                    provider: 'story',
+                    model: 'story',
+                    translations: Object.fromEntries(
+                        targetLangs.map((code) => [
+                            code,
+                            Object.fromEntries(
+                                Object.entries(texts).map(([key, value]) => [key, `${value} [${code}]`]),
+                            ),
+                        ]),
+                    ),
+                })}
+            />
+        </div>
+    );
+};
+
+/** Read mode on the page: no handles, arrows or fields, only the visibility switches and "Bearbeiten". */
+export const OnThePage: Story = {
+    render: () => <InlineHarness />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByLabelText('Bearbeiten')).toBeInTheDocument();
+        await expect(canvas.queryByRole('dialog')).toBeNull();
+        await expect(canvas.queryAllByRole('button', { name: 'Kategorie nach unten' })).toHaveLength(0);
+        await expect(canvas.getAllByRole('switch').length).toBeGreaterThan(0);
+    },
+};
+
+/** Same place after "Bearbeiten": the editing controls appear, no second layer opens. */
+export const OnThePageEditing: Story = {
+    render: () => <InlineHarness />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByLabelText('Bearbeiten'));
+        await expect(canvas.queryByRole('dialog')).toBeNull();
+        await expect(canvas.getAllByRole('button', { name: 'Kategorie nach unten' }).length).toBeGreaterThan(0);
+        await expect(canvas.getByRole('button', { name: 'Speichern' })).toBeDisabled();
+    },
+};
+
+/** The AI button of the Journeys: fills every missing text, the translate mark shows which texts a machine wrote. */
+export const OnThePageTranslated: Story = {
+    render: () => <InlineHarness />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(await canvas.findByRole('button', { name: /Bearbeiten|Edit/ }));
+        await userEvent.click(canvas.getByRole('button', { name: /KI|AI/ }));
+        await userEvent.click(canvas.getAllByRole('button', { name: /Englisch|English/ })[0]);
+        await expect((await canvas.findAllByRole('img', { name: /Maschinell|Machine/ })).length).toBeGreaterThan(0);
+    },
+};
+
 /** "Fehlende Texte mit KI übersetzen" fills every empty language; the admin checks and saves (Frank, 2026-11-24). */
 export const TranslateMissingWithAi: Story = {
     args: {
@@ -88,8 +156,7 @@ export const TranslateMissingWithAi: Story = {
     },
     play: async ({ canvasElement, args }) => {
         const body = within(canvasElement.ownerDocument.body);
-        const bar = await body.findByTestId('topic-dialog-translate');
-        await userEvent.click(within(bar).getByRole('button'));
+        await userEvent.click(await body.findByRole('button', { name: 'Fehlende Texte mit KI übersetzen' }));
         await expect(args.onTranslate).toHaveBeenCalledTimes(1);
         await expect(await body.findByRole('button', { name: 'Speichern' })).toBeEnabled();
     },

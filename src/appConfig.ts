@@ -25,6 +25,8 @@ export const supportedLanguages = [...SUPPORTED_LANGUAGE_CODES];
 
 export const agencyDataAgencyId = (agencyId: string) => `${agencyServiceURL}/service/agencyadmin/agencies/${agencyId}`;
 export const agencyEndpointBase = `${agencyServiceURL}/service/agencyadmin/agencies`;
+// Case sharing model changes per Beratungsstelle (ORISO-Frontend#2494): `?agencyId=&page=0-based&perPage=`.
+export const caseSharingChangesEndpoint = `${agencyEndpointBase}/case-sharing-changes`;
 /** Träger → Beratungsstellen template distribution (ORISO-AgencyService#303). */
 export const agencyLegalProposalDistributionsEndpoint = `${agencyServiceURL}/service/agencyadmin/legal-proposal-distributions`;
 export const agencyPostcodeRangeEndpointBase = `${agencyServiceURL}/service/agencyadmin/postcoderanges`;
@@ -177,6 +179,7 @@ const routePathNames = {
     statisticPreview: '/admin/statistic-preview',
     logs: '/admin/logs',
     caseHandoverLogs: '/admin/logs/case-handover',
+    caseSharingLogs: '/admin/logs/case-sharing',
     inactiveAccountAuditLogs: '/admin/logs/inactive-accounts',
     deletionAuditLogs: '/admin/logs/deletions',
     addonAuditLogs: '/admin/logs/addons',

@@ -208,8 +208,8 @@ export const ResponsiveWide: Story = {
     decorators: [withContentWidth(1164)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
-        viewport: { defaultViewport: 'laptop' },
     },
+    globals: { viewport: { value: 'laptop', isRotated: false } },
     play: ({ canvasElement }) => assertRasterColumns(canvasElement, 3),
 };
 
@@ -218,8 +218,8 @@ export const ResponsiveIntermediateContent: Story = {
     decorators: [withContentWidth(880)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
-        viewport: { defaultViewport: 'responsive1100' },
     },
+    globals: { viewport: { value: 'responsive1100', isRotated: false } },
     play: ({ canvasElement }) => assertRasterColumns(canvasElement, 2),
 };
 
@@ -228,8 +228,8 @@ export const Responsive640: Story = {
     decorators: [withContentWidth(640)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
-        viewport: { defaultViewport: 'responsive640' },
     },
+    globals: { viewport: { value: 'responsive640', isRotated: false } },
     play: ({ canvasElement }) => assertRasterColumns(canvasElement, 1),
 };
 
@@ -238,7 +238,7 @@ export const ResponsiveNarrow: Story = {
     decorators: [withContentWidth(360)],
     parameters: {
         msw: { handlers: okHandlers({ featureAnonymousChatEnabled: true }) },
-        viewport: { defaultViewport: 'phoneSmall' },
     },
+    globals: { viewport: { value: 'phoneSmall', isRotated: false } },
     play: ({ canvasElement }) => assertRasterColumns(canvasElement, 1),
 };

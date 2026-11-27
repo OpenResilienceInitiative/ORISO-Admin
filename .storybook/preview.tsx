@@ -1,5 +1,6 @@
 import { settlePendingRequests } from './pendingRequests';
-import { storyRenderCleanup } from './storyRenderCleanup';
+import { storyRenderCleanup, type NativeStoryRenderer } from './storyRenderCleanup';
+import { renderToCanvas as nativeRenderToCanvas } from '@storybook/react/entry-preview';
 import * as React from 'react';
 // antd's static APIs (message/notification/Modal.confirm) are silent no-ops
 // under React 19 without this patch — the app imports it in src/index.tsx,
@@ -20,6 +21,8 @@ import { createSharedStoryHandlers } from './fixtures';
 import { clearStoryQueryClients, createStoryQueryClient, releaseStoryQueryClient } from './queryClients';
 import { buildAdminAntdTheme } from '../src/theme/antdM3Theme';
 import { AdminEmpty } from '../src/components/AdminEmpty';
+import { applyAdminTheme, clearAdminInvertedThemeTokens } from '../src/utils/applyAdminTheme';
+import type { AdminContrast } from '../src/utils/theme/orisoScheme';
 
 // Global Admin styling: antd v5 reset + app less/overrides. Mirrors src/App.tsx.
 import 'antd/dist/reset.css';
@@ -62,7 +65,76 @@ const StoryProviders = ({ children }: { children: React.ReactNode }) => {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
 };
 
+type StoryScheme = 'light' | 'dark';
+type StoryContrast = AdminContrast;
+
+/**
+ * The `scheme` and `contrast` globals: the personal display settings the app applies through
+ * AdminDisplayProvider (applyAdminTheme on the root, `data-admin-personal-contrast`, and the antd
+ * theme for the same scheme/contrast). `light` + `standard` (default) leave everything as before,
+ * so stories that set their own tokens are not touched.
+ */
+const StoryScheme = ({
+    scheme,
+    contrast,
+    children,
+}: {
+    scheme: StoryScheme;
+    contrast: StoryContrast;
+    children: React.ReactNode;
+}) => {
+    const personal = scheme === 'dark' || contrast !== 'standard';
+    React.useLayoutEffect(() => {
+        if (!personal) return undefined;
+        const root = document.documentElement;
+        applyAdminTheme(null, root, scheme, contrast);
+        if (contrast !== 'standard') root.dataset.adminPersonalContrast = contrast;
+        return () => {
+            clearAdminInvertedThemeTokens();
+            delete root.dataset.adminPersonalContrast;
+        };
+    }, [personal, scheme, contrast]);
+    if (scheme !== 'dark') return <>{children}</>;
+    return (
+        <div
+            style={{ minHeight: '100vh', padding: 24, background: 'var(--m3-surface)', color: 'var(--m3-on-surface)' }}
+        >
+            {children}
+        </div>
+    );
+};
+
+const readContrast = (value: unknown): StoryContrast => (value === 'medium' || value === 'high' ? value : 'standard');
+
 const preview: Preview = {
+    initialGlobals: { scheme: 'light', contrast: 'standard' },
+    globalTypes: {
+        scheme: {
+            description: 'Admin colour scheme (personal display setting)',
+            toolbar: {
+                title: 'Scheme',
+                icon: 'mirror',
+                items: [
+                    { value: 'light', title: 'Light' },
+                    { value: 'dark', title: 'Dark' },
+                ],
+                dynamicTitle: true,
+            },
+        },
+        contrast: {
+            description: 'Admin contrast level (personal display setting)',
+            toolbar: {
+                title: 'Contrast',
+                icon: 'contrast',
+                items: [
+                    { value: 'standard', title: 'Standard' },
+                    { value: 'medium', title: 'Medium' },
+                    { value: 'high', title: 'High' },
+                ],
+                dynamicTitle: true,
+            },
+        },
+    },
     parameters: {
         // WCAG 2.2 AA: run axe-core (incl. the 2.2-specific rules) against each
         // story and flag violations as errors (A11y panel + storybook test-runner).
@@ -82,68 +154,13 @@ const preview: Preview = {
         viewport: {
             options: {
                 phoneSmall: { name: 'Phone 360', styles: { width: '360px', height: '740px' } },
+                mobile1: { name: 'Mobile 320 (smallest)', styles: { width: '320px', height: '568px' } },
                 phone: { name: 'Phone 390', styles: { width: '390px', height: '844px' } },
                 tablet: { name: 'Tablet 768', styles: { width: '768px', height: '1024px' } },
                 responsive640: { name: 'Responsive 640', styles: { width: '640px', height: '900px' } },
                 responsive1100: { name: 'Responsive 1100', styles: { width: '1100px', height: '900px' } },
                 laptop: { name: 'Laptop 1280', styles: { width: '1280px', height: '800px' } },
                 desktop: { name: 'Desktop 1440', styles: { width: '1440px', height: '900px' } },
-            },
-        },
-        options: {
-            storySort: {
-                order: [
-                    'Settings',
-                    [
-                        'Einstellungen',
-                        [
-                            'Globale Konfigurationen',
-                            'Stammdaten & Mehr',
-                            'Erscheinungsbild',
-                            'Rechtliches',
-                            'Einführung Ratsuchende',
-                            'Email Server',
-                            'Systemhinweise',
-                            'Funktionszugriff',
-                            'Funktionalitäten',
-                            '*',
-                        ],
-                        'Träger',
-                        [
-                            'Stammdaten & Mehr',
-                            'Erscheinungsbild',
-                            'Rechtliches',
-                            'Einführung Ratsuchende',
-                            'Email Server',
-                            'Funktionszugriff',
-                            'Funktionalitäten',
-                            '*',
-                        ],
-                        'Beratungsstellen',
-                        ['Stammdaten & Mehr', 'Rechtliches', 'Funktionszugriff', '*'],
-                        'Mein Account',
-                        [
-                            'UserProfile',
-                            'PrivateData',
-                            'RolesAndAssignment',
-                            'SelfConsultantIdentity',
-                            'PasswordChange',
-                            'PasswordChangeCounsellorNotice',
-                            'TwoFactorCard',
-                            'LanguageSettings',
-                            'Absence',
-                            'TourOverviewSection',
-                            'Documentation',
-                            '*',
-                        ],
-                        '*',
-                    ],
-                    'Atoms',
-                    'Molecules',
-                    'Organisms',
-                    'Pages',
-                    '*',
-                ],
             },
         },
     },
@@ -183,20 +200,43 @@ const preview: Preview = {
         });
     },
     decorators: [
-        (Story, context) => (
-            <StoryProviders>
-                <ConfigProvider locale={de_DE} theme={buildAdminAntdTheme()} renderEmpty={() => <AdminEmpty />}>
-                    <AntdApp component={false}>
-                        {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
-                        <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
-                            <Story />
-                        </MemoryRouter>
-                        {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}
-                    </AntdApp>
-                </ConfigProvider>
-            </StoryProviders>
-        ),
+        (Story, context) => {
+            const scheme: StoryScheme = context.globals.scheme === 'dark' ? 'dark' : 'light';
+            const contrast = readContrast(context.globals.contrast);
+            const personal = scheme === 'dark' || contrast !== 'standard';
+            return (
+                <StoryProviders>
+                    <ConfigProvider
+                        locale={de_DE}
+                        theme={buildAdminAntdTheme(personal ? { scheme, contrast } : undefined)}
+                        renderEmpty={() => <AdminEmpty />}
+                    >
+                        <AntdApp component={false}>
+                            {/* `parameters.route` opens a story at an address, e.g. a list narrowed by `?q=`. */}
+                            <MemoryRouter initialEntries={[context.parameters.route ?? '/']}>
+                                <StoryScheme scheme={scheme} contrast={contrast}>
+                                    <Story />
+                                </StoryScheme>
+                            </MemoryRouter>
+                            {context.parameters.ownSnackbarHost ? null : <StorySnackbarHost />}
+                        </AntdApp>
+                    </ConfigProvider>
+                </StoryProviders>
+            );
+        },
     ],
 };
+
+// Vitest only: retain the renderer's ACT-wrapped teardown so each story test can
+// finish its own cleanup. The normal Storybook UI keeps the native renderer.
+// Storybook 11 no longer allows setProjectAnnotations in the Vitest setup file.
+if (import.meta.env.MODE === 'test') {
+    const capturedNativeRenderer: NativeStoryRenderer = async (context, canvas) => {
+        const teardown = await nativeRenderToCanvas(context, canvas);
+        if (typeof teardown !== 'function') throw new Error('Native Storybook renderer returned no teardown');
+        return storyRenderCleanup.retain(teardown);
+    };
+    preview.renderToCanvas = capturedNativeRenderer;
+}
 
 export default preview;

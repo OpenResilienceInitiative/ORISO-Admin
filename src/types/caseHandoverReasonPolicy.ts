@@ -1,6 +1,14 @@
 import type { SupportedLanguageCode } from '../constants/supportedLanguages';
 import type { CaseHandoverConsentPolicy, CaseHandoverConsentValue, PermissionPolicyMode } from './permissionPolicy';
 
+export type CaseHandoverExplanationLevel = 'OFF' | 'OPTIONAL' | 'REQUIRED';
+
+export const CASE_HANDOVER_EXPLANATION_LEVELS: readonly CaseHandoverExplanationLevel[] = [
+    'OFF',
+    'OPTIONAL',
+    'REQUIRED',
+];
+
 export interface CaseHandoverReasonPolicy {
     code: string;
     label: string;
@@ -19,6 +27,10 @@ export interface CaseHandoverReasonPolicy {
     policyAuthority?: string | null;
     /** Required for advice/co-access; omitted for takeover reasons that have no TTL. */
     maxAccessDurationMinutes?: number | null;
+    /**
+     * Whether the counsellor writes an explanation for this reason (FE#2040). Absent reads as OFF.
+     */
+    explanationLevel?: CaseHandoverExplanationLevel | null;
     /** Client-facing system-notification templates per language ({{newAdvisor}} placeholder). */
     clientNotificationTemplates?: Partial<Record<SupportedLanguageCode, string>> | null;
 }

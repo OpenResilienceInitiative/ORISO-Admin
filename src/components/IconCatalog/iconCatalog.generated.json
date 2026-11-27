@@ -2180,7 +2180,10 @@
         "fileName": "silent_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/silent_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverExplanationLevelControl.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2206,7 +2209,10 @@
         "fileName": "switch_off_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/switch_off_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverExplanationLevelControl.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -2219,7 +2225,10 @@
         "fileName": "switch_on_400_24px.svg",
         "sourcePath": "src/resources/img/svg/oriso/switch_on_400_24px.svg",
         "exportNames": [],
-        "usageFiles": ["src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx"],
+        "usageFiles": [
+            "src/components/CaseHandoverConsentPolicyControl/CaseHandoverConsentPolicyControl.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverExplanationLevelControl.tsx"
+        ],
         "usage": "app-used"
     },
     {
@@ -3118,6 +3127,7 @@
             "src/components/PermissionPolicyControl/PermissionPolicyControl.tsx",
             "src/components/PillSelect/index.tsx",
             "src/components/Snackbar/Snackbar.tsx",
+            "src/components/Tenants/AppSettings/PermissionsSettings/CaseHandoverCard/CaseHandoverExplanationLevelControl.tsx",
             "src/components/Tenants/AppSettings/PermissionsSettings/CaseSharingSection/index.tsx",
             "src/components/Tenants/AppSettings/PermissionsSettings/GuestAccountModeSection/index.tsx",
             "src/pages/ErrorPages/AdminNotFound.tsx",
