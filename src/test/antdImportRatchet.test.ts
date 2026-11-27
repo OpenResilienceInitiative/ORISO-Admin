@@ -15,15 +15,25 @@ import allowed from './antdBaseline.allowed.json';
 // Lower this when files leave the list. Never raise it.
 // 292 = one-time re-snapshot on 2026-11-27: 263 (Oct 13) - 49 files that dropped AntD + 78 added on dev
 // before this gate merged. The 78 are listed as follow-ups in ORISO-Admin#1171.
-const MAX_BASELINE = 292;
+// 297 = +5 files that load AntD through a literal `import()` (3 since before Oct 13, 2 added later),
+// found once the guard learned to see dynamic imports.
+const MAX_BASELINE = 297;
 
 const root = resolve(__dirname, '../..');
 const ANTD_MODULE = /^(?:antd(?:\/.*)?|@ant-design\/.+)$/;
 
-// Same scope as ESLint: imports, re-exports, `import x = require()` and `require()`, exact
-// package names only. Comments, strings, `vi.mock('antd')` and `typeof import('antd')` do not count.
+// Imports, re-exports, `import x = require()`, `require()` and literal `import()` (which ESLint's
+// no-restricted-imports does not see), exact package names only. Comments, strings, `vi.mock('antd')` and `typeof import('antd')` do not count.
+const scriptKind = (fileName: string): ts.ScriptKind => {
+    if (/\.[cm]?ts$/.test(fileName)) return ts.ScriptKind.TS;
+    if (/\.tsx$/.test(fileName)) return ts.ScriptKind.TSX;
+    if (/\.jsx$/.test(fileName)) return ts.ScriptKind.JSX;
+    return ts.ScriptKind.JS;
+};
+
 const importsAntdSource = (source: string, fileName = 'sample.tsx'): boolean => {
-    const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, false, ts.ScriptKind.TSX);
+    // Parse by extension: `<number>1` is a cast in .ts but JSX in .tsx.
+    const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, false, scriptKind(fileName));
     const isAntd = (node: ts.Node | undefined) => !!node && ts.isStringLiteralLike(node) && ANTD_MODULE.test(node.text);
     const visit = (node: ts.Node): boolean => {
         if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
@@ -32,8 +42,8 @@ const importsAntdSource = (source: string, fileName = 'sample.tsx'): boolean => 
             if (isAntd(node.moduleReference.expression)) return true;
         } else if (
             ts.isCallExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            node.expression.text === 'require' &&
+            ((ts.isIdentifier(node.expression) && node.expression.text === 'require') ||
+                node.expression.kind === ts.SyntaxKind.ImportKeyword) &&
             isAntd(node.arguments[0])
         ) {
             return true;
@@ -75,6 +85,8 @@ describe('AntD import ratchet (#1171)', () => {
             "import {\n    DeleteOutlined,\n} from '@ant-design/icons';",
             "const antd = require('antd');",
             "import Legacy = require('antd/es/button');",
+            "const load = () => import('antd');",
+            "const icons = await import('@ant-design/icons');",
         ].forEach((source) => expect(importsAntdSource(source), source).toBe(true));
         [
             "import x from 'antd-foo';",
@@ -85,6 +97,12 @@ describe('AntD import ratchet (#1171)', () => {
             'const sample = "import { Button } from \'antd\';";',
             "const sample = `const antd = require('antd');`;",
         ].forEach((source) => expect(importsAntdSource(source), source).toBe(false));
+    });
+
+    it('parses .ts files as TypeScript, so a type assertion cannot hide an AntD require', () => {
+        const source = "const value = <number>1;\nconst antd = require('antd');";
+        expect(importsAntdSource(source, 'sample.ts')).toBe(true);
+        expect(importsAntdSource("const view = <div />;\nconst antd = require('antd');", 'sample.tsx')).toBe(true);
     });
 
     it('forbids AntD imports as an error for every file', () => {
