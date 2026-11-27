@@ -1890,6 +1890,7 @@
     "topicCatalogue.moveDown": "Move “{{name}}” down",
     "topicCatalogue.empty": "There are no topics yet.",
     "topicCatalogue.loadError": "The topics could not be loaded.",
+    "topicCatalogue.noAccess": "You have no access to the topics. Please contact your platform admin.",
     "topicCatalogue.retry": "Try again",
     "topicCatalogue.announce.editStarted": "Editing started. Use the arrow keys on the handle to move.",
     "topicCatalogue.announce.cancelled": "Changes discarded.",

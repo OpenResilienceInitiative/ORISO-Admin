@@ -100,6 +100,8 @@ export interface TopicCatalogueProps {
     isLoading?: boolean;
     /** The list could not be loaded. Shown in place of the categories, with a way to try again. */
     loadError?: boolean;
+    /** Replaces the generic load error, e.g. when the viewer has no read access to topics. */
+    loadErrorText?: string;
     onRetry?: () => void;
     /**
      * Saves categories, order, translations and icons in one go. Without it there is no edit mode: the
@@ -168,6 +170,7 @@ export const TopicCatalogue = ({
     layout,
     isLoading,
     loadError,
+    loadErrorText,
     onRetry,
     onSaveLayout,
     onEdit,
@@ -953,7 +956,7 @@ export const TopicCatalogue = ({
     if (loadError) {
         body = (
             <div className={styles.state} role="alert">
-                <p>{t('topicCatalogue.loadError')}</p>
+                <p>{loadErrorText ?? t('topicCatalogue.loadError')}</p>
                 {onRetry && (
                     <M3Button variant="tonal" onClick={onRetry}>
                         {t('topicCatalogue.retry')}

@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { useState } from 'react';
+import appI18n from '../../i18n';
 import { CardGrid } from '../CardGrid';
 import { TopicCatalogue, type CatalogueChange, type CatalogueTopic, type TopicCatalogueProps } from './index';
 import {
@@ -216,6 +217,17 @@ export const LoadError: Story = {
     render: () => <Stateful topics={[]} layout={[]} loadError onRetry={() => undefined} />,
     play: async ({ canvasElement }) => {
         await expect(await within(canvasElement).findByRole('alert')).toHaveTextContent('nicht geladen werden');
+    },
+};
+
+/** The viewer has no read access (403, #1504): a plain sentence, no retry, no redirect away. */
+export const NoAccess: Story = {
+    args: base,
+    render: () => <Stateful topics={[]} layout={[]} loadError loadErrorText={appI18n.t('topicCatalogue.noAccess')} />,
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByRole('alert')).toHaveTextContent('keinen Zugriff auf die Themen');
+        await expect(canvas.queryByText('Erneut versuchen')).toBeNull();
     },
 };
 
