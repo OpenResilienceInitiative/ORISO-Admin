@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { PersonCell } from './PersonCell';
 
 vi.mock('react-i18next', () => ({
-    useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }),
+    useTranslation: () => ({ t: (key: string, fallback?: string) => fallback ?? key }),
 }));
 // Decorative icons do not affect the Copy button or snackbar behaviour.
 vi.mock('@mui/icons-material', () => ({ Check: () => null, Close: () => null }));
@@ -24,7 +24,7 @@ describe('PersonCell e-mail copying', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /E-Mail/ }));
 
-        expect(await screen.findByRole('status')).toHaveTextContent('Kopieren fehlgeschlagen');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Kopieren fehlgeschlagen');
     });
 
     it('shows the failure snackbar when writing throws before returning a promise', async () => {
@@ -40,6 +40,6 @@ describe('PersonCell e-mail copying', () => {
 
         fireEvent.click(screen.getByRole('button', { name: /E-Mail/ }));
 
-        expect(await screen.findByRole('status')).toHaveTextContent('Kopieren fehlgeschlagen');
+        expect(await screen.findByRole('alert')).toHaveTextContent('Kopieren fehlgeschlagen');
     });
 });

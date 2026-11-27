@@ -2,7 +2,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const mocks = vi.hoisted(() => ({
     fetchData: vi.fn(),
@@ -26,6 +26,7 @@ vi.mock('../../api/settings/sendGlobalSmtpTestEmail', () => ({
     sendGlobalSmtpTestEmail: mocks.sendGlobalSmtpTestEmail,
 }));
 
+import { SnackbarHost } from '../../components/Snackbar';
 import { GlobalSmtpSettingsPage } from './index';
 import {
     globalSmtpPlatformSettingsEndpoint,
@@ -142,6 +143,8 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
             return Promise.resolve({});
         });
         const user = userEvent.setup();
+        // The host has permanent live regions, so only the test that reads a snackbar mounts it.
+        render(<SnackbarHost />);
         renderPage();
         await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'edit' }));
@@ -380,7 +383,7 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         mocks.fetchData.mockRejectedValue(new Error('unavailable'));
         renderPage();
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('globalSettings.smtp.saved.error');
+        expect(await screen.findByText('globalSettings.smtp.saved.error')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
     });
 
@@ -392,6 +395,7 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
             }),
         );
         const user = userEvent.setup();
+        render(<SnackbarHost />);
         renderPage();
         await screen.findByText(savedSummary.host);
         await user.click(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' }));
@@ -541,7 +545,7 @@ describe('GlobalSmtpSettingsPage (saved Admin SMTP)', () => {
         await user.click(screen.getByRole('button', { name: 'edit' }));
         await user.click(screen.getByRole('switch', { name: 'globalSettings.smtp.systemEmailToggle.title' }));
         await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
-        await screen.findByRole('alert');
+        await screen.findByText('globalSettings.smtp.saved.error');
         expect(screen.getByRole('button', { name: 'globalSettings.smtp.test.button' })).toBeDisabled();
         expect(mocks.sendGlobalSmtpTestEmail).not.toHaveBeenCalled();
     });

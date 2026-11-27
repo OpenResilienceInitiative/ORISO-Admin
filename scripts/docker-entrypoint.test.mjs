@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // ORISO-Helm#368: the Admin container refuses to start without an API URL and names the variable,
 // instead of shipping an env.js that makes the browser guess its own origin.
@@ -26,6 +26,27 @@ const runEntrypoint = (env) => {
     }
 };
 
+describe('Admin image payload', () => {
+    it('keeps the two BFF modules outside the document root', () => {
+        const dockerfile = fs.readFileSync(path.resolve(path.dirname(entrypoint), '../Dockerfile'), 'utf8');
+        expect(dockerfile).not.toMatch(/^COPY\s+scripts\/?\s/m);
+        const publicScriptCopies = dockerfile
+            .replace(/\\\r?\n/g, ' ')
+            .split(/\r?\n/)
+            .filter(
+                (line) =>
+                    /^\s*(?:COPY|ADD)\s/i.test(line) &&
+                    /(?:^|[\s",])(?:\.\/)?scripts(?:[\/\s",]|$)/.test(line) &&
+                    /\/usr\/share\/nginx\/html(?:[\/\s",]|$)/.test(line),
+            );
+        expect(publicScriptCopies).toEqual([]);
+        expect(dockerfile).toContain(
+            'COPY scripts/auth-bff-server.mjs scripts/auth-bff-handlers.mjs /opt/oriso/admin-auth-bff/',
+        );
+        expect(fs.readFileSync(entrypoint, 'utf8')).toContain('node /opt/oriso/admin-auth-bff/auth-bff-server.mjs');
+    });
+});
+
 describe('Admin docker-entrypoint runtime config', () => {
     it.each([{}, { VITE_API_URL: '' }, { REACT_APP_API_URL: '   ' }])(
         'fails and names VITE_API_URL when it is missing (%j)',
@@ -41,5 +62,13 @@ describe('Admin docker-entrypoint runtime config', () => {
         const result = runEntrypoint({ VITE_API_URL: 'https://admin.example.org' });
         expect(result.stderr).not.toMatch(/VITE_API_URL/);
         expect(result.envJs).toContain('"API_URL": "https://admin.example.org"');
+    });
+
+    it('writes the add-on service origin when it is set', () => {
+        const result = runEntrypoint({
+            VITE_API_URL: 'https://admin.example.org',
+            VITE_ADDON_SERVICE_ORIGIN: 'https://addons.example.org',
+        });
+        expect(result.envJs).toContain('"ADDON_SERVICE_ORIGIN": "https://addons.example.org"');
     });
 });

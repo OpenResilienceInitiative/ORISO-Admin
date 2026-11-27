@@ -1,8 +1,9 @@
+import type { ReactNode } from 'react';
 import type { Decorator, Meta, StoryObj } from '@storybook/react-vite';
 import i18n from 'i18next';
 import type { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse, delay, type RequestHandler } from 'msw';
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import type { CounselorData } from '../../../types/counselor';
@@ -10,7 +11,10 @@ import { UserRole } from '../../../enums/UserRole';
 import { encodeUsername } from '../../../utils/encryptionHelpers';
 import { setStoryAuth, withSeededAdminProviders } from '../../../utils/storybook/adminStoryDecorators';
 import { TENANT_DATA_KEY } from '../../../hooks/useTenantData.hook';
+import { findPopup, popupsOf } from '../../../test/storyPopups';
 import { UsersList } from './index';
+import { SAVE_SORT_DELAY_MS } from '../../../hooks/useAdminListPreferences';
+import { beginUserDiagnostic, observeUserDiagnosticRoute } from '../../../../scripts/story-user-diagnostic';
 
 // GET .../service/users/consultants/search — HAL body: `{ total, _embedded: [...] }`.
 const CONSULTANTS_ENDPOINT = '*/service/users/consultants/search';
@@ -80,14 +84,23 @@ const halList = (list: object[]) => HttpResponse.json({ total: list.length, _emb
 // Every story also answers the saved-sort and filter-list calls; its own handlers come first and win.
 const DEFAULT_HANDLERS = [
     http.get(PREFERENCES_ENDPOINT, () => HttpResponse.json({ sorts: {} })),
+    http.put(`${PREFERENCES_ENDPOINT}/sorts/:tab`, () => new HttpResponse(null, { status: 204 })),
     http.get(TENANTS_ENDPOINT, () => halList(TENANTS)),
     http.get(AGENCIES_ENDPOINT, () => halList(AGENCIES)),
 ];
 const withDefaults = (handlers: RequestHandler[]) => [...handlers, ...DEFAULT_HANDLERS];
 
+const DiagnosticRoute = ({ children }: { children: ReactNode }) => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return children;
+};
+
 const meta = {
     title: 'Organisms/Pages/Users/UserManagement',
     component: UsersList,
+    beforeEach: (context) => beginUserDiagnostic(context.name),
     parameters: { layout: 'fullscreen' },
     // A4 layout from 1280 up; the narrower stories below pick their own width.
     globals: { viewport: { value: 'desktop', isRotated: false } },
@@ -95,7 +108,16 @@ const meta = {
         (Story, { parameters }) => {
             // Super-admin token so the create button + editable columns render.
             setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin, UserRole.UserAdmin], 0);
-            return withSeededAdminProviders(Story, parameters.seedQueries);
+            return withSeededAdminProviders(
+                import.meta.env.VITE_ORISO_USER_SEQUENCE
+                    ? () => (
+                          <DiagnosticRoute>
+                              <Story />
+                          </DiagnosticRoute>
+                      )
+                    : Story,
+                parameters.seedQueries,
+            );
         },
     ],
 } satisfies Meta<typeof UsersList>;
@@ -182,12 +204,37 @@ export const Loading: Story = {
     },
 };
 
-/** Backend failure (500): the search helper degrades gracefully to an empty table. */
+let listRequests = 0;
+let listRecovered = false;
+/**
+ * Backend failure (500): one error pop-up with a title and "Erneut versuchen"; the table keeps quiet text.
+ * The retry asks again (a second request) and the people appear.
+ */
 export const Error: Story = {
     parameters: {
         msw: {
-            handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => new HttpResponse(null, { status: 500 }))]),
+            handlers: withDefaults([
+                http.get(CONSULTANTS_ENDPOINT, () => {
+                    listRequests += 1;
+                    return listRecovered ? consultantsResponse(CONSULTANTS) : new HttpResponse(null, { status: 500 });
+                }),
+            ]),
         },
+    },
+    beforeEach: () => {
+        listRequests = 0;
+        listRecovered = false;
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Fehler beim Laden der Daten.', 'error');
+        await expect(popup).toHaveTextContent('Benutzer');
+        await expect(within(canvasElement).getByText('Dieser Bereich konnte nicht geladen werden.')).toBeVisible();
+        const before = listRequests;
+        listRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Erneut versuchen' }));
+        await waitFor(() => expect(listRequests).toBeGreaterThan(before));
+        await expect(await within(canvasElement).findByText(/Anna/)).toBeVisible();
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
     },
 };
 
@@ -206,9 +253,19 @@ const TENANT_ADMINS: CounselorData[] = [
     { ...CONSULTANTS[1], id: 'ta-2', tenantId: '7', tenantName: 'Diakonie Berlin', agencies: [] },
 ];
 
+const DiagnosticUsersList = () => {
+    const location = useLocation();
+    const { typeOfUsers } = useParams();
+    observeUserDiagnosticRoute(location.pathname, typeOfUsers);
+    return <UsersList />;
+};
+
 const onTenantAdminsTab = () => (
     <Routes location="/admin/users/tenant-admins">
-        <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+        <Route
+            path="/admin/users/:typeOfUsers"
+            element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+        />
     </Routes>
 );
 
@@ -228,6 +285,48 @@ export const TenantAdminsForPlatformAdmin: Story = {
         await expect(await canvas.findByText('Caritas Hamburg')).toBeVisible();
         await expect(canvas.getByText('Diakonie Berlin')).toBeVisible();
         await expect(canvasElement.querySelectorAll('[data-scope-chip="tenant"]')).toHaveLength(2);
+    },
+};
+
+const STATISTICS_READERS_ENDPOINT = '*/service/useradmin/statisticsreaders/search';
+
+const STATISTICS_READERS: CounselorData[] = [
+    {
+        ...CONSULTANTS[0],
+        id: 'sr-1',
+        key: 'sr-1',
+        firstname: 'Sabine',
+        lastname: 'Zahl',
+        email: 'sabine.zahl@example.org',
+        username: 'szahl',
+        agencies: [],
+        agencyIds: [],
+        tenantId: '0',
+        otherIdentityTypes: [],
+    },
+];
+
+/**
+ * Statistik-Leser·innen tab (ORISO-UserService#1666), platform admins only: read-only statistics
+ * accounts, no Träger column, create/edit/delete like the platform admins.
+ */
+export const StatisticsReadersForPlatformAdmin: Story = {
+    render: () => (
+        <Routes location="/admin/users/statistics-readers">
+            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+        </Routes>
+    ),
+    parameters: {
+        msw: {
+            handlers: withDefaults([
+                http.get(STATISTICS_READERS_ENDPOINT, () => consultantsResponse(STATISTICS_READERS)),
+            ]),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await expect(await canvas.findByText('sabine.zahl@example.org')).toBeVisible();
+        await expect(canvas.queryByRole('columnheader', { name: 'Träger' })).toBeNull();
     },
 };
 
@@ -272,7 +371,10 @@ export const SortRejectedByServer: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('status')).toHaveTextContent('Vorname');
+        // The rejected sort is an event: one warning pop-up titled "Benutzer", nothing that shifts the table.
+        const popup = await findPopup(canvasElement, 'Diese Sortierung ist hier nicht möglich', 'warning');
+        await expect(popup).toHaveTextContent('Vorname');
+        await expect(popup).toHaveTextContent('Benutzer');
         await expect(canvas.getByRole('columnheader', { name: /Vorname/ })).toHaveAttribute('aria-sort', 'ascending');
         await expect(canvas.getByRole('columnheader', { name: /Zuletzt aktualisiert/ })).not.toHaveAttribute(
             'aria-sort',
@@ -296,7 +398,10 @@ const onTab = (tab: string) => () =>
     (
         <Routes>
             <Route path="/" element={<Navigate to={`/admin/users/${tab}`} replace />} />
-            <Route path="/admin/users/:typeOfUsers" element={<UsersList />} />
+            <Route
+                path="/admin/users/:typeOfUsers"
+                element={import.meta.env.VITE_ORISO_USER_SEQUENCE ? <DiagnosticUsersList /> : <UsersList />}
+            />
             <Route path="*" element={<EditTarget />} />
         </Routes>
     );
@@ -435,8 +540,8 @@ export const PlatformAdminsTab: Story = {
             const row = await rowOf(canvasElement, 'Muster');
             await expect(row.querySelector('[data-status] svg')).not.toBeNull();
         });
-        await step('delete asks with the admin dialog', () =>
-            expectDeleteDialog(canvasElement, /Möchten Sie Anna Muster wirklich löschen/),
+        await step('delete confirmation identifies the platform admin', () =>
+            expectDeleteDialog(canvasElement, /Plattform-Admin Anna Muster löschen\?/),
         );
     },
 };
@@ -586,21 +691,19 @@ const licensedSearch = http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
 export const LicenceLimitIgnoresSearch: Story = {
     render: onTab('consultants'),
     parameters: {
+        // The search comes from the admin search (⌘K) as ?q=; the list has no search field of its own.
+        route: '/admin/users/consultants?q=Muster',
         msw: { handlers: withDefaults([licensedSearch]) },
         seedQueries: (client: QueryClient) => {
             client.setQueryDefaults([TENANT_DATA_KEY], { staleTime: Infinity });
             client.setQueryData([TENANT_DATA_KEY, 0], { id: 1, licensing: { allowedNumberOfUsers: 3 } });
         },
     },
-    play: async ({ canvasElement, userEvent: user }) => {
+    play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await rowOf(canvasElement, 'Dritte');
-        await expect(canvas.getByText(/^3\/3 Berater/)).toBeVisible();
-        await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
-
-        await user.click(canvas.getByRole('button', { name: 'Suche ausklappen' }));
-        await user.type(await canvas.findByPlaceholderText(/Suche nach E-Mail-Adresse/), 'Muster');
-        await waitFor(() => expect(canvas.queryByText('Ben Beispiel')).toBeNull());
+        await rowOf(canvasElement, 'Muster');
+        await expect(canvas.queryByText('Ben Beispiel')).toBeNull();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Muster“');
         await expect(await canvas.findByText(/^3\/3 Berater/)).toBeVisible();
         await expect(canvas.getByRole('button', { name: /Neu/ })).toBeDisabled();
     },
@@ -665,6 +768,16 @@ export const ConsultantsTabAt1280: Story = {
     },
 };
 
+/** Keeps the table as narrow as these stories test it, whatever else the window has room for. */
+const withContentWidth =
+    (width: number): Decorator =>
+    (Story) =>
+        (
+            <div style={{ width, maxWidth: '100%' }}>
+                <Story />
+            </div>
+        );
+
 export const ConsultantsTabAt960: Story = {
     render: onTab('consultants'),
     parameters: {
@@ -672,7 +785,7 @@ export const ConsultantsTabAt960: Story = {
         msw: { handlers: withDefaults([http.get(CONSULTANTS_ENDPOINT, () => consultantsResponse(CONSULTANTS))]) },
     },
     globals: { viewport: { value: 'tablet960', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement, step, userEvent: user }) => {
         const canvas = within(canvasElement);
         const body = within(canvasElement.ownerDocument.body);
@@ -687,12 +800,31 @@ export const ConsultantsTabAt960: Story = {
             await noSideScroll(canvasElement);
         });
 
-        await step('tab arrows scroll the account types; Beratende starts in view', async () => {
-            const left = canvas.getByRole('button', { name: 'Tabs nach links' });
-            const right = canvas.getByRole('button', { name: 'Tabs nach rechts' });
-            await waitFor(() => expect(right).toBeDisabled());
-            await user.click(left);
-            await waitFor(() => expect(right).toBeEnabled());
+        await step('account types never scroll: the active tab is in the bar, the rest behind „Mehr“', async () => {
+            // #1374: tabs that do not fit move behind „Mehr (n)“ instead of scrolling.
+            const active = canvas.getAllByRole('tab').find((tab) => tab.getAttribute('aria-selected') === 'true');
+            await expect(active).toBeDefined();
+            const tablist = active!.closest('[role="tablist"]') as HTMLElement;
+            const bar = tablist.closest('[data-admin-subnav]') as HTMLElement;
+            await waitFor(() => {
+                const barRect = bar.getBoundingClientRect();
+                const tabRect = active!.getBoundingClientRect();
+                expect(tablist.scrollWidth).toBeLessThanOrEqual(tablist.clientWidth + 1);
+                expect(tabRect.left).toBeGreaterThanOrEqual(barRect.left - 1);
+                expect(tabRect.right).toBeLessThanOrEqual(barRect.right + 1);
+            });
+            // 664px of bar: the selected Beratende stays in the bar next to Plattform and Träger Admins;
+            // Beratungsstellen Admins, Ratsuchende (ORISO-Admin#1521) and the platform-only
+            // Statistik-Leser·innen (ORISO-UserService#1666, listed last) move behind „Mehr“.
+            await expect(active).toHaveTextContent('Beratende');
+            await expect(canvas.getByRole('tab', { name: 'Träger Admins' })).toBeVisible();
+            await expect(canvas.queryByRole('tab', { name: 'Beratungsstellen Admins' })).toBeNull();
+            await expect(canvas.queryByRole('tab', { name: 'Ratsuchende' })).toBeNull();
+            await expect(canvas.queryByRole('tab', { name: 'Statistik-Leser·innen' })).toBeNull();
+            const more = within(bar).getByRole('button', { name: 'Mehr (3)' });
+            await expect(tablist).not.toContainElement(more);
+            await expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(bar.getBoundingClientRect().right + 1);
+            await noSideScroll(canvasElement);
         });
 
         await step('⋯ opens the row menu; Bearbeiten goes where it always did', async () => {
@@ -714,7 +846,9 @@ export const ConsultantsTabAt960SortedByDate: Story = {
         const body = within(canvasElement.ownerDocument.body);
         await rowOf(canvasElement, 'Muster');
         // Default order is "last updated, newest first".
-        const pill = canvas.getByRole('button', { name: /nach Zuletzt aktualisiert/ });
+        const pill = canvas.getByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
+        });
         await user.click(pill);
         await expect(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' })).toHaveAttribute(
             'aria-checked',
@@ -725,7 +859,52 @@ export const ConsultantsTabAt960SortedByDate: Story = {
 
         await user.click(canvas.getByRole('button', { name: /Name nach Vorname/ }));
         await user.click(await body.findByRole('menuitemradio', { name: 'Zuletzt aktualisiert' }));
-        await expect(await canvas.findByRole('button', { name: /nach Zuletzt aktualisiert/ })).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert neueste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
+    },
+};
+
+export const ConsultantsTabAt960SortedByOldestUpdate: Story = {
+    ...ConsultantsTabAt960,
+    parameters: {
+        ...WIDTHS,
+        msw: {
+            handlers: withDefaults([
+                http.get(CONSULTANTS_ENDPOINT, ({ request }) => {
+                    const url = new URL(request.url);
+                    return consultantsResponse(
+                        url.searchParams.get('field') === 'UPDATE_DATE' && url.searchParams.get('order') === 'ASC'
+                            ? [...CONSULTANTS].reverse()
+                            : CONSULTANTS,
+                    );
+                }),
+                http.get(PREFERENCES_ENDPOINT, () =>
+                    HttpResponse.json({ sorts: { consultants: { field: 'UPDATE_DATE', order: 'ASC' } } }),
+                ),
+            ]),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await rowOf(canvasElement, 'Muster');
+        const bodyRows = canvas.getAllByRole('row').slice(1);
+        await expect(within(bodyRows[0]).getByText(/Beispiel/)).toBeVisible();
+        await expect(within(bodyRows[1]).getByText(/Muster/)).toBeVisible();
+        const datePill = await canvas.findByRole('button', {
+            name: 'Sortiert nach Zuletzt aktualisiert älteste zuerst',
+        });
+        await expect(datePill).toBeVisible();
+        const nameHeader = canvas.getByRole('columnheader', { name: /^Name/ });
+        await expect(datePill.getBoundingClientRect().right).toBeLessThanOrEqual(
+            nameHeader.getBoundingClientRect().right,
+        );
+        await noSideScroll(canvasElement);
     },
 };
 
@@ -775,6 +954,7 @@ export const PlatformAdminsTabAt1280: Story = {
 export const PlatformAdminsTabAt960: Story = {
     ...PlatformAdminsTabAt1280,
     globals: { viewport: { value: 'tablet960', isRotated: false } },
+    decorators: [withContentWidth(712), withSidebarRail],
     play: async ({ canvasElement }) => {
         const row = await rowOf(canvasElement, 'Muster');
         await expect(within(row).getByText('@amuster')).toBeVisible();
@@ -920,8 +1100,15 @@ const searchSpy = (endpoint: string, rows: CounselorData[] = CONSULTANTS, total 
     return { urls, handler, last: () => urls[urls.length - 1] };
 };
 
+/** The Träger and Beratungsstelle pickers fold out behind one "Filter" button (Admin#1510). */
+const openFilters = async (canvasElement: HTMLElement) => {
+    const toggle = within(canvasElement).getByRole('button', { name: /^Filter/ });
+    if (toggle.getAttribute('aria-expanded') !== 'true') await userEvent.setup().click(toggle);
+};
+
 const pick = async (canvasElement: HTMLElement, label: string, option: RegExp) => {
     const user = userEvent.setup();
+    await openFilters(canvasElement);
     await user.click(within(canvasElement).getByRole('combobox', { name: label }));
     await user.click(await within(canvasElement.ownerDocument.body).findByRole('option', { name: option }));
     await user.keyboard('{Escape}');
@@ -957,6 +1144,7 @@ export const FilterByTraegerAndCentre: Story = {
         });
 
         await step('centre filter offers only that Träger’s centres and sends agencyId', async () => {
+            await openFilters(canvasElement);
             await user.click(canvas.getByRole('combobox', { name: 'Beratungsstelle' }));
             const list = await within(canvasElement.ownerDocument.body).findByRole('listbox');
             await expect(within(list).getAllByRole('option')).toHaveLength(2);
@@ -988,6 +1176,7 @@ export const FilterTenantAdminsByTraeger: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
+        await openFilters(canvasElement);
         await expect(canvas.queryByRole('combobox', { name: 'Beratungsstelle' })).toBeNull();
         await pick(canvasElement, 'Träger', /Diakonie Berlin/);
         await waitFor(() => expect(tenantAdminSpy.last().searchParams.get('tenantId')).toBe('7'));
@@ -996,18 +1185,19 @@ export const FilterTenantAdminsByTraeger: Story = {
 
 const chipSpy = searchSpy(CONSULTANTS_ENDPOINT);
 
-/** A click on a row's BST chip filters the table to that centre. */
-export const ChipSetsCentreFilter: Story = {
+/** A row's Träger and BST chips are labels, not filters: filtering lives behind the "Filter" button (Admin#1510). */
+export const RowChipsAreNotFilters: Story = {
     render: onTab('consultants'),
     parameters: { msw: { handlers: withDefaults([chipSpy.handler]) } },
-    play: async ({ canvasElement, userEvent: user }) => {
+    play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const row = await rowOf(canvasElement, 'Muster');
-        await user.click(within(row).getByRole('button', { name: /BST 101/ }));
-        await waitFor(() => expect(chipSpy.last().searchParams.get('agencyId')).toBe('101'));
-        await expect(canvas.getByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).toHaveTextContent(
-            'Beratungsstelle Nord',
-        );
+        const chip = row.querySelector('[data-scope-chip="agency"]') as HTMLElement;
+        await expect(chip).toHaveTextContent(/BST\s*101/);
+        await expect(chip.closest('button, [role="button"]')).toBeNull();
+        await userEvent.setup().click(chip);
+        await expect(chipSpy.last().searchParams.get('agencyId')).toBeNull();
+        await expect(canvas.queryByRole('region', { name: /Gefiltert auf Beratungsstelle/ })).toBeNull();
     },
 };
 
@@ -1026,6 +1216,7 @@ export const CentreFilterForTraegerAdmin: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
+        await openFilters(canvasElement);
         await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
         await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Beratungsstelle' })).toBeEnabled());
     },
@@ -1052,7 +1243,8 @@ export const CentreFilterForBstAdmin: Story = {
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         await rowOf(canvasElement, 'Muster');
-        const input = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
+        await waitFor(() => openFilters(canvasElement));
+        const input = await canvas.findByRole('combobox', { name: 'Beratungsstelle' });
         await waitFor(() => expect(input).toBeEnabled());
         await user.click(input);
         const list = await within(canvasElement.ownerDocument.body).findByRole('listbox');
@@ -1060,7 +1252,7 @@ export const CentreFilterForBstAdmin: Story = {
     },
 };
 
-/** BST admin with one centre: nothing to choose, the filter stays visible but disabled. */
+/** BST admin with one centre: nothing to choose, so no "Filter" button and no centre picker (Admin#1510). */
 export const CentreFilterForBstAdminWithOneCentre: Story = {
     ...CentreFilterForBstAdmin,
     parameters: {
@@ -1074,7 +1266,8 @@ export const CentreFilterForBstAdminWithOneCentre: Story = {
     },
     play: async ({ canvasElement }) => {
         await rowOf(canvasElement, 'Muster');
-        await expect(within(canvasElement).getByRole('combobox', { name: 'Beratungsstelle' })).toBeDisabled();
+        await waitFor(() => expect(within(canvasElement).queryByRole('button', { name: /^Filter/ })).toBeNull());
+        await expect(within(canvasElement).queryByRole('combobox', { name: 'Beratungsstelle' })).toBeNull();
     },
 };
 
@@ -1183,10 +1376,17 @@ export const QuickSortChangesSaveOnce: Story = {
         await sortName();
         await sortName();
         await expect(canvas.getByRole('columnheader', { name: /^Name/ })).toHaveAttribute('aria-sort', 'descending');
+        // Wait for the debounced save itself instead of a fixed 900 ms: on a loaded runner the two
+        // clicks, the 500 ms debounce and the request together took longer, and the check ran on [].
+        await waitFor(
+            () => expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]),
+            { timeout: 3000 },
+        );
+        // Then one more debounce window: a second save would have arrived by now.
         await new Promise((resolve) => {
-            setTimeout(resolve, 900);
+            setTimeout(resolve, SAVE_SORT_DELAY_MS + 200);
         });
-        await expect(savedBodies).toEqual([{ tab: 'agency-admins', body: { field: 'LASTNAME', order: 'DESC' } }]);
+        await expect(savedBodies).toHaveLength(1);
     },
 };
 
@@ -1220,7 +1420,9 @@ export const SortSaveFails: Story = {
         await new Promise((resolve) => {
             setTimeout(resolve, 300);
         });
-        await expect(canvasElement.ownerDocument.querySelector('.ant-message-error')).toBeNull();
+        await expect(
+            canvasElement.ownerDocument.querySelector('[data-testid="snackbar"][data-severity="error"]'),
+        ).toBeNull();
     },
 };
 
@@ -1260,7 +1462,7 @@ export const AccountsInNarrowDesktopContainer: Story = {
     globals: { viewport: { value: 'desktop', isRotated: false } },
     decorators: [
         (Story) => (
-            <div style={{ width: 767, maxWidth: '100%' }}>
+            <div style={{ width: 647, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1282,7 +1484,7 @@ export const AccountsAtCardBoundary: Story = {
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: 768, maxWidth: '100%' }}>
+            <div style={{ width: 648, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1302,14 +1504,14 @@ export const AccountsOnTablet834: Story = {
     ...AccountsInNarrowDesktopContainer,
     parameters: { ...AccountsInNarrowDesktopContainer.parameters, ...WIDTHS },
     globals: { viewport: { value: 'tablet834', isRotated: false } },
-    decorators: [withSidebarRail],
+    decorators: [withContentWidth(586), withSidebarRail],
 };
 
 const accountsBoundary = (width: number, columns: number): Story => ({
     ...AccountsInNarrowDesktopContainer,
     decorators: [
         (Story) => (
-            <div style={{ width: width + 168, maxWidth: '100%' }}>
+            <div style={{ width: width + 48, maxWidth: '100%' }}>
                 <Story />
             </div>
         ),
@@ -1330,7 +1532,7 @@ export const AccountsAt728 = accountsBoundary(728, 5);
 export const AccountsAt983 = accountsBoundary(983, 5);
 export const AccountsAt984 = accountsBoundary(984, 6);
 
-// ---- The account toolbar keeps scope filters beside search, including on phones.
+// ---- The account toolbar: one Filter button and the actions, no search of its own (⌘K), also on phones.
 
 const toolbarSpy = searchSpy(CONSULTANTS_ENDPOINT, CONSULTANTS, CONSULTANTS.length);
 const toolbarLanguage = (language: 'de' | 'en') => async () => {
@@ -1347,26 +1549,16 @@ const toolbarLabels = {
         tenant: 'Träger',
         centre: 'Beratungsstelle',
         expand: 'Suche ausklappen',
-        collapse: 'Suche einklappen',
         invitations: 'Zu Einladungen',
         create: 'Neu',
     },
     en: {
         tenant: 'Provider',
-        centre: 'Agency',
+        centre: 'Counselling centre',
         expand: 'Expand search',
-        collapse: 'Collapse search',
         invitations: 'Go to invitations',
         create: 'New',
     },
-};
-
-const sameControlRow = async (controls: HTMLElement[]) => {
-    const centres = controls.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.top + rect.height / 2;
-    });
-    await expect(Math.max(...centres) - Math.min(...centres)).toBeLessThan(8);
 };
 
 const toolbarPlay =
@@ -1375,38 +1567,23 @@ const toolbarPlay =
         const canvas = within(canvasElement);
         const labels = toolbarLabels[language];
         await canvas.findByText('Anna Muster');
-        const tenant = canvas.getByRole('combobox', { name: labels.tenant });
-        const centre = canvas.getByRole('combobox', { name: labels.centre });
-        const expand = canvas.getByRole('button', { name: labels.expand });
+        // One search for the whole admin (⌘K): no search field of the list's own beside the Filter button.
+        await expect(canvas.queryByRole('button', { name: labels.expand })).toBeNull();
+        await expect(canvas.queryByRole('textbox')).toBeNull();
+        const filter = canvas.getByRole('button', { name: /^Filter/ });
         const invitations = canvas.getByRole('link', { name: labels.invitations });
         await expect(invitations).toHaveAttribute('href', '/admin/links');
         await expect(canvas.getAllByRole('button', { name: new RegExp(`${labels.create}$`) })).toHaveLength(1);
-        await sameControlRow([expand, tenant, centre]);
-        await user.click(expand);
-        const search = canvas.getByRole('textbox');
-        await waitFor(() => expect(search).toBeVisible());
-        await user.type(search, 'Anna');
-        await waitFor(() => expect(toolbarSpy.last().searchParams.get('query')).toBe('Anna'));
-        await user.click(canvas.getByRole('button', { name: labels.collapse }));
-        await user.click(canvas.getByRole('button', { name: labels.expand }));
-        await expect(canvas.getByRole('textbox')).toHaveValue('Anna');
-        await sameControlRow([canvas.getByRole('textbox'), tenant, centre]);
-        if (phone) {
-            // Only the controls row scrolls; the page and account cards stay inside the viewport.
-            let scroller: HTMLElement | null = centre.parentElement;
-            while (scroller) {
-                const overflow = getComputedStyle(scroller).overflowX;
-                if (['auto', 'scroll'].includes(overflow) && scroller.scrollWidth > scroller.clientWidth) break;
-                scroller = scroller.parentElement;
-            }
-            await expect(scroller).not.toBeNull();
-            if (!scroller) return;
-            scroller.scrollLeft = scroller.scrollWidth;
-            await expect(scroller.scrollLeft).toBeGreaterThan(0);
-            await noSideScroll(canvasElement);
-        }
+        // Admin#1510: one "Filter" button; the pickers fold out below it.
+        await expect(filter).toHaveAttribute('aria-expanded', 'false');
+        await expect(canvas.queryByRole('combobox', { name: labels.tenant })).toBeNull();
+        await user.click(filter);
+        await expect(canvas.getByRole('combobox', { name: labels.tenant })).toBeVisible();
+        await expect(canvas.getByRole('combobox', { name: labels.centre })).toBeVisible();
+        if (phone) await noSideScroll(canvasElement);
         await pick(canvasElement, labels.centre, /Jugendberatung Mitte/);
         await waitFor(() => expect(toolbarSpy.last().searchParams.get('agencyId')).toBe('102'));
+        await expect(filter).toHaveAccessibleName(/1/);
     };
 
 /** Wide layout: one calm row; invitations is clearly navigation, not a send action. */
@@ -1440,14 +1617,12 @@ export const UnifiedToolbarTraegerPhone390: Story = {
     play: async ({ canvasElement, userEvent: user }) => {
         const canvas = within(canvasElement);
         await canvas.findByText('Anna Muster');
+        await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
+        const filter = canvas.getByRole('button', { name: /^Filter/ });
+        await user.click(filter);
         await expect(canvas.queryByRole('combobox', { name: 'Träger' })).toBeNull();
-        const centre = canvas.getByRole('combobox', { name: 'Beratungsstelle' });
-        const search = canvas.getByRole('button', { name: 'Suche ausklappen' });
-        await expect(centre).toBeEnabled();
-        await sameControlRow([search, centre]);
+        await waitFor(() => expect(canvas.getByRole('combobox', { name: 'Beratungsstelle' })).toBeEnabled());
         await expect(canvas.getByRole('link', { name: 'Zu Einladungen' })).toHaveAttribute('href', '/admin/links');
-        await user.click(search);
-        await waitFor(() => expect(canvas.getByRole('textbox')).toBeVisible());
         await noSideScroll(canvasElement);
     },
 };
@@ -1548,4 +1723,45 @@ export const UnifiedToolbarManyLongCentresPhone390: Story = {
 export const UnifiedToolbarEightLongCentresPhone390: Story = {
     ...UnifiedToolbarManyLongCentresPhone390,
     play: manyLongCentresPlay(8),
+};
+
+/** Room for the list's request chain (tenant, Träger, centres, saved sort, then search) on a slow runner. */
+const LIST_LOADED = { timeout: 8000 };
+const narrowedSpy = searchSpy(CONSULTANTS_ENDPOINT, [CONSULTANTS[0]], 1);
+/**
+ * One search for the whole admin: the account list has no search field of its own any more (it used
+ * to sit beside the ⌘K search). ⌘K → "Alle Treffer in der Liste zeigen" opens it with `?q=`; the
+ * Filter button and the actions stay.
+ */
+export const NarrowedBySearch: Story = {
+    render: onTab('consultants'),
+    parameters: {
+        route: '/admin/users/consultants?q=Anna',
+        msw: { handlers: withDefaults([narrowedSpy.handler]) },
+    },
+    // The spy is shared with the phone variant; each story checks only its own request.
+    beforeEach: () => {
+        narrowedSpy.urls.length = 0;
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        // Ready = the search was answered and the list (table or phone cards) is no longer busy. The search
+        // waits for the saved sort, so it comes after a chain of mocked requests; on a busy runner that
+        // chain outlasts findByText's 1 s default (Admin#1506). The name is then checked without waiting.
+        await waitFor(() => {
+            expect(narrowedSpy.urls).toHaveLength(1);
+            expect(canvas.getByTestId('account-list').querySelector('[aria-busy="true"]')).toBeNull();
+        }, LIST_LOADED);
+        await expect(canvas.getByText('Anna Muster')).toBeVisible();
+        await expect(narrowedSpy.last().searchParams.get('query')).toBe('Anna');
+        await expect(canvas.queryByRole('textbox')).toBeNull();
+        await expect(canvas.queryByRole('button', { name: 'Suche ausklappen' })).toBeNull();
+        await expect(canvas.getByTestId('list-search-bar')).toHaveTextContent('„Anna“');
+        await expect(canvas.getByRole('button', { name: /^Filter/ })).toBeVisible();
+    },
+};
+
+export const NarrowedBySearchPhone: Story = {
+    ...NarrowedBySearch,
+    globals: { viewport: { value: 'phone', isRotated: false } },
 };

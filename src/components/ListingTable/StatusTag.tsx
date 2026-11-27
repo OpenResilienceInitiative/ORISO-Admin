@@ -2,12 +2,13 @@ import { Tag } from 'antd';
 import classNames from 'classnames';
 import styles from './styles.module.scss';
 
-export type LinkStatus = 'ACTIVE' | 'USED' | 'EXPIRED';
+export type LinkStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'DISABLED';
 
 const statusClassMap: Record<LinkStatus, string> = {
     ACTIVE: styles.statusTagActive,
     USED: styles.statusTagUsed,
     EXPIRED: styles.statusTagExpired,
+    DISABLED: styles.statusTagDefault,
 };
 
 const getAnonymityClass = (value: string): string => {

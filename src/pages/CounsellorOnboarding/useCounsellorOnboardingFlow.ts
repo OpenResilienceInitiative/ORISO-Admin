@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { normalizeLanguage } from '../../utils/language';
 import { type CounsellorAvatarValue, normaliseAvatarValue } from '../../utils/counsellorAvatar';
-import { completeExistingAccountSetup } from '../../api/tenantOnboarding/tenantOnboarding';
+import {
+    AccountSetupPasswordError,
+    AccountSetupPasswordRejection,
+    completeExistingAccountSetup,
+} from '../../api/tenantOnboarding/tenantOnboarding';
 import {
     CounsellorOnboardingClient,
     CounsellorOnboardingInviteDTO,
@@ -85,6 +89,24 @@ export const effectiveTopicPermission = (
     invite: Pick<CounsellorOnboardingInviteDTO, 'targetRole' | 'topicPermission'>,
 ): CounsellorTopicPermission => (invite.targetRole === 'AGENCY_ADMIN' ? 'CREATE' : invite.topicPermission ?? 'CREATE');
 
+/**
+ * What the inviting admin suggested (#1274). A missing or unknown kind means no
+ * suggestion; `PICTURE` is not offered by the wizard yet, so it is not adopted.
+ */
+export const suggestionFromInvite = (
+    invite: Pick<CounsellorOnboardingInviteDTO, 'avatarKind' | 'avatarId' | 'displayName'>,
+): { avatar: CounsellorAvatarValue; displayName: string } => {
+    const displayName = (invite.displayName ?? '').trim();
+    const { avatarKind, avatarId } = invite;
+    if (avatarKind === 'ICON' && avatarId?.trim()) {
+        return { avatar: { avatarKind: 'ICON', avatarId: avatarId.trim() }, displayName };
+    }
+    if (avatarKind === 'INITIALS' || avatarKind === 'ICON') {
+        return { avatar: { avatarKind: 'INITIALS', avatarId: '' }, displayName };
+    }
+    return { avatar: {}, displayName };
+};
+
 /** `CREATE` preselects the whole coverage; otherwise a lone agency topic or the assigned department. */
 export const initialTopicSelection = (invite: CounsellorOnboardingInviteDTO): number[] => {
     const coverage = invite.topics.map((topic) => topic.id);
@@ -113,6 +135,8 @@ export const useCounsellorOnboardingFlow = (
     const [invite, setInvite] = useState<CounsellorOnboardingInviteDTO | null>(null);
     const [data, setData] = useState<CounsellorWizardData>(EMPTY_DATA);
     const [submitError, setSubmitError] = useState<CounsellorOnboardingSubmitError>(null);
+    // The server refused the chosen password (existing-account setup); the link stays usable.
+    const [passwordRejection, setPasswordRejection] = useState<AccountSetupPasswordRejection | null>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -138,6 +162,7 @@ export const useCounsellorOnboardingFlow = (
         busyRef.current = false;
         setBusy(false);
         setSubmitError(null);
+        setPasswordRejection(null);
     }, [inviteToken]);
     // Submits read the freshest collected data through a ref — the callbacks
     // stay stable while every keystroke updates `data`.
@@ -185,8 +210,12 @@ export const useCounsellorOnboardingFlow = (
                 // The invite's coverage arrives preselected (owner decision
                 // 2026-09-17): the invitee removes chips or adds further tenant
                 // topics instead of starting from an empty selection.
+                const suggestion = suggestionFromInvite(loaded);
                 setData({
                     ...EMPTY_DATA,
+                    // The inviting admin's icon and name (#1274); null = as before, initials and empty name.
+                    avatar: suggestion.avatar,
+                    names: { ...EMPTY_DATA.names, publicName: suggestion.displayName },
                     topicIds: initialTopicSelection(loaded),
                     // The inviter's proposal; the backend default is "also counsels".
                     alsoCounsellor: loaded.alsoCounsellor ?? true,
@@ -403,13 +432,18 @@ export const useCounsellorOnboardingFlow = (
             busyRef.current = true;
             setBusy(true);
             setSubmitError(null);
+            setPasswordRejection(null);
             try {
                 await completeExistingAccountSetup(inviteToken, password);
                 if (inviteTokenRef.current === inviteToken) {
                     setState({ phase: 'done' });
                 }
             } catch (error) {
-                if (inviteTokenRef.current === inviteToken) {
+                if (inviteTokenRef.current !== inviteToken) {
+                    // A different link is shown meanwhile; this answer belongs to the old one.
+                } else if (error instanceof AccountSetupPasswordError) {
+                    setPasswordRejection(error.rejection);
+                } else {
                     failFlow(error, 'registration');
                 }
             } finally {
@@ -492,6 +526,7 @@ export const useCounsellorOnboardingFlow = (
         invite,
         data,
         submitError,
+        passwordRejection,
         busy,
         retryLoad,
         topicLanguageError,

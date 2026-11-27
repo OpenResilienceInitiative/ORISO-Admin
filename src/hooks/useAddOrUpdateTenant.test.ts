@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildTenantRequestBody } from './useAddOrUpdateTenant.hook';
 import { TenantAdminData } from '../types/TenantAdminData';
 
@@ -79,5 +79,57 @@ describe('buildTenantRequestBody — Träger DPO (Admin#1067)', () => {
         const stored = { ...STORED, dataProtectionOfficer: dpo } as TenantAdminData;
         const body = buildTenantRequestBody(stored, form(), 'musterstadt');
         expect(body.dataProtectionOfficer).toEqual(dpo);
+    });
+});
+
+describe('buildTenantRequestBody — stored settings', () => {
+    const stored = {
+        ...STORED,
+        settings: { featureStatisticsEnabled: true, smtp: { enabled: true } },
+    } as unknown as TenantAdminData;
+    const formWithoutSettings = {
+        name: 'Caritas Musterstadt',
+        licensing: { allowedNumberOfUsers: 5 },
+    } as TenantAdminData;
+
+    it('keeps the stored settings when the saving form has no settings fields', () => {
+        const body = buildTenantRequestBody(stored, formWithoutSettings, 'musterstadt');
+
+        expect(body.settings).toEqual(stored.settings);
+    });
+
+    it('lets the settings a form does carry win over the stored ones', () => {
+        const body = buildTenantRequestBody(
+            stored,
+            form({ settings: { featureStatisticsEnabled: false } }),
+            'musterstadt',
+        );
+
+        expect(body.settings).toEqual({ featureStatisticsEnabled: false, smtp: { enabled: true } });
+    });
+});
+
+/**
+ * Frank, 2026-11-20: the licence moved from Stammdaten to the Träger tab "Weitere". The Stammdaten
+ * form no longer carries it, and its save must not reset the stored number.
+ */
+describe('buildTenantRequestBody — licence', () => {
+    it('keeps the stored licence when the saving form does not carry it', () => {
+        const { licensing, ...withoutLicence } = form() as unknown as Record<string, unknown>;
+        expect(licensing).toBeDefined();
+
+        const body = buildTenantRequestBody(STORED, withoutLicence as unknown as TenantAdminData, 'musterstadt');
+
+        expect(body.licensing).toEqual({ allowedNumberOfUsers: 5 });
+    });
+
+    it('sends the licence the form carries (create dialog)', () => {
+        const body = buildTenantRequestBody(
+            undefined,
+            form({ licensing: { allowedNumberOfUsers: 12 } }),
+            'musterstadt',
+        );
+
+        expect(body.licensing).toEqual({ allowedNumberOfUsers: 12 });
     });
 });

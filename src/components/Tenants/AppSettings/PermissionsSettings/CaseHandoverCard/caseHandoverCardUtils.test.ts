@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
     applyClientConsent,
     applyClientConsentPolicy,
+    applyExplanationLevel,
+    resolvedExplanationLevel,
     applyModuleEnabled,
     buildDisplayReasons,
     canonicalReasonCode,
@@ -16,6 +18,10 @@ import {
     getNotificationTemplate,
     reasonTranslationKey,
     resolvedClientConsentPolicy,
+    applyNotificationTemplates,
+    missingTemplateLanguages,
+    protectPlaceholders,
+    restorePlaceholders,
 } from './caseHandoverCardUtils';
 import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
 import type { CaseHandoverConsentPolicy } from '../../../../../types/permissionPolicy';
@@ -290,5 +296,78 @@ describe('caseHandoverCardUtils', () => {
             ]);
             expect(isHandoverModuleEnabled(next)).toBe(false);
         });
+
+        // Hidden reason: never switched on by the master, so it cannot run with an unseen default.
+        it('module on leaves the hidden OTHER_EMERGENCY row disabled', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: false }),
+                    policy({ code: 'OTHER_EMERGENCY', enabled: false }),
+                ],
+                true,
+            );
+            expect(next.map((p) => [p.code, p.enabled])).toEqual([
+                ['UNPLANNED_ABSENCE', true],
+                ['OTHER_EMERGENCY', false],
+            ]);
+        });
+
+        it('module off also disables an enabled OTHER_EMERGENCY row', () => {
+            const next = applyModuleEnabled(
+                [
+                    policy({ code: 'UNPLANNED_ABSENCE', enabled: true }),
+                    policy({ code: 'OTHER_EMERGENCY', enabled: true }),
+                ],
+                false,
+            );
+            expect(next.map((p) => p.enabled)).toEqual([false, false]);
+        });
+    });
+});
+
+describe('machine translation of the notification templates', () => {
+    it('protects placeholders on the way out and restores them on the way back', () => {
+        const source = 'Ab jetzt berät dich {{newAdvisor}}.';
+        expect(protectPlaceholders(source)).toBe('Ab jetzt berät dich <code>{{newAdvisor}}</code>.');
+        expect(restorePlaceholders('<p>From now on <code>{{newAdvisor}}</code> advises you.</p>', source)).toBe(
+            'From now on {{newAdvisor}} advises you.',
+        );
+    });
+
+    it('drops a translation that lost or renamed a placeholder', () => {
+        const source = 'Ab jetzt berät dich {{newAdvisor}}.';
+        expect(restorePlaceholders('From now on your new advisor helps you.', source)).toBeUndefined();
+        expect(restorePlaceholders('From now on {{neuerBerater}} helps you.', source)).toBeUndefined();
+    });
+
+    it('names only the empty languages besides German, and writes several at once', () => {
+        const illPolicy = {
+            code: 'COUNSELLOR_IS_ILL',
+            clientNotificationTemplates: { de: 'Hallo', en: 'Hello' },
+        } as unknown as CaseHandoverReasonPolicy;
+        expect(missingTemplateLanguages(illPolicy)).toEqual(['fr', 'ru', 'tr', 'uk', 'ti']);
+        const [next] = applyNotificationTemplates([illPolicy], 'COUNSELLOR_IS_ILL', { fr: 'Bonjour', tr: 'Merhaba' });
+        expect(next.clientNotificationTemplates).toEqual({ de: 'Hallo', en: 'Hello', fr: 'Bonjour', tr: 'Merhaba' });
+    });
+});
+
+describe('explanation level (FE#2040)', () => {
+    it('reads an absent or unknown level as OFF', () => {
+        expect(resolvedExplanationLevel(policy({}))).toBe('OFF');
+        expect(resolvedExplanationLevel(policy({ explanationLevel: null }))).toBe('OFF');
+        expect(resolvedExplanationLevel(null)).toBe('OFF');
+    });
+
+    it('keeps a stored level', () => {
+        expect(resolvedExplanationLevel(policy({ explanationLevel: 'REQUIRED' }))).toBe('REQUIRED');
+    });
+
+    it('writes the level on the chosen reason only', () => {
+        const updated = applyExplanationLevel(
+            [policy({ code: 'PLANNED_ABSENCE' }), policy({ code: 'UNPLANNED_ABSENCE' })],
+            'PLANNED_ABSENCE',
+            'OPTIONAL',
+        );
+        expect(updated.map((item) => item.explanationLevel)).toEqual(['OPTIONAL', undefined]);
     });
 });

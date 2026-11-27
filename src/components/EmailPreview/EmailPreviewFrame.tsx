@@ -42,6 +42,9 @@ export const EmailPreviewFrame = ({
             title={title}
             srcDoc={html}
             sandbox=""
+            // The preview is a picture of the mail: its sample call-to-action is dead (the sandbox blocks navigation),
+            // so it must not be a keyboard stop with the browser's own ring inside a document we may not restyle.
+            tabIndex={-1}
             style={{ width: width ? `${width}px` : '100%', height: `${height}px` }}
         />
     </div>

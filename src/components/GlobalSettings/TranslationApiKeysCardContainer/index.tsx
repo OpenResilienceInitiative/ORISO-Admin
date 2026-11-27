@@ -1,10 +1,11 @@
-import { message } from 'antd';
 import { useTranslation } from 'react-i18next';
+import { snackbar } from '../../Snackbar';
 import { useTranslationKeys } from '../../../hooks/useTranslationKeys.hook';
 import { useSetTranslationKey } from '../../../hooks/useSetTranslationKey.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
 import { TranslationApiKeysCard } from '../TranslationApiKeysCard';
 import { TranslationProvider } from '../../../types/translation';
+import { testTranslationKey } from '../../../api/tenant/translation';
 
 /**
  * Container for the machine-translation API keys card: loads the masked keys (only for
@@ -21,8 +22,8 @@ export const TranslationApiKeysCardContainer = () => {
         mutate(
             { provider, apiKey },
             {
-                onSuccess: () => message.success(t('legal.translation.settings.saved')),
-                onError: () => message.error(t('legal.translation.settings.saveError')),
+                onSuccess: () => snackbar.success(t('legal.translation.settings.saved')),
+                onError: () => snackbar.error(t('legal.translation.settings.saveError')),
             },
         );
 
@@ -33,6 +34,7 @@ export const TranslationApiKeysCardContainer = () => {
             onSave={handleSave}
             savingProvider={isPending ? variables?.provider ?? null : null}
             disabled={!isSuperAdmin}
+            onTest={testTranslationKey}
         />
     );
 };

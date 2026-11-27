@@ -1,7 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { notification } from 'antd';
+
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAdminFeedback } from '../../../../../hooks/useAdminFeedback';
 import getAgencyData from '../../../../../api/agency/getAgencyData';
 import {
     distributeAgencyLegalProposal,
@@ -17,6 +18,7 @@ import { Modal } from '../../../../Modal';
 import { RadioButton } from '../../../../radioButton/RadioButton';
 import { formatLegalDateTime } from '../../utils/legalDateTime';
 import styles from './styles.module.scss';
+import { Notify } from '../../../../Notify';
 
 /**
  * Who a template goes to. The platform offers its drafts to Träger; a Träger offers its
@@ -80,6 +82,7 @@ export const SendLegalTemplateDialog = ({
     draftSavedAt,
     onClose,
 }: SendLegalTemplateDialogProps) => {
+    const { notification } = useAdminFeedback();
     const { t, i18n } = useTranslation();
     const queryClient = useQueryClient();
     const [audience, setAudience] = useState<TenantLegalProposalAudience>('ALL');
@@ -140,7 +143,7 @@ export const SendLegalTemplateDialog = ({
             else if (code === 'BAD_REQUEST' && level === 'agencies')
                 messageKey = 'legal.template.send.agencies.noAgencies';
             else if (code === 'FORBIDDEN' && level === 'agencies') messageKey = 'legal.template.send.forbidden';
-            notification.error({ message: t(messageKey), duration: 8 });
+            notification.error({ message: t(messageKey) });
         } finally {
             setSending(false);
         }
@@ -187,9 +190,14 @@ export const SendLegalTemplateDialog = ({
                 {audience === 'SELECTED' && (
                     <div className={styles.picker}>
                         {recipients.isError ? (
-                            <p role="alert" className={styles.error}>
+                            <Notify
+                                retry
+                                quietText={t('notify.tile.notLoaded')}
+                                title={t('notify.title.legal')}
+                                severity="error"
+                            >
                                 {t(`legal.template.send.${level}.loadError`)}
-                            </p>
+                            </Notify>
                         ) : (
                             <ConsultantPicker
                                 consultants={recipients.data ?? []}

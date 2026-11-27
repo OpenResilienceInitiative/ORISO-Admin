@@ -1,4 +1,8 @@
-import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import {
+    CASE_HANDOVER_EXPLANATION_LEVELS,
+    type CaseHandoverExplanationLevel,
+    type CaseHandoverReasonPolicy,
+} from '../../../../../types/caseHandoverReasonPolicy';
 import type {
     CaseHandoverConsentPolicy,
     CaseHandoverConsentValue,
@@ -68,6 +72,7 @@ export type DisplayReason = {
 export const buildDisplayReasons = (policies: CaseHandoverReasonPolicy[]): DisplayReason[] => {
     // OTHER_EMERGENCY remains readable for historical requests but is no longer
     // offered as a configurable reason (Frank, Figma follow-up 2026-08-17).
+    // Open product question (FE#1725): the master switch still enables this hidden default.
     const sorted = sortPoliciesByDisplayOrder(policies).filter(
         (policy) => policy.code !== 'OTHER_EMERGENCY' && !isSupersededPolicy(policy, policies),
     );
@@ -87,9 +92,14 @@ export const isHandoverModuleEnabled = (policies: CaseHandoverReasonPolicy[]) =>
     policies.some((policy) => policy.enabled);
 
 /** Master toggle writes `enabled` on every reason — module off = no handover possible.
- *  Superseded rows are never switched on, but always off, else the hidden row keeps the module on. */
+ *  Hidden rows (superseded, OTHER_EMERGENCY) are never switched on, but always off, else a hidden
+ *  row keeps the module on or runs with an unseen consent default. */
 export const applyModuleEnabled = (policies: CaseHandoverReasonPolicy[], enabled: boolean) =>
-    policies.map((policy) => (isSupersededPolicy(policy, policies) && enabled ? policy : { ...policy, enabled }));
+    policies.map((policy) =>
+        enabled && (isSupersededPolicy(policy, policies) || policy.code === 'OTHER_EMERGENCY')
+            ? policy
+            : { ...policy, enabled },
+    );
 
 export const applyClientConsent = (
     policies: CaseHandoverReasonPolicy[],
@@ -152,6 +162,16 @@ export const applyClientConsentPolicy = (
             : policy,
     );
 
+/** The explanation level of one reason; absent or unknown reads as OFF, the default (FE#2040). */
+export const resolvedExplanationLevel = (policy: CaseHandoverReasonPolicy | null): CaseHandoverExplanationLevel =>
+    CASE_HANDOVER_EXPLANATION_LEVELS.find((level) => level === policy?.explanationLevel) ?? 'OFF';
+
+export const applyExplanationLevel = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    explanationLevel: CaseHandoverExplanationLevel,
+) => policies.map((policy) => (policy.code === code ? { ...policy, explanationLevel } : policy));
+
 export const applyMaxAccessDuration = (
     policies: CaseHandoverReasonPolicy[],
     code: string,
@@ -188,3 +208,44 @@ export const applyNotificationTemplate = (
             clientNotificationTemplates: Object.keys(templates).length ? templates : null,
         };
     });
+
+/** The language the case handover templates are written in and translated from. */
+export const TEMPLATE_SOURCE_LANGUAGE: NotificationLanguage = 'de';
+
+/** Languages of one reason that still have no template of their own (the source language aside). */
+export const missingTemplateLanguages = (policy: CaseHandoverReasonPolicy | null): NotificationLanguage[] =>
+    NOTIFICATION_LANGUAGES.filter(
+        (language) => language !== TEMPLATE_SOURCE_LANGUAGE && !getNotificationTemplate(policy, language).trim(),
+    );
+
+const PLACEHOLDER = /\{\{\s*[a-zA-Z0-9_]+\s*\}\}/g;
+
+/**
+ * The model keeps HTML but may translate `{{newAdvisor}}`. Placeholders travel as `<code>` (left
+ * alone by the prompt's "translate only the human-readable text") and come back as they were.
+ */
+export const protectPlaceholders = (text: string) => text.replace(PLACEHOLDER, (match) => `<code>${match}</code>`);
+
+const placeholdersOf = (text: string) => (text.match(PLACEHOLDER) ?? []).map((p) => p.replace(/\s/g, '')).sort();
+
+/** Undoes {@link protectPlaceholders}; `undefined` when a placeholder of the source got lost. */
+export const restorePlaceholders = (translated: string, source: string): string | undefined => {
+    const restored = translated
+        .replace(/<code>\s*(\{\{\s*[a-zA-Z0-9_]+\s*\}\})\s*<\/code>/g, '$1')
+        .replace(/<\/?p>/g, '')
+        .trim();
+    const expected = placeholdersOf(source);
+    const got = placeholdersOf(restored);
+    return expected.length === got.length && expected.every((p, i) => p === got[i]) ? restored : undefined;
+};
+
+/** Writes several languages' templates on one reason at once (the machine translations). */
+export const applyNotificationTemplates = (
+    policies: CaseHandoverReasonPolicy[],
+    code: string,
+    texts: Partial<Record<NotificationLanguage, string>>,
+) =>
+    (Object.entries(texts) as [NotificationLanguage, string][]).reduce(
+        (current, [language, text]) => applyNotificationTemplate(current, code, language, text),
+        policies,
+    );

@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { Layout } from 'antd';
+// eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
+import { expect } from 'storybook/test';
 import routePathNames from '../../appConfig';
 import { Resource } from '../../enums/Resource';
 import { UserRole } from '../../enums/UserRole';
 import { AdminSidebar, type AdminSidebarNavItem } from './AdminSidebar';
 import { buildAdminNavItems } from './adminNavItems';
 import { canFor, hasRoleFor } from './adminNavFixtures';
+import { DARK_SCHEME_GLOBALS, textContrast } from '../../utils/storybook/darkSchemeStory';
 
 // Pre-resolved nav items (the wrapper builds these from permissions; the sidebar just renders them).
 const settingsItem: AdminSidebarNavItem = {
@@ -45,7 +48,7 @@ const statisticsItem: AdminSidebarNavItem = {
 const linksItem: AdminSidebarNavItem = {
     key: 'links',
     to: routePathNames.links,
-    label: 'Links',
+    label: 'Einladen',
     iconPath: routePathNames.links,
     activeMatch: { paths: [`${routePathNames.links}/`], mode: 'startsWith' },
 };
@@ -170,8 +173,10 @@ export const TenantAdminWithUserAdmin: Story = {
             ),
             labels: {
                 account: 'Mein Konto',
+                addons: 'Add-ons',
                 agency: 'Beratungsstellen',
-                links: 'Links',
+                home: 'Home',
+                links: 'Einladen',
                 logs: 'Logs',
                 settings: 'Einstellungen',
                 statistics: 'Statistik',
@@ -197,8 +202,10 @@ export const RestrictedAgencyAdmin: Story = {
             can: canFor(Resource.Agency, Resource.Consultant),
             labels: {
                 account: 'Mein Konto',
+                addons: 'Add-ons',
                 agency: 'Beratungsstellen',
-                links: 'Links',
+                home: 'Home',
+                links: 'Einladen',
                 logs: 'Logs',
                 settings: 'Einstellungen',
                 statistics: 'Statistik',
@@ -211,11 +218,58 @@ export const RestrictedAgencyAdmin: Story = {
     },
 };
 
+/**
+ * Statistik-Leser·in (ORISO-UserService#1666): a read-only statistics account. Real builder
+ * output — exactly one entry, "Statistik", and no Home.
+ */
+export const StatisticsReader: Story = {
+    args: {
+        items: buildAdminNavItems({
+            isSuperAdmin: false,
+            isStatisticsReader: true,
+            hasRole: hasRoleFor(UserRole.StatisticsReader),
+            can: canFor(Resource.Statistic),
+            labels: {
+                account: 'Mein Konto',
+                addons: 'Add-ons',
+                agency: 'Beratungsstellen',
+                home: 'Home',
+                links: 'Einladen',
+                logs: 'Logs',
+                settings: 'Einstellungen',
+                statistics: 'Statistik',
+                tenants: 'Träger',
+                users: 'Benutzer',
+            },
+            settingsPath: `${routePathNames.themeSettings}/legal`,
+        }),
+        currentPath: routePathNames.statistic,
+    },
+};
+
 /** Focus on the grouped "activity logs" section below the main items. */
 export const WithActivityLogs: Story = {
     args: {
         items: [settingsItem, usersItem],
         activityLogs,
         currentPath: routePathNames.caseHandoverLogs,
+    },
+};
+
+/**
+ * Personal dark scheme (prefers-color-scheme: dark). The active pill sits on primary-FIXED with
+ * on-primary-fixed ink, a pair that keeps its tone in every scheme. On primary-container the dark
+ * ink fell to 2.1:1, because that container turns deep red in dark.
+ */
+export const DarkSchemeActiveItem: Story = {
+    args: {
+        items: [settingsItem, tenantsItem, agencyItem, usersItem, statisticsItem, linksItem, logsItem],
+    },
+    globals: DARK_SCHEME_GLOBALS,
+    play: async ({ canvasElement }) => {
+        const active = canvasElement.querySelector('ul.upperSidebar > li.menuItem > a.active');
+        const label = active?.querySelector('span');
+        await expect(label).toBeTruthy();
+        await expect(textContrast(label as Element)).toBeGreaterThanOrEqual(4.5);
     },
 };

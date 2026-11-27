@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 vi.mock('react-i18next', () => {
     // react-i18next returns a hybrid: an array [t, i18n, ready] that also carries
@@ -14,15 +15,26 @@ vi.mock('react-i18next', () => {
 });
 
 vi.mock('../../../../hooks/useSingleTenantData', () => ({
-    useSingleTenantData: () => ({ data: { settings: {} }, isLoading: false }),
+    useSingleTenantData: () => ({
+        data: {
+            settings: {
+                featureTopicsEnabled: false,
+                featureStatisticsEnabled: true,
+                featureAgencyLinkLabelEnabled: true,
+            },
+        },
+        isLoading: false,
+    }),
 }));
 
+const mutate = vi.fn();
 vi.mock('../../../../hooks/useTenantAdminDataMutation.hook', () => ({
-    useTenantAdminDataMutation: () => ({ mutate: vi.fn() }),
+    useTenantAdminDataMutation: () => ({ mutate }),
 }));
 
+const appConfig = { multitenancyWithSingleDomainEnabled: false };
 vi.mock('../../../../context/useAppConfig', () => ({
-    useAppConfigContext: () => ({ settings: { multitenancyWithSingleDomainEnabled: false } }),
+    useAppConfigContext: () => ({ settings: appConfig }),
 }));
 
 import { OtherFunctionsSettings } from './index';
@@ -41,46 +53,78 @@ Object.defineProperty(window, 'matchMedia', {
     })),
 });
 
-describe('OtherFunctionsSettings', () => {
-    it('renders the Team-Besprechung toggle bound to featureTeamDiscussionEnabled', () => {
+const TOPICS = 'tenants.appSettings.otherFunctions.allowTopicCreation.title';
+const STATISTICS = 'tenants.appSettings.otherFunctions.statistics.title';
+const AGENCY_LINK_LABEL = 'tenants.appSettings.otherFunctions.agencyLinkLabel.title';
+
+/**
+ * The tile of the Träger tab "Weitere" (ORISO-Admin#1577, Frank 2026-11-19): topics and counsellor
+ * statistics only. Calls, group chats, Team-Chat and supervision moved to Funktionszugriff.
+ */
+describe('OtherFunctionsSettings ("Weitere")', () => {
+    it('holds topics and statistics in one folding section, each with what it does', async () => {
+        const user = userEvent.setup();
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getByText('tenants.appSettings.otherFunctions.teamDiscussion.title')).toBeInTheDocument();
-        expect(screen.getByText('tenants.appSettings.otherFunctions.teamDiscussion.description')).toBeInTheDocument();
+        const section = screen.getByRole('group', { name: 'tileHelp.otherFunctions.general.title' });
+        expect(section).toBeInTheDocument();
+        expect(screen.getByRole('switch', { name: TOPICS })).not.toBeChecked();
+        expect(screen.getByRole('switch', { name: STATISTICS })).toBeChecked();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.allowTopicCreation.description')).toBeVisible();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.statistics.description')).toBeVisible();
+
+        await user.click(screen.getByRole('button', { name: 'tileHelp.otherFunctions.general.title' }));
+        expect(screen.getByText('tenants.appSettings.otherFunctions.statistics.description')).not.toBeVisible();
     });
 
-    /**
-     * ORISO-Admin#988 / Frank 2026-09-16: supervision is a feature inside conversation types, not a
-     * conversation type of its own. Its master and seven feature toggles used to be wired to the
-     * "groupInternal" chat-type card (Functionality access) — they now live here, next to "Allow
-     * group chat".
-     */
-    it('renders the Supervision block with its master and all seven feature toggles', () => {
+    it('offers nothing that moved to Funktionszugriff', () => {
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        expect(screen.getByText('tenants.appSettings.otherFunctions.supervision.title')).toBeInTheDocument();
-        expect(screen.getByText('tenants.appSettings.otherFunctions.supervision.description')).toBeInTheDocument();
-
+        // Topics, statistics and the agency-link label (ORISO-Frontend#1870).
+        expect(screen.getAllByRole('switch')).toHaveLength(3);
         [
-            'tenants.permissions.feature.videoCalls',
-            'tenants.permissions.feature.audioCalls',
-            'tenants.permissions.feature.voiceMessages',
-            'tenants.permissions.feature.threads',
-            'tenants.permissions.feature.mediaUpload',
-            'tenants.permissions.feature.mediaInlineDisplay',
-            'tenants.permissions.feature.mediaAiScan',
-        ].forEach((labelKey) => expect(screen.getByText(labelKey)).toBeInTheDocument());
+            'teamFunctions.chat.name',
+            'tenants.appSettings.otherFunctions.supervision.title',
+            'tenants.appSettings.otherFunctions.groupChat.title',
+            'tenants.appSettings.communications.video.title',
+        ].forEach((label) => expect(screen.queryByText(label)).toBeNull());
     });
 
-    it('places the "Allow group chat" switch next to the Supervision block', () => {
+    it('lets the Träger switch off the agency-link label on Erstanfragen (ORISO-Frontend#1870)', async () => {
+        const user = userEvent.setup();
         render(<OtherFunctionsSettings tenantId="1" />);
 
-        const groupChatLabel = screen.getByText('tenants.appSettings.otherFunctions.groupChat.title');
-        const supervisionLabel = screen.getByText('tenants.appSettings.otherFunctions.supervision.title');
-        const comparison = groupChatLabel.compareDocumentPosition(supervisionLabel);
-        // DOCUMENT_POSITION_FOLLOWING (4): supervision comes right after the group chat switch.
-        // eslint-disable-next-line no-bitwise
-        const supervisionFollowsGroupChat = comparison & Node.DOCUMENT_POSITION_FOLLOWING;
-        expect(supervisionFollowsGroupChat).toBeTruthy();
+        expect(screen.getByRole('switch', { name: AGENCY_LINK_LABEL })).toBeChecked();
+        expect(screen.getByText('tenants.appSettings.otherFunctions.agencyLinkLabel.description')).toBeVisible();
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: AGENCY_LINK_LABEL }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
+        expect(mutate.mock.calls.at(-1)?.[0]).toMatchObject({
+            settings: { featureAgencyLinkLabelEnabled: false },
+        });
+    });
+
+    it('hides the statistics switch when the level does not offer it', () => {
+        render(<OtherFunctionsSettings tenantId="1" hideStatistics />);
+
+        expect(screen.getByRole('switch', { name: TOPICS })).toBeInTheDocument();
+        expect(screen.queryByRole('switch', { name: STATISTICS })).toBeNull();
+    });
+
+    it('saves both as plain Träger settings, without any permission-policy write', async () => {
+        const user = userEvent.setup();
+        render(<OtherFunctionsSettings tenantId="1" />);
+
+        await user.click(screen.getByRole('button', { name: 'edit' }));
+        await user.click(screen.getByRole('switch', { name: TOPICS }));
+        await user.click(screen.getByRole('button', { name: 'card.edit.save' }));
+
+        await vi.waitFor(() => expect(mutate).toHaveBeenCalled());
+        expect(mutate.mock.calls.at(-1)?.[0]).toMatchObject({
+            settings: { featureTopicsEnabled: true, featureStatisticsEnabled: true },
+        });
     });
 });

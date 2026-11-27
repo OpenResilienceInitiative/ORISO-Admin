@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 // The postbuild gate is the Admin CI guard against ORISO hosts baked into the bundle
 // (ORISO-Helm#368). Tested directly so a pattern cannot be dropped without a red run.
@@ -52,22 +52,28 @@ describe('validate-hardcoded-hosts.sh', () => {
         expect(runGuardOn(routerMixed, 'vendor-ui-test.js').status, 'router line').toBe(1);
     });
 
-    it('allows the two third-party defaults found in the real bundle', () => {
+    it('allows the third-party defaults found in the real bundle', () => {
         const otel = 'function Y(e,t){return{headers:async()=>e,url:`http://localhost:4318/`+t}}';
         const router = 'let r=`http://localhost`;e&&(r=e.location.origin===`null`?e.location.href:e.location.origin)';
+        const navigation =
+            'var t=new URL(`http://localhost`);function n(e){if(e.createURL)return e.createURL("/");try{return new URL(e.createHref("/"),t)}catch{return t}}';
         expect(runGuardOn(otel).status, otel).toBe(0);
         expect(runGuardOn(router, 'vendor-ui-test.js').status, router).toBe(0);
+        expect(runGuardOn(navigation, 'vendor-ui-test.js').status, navigation).toBe(0);
         // The exception follows the code, not the chunk name.
         expect(runGuardOn(router).status, router).toBe(0);
+        expect(runGuardOn(navigation).status, navigation).toBe(0);
     });
 
     it('allows the defaults only in their own code, not the bare literals elsewhere', () => {
         // Same literals, but not the OTLP exporter's `url:` default nor react-router's parse base.
         const otelElsewhere = 'const metrics=`http://localhost:4318/`;fetch(metrics);';
         const routerElsewhere = 'const api=`http://localhost`;fetch(api+`/service`);';
+        const navigationElsewhere = 'const api=new URL("http://localhost");fetch(api)';
         expect(runGuardOn(otelElsewhere).status, 'otel literal in a regular chunk').toBe(1);
         expect(runGuardOn(routerElsewhere, 'vendor-other-test.js').status, 'bare localhost in a vendor chunk').toBe(1);
         expect(runGuardOn(routerElsewhere).status, 'bare localhost in a regular chunk').toBe(1);
+        expect(runGuardOn(navigationElsewhere).status, 'navigation URL used as a request').toBe(1);
     });
 
     it('does not let the router exception reach across a statement boundary', () => {

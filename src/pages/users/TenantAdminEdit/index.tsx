@@ -1,14 +1,17 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Button, Col, Row, Form, notification } from 'antd';
+import { Button, Col, Row, Form } from 'antd';
 import { ThemeProvider } from '@mui/material/styles';
+import { snackbar } from '../../../components/Snackbar';
 import { MuiFormField, MuiPasswordFormField } from '../../../components/mui/MuiFormField';
 import { orisoMuiTheme } from '../../../theme/orisoMuiTheme';
+import profileStyles from '../accountProfile.module.scss';
 import { Page } from '../../../components/Page';
 import { MuiSelectField } from '../../../components/mui/MuiSelectField';
 import { useTenantUserAdminData } from '../../../hooks/useTenantUserAdminData';
 import { Card } from '../../../components/Card';
+import { ManagedEntityStatus } from '../../../components/EntityStatusCard';
 import { useTenantsData } from '../../../hooks/useTenantsData';
 import { useTenantData } from '../../../hooks/useTenantData.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
@@ -26,11 +29,13 @@ import { canGrantConsultantIdentity } from '../../../utils/canGrantConsultantIde
 import { CounselorData } from '../../../types/counselor';
 import { TypeOfUser } from '../../../enums/TypeOfUser';
 import { AccessDenied } from '../../ErrorPages/AccessDenied';
+import { AdminContactEmailField } from '../AdminContact';
 
 const TenantAdminEditor = () => {
     const { search, pathname } = useLocation();
     // Platform admins are tenant admins with the fixed platform id 0 (MT-04-12)
     const isPlatformAdmin = pathname.includes('/platform-admins/');
+    const labelScope = isPlatformAdmin ? 'platformAdmins' : 'tenantAdmins';
     const { isSuperAdmin, isTenantScopedAdmin, tenantId: ownTenantId } = useUserRoles();
     // A scoped admin always uses their own tenant, regardless of query parameters.
     const queryTenantId = new URLSearchParams(search).get('tenantId');
@@ -85,15 +90,14 @@ const TenantAdminEditor = () => {
         id: isEditing && canRead ? id : '',
         onSuccess: () => {
             navigate(listPath);
-            notification.success({
-                message: t(`tenantAdmins.message.${isEditing ? 'update' : 'add'}`),
+            snackbar.success({
+                message: t(`${labelScope}.message.${isEditing ? 'update' : 'add'}`),
             });
         },
         onError: async (error) => {
             const content = await extractApiErrorMessage(error);
-            notification.error({
+            snackbar.error({
                 message: content,
-                duration: 8,
             });
         },
     });
@@ -123,7 +127,7 @@ const TenantAdminEditor = () => {
         return <AccessDenied />;
     }
 
-    const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t('tenantAdmins.edit.back');
+    const title = isEditing ? `${data?.firstname} ${data?.lastname}` : t(`${labelScope}.edit.back`);
     const requiredRule = { required: true, message: t('form.errors.required') };
     // Platform admins stay excluded from the grant mechanism (route is shared).
     const showGrantConsultantIdentity =
@@ -134,7 +138,7 @@ const TenantAdminEditor = () => {
 
     return (
         <Page isLoading={isLoadingConsultants || isLoading}>
-            <Page.BackWithActions path={listPath} title={title}>
+            <Page.BackWithActions path={listPath} parentKey="sidebar.users" title={title}>
                 {showGrantConsultantIdentity && (
                     <GrantConsultantIdentityModal
                         adminId={id}
@@ -161,6 +165,7 @@ const TenantAdminEditor = () => {
 
             <ThemeProvider theme={orisoMuiTheme}>
                 <Form
+                    className={profileStyles.form}
                     disabled={isReadOnly || !canWrite}
                     labelAlign="left"
                     labelWrap
@@ -171,7 +176,7 @@ const TenantAdminEditor = () => {
                 >
                     <Row gutter={[24, 24]}>
                         <Col xs={24} lg={12}>
-                            <Card titleKey="tenantAdmins.card.personalDataTitle">
+                            <Card titleKey={`${labelScope}.card.personalDataTitle`}>
                                 <MuiFormField
                                     name="firstname"
                                     label={t('firstname')}
@@ -199,6 +204,7 @@ const TenantAdminEditor = () => {
                                         },
                                     ]}
                                 />
+                                <AdminContactEmailField disabled={isReadOnly || !canWrite} />
                             </Card>
                         </Col>
                         {!isEditing && (
@@ -251,6 +257,15 @@ const TenantAdminEditor = () => {
                         )}
                     </Row>
                 </Form>
+                {isEditing && data && (
+                    <ManagedEntityStatus
+                        entityKind="account"
+                        entityName={`${data.firstname ?? ''} ${data.lastname ?? ''}`.trim()}
+                        entityId={id}
+                        canManage={canUpdate}
+                        targetTenantId={data.tenantId}
+                    />
+                )}
             </ThemeProvider>
         </Page>
     );

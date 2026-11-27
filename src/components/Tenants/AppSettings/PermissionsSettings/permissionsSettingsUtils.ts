@@ -4,20 +4,46 @@ import type { TenantSettings } from '../../../../types/tenant';
 import type { PolicyValue } from '../../../../types/permissionPolicy';
 import type { ChatTypeCardDef } from './types';
 
+/** Where the value a tile shows comes from (ORISO-TenantService#363). */
+export type PermissionPolicySource = 'own' | 'suggested' | 'enforced' | 'forbidden';
+
+/** An effective policy; `suggestedValue` is the suggestion from above when it differs from the value. */
+export type EffectivePolicy = PolicyValue<boolean> & { suggestedValue?: boolean };
+
+/**
+ * The effective value of one feature at this level, as TenantService serves it (ORISO-TenantService#363):
+ * 1. a lock from above (enforced on / forbidden) always wins;
+ * 2. otherwise an own policy (`inherited: false`) or the value this level stored (`ownValue`) wins —
+ *    a suggestion from above never overrides it, it only shows as a hint when it differs;
+ * 3. only without any stored value does the suggestion from above count.
+ */
 export const resolvePermissionPolicy = (
     permissionPolicies: Record<string, PolicyValue<boolean>> | undefined,
     fieldKey: string,
     currentValue: unknown,
     restrictedFields: ReadonlySet<string>,
-): PolicyValue<boolean> => {
-    const restricted = restrictedFields.has(fieldKey);
-    return (
-        permissionPolicies?.[fieldKey] ?? {
-            value: currentValue !== false,
-            mode: restricted ? 'ENFORCED' : 'SUGGESTED',
-            inherited: restricted,
-        }
-    );
+    ownValue?: unknown,
+): EffectivePolicy => {
+    const policy = permissionPolicies?.[fieldKey];
+    // Inherited lock first, then a restriction from above, and only then an own requirement.
+    if (policy?.mode === 'ENFORCED' && policy.inherited === true) return policy;
+    if (restrictedFields.has(fieldKey)) return { value: currentValue !== false, mode: 'ENFORCED', inherited: true };
+    if (policy && policy.inherited !== true) return policy;
+    if (typeof ownValue === 'boolean') {
+        const differs = policy !== undefined && policy.value !== ownValue;
+        return {
+            value: ownValue,
+            mode: 'SUGGESTED',
+            inherited: false,
+            ...(differs ? { suggestedValue: policy.value } : {}),
+        };
+    }
+    return policy ?? { value: currentValue !== false, mode: 'SUGGESTED', inherited: true };
+};
+
+export const permissionPolicySource = (policy: PolicyValue<boolean>): PermissionPolicySource => {
+    if (policy.mode === 'ENFORCED') return policy.value ? 'enforced' : 'forbidden';
+    return policy.inherited === true ? 'suggested' : 'own';
 };
 
 /**
@@ -73,6 +99,34 @@ export const DEFAULT_PERMISSION_SETTINGS = {
     featureMediaAiScanOneOnOneChatsEnabled: false,
     featureMediaAiScanGroupChatsEnabled: false,
     featureMediaAiScanSupervisionChatsEnabled: false,
+    // ORISO-Frontend#2491: the team chat on an enquiry and what it offers, defaults like supervision
+    // (TenantService#405): on, AI scan off.
+    featureTeamDiscussionEnabled: true,
+    // Off by default: at acceptance the team chat closes and stays read-only (ADR-016).
+    featureTeamDiscussionAfterAcceptEnabled: false,
+    featureVideoCallsTeamDiscussionsEnabled: true,
+    featureAudioCallsTeamDiscussionsEnabled: true,
+    featureVoiceMessagesTeamDiscussionsEnabled: true,
+    featureThreadsTeamDiscussionsEnabled: true,
+    featureMediaUploadTeamDiscussionsEnabled: true,
+    featureMediaInlineDisplayTeamDiscussionsEnabled: true,
+    featureMediaAiScanTeamDiscussionsEnabled: false,
+    // ORISO-Admin#1242: TenantService#332 keeps the stored value when a save omits these, so every
+    // save sends them explicitly; default on like every conversation feature.
+    featureDirectInviteChatEnabled: true,
+    featureDirectInviteAudioEnabled: true,
+    featureDirectInviteVideoEnabled: true,
+    // ORISO-UserService#1662: guest account modes per chat type; TenantService keeps a stored value
+    // when a save omits it, so every save sends them explicitly. Default: every mode allowed.
+    featureGuestAccountTemporaryChatEnabled: true,
+    featureGuestAccountGuestChoosesChatEnabled: true,
+    featureGuestAccountPermanentChatEnabled: true,
+    featureGuestAccountTemporaryAudioEnabled: true,
+    featureGuestAccountGuestChoosesAudioEnabled: true,
+    featureGuestAccountPermanentAudioEnabled: true,
+    featureGuestAccountTemporaryVideoEnabled: true,
+    featureGuestAccountGuestChoosesVideoEnabled: true,
+    featureGuestAccountPermanentVideoEnabled: true,
 } as const;
 
 export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, string[]> = {
@@ -104,83 +158,107 @@ export const PLATFORM_TOGGLE_FIELDS: Record<keyof PermissionToggleVisibility, st
     ],
     supervisionAnonymousChats: ['featureSupervisionAnonymousChatsEnabled'],
     supervisionOneOnOneChats: ['featureSupervisionOneOnOneChatsEnabled'],
+    // ORISO-Frontend#2491: the team chat on an enquiry, the same family shape as supervision.
+    teamDiscussion: [
+        'featureTeamDiscussionEnabled',
+        'featureVideoCallsTeamDiscussionsEnabled',
+        'featureAudioCallsTeamDiscussionsEnabled',
+        'featureVoiceMessagesTeamDiscussionsEnabled',
+        'featureThreadsTeamDiscussionsEnabled',
+        'featureTeamDiscussionAfterAcceptEnabled',
+    ],
+    teamDiscussionAfterAccept: ['featureTeamDiscussionAfterAcceptEnabled'],
     audioCalls: [
         'featureAudioCallsEnabled',
         'featureAudioCallsAnonymousChatsEnabled',
         'featureAudioCallsOneOnOneChatsEnabled',
         'featureAudioCallsGroupChatsEnabled',
         'featureAudioCallsSupervisionChatsEnabled',
+        'featureAudioCallsTeamDiscussionsEnabled',
     ],
     audioCallsAnonymousChats: ['featureAudioCallsAnonymousChatsEnabled'],
     audioCallsOneOnOneChats: ['featureAudioCallsOneOnOneChatsEnabled'],
     audioCallsGroupChats: ['featureAudioCallsGroupChatsEnabled'],
     audioCallsSupervisionChats: ['featureAudioCallsSupervisionChatsEnabled'],
+    audioCallsTeamDiscussions: ['featureAudioCallsTeamDiscussionsEnabled'],
     videoCalls: [
         'featureVideoCallsEnabled',
         'featureVideoCallsAnonymousChatsEnabled',
         'featureVideoCallsOneOnOneChatsEnabled',
         'featureVideoCallsGroupChatsEnabled',
         'featureVideoCallsSupervisionChatsEnabled',
+        'featureVideoCallsTeamDiscussionsEnabled',
     ],
     videoCallsAnonymousChats: ['featureVideoCallsAnonymousChatsEnabled'],
     videoCallsOneOnOneChats: ['featureVideoCallsOneOnOneChatsEnabled'],
     videoCallsGroupChats: ['featureVideoCallsGroupChatsEnabled'],
     videoCallsSupervisionChats: ['featureVideoCallsSupervisionChatsEnabled'],
+    videoCallsTeamDiscussions: ['featureVideoCallsTeamDiscussionsEnabled'],
     threads: [
         'featureThreadsEnabled',
         'featureThreadsAnonymousChatsEnabled',
         'featureThreadsOneOnOneEnabled',
         'featureThreadsGroupChatsEnabled',
         'featureThreadsSupervisionChatsEnabled',
+        'featureThreadsTeamDiscussionsEnabled',
     ],
     threadsAnonymousChats: ['featureThreadsAnonymousChatsEnabled'],
     threadsOneOnOneChats: ['featureThreadsOneOnOneEnabled'],
     threadsGroupChats: ['featureThreadsGroupChatsEnabled'],
     threadsSupervisionChats: ['featureThreadsSupervisionChatsEnabled'],
+    threadsTeamDiscussions: ['featureThreadsTeamDiscussionsEnabled'],
     voiceMessages: [
         'featureVoiceMessagesEnabled',
         'featureVoiceMessagesAnonymousChatsEnabled',
         'featureVoiceMessagesOneOnOneChatsEnabled',
         'featureVoiceMessagesGroupChatsEnabled',
         'featureVoiceMessagesSupervisionChatsEnabled',
+        'featureVoiceMessagesTeamDiscussionsEnabled',
     ],
     voiceMessagesAnonymousChats: ['featureVoiceMessagesAnonymousChatsEnabled'],
     voiceMessagesOneOnOneChats: ['featureVoiceMessagesOneOnOneChatsEnabled'],
     voiceMessagesGroupChats: ['featureVoiceMessagesGroupChatsEnabled'],
     voiceMessagesSupervisionChats: ['featureVoiceMessagesSupervisionChatsEnabled'],
+    voiceMessagesTeamDiscussions: ['featureVoiceMessagesTeamDiscussionsEnabled'],
     mediaUpload: [
         'featureMediaUploadEnabled',
         'featureMediaUploadAnonymousChatsEnabled',
         'featureMediaUploadOneOnOneChatsEnabled',
         'featureMediaUploadGroupChatsEnabled',
         'featureMediaUploadSupervisionChatsEnabled',
+        'featureMediaUploadTeamDiscussionsEnabled',
     ],
     mediaUploadAnonymousChats: ['featureMediaUploadAnonymousChatsEnabled'],
     mediaUploadOneOnOneChats: ['featureMediaUploadOneOnOneChatsEnabled'],
     mediaUploadGroupChats: ['featureMediaUploadGroupChatsEnabled'],
     mediaUploadSupervisionChats: ['featureMediaUploadSupervisionChatsEnabled'],
+    mediaUploadTeamDiscussions: ['featureMediaUploadTeamDiscussionsEnabled'],
     mediaInlineDisplay: [
         'featureMediaInlineDisplayEnabled',
         'featureMediaInlineDisplayAnonymousChatsEnabled',
         'featureMediaInlineDisplayOneOnOneChatsEnabled',
         'featureMediaInlineDisplayGroupChatsEnabled',
         'featureMediaInlineDisplaySupervisionChatsEnabled',
+        'featureMediaInlineDisplayTeamDiscussionsEnabled',
     ],
     mediaInlineDisplayAnonymousChats: ['featureMediaInlineDisplayAnonymousChatsEnabled'],
     mediaInlineDisplayOneOnOneChats: ['featureMediaInlineDisplayOneOnOneChatsEnabled'],
     mediaInlineDisplayGroupChats: ['featureMediaInlineDisplayGroupChatsEnabled'],
     mediaInlineDisplaySupervisionChats: ['featureMediaInlineDisplaySupervisionChatsEnabled'],
+    mediaInlineDisplayTeamDiscussions: ['featureMediaInlineDisplayTeamDiscussionsEnabled'],
     mediaAiScan: [
         'featureMediaAiScanEnabled',
         'featureMediaAiScanAnonymousChatsEnabled',
         'featureMediaAiScanOneOnOneChatsEnabled',
         'featureMediaAiScanGroupChatsEnabled',
         'featureMediaAiScanSupervisionChatsEnabled',
+        'featureMediaAiScanTeamDiscussionsEnabled',
     ],
     mediaAiScanAnonymousChats: ['featureMediaAiScanAnonymousChatsEnabled'],
     mediaAiScanOneOnOneChats: ['featureMediaAiScanOneOnOneChatsEnabled'],
     mediaAiScanGroupChats: ['featureMediaAiScanGroupChatsEnabled'],
     mediaAiScanSupervisionChats: ['featureMediaAiScanSupervisionChatsEnabled'],
+    mediaAiScanTeamDiscussions: ['featureMediaAiScanTeamDiscussionsEnabled'],
 };
 
 /**

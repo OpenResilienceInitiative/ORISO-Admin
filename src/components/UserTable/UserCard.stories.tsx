@@ -10,7 +10,8 @@ import { UserCard } from './UserCard';
 const meta = {
     title: 'Molecules/UserTable/UserCard',
     component: UserCard,
-    parameters: { layout: 'padded', viewport: { defaultViewport: 'phone' } },
+    parameters: { layout: 'padded' },
+    globals: { viewport: { value: 'phone', isRotated: false } },
     decorators: [(Story) => <div style={{ maxWidth: 390 }}>{Story()}</div>],
     args: {
         name: 'Maria Huber',
@@ -60,5 +61,17 @@ export const LongName: Story = {
     args: { name: 'Dr. Maria-Theresia Huber-Oberndorfer von Hohenlohe', status: 'ABSENT' },
     play: async ({ canvas }) => {
         await expect(canvas.getByRole('button', { name: /löschen|Delete/ })).toBeVisible();
+    },
+};
+
+export const ManagedAccountStatus: Story = {
+    args: { status: 'DISABLED', accountStatus: { id: 'selected-account', active: false } },
+    play: async ({ canvas }) => {
+        const status = canvas.getByTestId('entity-status-list');
+        await expect(status).toHaveAttribute('data-entity-kind', 'account');
+        await expect(status).toHaveAttribute('data-entity-id', 'selected-account');
+        await expect(status).toHaveAttribute('data-active', 'false');
+        await expect(canvas.getByText(/^(Inaktiv|Inactive)$/)).toBeVisible();
+        await expect(canvas.getByRole('button', { name: /Details/ })).toHaveAttribute('aria-expanded', 'false');
     },
 };

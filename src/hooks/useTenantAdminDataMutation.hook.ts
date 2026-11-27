@@ -1,8 +1,8 @@
-import { notification } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 import { useRef } from 'react';
-import { fetchData, FETCH_METHODS } from '../api/fetchData';
+import { useAdminFeedback } from './useAdminFeedback';
+import { fetchData, FETCH_ERRORS, FETCH_METHODS } from '../api/fetchData';
 import { getSingleTenantData } from '../api/tenant/getSingleTenantData';
 import { tenantAdminEndpoint } from '../appConfig';
 import { TenantAdminData } from '../types/TenantAdminData';
@@ -11,6 +11,8 @@ import { useSingleTenantData, TENANT_QUERY_KEY } from './useSingleTenantData';
 import { TENANT_ADMIN_DATA_KEY } from './useTenantAdminData.hook';
 import { PUBLIC_TENANT_DATA_KEY } from './usePublicTenantData.hook';
 import { TENANT_DATA_KEY } from './useTenantData.hook';
+
+import { UnconfirmedFormSaveError } from '../utils/UnconfirmedFormSaveError';
 
 interface TenantAdminDataOptions
     extends UseMutationOptions<Partial<TenantAdminData>, unknown, Partial<TenantAdminData>> {
@@ -29,6 +31,7 @@ export const useTenantAdminDataMutation = ({
     prefetchTenantAdminData = true,
     ...options
 }: TenantAdminDataOptions) => {
+    const { notification } = useAdminFeedback();
     const { t } = useTranslation();
     const queryClient = useQueryClient();
     const shouldPrefetchTenantAdminData =
@@ -59,7 +62,18 @@ export const useTenantAdminDataMutation = ({
                 method: FETCH_METHODS.PUT,
                 skipAuth: false,
                 bodyData: serializeTenantAdminDataUpdate(mergeBase, data),
-                responseHandling: [],
+                responseHandling: [FETCH_ERRORS.BAD_GATEWAY_WITH_RESPONSE],
+            }).catch((error: unknown) => {
+                // Only this PUT can report an uncertain save. A failed preflight GET wrote nothing.
+                if (error instanceof Response && error.status === 502) {
+                    if (error.headers.get(FETCH_ERRORS.X_REASON) === 'CONSULTING_SETTINGS_OUTCOME_UNKNOWN') {
+                        throw new UnconfirmedFormSaveError('Tenant settings save could not be confirmed', {
+                            cause: error,
+                        });
+                    }
+                    throw new Error(`API call error: ${error.status} ${error.statusText}`);
+                }
+                throw error;
             });
         },
         ...options,
@@ -82,13 +96,34 @@ export const useTenantAdminDataMutation = ({
             }
             options?.onSuccess?.(responseData, updatedData, onMutateResult, context);
         },
-        // `responseHandling: []` means fetchData rejects a 5xx without showing anything,
-        // so without this the only feedback the user ever gets is the success toast.
-        onError: (error, updatedData, onMutateResult, context) => {
+        onError: async (error, updatedData, onMutateResult, context) => {
+            const mergeBase = writtenBasesRef.current.get(updatedData);
+            writtenBasesRef.current.delete(updatedData);
             notification.error({
-                message: t('message.error.default'),
-                duration: 8,
+                message: t(
+                    error instanceof UnconfirmedFormSaveError
+                        ? 'message.error.tenantSettingsOutcomeUnknown'
+                        : 'message.error.default',
+                ),
             });
+            if (error instanceof UnconfirmedFormSaveError) {
+                const tenantKey = [TENANT_QUERY_KEY, Number(id)];
+                const previousVersion = queryClient.getQueryState(tenantKey)?.dataUpdateCount;
+                try {
+                    const current: TenantAdminData = await getSingleTenantData(id, { keepPageOnError: true });
+                    if (
+                        String(current?.id) === String(id) &&
+                        current.settings &&
+                        (!mergeBase?.settings?.extendedSettings || current.settings.extendedSettings) &&
+                        queryClient.getQueryState(tenantKey)?.dataUpdateCount === previousVersion
+                    ) {
+                        error.recordCurrentValues({ ...current });
+                        queryClient.setQueryData(tenantKey, current);
+                    }
+                } catch {
+                    // The write still failed. A second error would obscure the save outcome.
+                }
+            }
             options?.onError?.(error, updatedData, onMutateResult, context);
         },
     });

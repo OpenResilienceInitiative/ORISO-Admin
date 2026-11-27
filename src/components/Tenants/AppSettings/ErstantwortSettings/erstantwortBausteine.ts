@@ -82,3 +82,17 @@ export const DEFAULT_RESPONSE_DEADLINE_DAYS = 2;
  */
 export const germanVariantFor = (languageFormal?: boolean): 'de' | 'de@informal' =>
     languageFormal === false ? 'de@informal' : 'de';
+
+/**
+ * What a Beratungsstelle may author (ADR-018 §6 chain: Beratungsstelle → Träger → platform →
+ * built-in). Each text replaces the Träger's for this centre only. The emergency-numbers addition
+ * and the Antwortfrist stay Träger settings. "Who reads along" is optional here: when empty, the
+ * Träger's statement applies.
+ */
+export const AGENCY_ERSTANTWORT_BAUSTEINE: ErstantwortBausteinDefinition[] = ERSTANTWORT_BAUSTEINE.filter(
+    (baustein) => baustein.key !== 'erstantwortEmergencyAddition',
+).map((baustein) => ({
+    ...baustein,
+    mandatory: false,
+    helpKey: `agency.erstantwort.${baustein.key.replace('erstantwort', '').replace(/^./, (c) => c.toLowerCase())}.help`,
+}));

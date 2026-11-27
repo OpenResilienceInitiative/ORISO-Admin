@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { X_REASON } from '../api/fetchData';
 import { resolveUserSaveErrorMessageKey } from './userSaveErrorMessageKey';
 
@@ -28,6 +28,7 @@ describe('resolveUserSaveErrorMessageKey', () => {
 
     it.each([
         [X_REASON.USERNAME_NOT_AVAILABLE, 'message.error.USERNAME_NOT_AVAILABLE'],
+        [X_REASON.USERNAME_IN_DELETION, 'message.error.USERNAME_IN_DELETION'],
         [X_REASON.PASSWORD_NOT_VALID, 'message.error.PASSWORD_NOT_VALID'],
     ])('maps %s to its own message', (reason, expected) => {
         expect(resolveUserSaveErrorMessageKey(reason, allowed)).toBe(expected);

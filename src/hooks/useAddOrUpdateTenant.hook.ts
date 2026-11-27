@@ -1,6 +1,7 @@
 import { useMutation, UseMutationOptions, useQueryClient } from '@tanstack/react-query';
 import { fetchData, FETCH_ERRORS, FETCH_METHODS, FETCH_SUCCESS } from '../api/fetchData';
 import { tenantAdminEndpoint } from '../appConfig';
+import { buildInternalSubdomain } from '../utils/buildInternalSubdomain';
 import { TenantAdminData } from '../types/TenantAdminData';
 import { useSingleTenantData } from './useSingleTenantData';
 import { TENANTS_QUERY_KEY } from './useTenantsData';
@@ -22,6 +23,12 @@ const SENDER_FIELDS = ['legalName', 'contactEmail', 'contactPhone', 'dataProtect
  * The sender fields are copied only when the form carries them. A form that does not render them
  * must not blank what is stored — "absent" is not "empty" (the Admin#715 trap). An emptied field
  * arrives as `''`, which TenantService stores as "not entered".
+ *
+ * The licence follows the same rule: only the create dialog carries it; on an existing Träger it has its
+ * own tile in "Weitere" and the Stammdaten save keeps the stored value.
+ *
+ * The settings are laid over the stored ones for the same reason: TenantService replaces all of them
+ * when any block arrives, and the Träger card has no settings fields.
  */
 export const buildTenantRequestBody = (
     stored: TenantAdminData | undefined,
@@ -31,8 +38,11 @@ export const buildTenantRequestBody = (
     const senderFields = Object.fromEntries(
         SENDER_FIELDS.filter((field) => formData[field] !== undefined).map((field) => [field, formData[field]]),
     );
+    const metadata = { ...stored };
+    // Operational status has its own command; a stale metadata form must never replay it.
+    delete metadata.active;
     return {
-        ...stored,
+        ...metadata,
         name: formData.name,
         subdomain,
         // NEW optional shared API fields. `topic` is FE-only and intentionally
@@ -40,26 +50,16 @@ export const buildTenantRequestBody = (
         address: formData.address,
         description: formData.description,
         ...senderFields,
-        licensing: {
-            ...formData.licensing,
-        },
-        settings: { ...formData.settings },
+        // The licence is edited in the Träger tab "Weitere" (Frank, 2026-11-20); the Stammdaten form does
+        // not carry it, and its save must keep the stored number instead of sending an empty licence.
+        licensing: formData.licensing ? { ...formData.licensing } : { ...stored?.licensing },
+        settings: { ...stored?.settings, ...formData.settings },
     };
 };
 
 export const useAddOrUpdateTenant = ({ id, ...options }: UseAddOrUpdateTenantOptions) => {
     const queryClient = useQueryClient();
     const { data } = useSingleTenantData({ id, enabled: !!id });
-
-    const buildInternalSubdomain = (name?: string) => {
-        const base =
-            (name || 'tenant')
-                .toLowerCase()
-                .replace(/[^a-z0-9]+/g, '-')
-                .replace(/^-+|-+$/g, '')
-                .slice(0, 24) || 'tenant';
-        return `${base}-${Date.now().toString().slice(-6)}`;
-    };
 
     return useMutation({
         mutationFn: (formData) => {

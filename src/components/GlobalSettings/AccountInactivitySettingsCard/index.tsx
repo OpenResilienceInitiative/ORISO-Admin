@@ -1,5 +1,5 @@
+import EventRepeatOutlinedIcon from '@mui/icons-material/EventRepeatOutlined';
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined';
-import Alert from '@mui/material/Alert';
 import { Form } from 'antd';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +10,9 @@ import { CardEditable } from '../../CardEditable';
 import { MuiNumberFormField } from '../../mui/MuiFormField';
 import { useAccountInactivitySettings } from '../../../hooks/useAccountInactivitySettings.hook';
 import { useUserRoles } from '../../../hooks/useUserRoles.hook';
+import { inactivityHelp } from './help';
 import styles from './styles.module.scss';
+import { Notify } from '../../Notify';
 
 interface Props {
     data?: AccountInactivitySettings;
@@ -40,6 +42,8 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
             className={styles.card}
             variant="dialog"
             headerIcon={<PersonOffOutlinedIcon />}
+            help={inactivityHelp}
+            note={{ icon: <EventRepeatOutlinedIcon />, text: t('globalSettings.accountInactivity.newPeopleNotice') }}
             titleKey="globalSettings.accountInactivity.title"
             subTitleKey="globalSettings.accountInactivity.description"
             initialValues={data ? { ...data } : undefined}
@@ -69,7 +73,17 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
             {({ editing }) => (
                 <>
                     <SyncConfirmedSettings data={data} editing={editing} />
-                    {error && <Alert severity="error">{t('globalSettings.accountInactivity.error.load')}</Alert>}
+                    {error && (
+                        <Notify
+                            retry
+                            quietText={t('notify.tile.notLoaded')}
+                            causeKey="globalSettings:load"
+                            title={t('notify.title.globalSettings')}
+                            severity="error"
+                        >
+                            {t('globalSettings.accountInactivity.error.load')}
+                        </Notify>
+                    )}
                     <FieldGrid>
                         {(['askerMonths', 'consultantMonths', 'otherMonths'] as const).map((name) => (
                             <MuiNumberFormField
@@ -91,7 +105,6 @@ export const AccountInactivitySettingsCard = ({ data, isLoading, isSaving, error
                             />
                         ))}
                     </FieldGrid>
-                    <p className={styles.scope}>{t('globalSettings.accountInactivity.newPeopleNotice')}</p>
                 </>
             )}
         </CardEditable>

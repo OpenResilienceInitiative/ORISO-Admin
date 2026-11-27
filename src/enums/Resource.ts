@@ -8,4 +8,7 @@ export enum Resource {
     Tenant,
     LegalText,
     Language,
+    AdviceSeeker,
+    /** Statistik-Leser·innen accounts; managed by platform admins only (ORISO-UserService#1666). */
+    StatisticsReaderUser,
 }

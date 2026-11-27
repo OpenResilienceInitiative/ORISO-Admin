@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { FETCH_ERRORS, FETCH_METHODS } from '../fetchData';
 import routePathNames, { appURL, inviteEmailTemplatesEndpoint } from '../../appConfig';
 import {
@@ -8,6 +8,7 @@ import {
     counsellorOnboardingAcceptBaseUrl,
     createAccountInvite,
     createInviteEmailTemplate,
+    deleteAccountInvite,
     getInviteEmailPreview,
     inviteEmailPreviewEndpoint,
     listAccountInvites,
@@ -37,6 +38,20 @@ describe('account invite API', () => {
         mocks.fetchData.mockReset();
     });
 
+    it('deletes an invite with DELETE on its own path (ORISO-Admin#1522)', async () => {
+        mocks.fetchData.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+        await expect(deleteAccountInvite(42)).resolves.toBeUndefined();
+
+        expect(mocks.fetchData).toHaveBeenCalledWith(
+            expect.objectContaining({
+                method: FETCH_METHODS.DELETE,
+                url: `${accountInvitesEndpoint}/42`,
+                skipAuth: false,
+            }),
+        );
+    });
+
     it('lists account invites with target role and status filters', async () => {
         mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 1, size: 10 });
 
@@ -63,6 +78,47 @@ describe('account invite API', () => {
 
         expect(mocks.fetchData).toHaveBeenCalledWith(
             expect.objectContaining({ url: `${accountInvitesEndpoint}?page=0&size=20&tab=TENANT` }),
+        );
+    });
+
+    it('sends the literal query, lifecycle buckets and ordering with the requested server page', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 2, size: 10 });
+
+        await listAccountInvites({
+            page: 2,
+            size: 10,
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progressPhases: ['NEEDS_ACTION', 'CLOSED'],
+            sort: 'recipient',
+            sortDirection: 'asc',
+        });
+
+        const request = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example');
+        expect(Object.fromEntries(request.searchParams)).toEqual({
+            page: '2',
+            size: '10',
+            tab: 'UNIT',
+            query: 'Müller 100% _',
+            progress_phases: 'NEEDS_ACTION,CLOSED',
+            sort: 'recipient',
+            sort_direction: 'asc',
+        });
+    });
+
+    it('keeps the scalar phase contract for a single selected bucket', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ progressPhases: ['DONE'] });
+        const params = new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams;
+        expect(params.get('progress_phase')).toBe('DONE');
+        expect(params.has('progress_phases')).toBe(false);
+    });
+
+    it('does not send whitespace-only search as a filter', async () => {
+        mocks.fetchData.mockResolvedValueOnce({ content: [], totalElements: 0, totalPages: 0, page: 0, size: 20 });
+        await listAccountInvites({ query: '  \t ' });
+        expect(new URL(mocks.fetchData.mock.calls[0][0].url, 'https://test.example').searchParams.has('query')).toBe(
+            false,
         );
     });
 

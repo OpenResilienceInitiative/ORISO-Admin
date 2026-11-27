@@ -17,5 +17,10 @@ export interface AdminData {
     deleteDate?: string | null;
     status: Status;
     twoFactorAuth?: boolean;
+    /**
+     * ORISO-Admin#1534: shown to counsellors instead of the login e-mail. On save,
+     * absent keeps the stored value and "" clears it.
+     */
+    contactEmail?: string | null;
     agencyAssignmentFailed?: boolean;
 }

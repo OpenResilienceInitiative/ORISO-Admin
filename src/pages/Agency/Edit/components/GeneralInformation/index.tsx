@@ -1,18 +1,24 @@
 import { useTranslation } from 'react-i18next';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined';
 import { MuiFormField, MuiMultilineFormField } from '../../../../../components/mui/MuiFormField';
 import { Card } from '../../../../../components/Card';
 import { FieldGrid } from '../../../../../components/FieldGrid';
+import { AddressFields, fieldIcon } from '../../../../../components/AddressFields';
+import { OpeningHoursFormField } from '../../../../../components/OpeningHoursInput';
 
 interface AgencyGeneralInformationProps {
     asFields?: boolean;
+    /** Narrowest a field column may get; a panel inside a tile needs less than a whole card. */
+    minColumnWidth?: number;
 }
 
-export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationProps) => {
+export const AgencyGeneralInformation = ({ asFields, minColumnWidth }: AgencyGeneralInformationProps) => {
     const { t } = useTranslation();
     const requiredRule = { required: true, message: t('form.errors.required') };
 
     const fields = (
-        <FieldGrid>
+        <FieldGrid minColumnWidth={minColumnWidth}>
             {/* Name + description span the full row; the address fields flow into
                 as many columns as the card width allows (FieldGrid decides — the
                 per-field antd Col spans are gone). Field data binding is unchanged:
@@ -27,69 +33,32 @@ export const AgencyGeneralInformation = ({ asFields }: AgencyGeneralInformationP
                 />
             </FieldGrid.Wide>
 
-            <MuiFormField
-                name="postcode"
-                label={t('agency.edit.general.address.postcode')}
-                placeholder={t('agency.edit.general.address.postcode')}
-                required
-                inputProps={{ maxLength: 5 }}
-                rules={[requiredRule, { min: 5, required: true, message: t('agency.postcode.minimum') }]}
-            />
-            <MuiFormField
-                name="city"
-                label={t('agency.edit.general.address.city')}
-                placeholder={t('agency.edit.general.address.city')}
-                required
-                rules={[requiredRule]}
-            />
-            <MuiFormField
-                name="street"
-                label={t('agency.edit.general.address.street')}
-                placeholder={t('agency.edit.general.address.street')}
-                inputProps={{ maxLength: 255 }}
-            />
-            <MuiFormField
-                name="houseNumber"
-                label={t('agency.edit.general.address.house_number')}
-                placeholder={t('agency.edit.general.address.house_number')}
-                inputProps={{ maxLength: 20 }}
-            />
-            <MuiFormField
-                name="floorBuilding"
-                label={t('agency.edit.general.address.floor_building')}
-                placeholder={t('agency.edit.general.address.floor_building')}
-                inputProps={{ maxLength: 100 }}
-            />
-            <MuiFormField
-                name="country"
-                label={t('agency.edit.general.address.country')}
-                placeholder={t('agency.edit.general.address.country')}
-                inputProps={{ maxLength: 100 }}
-            />
+            <FieldGrid.Wide>
+                <AddressFields />
+            </FieldGrid.Wide>
             <MuiFormField
                 name="phone"
+                startAdornment={fieldIcon(<PhoneOutlinedIcon fontSize="small" />)}
                 label={t('agency.edit.general.address.phone')}
                 placeholder={t('agency.edit.general.address.phone')}
                 inputProps={{ maxLength: 30 }}
             />
             <MuiFormField
                 name="phoneSecondary"
+                startAdornment={fieldIcon(<PhoneOutlinedIcon fontSize="small" />)}
                 label={t('agency.edit.general.address.phone_secondary')}
                 placeholder={t('agency.edit.general.address.phone_secondary')}
                 inputProps={{ maxLength: 30 }}
             />
             <MuiFormField
                 name="email"
+                startAdornment={fieldIcon(<EmailOutlinedIcon fontSize="small" />)}
                 label={t('agency.edit.general.address.email')}
                 placeholder={t('agency.edit.general.address.email')}
                 inputProps={{ maxLength: 255 }}
             />
             <FieldGrid.Wide>
-                <MuiMultilineFormField
-                    name="openingHours"
-                    label={t('agency.edit.general.address.opening_hours')}
-                    placeholder={t('agency.edit.general.address.opening_hours')}
-                />
+                <OpeningHoursFormField name="openingHours" label={t('agency.edit.general.address.opening_hours')} />
             </FieldGrid.Wide>
             <FieldGrid.Wide>
                 <MuiMultilineFormField

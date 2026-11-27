@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { PermissionAction } from '../enums/PermissionAction';
 import { Resource } from '../enums/Resource';
 import {
     canEditCaseHandoverReasonPolicies,
     canReadCaseHandoverAdmin,
+    canSeeCaseSharingLogsFor,
+    canSeeDeletionAuditLogsFor,
     canSeeSupervisorLogs,
 } from './caseHandoverAccess';
 
@@ -39,12 +41,46 @@ describe('canReadCaseHandoverAdmin', () => {
 });
 
 describe('canEditCaseHandoverReasonPolicies', () => {
-    it('allows super admins and consultant updaters', () => {
-        const canUpdateConsultant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
-            action === PermissionAction.Update && resource === Resource.Consultant;
+    // The rules are Träger settings (FE#1725): Träger write access decides, not consultant admin.
+    it('allows super admins and Träger updaters, not consultant updaters alone (BST admins)', () => {
+        const canUpdate = (target: Resource) => (action: PermissionAction | PermissionAction[], resource: Resource) =>
+            action === PermissionAction.Update && resource === target;
 
         expect(canEditCaseHandoverReasonPolicies(true, () => false)).toBe(true);
-        expect(canEditCaseHandoverReasonPolicies(false, canUpdateConsultant)).toBe(true);
+        expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Tenant))).toBe(true);
+        expect(canEditCaseHandoverReasonPolicies(false, canUpdate(Resource.Consultant))).toBe(false);
         expect(canEditCaseHandoverReasonPolicies(false, () => false)).toBe(false);
+    });
+});
+
+describe('canSeeDeletionAuditLogsFor', () => {
+    const canUpdateTenant = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Update && resource === Resource.Tenant;
+
+    it('is for platform admins that may update tenants, like the inactive-account audit', () => {
+        expect(canSeeDeletionAuditLogsFor(true, canUpdateTenant)).toBe(true);
+    });
+
+    it('denies every admin below platform level, whatever else they may read', () => {
+        expect(canSeeDeletionAuditLogsFor(false, canUpdateTenant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(false, canReadConsultant)).toBe(false);
+        expect(canSeeDeletionAuditLogsFor(true, () => false)).toBe(false);
+    });
+});
+
+describe('canSeeCaseSharingLogsFor', () => {
+    const canUpdateAgency = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Update && resource === Resource.Agency;
+    const canReadAgency = (action: PermissionAction | PermissionAction[], resource: Resource) =>
+        action === PermissionAction.Read && resource === Resource.Agency;
+
+    it('follows the Beratungsstellen list gate (Agency.read, backed by SEARCH_AGENCIES)', () => {
+        expect(canSeeCaseSharingLogsFor(canReadAgency)).toBe(true);
+    });
+
+    it('denies admins who cannot read Beratungsstellen, whatever else they may do', () => {
+        expect(canSeeCaseSharingLogsFor(canUpdateAgency)).toBe(false);
+        expect(canSeeCaseSharingLogsFor(canReadConsultant)).toBe(false);
+        expect(canSeeCaseSharingLogsFor(() => false)).toBe(false);
     });
 });

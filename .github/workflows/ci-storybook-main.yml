@@ -10,6 +10,7 @@ on:
 env:
     REGISTRY: ghcr.io
     ORG: openresilienceinitiative
+    IMAGE_NAME: oriso-admin-storybook
 
 concurrency:
     # Never cancel on a protected branch: that run publishes.
@@ -25,14 +26,45 @@ jobs:
             contents: read
             packages: write
 
+        outputs:
+            digest: ${{ steps.publish.outputs.digest }}
+
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
 
             - name: Create and Publish Storybook Docker image
+              id: publish
               uses: ./.github/actions/docker-build-push
               with:
                   push_to_ghcr: true
-                  image_name: oriso-admin-storybook
+                  image_name: ${{ env.IMAGE_NAME }}
                   dockerfile: Dockerfile.storybook
                   github_token: ${{ secrets.GITHUB_TOKEN }}
+
+    attest-dev:
+        name: Sign the published Dev image
+        if: github.ref == 'refs/heads/dev'
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+            id-token: write
+            attestations: write
+
+        steps:
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v4
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Attest the published Dev image
+              uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.IMAGE_NAME }}
+                  subject-digest: ${{ needs.build.outputs.digest }}
+                  push-to-registry: true
+                  create-storage-record: false

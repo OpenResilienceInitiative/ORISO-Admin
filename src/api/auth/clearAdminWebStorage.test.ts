@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { clearAdminLocalStorage } from './clearAdminWebStorage';
 
 // Keys the counselling app writes on the same origin (dev.example.org/app), taken from

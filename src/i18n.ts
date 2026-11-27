@@ -10,6 +10,12 @@ import assistant6 from './locales/ti/assistant.json';
 
 import translationDe from './locales/de/translation.json';
 import translationEn from './locales/en/translation.json';
+import { directInviteLocaleKeys } from './locales/directInviteKeys';
+import directInviteInformal from './locales/de@informal/directInvite.json';
+import directInviteFr from './locales/fr/directInvite.json';
+import directInviteRu from './locales/ru/directInvite.json';
+import directInviteTr from './locales/tr/directInvite.json';
+import directInviteTi from './locales/ti/directInvite.json';
 import {
     DEFAULT_LANGUAGE,
     getInitialLanguage,
@@ -33,11 +39,17 @@ i18n.use(initReactI18next).init({
     },
 
     resources: {
-        'de@informal': { translations: assistant2 },
-        fr: { translations: assistant3 },
-        ru: { translations: assistant4 },
-        tr: { translations: assistant5 },
-        ti: { translations: assistant6 },
+        'de@informal': {
+            translations: {
+                ...Object.fromEntries(directInviteLocaleKeys.map((key) => [key, translationDe[key]])),
+                ...assistant2,
+                ...directInviteInformal,
+            },
+        },
+        fr: { translations: { ...assistant3, ...directInviteFr } },
+        ru: { translations: { ...assistant4, ...directInviteRu } },
+        tr: { translations: { ...assistant5, ...directInviteTr } },
+        ti: { translations: { ...assistant6, ...directInviteTi } },
 
         en: {
             translations: { ...translationEn, ...assistant0 },

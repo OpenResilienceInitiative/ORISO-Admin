@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.12.0
+ARG NODE_VERSION=22.23.3
 ARG PORT=80
 
 # Build stage
@@ -17,13 +17,22 @@ RUN npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
+# Reviewed first-party runtime preparation; dependency lifecycle scripts remain disabled.
+RUN npm run prepare:runtime
+
 # Build Storybook static files (prebuild-storybook runs the SB typecheck)
 RUN npm run build-storybook
 
 # Production stage - serve static files
 FROM nginx:alpine
 
+# The floating Alpine tag can ship a library the image scan rejects.
+# Upgrade at build time, the same way the application image does.
+RUN apk upgrade --no-cache
+
 ARG PORT=80
+
+RUN apk add --no-cache 'libxml2>=2.13.9-r3'
 
 # Copy Storybook build output to nginx html directory
 COPY --from=storybookbuild /app/storybook-static /usr/share/nginx/html

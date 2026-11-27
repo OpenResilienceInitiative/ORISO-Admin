@@ -35,7 +35,7 @@ const PublicCompletionExample = ({ language, children }: { language: Language; c
                         justifyContent: 'center',
                         padding: 'clamp(16px, 4vw, 40px)',
                         minHeight: '100vh',
-                        background: 'var(--admin-workspace-background, #e4e2e2)',
+                        background: 'var(--admin-workspace-background, #fcf9f9)',
                     }}
                 >
                     {children}

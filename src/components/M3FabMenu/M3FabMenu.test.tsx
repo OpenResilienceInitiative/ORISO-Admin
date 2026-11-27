@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { M3FabMenu, type M3FabMenuProps } from './M3FabMenu';
 
 const initialInnerHeight = window.innerHeight;
@@ -98,11 +98,100 @@ describe('M3FabMenu', () => {
         const stack = screen.getByRole('list');
         expect(stack.parentElement?.className).toContain('openDownward');
         expect(stack).toHaveAttribute('data-placement', 'bottom');
-        expect(stack).toHaveStyle({ maxHeight: '604px' });
+        expect(stack).toHaveStyle({ maxHeight: '596px' });
 
         Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
         act(() => window.dispatchEvent(new Event('resize')));
-        await waitFor(() => expect(stack).toHaveStyle({ maxHeight: '236px' }));
+        await waitFor(() => expect(stack).toHaveStyle({ maxHeight: '228px' }));
+    });
+
+    it('keeps the action stack inset from a scroll container and the toggle', () => {
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: 900 });
+        const rect = (top: number, bottom: number) =>
+            ({
+                top,
+                bottom,
+                height: bottom - top,
+                left: 0,
+                right: 320,
+                width: 320,
+                x: 0,
+                y: top,
+                toJSON: () => ({}),
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRectForClip() {
+            if (this.dataset.testid === 'clip') return rect(100, 700);
+            if (this instanceof HTMLUListElement) return rect(0, 800);
+            if (this instanceof HTMLButtonElement) return rect(130, 186);
+            return rect(0, 0);
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function getClipHeight() {
+            return this.dataset.testid === 'clip' ? 600 : 0;
+        });
+        vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function getStackHeight() {
+            return this instanceof HTMLUListElement ? 800 : 0;
+        });
+        render(
+            <MemoryRouter>
+                <div data-testid="clip" style={{ overflowY: 'auto' }}>
+                    <M3FabMenu
+                        items={items}
+                        open
+                        openLabel="Open"
+                        closeLabel="Close"
+                        variant="action"
+                        onOpenChange={vi.fn()}
+                    />
+                </div>
+            </MemoryRouter>,
+        );
+        // FAB bottom 186 + gap 8, container bottom 700 - 8px inset = 498px.
+        expect(screen.getByRole('list')).toHaveAttribute('data-placement', 'bottom');
+        expect(screen.getByRole('list')).toHaveStyle({ maxHeight: '498px' });
+    });
+
+    it('keeps a wide action stack inside a narrower clipping ancestor', () => {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: 900 });
+        const rect = (left: number, right: number, top: number, bottom: number) =>
+            ({
+                left,
+                right,
+                top,
+                bottom,
+                width: right - left,
+                height: bottom - top,
+                x: left,
+                y: top,
+                toJSON: () => ({}),
+            } as DOMRect);
+        vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getClipRect() {
+            if (this.dataset.testid === 'clip') return rect(200, 460, 100, 700);
+            if (this instanceof HTMLUListElement) return rect(120, 440, 200, 600);
+            if (this instanceof HTMLButtonElement) return rect(384, 440, 130, 186);
+            return rect(0, 0, 0, 0);
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function getClipWidth() {
+            return this.dataset.testid === 'clip' ? 260 : 0;
+        });
+        vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function getClipHeight() {
+            return this.dataset.testid === 'clip' ? 600 : 0;
+        });
+        render(
+            <MemoryRouter>
+                <div data-testid="clip" style={{ overflowX: 'auto', overflowY: 'auto' }}>
+                    <M3FabMenu
+                        items={items}
+                        open
+                        openLabel="Open"
+                        closeLabel="Close"
+                        variant="action"
+                        onOpenChange={vi.fn()}
+                    />
+                </div>
+            </MemoryRouter>,
+        );
+        // 260px container - two 6px gutters; move its right edge from 440 to 454.
+        expect(screen.getByRole('list')).toHaveStyle({ maxWidth: '248px', transform: 'translateX(14px)' });
     });
 
     it('flips an open action stack upward before it collides with the bottom viewport edge', async () => {
@@ -150,7 +239,7 @@ describe('M3FabMenu', () => {
         await waitFor(() => {
             expect(stack.parentElement?.className).not.toContain('openDownward');
             expect(stack).toHaveAttribute('data-placement', 'top');
-            expect(stack).toHaveStyle({ maxHeight: '632px' });
+            expect(stack).toHaveStyle({ maxHeight: '624px' });
         });
     });
 
@@ -198,14 +287,14 @@ describe('M3FabMenu', () => {
         expect(stack.parentElement?.className).toContain('openDownward');
 
         // The rendered stack is already capped to 80 px. Its natural 500 px
-        // height still does not fit on either side, so the larger 136 px gap
-        // below the FAB must win over the 92 px gap above it.
+        // height still does not fit on either side, so the larger 128 px space
+        // below the FAB must win over the 84 px space above it.
         fabTop = 100;
         act(() => stack.parentElement?.dispatchEvent(new Event('scroll', { bubbles: false })));
 
         await waitFor(() => {
             expect(stack.parentElement?.className).toContain('openDownward');
-            expect(stack).toHaveStyle({ maxHeight: '136px' });
+            expect(stack).toHaveStyle({ maxHeight: '128px' });
         });
     });
 
@@ -268,6 +357,21 @@ describe('M3FabMenu', () => {
         await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
 
         expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveFocus();
+    });
+
+    it('keeps normal focus scrolling for navigation destinations', async () => {
+        const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+        render(<Harness />);
+
+        await userEvent.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        const first = screen.getByRole('link', { name: 'Einstellungen' });
+        expect(first).toHaveFocus();
+        // Navigation menus are not placed inside a clipped deck, so focus must
+        // be allowed to scroll a clipped first destination into view.
+        const call = focus.mock.contexts.findIndex((context) => context === first);
+        expect(call).toBeGreaterThanOrEqual(0);
+        expect(focus.mock.calls[call][0]).toBeUndefined();
     });
 
     it('marks the destination you are on', async () => {
@@ -388,5 +492,41 @@ describe('M3FabMenu', () => {
         const entries = screen.getAllByRole('listitem').map((item) => item.textContent);
 
         expect(entries).toEqual(['Einstellungen', 'Träger', 'Abmelden']);
+    });
+});
+
+// FE#1725: an optional supporting sentence under a pill's label.
+describe('M3FabMenu item description', () => {
+    const described = [
+        { key: 'opt-in', label: 'Opt-in', description: 'The client is asked first.' },
+        { key: 'none', label: 'No consent' },
+    ];
+
+    it('shows the sentence in the M3 body-medium style and reads it as the description, not the name', async () => {
+        const user = userEvent.setup();
+        render(<Harness items={described} activeKey="none" />);
+        await user.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        const optIn = screen.getByRole('button', { name: 'Opt-in' });
+        expect(optIn).toHaveAccessibleDescription('The client is asked first.');
+        expect(screen.getByText('The client is asked first.')).toHaveClass('m3-body-medium');
+        expect(screen.getByRole('button', { name: 'No consent' })).not.toHaveAttribute('aria-describedby');
+    });
+
+    it('keeps the description linked when an item key contains whitespace', async () => {
+        const user = userEvent.setup();
+        render(
+            <Harness
+                items={[{ key: 'opt in', label: 'Opt-in', description: 'The client is asked first.' }]}
+                footerItems={[{ key: 'opt in', label: 'Footer', description: 'Footer sentence.' }]}
+                activeKey="none"
+            />,
+        );
+        await user.click(screen.getByRole('button', { name: 'Menü öffnen' }));
+
+        expect(screen.getByRole('button', { name: 'Opt-in' })).toHaveAccessibleDescription(
+            'The client is asked first.',
+        );
+        expect(screen.getByRole('button', { name: 'Footer' })).toHaveAccessibleDescription('Footer sentence.');
     });
 });

@@ -4,7 +4,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import authLogout from '../../api/auth/logout';
 import { useIsDesktopLayout } from '../../hooks/useIsDesktopLayout.hook';
 import routePathNames from '../../appConfig';
@@ -78,6 +78,8 @@ vi.mock('./AdminMobileNavBar', () => ({
         </nav>
     ),
 }));
+vi.mock('../productTour/TourHost', () => ({ TourHost: () => <div data-testid="tour-host" /> }));
+vi.mock('../productTour/TourLauncher', () => ({ TourLauncher: () => <div data-testid="tour-launcher" /> }));
 vi.mock('./AdminSidebar', () => ({
     default: ({ items, account, logout }: any) => (
         <nav data-testid="desktop-navigation">
@@ -155,6 +157,28 @@ describe('Admin layout footer ownership', () => {
         expect(screen.getByRole('button', { name: 'logout' })).toBeVisible();
     });
 
+    it('mounts the global tour host and the "?" launcher on an ordinary authenticated page', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper>
+                <main>Protected content</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.getByTestId('tour-host')).toBeInTheDocument();
+        expect(screen.getByTestId('tour-launcher')).toBeInTheDocument();
+    });
+
+    it('renders no tour host behind the two-factor gate', () => {
+        renderAtRoute(
+            <ProtectedPageLayoutWrapper restricted>
+                <main>Two-factor setup</main>
+            </ProtectedPageLayoutWrapper>,
+        );
+
+        expect(screen.queryByTestId('tour-host')).toBeNull();
+        expect(screen.queryByTestId('tour-launcher')).toBeNull();
+    });
+
     it('honors hideFooter on public pages', () => {
         renderAtRoute(
             <PublicPageLayoutWrapper hideFooter>
@@ -194,6 +218,6 @@ describe('deliberate logout from centre setup', () => {
 
         await user.click(screen.getByRole('button', { name: 'logout' }));
 
-        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login);
+        expect(authLogout).toHaveBeenCalledExactlyOnceWith(true, routePathNames.login, 'explicit');
     });
 });

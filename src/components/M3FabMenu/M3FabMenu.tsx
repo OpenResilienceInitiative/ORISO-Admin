@@ -8,6 +8,8 @@ export interface M3FabMenuItem {
     /** Stable key; also what `onSelect` reports and what `activeKey` matches. */
     key: string;
     label: string;
+    /** One supporting sentence under the label; read as the pill's description, not its name. */
+    description?: string;
     /** Single-colour glyph — it inherits the pill's text colour. */
     icon?: ReactNode;
     /** Filled glyph for the currently selected item; falls back to `icon`. */
@@ -84,7 +86,23 @@ export const M3FabMenu = ({
     const stackRef = useRef<HTMLUListElement>(null);
     const [opensDownward, setOpensDownward] = useState(false);
     const [stackMaxHeight, setStackMaxHeight] = useState<number>();
+    const [stackMaxWidth, setStackMaxWidth] = useState<number>();
     const [stackInlineOffset, setStackInlineOffset] = useState(0);
+    const [showScrollHint, setShowScrollHint] = useState(false);
+    const updateScrollHint = useCallback(() => {
+        const stack = stackRef.current;
+        if (!stack) {
+            setShowScrollHint(false);
+            return;
+        }
+        // Ignore the hint itself: its flex gap must not keep the hint alive
+        // after the last real option has scrolled fully into view.
+        const lastOption = Array.from(stack.children)
+            .reverse()
+            .find((child) => !child.hasAttribute('data-admin-fab-scroll-hint'));
+        const visibleBottom = stack.getBoundingClientRect().top + stack.clientTop + stack.clientHeight;
+        setShowScrollHint(Boolean(lastOption && lastOption.getBoundingClientRect().bottom > visibleBottom + 1));
+    }, []);
     // The account entries are destinations too: standing on "Konto" and closing
     // the menu left the FAB empty, because only `items` was searched.
     const activeItem = [...items, ...footerItems].find((item) => item.key === activeKey);
@@ -104,7 +122,9 @@ export const M3FabMenu = ({
         if (!open || variant !== 'action') {
             setOpensDownward(false);
             setStackMaxHeight(undefined);
+            setStackMaxWidth(undefined);
             setStackInlineOffset(0);
+            setShowScrollHint(false);
             return undefined;
         }
 
@@ -113,8 +133,69 @@ export const M3FabMenu = ({
             const fabRect = fabRef.current?.getBoundingClientRect();
             if (!stack || !fabRect) return;
 
-            const spaceAbove = Math.max(0, fabRect.top - 8);
-            const spaceBelow = Math.max(0, window.innerHeight - fabRect.bottom - 8);
+            // An action menu is absolutely positioned inside the settings deck.
+            // Every scroll/clip ancestor limits it just as the viewport does.
+            let visibleTop = 0;
+            let visibleBottom = window.innerHeight;
+            let visibleLeft = 0;
+            let visibleRight = window.innerWidth;
+            let ancestor = rootRef.current?.parentElement;
+            while (ancestor) {
+                const { overflowX, overflowY } = window.getComputedStyle(ancestor);
+                const clipped = ['auto', 'scroll', 'hidden', 'clip'];
+                const rect = ancestor.getBoundingClientRect();
+                if (clipped.includes(overflowY) && ancestor.clientHeight > 0) {
+                    const top = rect.top + ancestor.clientTop;
+                    visibleTop = Math.max(visibleTop, top);
+                    visibleBottom = Math.min(visibleBottom, top + ancestor.clientHeight);
+                }
+                if (clipped.includes(overflowX) && ancestor.clientWidth > 0) {
+                    const left = rect.left + ancestor.clientLeft;
+                    visibleLeft = Math.max(visibleLeft, left);
+                    visibleRight = Math.min(visibleRight, left + ancestor.clientWidth);
+                }
+                ancestor = ancestor.parentElement;
+            }
+            // Sticky page headers and the floating mobile navigation are not
+            // ancestors, but they cover the same screen area as the menu.
+            document.querySelectorAll<HTMLElement>('[data-admin-page-header]').forEach((header) => {
+                const rect = header.getBoundingClientRect();
+                const headerStyle = window.getComputedStyle(header);
+                if (
+                    headerStyle.position === 'sticky' &&
+                    headerStyle.visibility !== 'hidden' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.bottom <= fabRect.top &&
+                    rect.right > visibleLeft &&
+                    rect.left < visibleRight
+                ) {
+                    visibleTop = Math.max(visibleTop, rect.bottom);
+                }
+            });
+            const mobileNav = document.querySelector<HTMLElement>('[data-admin-mobile-nav]');
+            if (mobileNav) {
+                const rect = mobileNav.getBoundingClientRect();
+                if (
+                    window.getComputedStyle(mobileNav).visibility !== 'hidden' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.top < visibleBottom
+                ) {
+                    visibleBottom = Math.max(visibleTop, rect.top);
+                }
+            }
+            // A scrolled ancestor can carry the trigger out of its visible
+            // area. No placement keeps the stack attached to a hidden FAB
+            // inside those bounds, so close without scrolling back to it.
+            if (fabRect.height > 0 && (fabRect.bottom <= visibleTop || fabRect.top >= visibleBottom)) {
+                close(false);
+                return;
+            }
+            // CSS adds an 8px gap at the FAB; keep another 8px at the visible edge.
+            const edgeAndTriggerGap = 16;
+            const spaceAbove = Math.max(0, fabRect.top - visibleTop - edgeAndTriggerGap);
+            const spaceBelow = Math.max(0, visibleBottom - fabRect.bottom - edgeAndTriggerGap);
             // `scrollHeight` stays at the natural five-action height even when
             // the stack is already capped by a previous placement. Comparing
             // the rendered rectangle would otherwise make a clipped menu look
@@ -129,15 +210,17 @@ export const M3FabMenu = ({
             // viewport edge even though the card itself has the correct inset.
             // Keep the whole stack between the same six-pixel mobile gutters.
             const viewportInset = 6;
-            const availableWidth = Math.max(0, window.innerWidth - viewportInset * 2);
+            const availableWidth = Math.max(0, visibleRight - visibleLeft - viewportInset * 2);
+            setStackMaxWidth(availableWidth);
             const naturalStackWidth = Math.min(
                 stack.scrollWidth || stack.getBoundingClientRect().width,
                 availableWidth,
             );
-            const minimumRightEdge = viewportInset + naturalStackWidth;
-            const maximumRightEdge = window.innerWidth - viewportInset;
+            const minimumRightEdge = visibleLeft + viewportInset + naturalStackWidth;
+            const maximumRightEdge = visibleRight - viewportInset;
             const targetRightEdge = Math.min(Math.max(fabRect.right, minimumRightEdge), maximumRightEdge);
             setStackInlineOffset(targetRightEdge - fabRect.right);
+            updateScrollHint();
         };
 
         // A scrollable settings deck can move the FAB from the top to the
@@ -159,6 +242,38 @@ export const M3FabMenu = ({
         const stackResizeObserver =
             typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(schedulePlacement);
         if (stackRef.current) stackResizeObserver?.observe(stackRef.current);
+        document
+            .querySelectorAll<HTMLElement>('[data-admin-page-header], [data-admin-mobile-nav]')
+            .forEach((element) => {
+                stackResizeObserver?.observe(element);
+            });
+        // A settings pane can be resized without a window resize; its clip
+        // bounds must be recalculated even if the menu itself has not changed.
+        let observedAncestor = rootRef.current?.parentElement;
+        while (observedAncestor) {
+            stackResizeObserver?.observe(observedAncestor);
+            observedAncestor = observedAncestor.parentElement;
+        }
+        // Option content can change while the menu stays open (a longer
+        // description replaces a short one) without resizing the capped stack.
+        // Observe the options themselves and their text, so the scroll cue and
+        // placement are remeasured even on overlay-scrollbar platforms.
+        const observeOptions = () => {
+            stackRef.current
+                ?.querySelectorAll<HTMLElement>(':scope > li')
+                .forEach((option) => stackResizeObserver?.observe(option));
+        };
+        observeOptions();
+        const contentObserver =
+            typeof MutationObserver === 'undefined'
+                ? undefined
+                : new MutationObserver(() => {
+                      observeOptions();
+                      schedulePlacement();
+                  });
+        if (stackRef.current) {
+            contentObserver?.observe(stackRef.current, { characterData: true, childList: true, subtree: true });
+        }
         let active = true;
         document.fonts?.ready
             .then(() => {
@@ -169,16 +284,22 @@ export const M3FabMenu = ({
             active = false;
             if (placementFrame !== undefined) window.cancelAnimationFrame(placementFrame);
             stackResizeObserver?.disconnect();
+            contentObserver?.disconnect();
             window.removeEventListener('resize', schedulePlacement);
             window.removeEventListener('scroll', schedulePlacement, true);
         };
-    }, [items.length, footerItems.length, open, variant]);
+    }, [close, items.length, footerItems.length, open, updateScrollHint, variant]);
 
     useEffect(() => {
         if (!open || disabled) return;
 
-        stackRef.current?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')?.focus();
-    }, [disabled, footerItems.length, items.length, open]);
+        // Action menus are placed inside the visible bounds before focus moves,
+        // so focusing must not scroll the deck. Navigation menus skip placement:
+        // keep normal focus scrolling so a clipped first destination is revealed.
+        stackRef.current
+            ?.querySelector<HTMLElement>('a:not([aria-disabled="true"]), button:not(:disabled)')
+            ?.focus(variant === 'action' ? { preventScroll: true } : undefined);
+    }, [disabled, footerItems.length, items.length, open, variant]);
 
     // Escape and a click outside close the menu. Pointer-down rather than click,
     // so a tap that starts outside never also activates what is underneath.
@@ -213,15 +334,34 @@ export const M3FabMenu = ({
         };
     }, [close, open]);
 
-    const renderItem = (item: M3FabMenuItem, isFooter: boolean) => {
+    const renderItem = (item: M3FabMenuItem, isFooter: boolean, index: number) => {
         const isActive = item.key === activeKey;
+        // Index, not the free-form key: aria-describedby splits on whitespace.
+        const descriptionId = item.description
+            ? `${menuId}-${isFooter ? 'footer' : 'item'}-${index}-description`
+            : undefined;
         const content = (
             <>
                 {isActive ? item.selectedIcon ?? item.icon : item.icon}
-                <span className={styles.itemLabel}>{item.label}</span>
+                {item.description ? (
+                    <span className={styles.itemText}>
+                        <span className={styles.itemLabel}>{item.label}</span>
+                        {/* aria-hidden keeps it out of the name; aria-describedby still reads it. */}
+                        <span
+                            className={classNames(styles.itemDescription, 'm3-body-medium')}
+                            id={descriptionId}
+                            aria-hidden
+                        >
+                            {item.description}
+                        </span>
+                    </span>
+                ) : (
+                    <span className={styles.itemLabel}>{item.label}</span>
+                )}
             </>
         );
         const itemClassName = classNames(styles.item, {
+            [styles.itemWithDescription]: Boolean(item.description),
             [styles.itemActive]: isActive,
             [styles.itemFooter]: isFooter,
             [styles.itemNeutral]: (item.tone ?? tone) === 'neutral',
@@ -234,6 +374,7 @@ export const M3FabMenu = ({
                         className={itemClassName}
                         to={item.to}
                         aria-current={isActive ? 'page' : undefined}
+                        aria-describedby={descriptionId}
                         aria-disabled={disabled || undefined}
                         tabIndex={disabled ? -1 : undefined}
                         onClick={(event) => {
@@ -259,6 +400,7 @@ export const M3FabMenu = ({
                     // Also on the button branch: which destination you are on
                     // must not depend on whether it was given a route.
                     aria-current={isActive ? 'page' : undefined}
+                    aria-describedby={descriptionId}
                     disabled={disabled}
                     onClick={() => {
                         onSelect?.(item.key);
@@ -287,13 +429,20 @@ export const M3FabMenu = ({
                     data-admin-fab-menu-stack
                     data-placement={variant === 'action' && opensDownward ? 'bottom' : 'top'}
                     ref={stackRef}
+                    onScroll={updateScrollHint}
                     style={{
                         maxHeight: stackMaxHeight,
+                        maxWidth: stackMaxWidth,
                         transform: stackInlineOffset === 0 ? undefined : `translateX(${stackInlineOffset}px)`,
                     }}
                 >
-                    {items.map((item) => renderItem(item, false))}
-                    {footerItems.map((item) => renderItem(item, true))}
+                    {items.map((item, index) => renderItem(item, false, index))}
+                    {footerItems.map((item, index) => renderItem(item, true, index))}
+                    {variant === 'action' && showScrollHint && (
+                        <li className={styles.scrollHintAnchor} aria-hidden="true" data-admin-fab-scroll-hint>
+                            <span className={styles.scrollHint}>↓</span>
+                        </li>
+                    )}
                 </ul>
             )}
             <button

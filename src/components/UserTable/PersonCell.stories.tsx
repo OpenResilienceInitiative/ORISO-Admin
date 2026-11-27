@@ -56,7 +56,7 @@ export const CopyEmail: Story = {
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('maria.huber@caritas-berlin.de'));
         const snackbar = await waitFor(() => within(document.body).getByTestId('person-copy-snackbar'));
         await expect(snackbar).toHaveTextContent(/E-Mail kopiert|E-mail copied/);
-        await expect(document.querySelector('.ant-message')).toBeNull();
+        await expect(document.querySelector('[data-testid="snackbar-host"] [data-testid="snackbar"]')).toBeNull();
     },
 };
 

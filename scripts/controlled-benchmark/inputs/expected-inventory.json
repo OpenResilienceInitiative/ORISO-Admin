@@ -1,0 +1,240 @@
+{
+    "unit": [
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig cookie domain omits the shared cookie domain on configured local hostnames"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig cookie domain keeps the shared cookie domain on regular deployment hostnames"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig cookie domain reads legacy runtime env.js globals still used by PreDev deployments"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig observability is disabled without an explicit runtime opt-in"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig observability accepts a valid runtime endpoint and interval"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig observability rejects invalid endpoints and too-frequent intervals"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity keeps the full baked commit when runtime configuration claims another build"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: undefined"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: "
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: unknown"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: a3445a9"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: gggggggggggggggggggggggggggggggggggggggg"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "bundle build identity leaves a missing or malformed baked commit unidentified:  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        ["src/config/runtimeConfig.test.ts", "runtimeConfig app base URL does not guess app.* from an api.* host"],
+        [
+            "src/config/runtimeConfig.test.ts",
+            "runtimeConfig app base URL uses the configured API URL on a single-domain deployment without APP_URL"
+        ],
+        ["src/config/runtimeConfig.test.ts", "runtimeConfig app base URL uses the configured APP_URL"],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests raises a message and a notification"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests starts with a body free of the previous test notices"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests can still raise its own message after the cleanup ran"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests cleans up a notice that was raised without being awaited"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests starts clean after a fire-and-forget notice"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests leaves a notice on screen with fake timers still installed"
+        ],
+        [
+            "src/test/antdNoticeCleanup.test.tsx",
+            "antd static notice cleanup between tests starts clean after a test that ended under fake timers"
+        ],
+        ["src/test/emotionStyleTags.test.tsx", "MUI styles in jsdom packs many rules into a few <style> tags"],
+        ["src/test/emotionStyleTags.test.tsx", "MUI styles in jsdom still applies those rules to getComputedStyle"],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage inherits from the global Storage the tests spy on"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage resolves clear to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage resolves getItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage resolves key to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage resolves removeItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage resolves setItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage round-trips values through the real implementation"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage reports a miss as null rather than undefined"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage lets a Storage.prototype spy simulate a refused write"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage lets a Storage.prototype spy simulate a refused read \u2014 Safari private mode"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage localStorage lets a Storage.prototype spy simulate a refused removal"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage inherits from the global Storage the tests spy on"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage resolves clear to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage resolves getItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage resolves key to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage resolves removeItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage resolves setItem to the spy-able prototype rather than an own method"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage round-trips values through the real implementation"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage reports a miss as null rather than undefined"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage lets a Storage.prototype spy simulate a refused write"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage lets a Storage.prototype spy simulate a refused read \u2014 Safari private mode"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage sessionStorage lets a Storage.prototype spy simulate a refused removal"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "in-memory Web Storage keeps the two areas separate, so a session write is no local write"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "storage isolation between tests fills both areas without cleaning up after itself"
+        ],
+        [
+            "src/test/memoryStorage.test.ts",
+            "storage isolation between tests starts with both areas empty, whatever the previous test wrote"
+        ]
+    ],
+    "storybook": [
+        ["src/components/M3Button/M3Button.stories.tsx", "Text"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Outlined"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Filled"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Tonal"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Disabled"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Disabled Text"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Disabled Outlined"],
+        ["src/components/M3Button/M3Button.stories.tsx", "Disabled Tonal"],
+        ["src/components/M3Button/M3Button.stories.tsx", "All Variants Disabled"],
+        ["src/components/M3Button/M3Button.stories.tsx", "All Variants"]
+    ],
+    "storyIds": [
+        "atoms-m3button--text",
+        "atoms-m3button--outlined",
+        "atoms-m3button--filled",
+        "atoms-m3button--tonal",
+        "atoms-m3button--disabled",
+        "atoms-m3button--disabled-text",
+        "atoms-m3button--disabled-outlined",
+        "atoms-m3button--disabled-tonal",
+        "atoms-m3button--all-variants-disabled",
+        "atoms-m3button--all-variants"
+    ],
+    "source": "accepted2255matchedsource e36016b7; exact52unit/10M3sample arrays retained from reviewed2251inventory; selected source/assertion bytes unchanged; no runner discovery",
+    "sourceBoundary": {
+        "freeze": "inputs/source-map.json; Git314228ed735bee7d3d753d98eba5e72624e50510 exact accepted2255blob hashes",
+        "manifestSHA256": "e36016b7b74231fd0da2943436c16d9b83a12e4fc182e8520bbe436ab20f841a",
+        "canonicalFiles": 2255,
+        "subjectFiles": 2256,
+        "sourceDigest": "b09da8ee38f47fb0725f4de618edc9f6d4986a8d353310a4c41d3cac6a96d127",
+        "sampleCanonicalHashes": {
+            "src/components/M3Button/M3Button.stories.tsx": "ff97c883be3d433d859726e0287f971ee78a6e7d8c475f1a3eae8b776e7edfb8",
+            "src/config/runtimeConfig.test.ts": "f35541f830e1680542ff63281c7fa59a8d04ccb7e1bf24ad1fd222fd805b3862",
+            "src/test/antdNoticeCleanup.test.tsx": "d440de3181f97b93e2648b452e0c62d790ee19ad064f67a021e18820d5bcffa3",
+            "src/test/emotionStyleTags.test.tsx": "b901fabe188a0d460adeb39d85b1860a37be90dfba66d7ec8b4aaed757964b50",
+            "src/test/memoryStorage.test.ts": "529084c3ce238ebb81d6732a6e5c1a13b6d9f39c539f8317e63b456c5fa828e7"
+        },
+        "runtimeEqualityStillRequired": true
+    }
+}

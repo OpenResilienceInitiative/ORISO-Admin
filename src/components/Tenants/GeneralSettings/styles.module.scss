@@ -11,18 +11,6 @@
     padding-bottom: 24px;
 }
 
-.cardDeck {
-    min-width: 0;
-}
-
-.cardSlotImages {
-    --card-deck-item-width: 392px;
-}
-
-.cardSlotTheme {
-    --card-deck-item-width: 392px;
-}
-
 .masterDataToggle {
     margin-top: 12px;
 
@@ -37,8 +25,9 @@
         // !important defends the row against antd's responsive rule at <=575px
         // (`.ant-form … .ant-form-item-label { flex: 0 0 100% }`), which is more
         // specific and would otherwise stack the switch out of the card on mobile.
-        max-width: calc(100% - 78px) !important;
-        flex: 1 1 calc(100% - 78px) !important;
+        // Control column below (100px: switch plus the „An“/„Aus“ word) plus the 18px row gap.
+        max-width: calc(100% - 118px) !important;
+        flex: 1 1 calc(100% - 118px) !important;
         overflow: visible;
         text-align: left;
         white-space: normal;
@@ -52,8 +41,8 @@
     }
 
     :global(.ant-col.ant-form-item-control) {
-        max-width: 60px !important;
-        flex: 0 0 60px !important;
+        max-width: 100px !important;
+        flex: 0 0 100px !important;
         padding-top: 4px;
     }
 
@@ -70,14 +59,14 @@
 }
 
 .masterDataToggleTitle {
-    color: #1b1b1c;
+    color: var(--admin-scheme-on-surface, #1b1b1c);
     font-size: 16px;
     font-weight: 700;
     line-height: 20px;
 }
 
 .masterDataToggleDescription {
-    color: #444748;
+    color: var(--admin-scheme-on-surface-variant, #444748);
     font-size: 14px;
     font-weight: 400;
     line-height: 20px;

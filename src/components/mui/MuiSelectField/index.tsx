@@ -8,6 +8,7 @@ import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import { KeyboardArrowDownIcon } from '../../CustomIcons/EditorIcons';
 import { muiFieldSx } from '../fieldSx';
 import { flattenChildren } from '../flattenChildren';
 
@@ -86,6 +87,7 @@ interface MuiSelectControlProps {
     helpText?: string;
     validateStatus?: ValidateStatus;
     className?: string;
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -110,7 +112,9 @@ const MuiSelectControl = ({
     helpText,
     validateStatus,
     className,
+    confirmEnable,
 }: MuiSelectControlProps) => {
+    const { t } = useTranslation();
     const { componentDisabled } = ConfigProvider.useConfig();
     const isDisabled = componentDisabled || disabled;
     const { status } = Form.Item.useStatus();
@@ -162,7 +166,13 @@ const MuiSelectControl = ({
             onChange?.(((next as ResolvedOption[]) ?? []).map(emit));
             return;
         }
-        onChange?.(next ? emit(next as ResolvedOption) : undefined);
+        const nextValue = next ? emit(next as ResolvedOption) : undefined;
+        // Only the first pick asks: replacing or clearing a value never does.
+        if (nextValue !== undefined && !selected && confirmEnable) {
+            confirmEnable(() => onChange?.(nextValue));
+            return;
+        }
+        onChange?.(nextValue);
     };
 
     return (
@@ -172,6 +182,7 @@ const MuiSelectControl = ({
             multiple={isMulti}
             disableCloseOnSelect={isMulti}
             options={resolvedOptions}
+            popupIcon={<KeyboardArrowDownIcon />}
             value={selected as any}
             onChange={handleChange}
             onBlur={onBlur}
@@ -184,6 +195,30 @@ const MuiSelectControl = ({
             getOptionDisabled={(option) => Boolean((option as ResolvedOption).disabled)}
             noOptionsText={placeholder}
             sx={muiFieldSx(isDisabled)}
+            slotProps={{
+                paper: {
+                    sx: {
+                        // Text size applies in every contrast mode; the option sets it directly because MUI
+                        // option typography overrides a size inherited from the paper.
+                        fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        '& .MuiAutocomplete-option': {
+                            fontSize: 'calc(1rem * var(--admin-personal-text-scale, 1))',
+                        },
+                        'html[data-admin-personal-contrast] &': {
+                            backgroundColor: 'var(--admin-field-surface)',
+                            color: 'var(--admin-form-field-text)',
+                            '& .MuiAutocomplete-option.Mui-focused, & .MuiAutocomplete-option.Mui-focusVisible': {
+                                backgroundColor: 'var(--admin-field-surface-hover)',
+                                color: 'var(--admin-form-field-text)',
+                            },
+                            '& .MuiAutocomplete-option[aria-selected="true"]': {
+                                backgroundColor: 'var(--admin-field-selected-surface)',
+                                color: 'var(--admin-field-selected-text)',
+                            },
+                        },
+                    },
+                },
+            }}
             renderOption={(liProps, option) => {
                 // MUI puts `key` in the same object as the DOM props; React 19
                 // warns when a key is spread, so pull it out explicitly.
@@ -209,7 +244,9 @@ const MuiSelectControl = ({
                             ...params.slotProps.input,
                             endAdornment: (
                                 <>
-                                    {loading ? <CircularProgress color="inherit" size={18} /> : null}
+                                    {loading ? (
+                                        <CircularProgress aria-label={t('loading')} color="inherit" size={18} />
+                                    ) : null}
                                     {params.slotProps.input.endAdornment}
                                 </>
                             ),
@@ -225,6 +262,8 @@ export interface MuiSelectFieldProps {
     name: FieldName;
     /** i18n key for the visible label. */
     label?: string;
+    /** Interpolation values for `label`. */
+    labelValues?: Record<string, unknown>;
     /** i18n key for the placeholder / empty text. */
     placeholder?: string;
     /** i18n key for static helper text below the field. */
@@ -245,6 +284,12 @@ export interface MuiSelectFieldProps {
     initialValue?: string | string[];
     rules?: Rule[];
     className?: string;
+    /**
+     * Single select: asked before an EMPTY field gets its first value; the value changes only
+     * when it calls `proceed` (e.g. assigning a standing supervisor). Replacing or clearing a
+     * value never asks.
+     */
+    confirmEnable?: (proceed: () => void) => void;
 }
 
 /**
@@ -260,6 +305,7 @@ export interface MuiSelectFieldProps {
 export const MuiSelectField = ({
     name,
     label,
+    labelValues,
     placeholder,
     help,
     options,
@@ -275,6 +321,7 @@ export const MuiSelectField = ({
     initialValue,
     rules = [],
     className,
+    confirmEnable,
 }: MuiSelectFieldProps) => {
     const [t] = useTranslation();
     const requiredMessage = errorMessage || t(`form.errors.required${isMulti ? '.multiSelect' : ''}`);
@@ -299,7 +346,7 @@ export const MuiSelectField = ({
         >
             <MuiSelectControl
                 fieldName={name}
-                label={label ? t(label) : undefined}
+                label={label ? t(label, labelValues) : undefined}
                 placeholder={placeholder ? t(placeholder) : undefined}
                 helpText={help ? t(help) : undefined}
                 resolvedOptions={resolvedOptions}
@@ -311,6 +358,7 @@ export const MuiSelectField = ({
                 required={required}
                 validateStatus={validateStatus}
                 className={className}
+                confirmEnable={isMulti ? undefined : confirmEnable}
             />
         </Form.Item>
     );

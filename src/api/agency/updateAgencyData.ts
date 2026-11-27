@@ -18,7 +18,7 @@ export const updateAgencyData = async (
     agencyModel: AgencyData,
     formInput: AgencyData,
     /** Called once the main PUT is accepted. */
-    onMainWritten?: () => void,
+    onMainWritten?: (saved: AgencyData) => void,
 ) => {
     const agencyId = agencyModel.id;
     if (agencyId == null) {
@@ -110,9 +110,9 @@ export const updateAgencyData = async (
         responseHandling: [FETCH_ERRORS.BAD_REQUEST_WITH_RESPONSE, FETCH_ERRORS.CATCH_ALL, FETCH_SUCCESS.CONTENT],
         bodyData: JSON.stringify(agencyDataRequestBody),
     }).then(async (response) => {
-        onMainWritten?.();
         // eslint-disable-next-line no-underscore-dangle
         const updatedAgency = response?._embedded;
+        onMainWritten?.(updatedAgency);
 
         // The agency is saved either way; the caller warns on this flag.
         return consultantAssignmentFailed ? { ...updatedAgency, consultantAssignmentFailed: true } : updatedAgency;

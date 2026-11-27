@@ -1,53 +1,76 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+    ReasonPolicySaveFailure,
+    reasonPolicySaveFailure,
     useCaseHandoverReasonPoliciesData,
     useCaseHandoverReasonPoliciesMutation,
 } from '../../../../../hooks/useCaseHandoverReasonPolicies';
 import { useUserPermissions } from '../../../../../hooks/useUserPermission';
 import { useUserRoles } from '../../../../../hooks/useUserRoles.hook';
 import { canEditCaseHandoverReasonPolicies } from '../../../../../constants/caseHandoverAccess';
-import type { CaseHandoverReasonPolicy } from '../../../../../types/caseHandoverReasonPolicy';
+import type {
+    CaseHandoverExplanationLevel,
+    CaseHandoverReasonPolicy,
+} from '../../../../../types/caseHandoverReasonPolicy';
 import type { CaseHandoverConsentPolicy, PolicyValue } from '../../../../../types/permissionPolicy';
 import {
     applyClientConsentPolicy,
+    applyExplanationLevel,
     applyMaxAccessDuration,
-    applyModuleEnabled,
     applyNotificationTemplate,
+    applyNotificationTemplates,
+    getNotificationTemplate,
     isHandoverModuleEnabled,
+    missingTemplateLanguages,
     NotificationLanguage,
+    protectPlaceholders,
+    restorePlaceholders,
+    TEMPLATE_SOURCE_LANGUAGE,
 } from './caseHandoverCardUtils';
 import { CaseHandoverCardView } from './CaseHandoverCardView';
+import { translateLegalTexts } from '../../../../../api/tenant/translation';
+import { snackbar } from '../../../../Snackbar';
+import { getTranslationErrorKey } from '../../../LegalSettings/utils/translationErrors';
 
-/** Container: wires the platform case-handover reason policies (UserService)
- *  into the permissions card. Policies are platform-scoped — tenant-level
- *  overrides are a backend follow-up, so non-privileged admins see the card
- *  read-only (disable, don't hide). */
+/**
+ * Wires the canonical handover master and Träger-owned reason policies.
+ * The platform master needs no selected Träger; individual reasons need a concrete Träger.
+ * The agency page shows both as read-only instead of writing another scope's configuration.
+ */
 export type CaseHandoverCardProps = {
+    /** The Träger whose rules are shown and saved; undefined on the platform-wide page. */
+    tenantId?: number;
+    /** The Träger is not known yet (its agency is loading): show loading, not "no Träger". */
+    tenantPending?: boolean;
     policyLevel?: 'platform' | 'tenant' | 'agency';
     permissionPolicies?: Record<string, PolicyValue<boolean>>;
     pendingPolicyFields?: ReadonlySet<string>;
     openPolicyMenu?: string | null;
     onOpenPolicyMenu?: (fieldKey: string | null) => void;
     onFeaturePolicyChange?: (fieldKey: string, policy: PolicyValue<boolean>) => void;
+    /** Inside the Mailberatung tile's case-sharing choice instead of a tile of its own (#1558). */
+    embedded?: boolean;
 };
 
 export const CaseHandoverCard = ({
+    tenantId,
+    tenantPending = false,
     policyLevel,
     permissionPolicies,
     pendingPolicyFields,
     openPolicyMenu,
     onOpenPolicyMenu,
     onFeaturePolicyChange,
+    embedded,
 }: CaseHandoverCardProps = {}) => {
     const { t } = useTranslation();
     const { can } = useUserPermissions();
     const { isSuperAdmin } = useUserRoles();
-    const canEdit = canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
+    const canEdit = policyLevel !== 'agency' && canEditCaseHandoverReasonPolicies(isSuperAdmin, can);
 
-    const { data, isLoading, isError } = useCaseHandoverReasonPoliciesData();
-    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation();
+    const { data, isLoading, isError, refetch } = useCaseHandoverReasonPoliciesData(tenantId);
+    const updateReasonPolicies = useCaseHandoverReasonPoliciesMutation(tenantId);
 
     // Local mirror so toggles respond immediately; server refetch re-syncs it.
     const [policies, setPolicies] = useState<CaseHandoverReasonPolicy[]>([]);
@@ -57,36 +80,43 @@ export const CaseHandoverCard = ({
         }
     }, [data]);
 
-    // Snapshot to roll back to if the mutation fails, so a false success never sticks.
-    const previousPoliciesRef = useRef<CaseHandoverReasonPolicy[]>(policies);
+    // A failed save keeps the edit on screen and says so; no silent rollback (FE#1725).
+    const [saveFailure, setSaveFailure] = useState<ReasonPolicySaveFailure | null>(null);
 
-    const moduleEnabled = useMemo(() => isHandoverModuleEnabled(policies), [policies]);
+    const moduleEnabled = useMemo(
+        () => permissionPolicies?.caseHandoverEnabled?.value ?? isHandoverModuleEnabled(policies),
+        [permissionPolicies, policies],
+    );
 
     const persist = useCallback(
         (nextPolicies: CaseHandoverReasonPolicy[]) => {
-            previousPoliciesRef.current = policies;
+            if (!canEdit) return;
             setPolicies(nextPolicies);
+            setSaveFailure(null);
             updateReasonPolicies.mutate(
                 nextPolicies.map((policy) => ({
                     ...policy,
                     policyAuthority: policy.policyAuthority === '' ? null : policy.policyAuthority,
                 })),
                 {
-                    onError: () => setPolicies(previousPoliciesRef.current),
+                    onError: (error) => setSaveFailure(reasonPolicySaveFailure(error)),
                 },
             );
         },
-        [policies, updateReasonPolicies],
+        [canEdit, updateReasonPolicies],
     );
 
-    const handleModuleEnabledChange = useCallback(
-        (enabled: boolean) => persist(applyModuleEnabled(policies, enabled)),
-        [persist, policies],
-    );
+    const handleRetrySave = useCallback(() => persist(policies), [persist, policies]);
 
     const handleClientConsentPolicyChange = useCallback(
         (code: string, clientConsent: CaseHandoverConsentPolicy) =>
             persist(applyClientConsentPolicy(policies, code, clientConsent)),
+        [persist, policies],
+    );
+
+    const handleExplanationLevelChange = useCallback(
+        (code: string, explanationLevel: CaseHandoverExplanationLevel) =>
+            persist(applyExplanationLevel(policies, code, explanationLevel)),
         [persist, policies],
     );
 
@@ -96,32 +126,83 @@ export const CaseHandoverCard = ({
         [persist, policies],
     );
 
+    const [translatingReason, setTranslatingReason] = useState<string | null>(null);
+
+    /** Machine-translates the German template of one reason into every language still empty. */
+    const handleTranslateTemplates = useCallback(
+        async (code: string) => {
+            const policy = policies.find((candidate) => candidate.code === code) ?? null;
+            const source = getNotificationTemplate(policy, TEMPLATE_SOURCE_LANGUAGE).trim();
+            const targets = missingTemplateLanguages(policy);
+            if (!source || targets.length === 0) return;
+            setTranslatingReason(code);
+            try {
+                const response = await translateLegalTexts({
+                    sourceLang: TEMPLATE_SOURCE_LANGUAGE,
+                    targetLangs: [...targets],
+                    texts: { template: protectPlaceholders(source) },
+                });
+                const texts: Partial<Record<NotificationLanguage, string>> = {};
+                targets.forEach((language) => {
+                    const translated = response.translations?.[language]?.template;
+                    const restored = translated ? restorePlaceholders(translated, source) : undefined;
+                    if (restored) texts[language] = restored;
+                });
+                const filled = Object.keys(texts).length;
+                if (filled > 0) persist(applyNotificationTemplates(policies, code, texts));
+                if (filled < targets.length) {
+                    snackbar.warning({
+                        title: t('tenants.permissions.card.caseHandover.translate.partial', {
+                            filled,
+                            total: targets.length,
+                            newAdvisor: '{{newAdvisor}}',
+                        }),
+                    });
+                } else {
+                    snackbar.success(t('tenants.permissions.card.caseHandover.translate.done', { count: filled }));
+                }
+            } catch (error) {
+                snackbar.error({
+                    title: t('tenants.permissions.card.caseHandover.translate.failed'),
+                    description: t(getTranslationErrorKey(error)),
+                });
+            } finally {
+                setTranslatingReason(null);
+            }
+        },
+        [persist, policies, t],
+    );
+
     const handleMaxAccessDurationChange = useCallback(
         (code: string, minutes: number) => persist(applyMaxAccessDuration(policies, code, minutes)),
         [persist, policies],
     );
 
-    if (isError) {
-        return <Alert type="error" message={t('error.loading')} showIcon data-testid="case-handover-card-error" />;
-    }
-
     return (
         <CaseHandoverCardView
             policies={policies}
-            isLoading={isLoading}
+            loadError={isError ? t('error.loading') : null}
+            onRetryLoad={() => refetch()}
+            isLoading={tenantPending || isLoading}
             isSaving={updateReasonPolicies.isPending}
             canEdit={canEdit}
+            noTenant={!tenantPending && !(typeof tenantId === 'number' && tenantId > 0)}
+            saveError={saveFailure ? t(`tenants.permissions.card.caseHandover.saveFailed.${saveFailure}`) : null}
+            onRetrySave={handleRetrySave}
             moduleEnabled={moduleEnabled}
-            onModuleEnabledChange={handleModuleEnabledChange}
             onClientConsentPolicyChange={handleClientConsentPolicyChange}
+            onExplanationLevelChange={handleExplanationLevelChange}
             onNotificationTemplateChange={handleNotificationTemplateChange}
             onMaxAccessDurationChange={handleMaxAccessDurationChange}
             policyLevel={policyLevel}
-            permissionPolicies={permissionPolicies}
+            permissionPolicies={tenantPending ? undefined : permissionPolicies}
             pendingPolicyFields={pendingPolicyFields}
             openPolicyMenu={openPolicyMenu}
             onOpenPolicyMenu={onOpenPolicyMenu}
             onFeaturePolicyChange={onFeaturePolicyChange}
+            embedded={embedded}
+            onTranslateTemplates={canEdit ? handleTranslateTemplates : undefined}
+            translatingReason={translatingReason}
         />
     );
 };

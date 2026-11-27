@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EDITOR_FULLSCREEN_Z_INDEX, M3RichTextEditor } from './M3RichTextEditor';
 
@@ -69,5 +69,52 @@ describe('M3RichTextEditor — fullscreen stacking', () => {
         await waitFor(() =>
             expect(document.querySelector('.ant-modal .ProseMirror')?.textContent).toContain('§ 1 Gegenstand'),
         );
+    });
+});
+
+/**
+ * #1605 — the legal document cards pass `fullscreenLabel`, which replaces the
+ * icon-only maximize control with a named action and gives the dialog its own
+ * close action. Both exits must hand focus back to the named trigger.
+ */
+describe('M3RichTextEditor — named fullscreen action', () => {
+    const openNamedFullscreen = async () => {
+        fireEvent.click(await screen.findByRole('button', { name: 'Vollbild' }));
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'Vollbild' })).toBeNull());
+        await waitFor(() => expect(document.querySelector('.ant-modal-wrap')).not.toBeNull());
+    };
+
+    it('closes through either close action and returns focus to the named trigger', async () => {
+        render(<M3RichTextEditor title="AVV" value={agreement} readOnly fullscreenLabel="Vollbild" />);
+        expect(screen.queryByRole('button', { name: 'legal.m3Editor.maximize' })).toBeNull();
+
+        await openNamedFullscreen();
+        // The reader toolbar and the dialog header each offer a close action.
+        const closeActions = screen.getAllByRole('button', { name: 'legal.m3Editor.closeDialog' });
+        expect(closeActions).toHaveLength(2);
+
+        for (let index = 0; index < closeActions.length; index += 1) {
+            if (index > 0) {
+                // Each round must finish before the next one reopens the dialog.
+                // eslint-disable-next-line no-await-in-loop
+                await openNamedFullscreen();
+            }
+            fireEvent.click(screen.getAllByRole('button', { name: 'legal.m3Editor.closeDialog' })[index]);
+            // eslint-disable-next-line no-await-in-loop
+            const trigger = await screen.findByRole('button', { name: 'Vollbild' });
+            // eslint-disable-next-line no-await-in-loop
+            await waitFor(() => expect(trigger).toHaveFocus());
+        }
+    });
+
+    it('closes on Escape and returns focus to the named trigger', async () => {
+        render(<M3RichTextEditor title="AVV" value={agreement} readOnly fullscreenLabel="Vollbild" />);
+
+        await openNamedFullscreen();
+        const wrap = document.querySelector<HTMLElement>('.ant-modal-wrap')!;
+        fireEvent.keyDown(wrap, { key: 'Escape', code: 'Escape', keyCode: 27 });
+
+        const trigger = await screen.findByRole('button', { name: 'Vollbild' });
+        await waitFor(() => expect(trigger).toHaveFocus());
     });
 });

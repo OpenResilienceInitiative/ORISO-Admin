@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const h = vi.hoisted(() => ({ card: vi.fn(), saveAgencyWide: vi.fn(), serverSave: vi.fn() }));
 

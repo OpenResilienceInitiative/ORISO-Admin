@@ -1,5 +1,5 @@
 import { FETCH_ERRORS } from '../api/fetchData';
-import { extractApiErrorMessage } from './extractApiErrorMessage';
+import { extractApiErrorMessage, extractSmtpSendFailure } from './extractApiErrorMessage';
 import { resolveUserSaveErrorMessageKey } from './userSaveErrorMessageKey';
 
 interface UserSaveErrorHandlerOptions {
@@ -12,6 +12,11 @@ interface UserSaveErrorHandlerOptions {
      * taken-email case is worded.
      */
     canReassignExistingEmail: boolean;
+    /**
+     * Shows the "account created, set-up mail not sent" message instead of `notifyError`: the save
+     * did not fail, so the page decides how to say it and where to go next (#1144).
+     */
+    onAccountCreatedWithoutMail?: (content: string) => void;
 }
 
 /**
@@ -26,8 +31,13 @@ interface UserSaveErrorHandlerOptions {
  * the response body, which is where the generic "something went wrong" comes from.
  */
 export const createUserSaveErrorHandler =
-    ({ t, notifyError, canReassignExistingEmail }: UserSaveErrorHandlerOptions) =>
+    ({ t, notifyError, canReassignExistingEmail, onAccountCreatedWithoutMail }: UserSaveErrorHandlerOptions) =>
     async (error: Error | Response): Promise<void> => {
+        // The account exists; only the set-up e-mail is missing, and it can be sent again.
+        if (await extractSmtpSendFailure(error)) {
+            (onAccountCreatedWithoutMail ?? notifyError)(t('counselor.create.setupMailNotSent'));
+            return;
+        }
         if (error instanceof Response) {
             const messageKey = resolveUserSaveErrorMessageKey(error.headers.get(FETCH_ERRORS.X_REASON), {
                 canReassignExistingEmail,

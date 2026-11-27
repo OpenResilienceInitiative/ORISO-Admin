@@ -1,10 +1,22 @@
 import type { ComponentProps } from 'react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { OrganisationDpaStep } from './OrganisationDpaStep';
 import type { TenantAdminOnboardingInviteDTO } from '../../api/tenantOnboarding/tenantOnboarding';
 import de from '../../locales/de/translation.json';
 import en from '../../locales/en/translation.json';
+
+// The subdomain switch is read through this mock, so every test states the mode it covers instead of
+// depending on the value shipped in src/config/subdomainFeature.ts.
+const subdomainFeature = vi.hoisted(() => ({ finished: false }));
+vi.mock('../../config/subdomainFeature', () => ({
+    get SUBDOMAINS_TECHNICALLY_FINISHED() {
+        return subdomainFeature.finished;
+    },
+}));
+afterEach(() => {
+    subdomainFeature.finished = false;
+});
 
 vi.mock('react-i18next', () => ({
     useTranslation: () => ({
@@ -160,6 +172,57 @@ describe('OrganisationDpaStep — named sections, master data next to the signer
         ).not.toBeInTheDocument();
     });
 
+    it('greys the subdomain out with a hint and builds a technical name from the organisation name', async () => {
+        subdomainFeature.finished = false;
+        const onSubmit = vi.fn();
+        renderStep({ confirmed: true, onSubmit });
+
+        const subdomain = screen.getByLabelText('tenantOnboarding.organisation.subdomain');
+        expect(subdomain).toBeDisabled();
+        expect(screen.getByText('tenantOnboarding.organisation.subdomainHint')).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        await waitFor(() => expect((subdomain as HTMLInputElement).value).toMatch(/^tr-ger-beispiel-\d{6}$/));
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0]).toMatchObject({
+            name: 'Träger Beispiel',
+            subdomain: expect.stringMatching(/^tr-ger-beispiel-\d{6}$/),
+        });
+        // The submitted name is the one shown in the greyed field.
+        expect(onSubmit.mock.calls[0][0].subdomain).toBe((subdomain as HTMLInputElement).value);
+    });
+
+    it('lets the Träger type its own subdomain once subdomains are technically finished', async () => {
+        subdomainFeature.finished = true;
+        const onSubmit = vi.fn();
+        renderStep({ confirmed: true, onSubmit });
+
+        const subdomain = screen.getByLabelText('tenantOnboarding.organisation.subdomain');
+        expect(subdomain).toBeEnabled();
+        expect(screen.queryByText('tenantOnboarding.organisation.subdomainHint')).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
+            target: { value: 'Träger Beispiel' },
+        });
+        // No technical name is derived: the field stays empty and is required.
+        expect((subdomain as HTMLInputElement).value).toBe('');
+        fireEvent.change(subdomain, { target: { value: 'beispiel' } });
+        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
+            target: { value: 'Musterweg 1, 12345 Musterstadt' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /tenantOnboarding\.continue/ }));
+
+        await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+        expect(onSubmit.mock.calls[0][0]).toMatchObject({ name: 'Träger Beispiel', subdomain: 'beispiel' });
+    });
+
     it('keeps the organisation master data in the forwarded on-hold state, without a signer section', async () => {
         renderStep({
             forward: { signUrl: 'https://example.org/dpa-sign/t', expiresAt: null, recipientEmail: null },
@@ -220,9 +283,6 @@ describe('OrganisationDpaStep — the unavailable agreement names its cause', ()
         await screen.findByTestId('dpa-content-unavailable');
         fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.name'), {
             target: { value: 'Träger Beispiel' },
-        });
-        fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.subdomain'), {
-            target: { value: 'beispiel' },
         });
         fireEvent.change(screen.getByLabelText('tenantOnboarding.organisation.address'), {
             target: { value: 'Musterweg 1, 12345 Musterstadt' },

@@ -302,7 +302,7 @@ export const ProtectedLayoutTour: Story = {
     parameters: {
         docs: {
             description: {
-                story: 'Representative protected-layout tour (the adminDemoTour definition) against a mocked admin shell. Not enabled in production — adminTours stays empty in this package.',
+                story: 'Representative protected-layout tour (the adminDemoTour definition) against a mocked admin shell. The production tour is admin-introduction (see tours/adminIntroductionTour).',
             },
         },
     },

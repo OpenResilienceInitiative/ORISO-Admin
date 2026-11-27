@@ -57,6 +57,13 @@ export interface CounsellorOnboardingInviteDTO {
     recipientEmail: string;
     firstName: string | null;
     lastName: string | null;
+    /**
+     * What the inviting admin suggested (#1274). All three null or absent = no suggestion,
+     * and the form starts as before: initials tile, empty names.
+     */
+    avatarKind?: CounsellorAvatarKind | null;
+    avatarId?: string | null;
+    displayName?: string | null;
     tenantId: number | null;
     agencyId: number | null;
     departmentId: number | null;

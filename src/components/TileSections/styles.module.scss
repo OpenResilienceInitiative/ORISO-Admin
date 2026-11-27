@@ -1,0 +1,247 @@
+.sections {
+    display: grid;
+    align-items: stretch;
+    gap: 16px;
+    container-type: inline-size;
+
+    /* A panel holds form fields and switches with German labels. Below 280px a switch row leaves its
+       label ~150px, so long words ("Verbindungsbeginn") break one per line or push the switch into
+       the next panel. Panels stack instead. Keep the container query below in step with this value.
+
+       Never more columns than panels (--tile-sections-columns, set by the component): each column is at
+       least an equal share of the row, so auto-fit cannot add a column no panel fills. Without this cap a
+       `wide` panel (it spans 1 / -1) kept every possible column alive, and the panels below it sat narrow
+       beside empty columns — the Status tile on the Beratungsstelle and Träger edit pages. */
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(
+            min(
+                100%,
+                max(
+                    280px,
+                    calc((100% - (var(--tile-sections-columns, 1) - 1) * 16px) / var(--tile-sections-columns, 1))
+                )
+            ),
+            1fr
+        )
+    );
+}
+
+.section {
+    --admin-form-field-surface: var(--m3-surface-container-lowest, #ffffff);
+    --input-label-bg: var(--m3-surface-container-lowest, #ffffff);
+
+    /* The panel surface follows the colour scheme, so the field text must too (it is a fixed #1b1b1c in app.css). */
+    --admin-form-field-text: var(--m3-on-surface, #1b1b1c);
+
+    /* Labels, helper text and placeholders follow the scheme too. app.css derives them from a fixed grey at the root,
+       which is 1.7:1 on the dark panel of the inverted scheme; in the light scheme the role is the same grey. */
+    --admin-form-muted-text: var(--m3-on-surface-variant, #444748);
+    --label-color: var(--m3-on-surface-variant, #444748);
+    --input-placeholder-color: color-mix(in srgb, var(--m3-on-surface-variant, #444748) 64%, transparent);
+
+    display: flex;
+    min-width: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+    padding: 16px;
+    background: var(--m3-surface-container-lowest, #ffffff);
+    border-radius: 16px;
+}
+
+.sectionWide {
+    grid-column: 1 / -1;
+}
+
+.main {
+    display: flex;
+    min-width: 0;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.footer {
+    display: flex;
+    align-items: flex-start;
+    margin-top: auto;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    gap: 8px;
+    line-height: 20px;
+    padding-top: 12px;
+
+    svg {
+        flex: 0 0 auto;
+        color: var(--m3-primary, #a5000a);
+        font-size: 20px;
+    }
+}
+
+.picture {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    flex: 1 1 0;
+    container-type: size;
+    pointer-events: none;
+}
+
+/* Absolute, so a panel without room gets no empty gap. */
+.pictureFrame {
+    position: absolute;
+    inset: 12px 0 0;
+}
+
+/* Below this a drawing is too small to tell anything. */
+@container (max-height: 83px) {
+    .pictureFrame {
+        display: none;
+    }
+}
+
+.stack {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 16px;
+
+    /* One above the other, the last panel gets all the rest, so its picture has room to show. */
+    > .section:first-child:not(:last-child) {
+        flex: 0 0 auto;
+    }
+}
+
+/* With three columns the short topics would leave two thirds of a row empty, so they fill it.
+   Three 280px columns plus two 16px gaps start at 872px; a fourth column fits from 1168px. */
+@container (min-width: 872px) and (max-width: 1167px) {
+    /* Only where there can be three columns: beside a single panel the stack already fills its half of the row. */
+    .sections:not(.fewColumns) > .stack:not(.stackColumn) {
+        flex-direction: row;
+        grid-column: 1 / -1;
+
+        > .section:first-child:not(:last-child),
+        > .section {
+            flex: 1 1 0;
+        }
+    }
+
+    .sectionBeside {
+        flex-direction: row;
+
+        .main {
+            flex: 1 1 0;
+        }
+
+        .picture {
+            flex: 0 1 40%;
+        }
+
+        .pictureFrame {
+            inset: 0 0 0 16px;
+        }
+    }
+}
+
+.heading {
+    display: flex;
+    min-height: 32px;
+    align-items: center;
+    gap: 4px;
+
+    h3 {
+        margin: 0;
+        color: var(--m3-on-surface, #1b1b1b);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 24px;
+    }
+}
+
+.note {
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-size: 14px;
+    line-height: 20px;
+}
+
+/* ORISO-Admin#1558: a panel that folds up to its heading; its toggle takes the heading row. */
+.heading .collapsibleHeading {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 12px;
+
+    &[hidden] {
+        display: none;
+    }
+}
+
+.toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    padding: 4px 8px;
+    margin: -4px -8px;
+    border: 0;
+    background: none;
+    border-radius: 12px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    gap: 8px;
+    text-align: left;
+
+    &:hover {
+        background: var(--m3-state-hover, rgb(0 0 0 / 4%));
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--admin-focus-ring-color);
+        outline-offset: 2px;
+    }
+}
+
+.chevron {
+    flex: none;
+    color: var(--m3-on-surface-variant, #444748);
+    transform: rotate(180deg);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
+}
+
+.folded .chevron {
+    transform: none;
+}
+
+.learnMore {
+    display: inline-flex;
+    align-items: center;
+    color: var(--m3-primary, #a5000a);
+    font-weight: 500;
+    gap: 2px;
+    text-decoration: underline;
+}
+
+.learnMoreIcon {
+    font-size: 14px !important;
+}
+
+.visuallyHidden {
+    position: absolute;
+    overflow: hidden;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}

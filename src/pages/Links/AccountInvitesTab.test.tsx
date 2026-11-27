@@ -1,10 +1,12 @@
+import { appendFileSync } from 'node:fs';
 import React from 'react';
 // antd's static message API is a silent no-op under React 19 without this patch
 // (the app imports it in src/index.tsx; tests asserting on message text need it too).
 import '@ant-design/v5-patch-for-react-19';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vite-plus/test';
+import { act, configure, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { SnackbarHost, snackbar } from '../../components/Snackbar';
 // Imported statically, NOT with `await import(...)` inside a test. Every `vi.mock`
 // below is hoisted above this line, so the mocks still apply — but a dynamic
 // import inside the first test bills the whole transform + evaluation of this
@@ -14,6 +16,18 @@ import userEvent from '@testing-library/user-event';
 // timed out in CI while every other test in this file stayed under 4s. A static
 // import moves that cost into the file's (untimed) collection phase.
 import { CounsellorInvitesTab, TenantInvitesTab } from './AccountInvitesTab';
+
+// These tests drive the whole invite composer through user-event. Measured
+// locally (ORISO-Admin#1327), every step (typing a field, opening a select,
+// clicking send) re-renders the full form and costs 1–3.6 s; single tests run
+// 10–21 s, and on loaded CI runners they crossed the default 30 s limit at
+// random. The limit is raised for this file only; what the tests assert is
+// unchanged. The lasting fix is a lighter composer test harness (see #1327).
+vi.setConfig({ testTimeout: 60_000 });
+// The same slow steps also outlast findBy*'s 1 s default wait for an element
+// to appear (a select option on a loaded runner, ORISO-Admin#1328). Match the
+// sibling composer tests (InviteComposer.test.tsx, AccountInvitesBulk.test.tsx).
+configure({ asyncUtilTimeout: 10_000 });
 
 // antd components used by the composer (Dropdown/menus) query matchMedia,
 // which jsdom does not implement.
@@ -29,9 +43,12 @@ window.matchMedia ??= ((query: string) => ({
 })) as typeof window.matchMedia;
 
 // Interpolating t-mock so counts land in the asserted button labels.
-const t = (key: string, fallback?: string, options?: Record<string, unknown>) => {
+// Accepts i18next's t(key, options) as well, which the house Modal uses.
+const t = (key: string, fallbackOrOptions?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
+    const fallback = typeof fallbackOrOptions === 'string' ? fallbackOrOptions : undefined;
+    const values = typeof fallbackOrOptions === 'object' ? fallbackOrOptions : options;
     let text = fallback ?? key;
-    Object.entries(options ?? {}).forEach(([name, value]) => {
+    Object.entries(values ?? {}).forEach(([name, value]) => {
         text = text.replaceAll(`{{${name}}}`, String(value));
     });
     return text;
@@ -46,9 +63,36 @@ vi.mock('../../components/ListingTable', () => ({
     listingTableStyles: new Proxy({}, { get: () => undefined }),
 }));
 
+const TEMPLATE = {
+    id: 7,
+    kind: 'TENANT_INVITE',
+    name: 'Standard',
+    language: 'de',
+    subject: 'S',
+    body: 'B',
+    active: true,
+    createDate: '2026-07-01T00:00:00Z',
+    updateDate: null,
+};
+
 // The templates dialog has its own test file; keep this one focused on the tab.
 vi.mock('./EmailTemplatesDialog', () => ({
-    EmailTemplatesDialog: () => null,
+    EmailTemplatesDialog: ({ onDeleted, onChanged, onClose, selectedTemplateId }: any) => (
+        <>
+            <button type="button" onClick={() => onChanged?.({ ...TEMPLATE, id: selectedTemplateId })}>
+                Refresh selected template in dialog
+            </button>
+            <button
+                type="button"
+                onClick={() => {
+                    onDeleted?.(selectedTemplateId);
+                    onClose();
+                }}
+            >
+                Delete selected template in dialog
+            </button>
+        </>
+    ),
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -60,7 +104,7 @@ const mocks = vi.hoisted(() => ({
     listAccountInvites: vi.fn(),
     createAccountInvite: vi.fn(),
     resendAccountInvite: vi.fn(),
-    revokeAccountInvite: vi.fn(),
+    deleteAccountInvite: vi.fn(),
     listInviteEmailTemplates: vi.fn(),
     updateAccountInviteTopicPermission: vi.fn(),
     changeAccountInviteRole: vi.fn(),
@@ -84,7 +128,7 @@ vi.mock('../../api/accountInvites/accountInvites', () => ({
     listAccountInvites: mocks.listAccountInvites,
     createAccountInvite: mocks.createAccountInvite,
     resendAccountInvite: mocks.resendAccountInvite,
-    revokeAccountInvite: mocks.revokeAccountInvite,
+    deleteAccountInvite: mocks.deleteAccountInvite,
     listInviteEmailTemplates: mocks.listInviteEmailTemplates,
     updateAccountInviteTopicPermission: mocks.updateAccountInviteTopicPermission,
     // E2: the editor's preview is rendered by the backend. Without this the real
@@ -155,18 +199,6 @@ const invitesPage = (content: any[]) => ({
     size: 20,
 });
 
-const TEMPLATE = {
-    id: 7,
-    kind: 'TENANT_INVITE',
-    name: 'Standard',
-    language: 'de',
-    subject: 'S',
-    body: 'B',
-    active: true,
-    createDate: '2026-07-01T00:00:00Z',
-    updateDate: null,
-};
-
 const invite = (id: number, tenantId: number | null, inviteStatus: string) => ({
     id,
     targetRole: 'TENANT_ADMIN',
@@ -200,8 +232,115 @@ const renderTenantTab = () => {
 
 // A plain flag survives vi.clearAllMocks(); reset it so no block inherits the platform-admin view.
 beforeEach(() => {
+    // Feedback is a snackbar: mount the host the app mounts once.
+    render(<SnackbarHost />);
     mocks.superAdmin = false;
 });
+
+const requiredTopicsDefaultName = /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/;
+
+const captureTopicsFieldSnapshot = (slot: HTMLElement) => {
+    const started = performance.now();
+    const queryStarted = performance.now();
+    // This is the actual visible role/name matcher, not a guessed accessible name.
+    const target = within(slot).queryByRole('button', { name: requiredTopicsDefaultName });
+    const queryDurationMs = performance.now() - queryStarted;
+    const visibilityChain = [];
+    for (let node: HTMLElement | null = slot; node; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        visibilityChain.push({
+            tag: node.tagName,
+            hidden: node.hidden,
+            ariaHidden: node.getAttribute('aria-hidden'),
+            display: style.display,
+            visibility: style.visibility,
+        });
+    }
+    return {
+        capturedAtUTC: new Date().toISOString(),
+        requiredRole: 'button',
+        requiredName: String(requiredTopicsDefaultName),
+        queryDurationMs,
+        matchesRequiredVisibleRoleName: target !== null,
+        connected: slot.isConnected,
+        collapsed: slot.getAttribute('data-collapsed'),
+        visibilityChain,
+        buttons: [...slot.querySelectorAll<HTMLButtonElement>('button')].map((button) => ({
+            tag: button.tagName,
+            role: button.getAttribute('role'),
+            type: button.type,
+            ariaLabel: button.getAttribute('aria-label'),
+            labelledBy: (button.getAttribute('aria-labelledby') ?? '')
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((id) => ({ id, text: document.getElementById(id)?.textContent ?? null })),
+            title: button.title,
+            text: button.textContent,
+            disabled: button.disabled,
+            hidden: button.hidden,
+            ariaHidden: button.getAttribute('aria-hidden'),
+            connected: button.isConnected,
+            matchesRequiredVisibleRoleName: button === target,
+        })),
+        // Includes the small scoped role query, attributes and visibility reads.
+        snapshotDurationMs: performance.now() - started,
+    };
+};
+
+const createInviteTrace = (caseName: string) => {
+    const started = performance.now();
+    let lastTopicsFieldSnapshot: ReturnType<typeof captureTopicsFieldSnapshot> | undefined;
+    const trace = (
+        phase: string,
+        details: Record<string, unknown> & { topicsFieldSnapshot?: ReturnType<typeof captureTopicsFieldSnapshot> } = {},
+    ) => {
+        const destination = process.env.ACCOUNT_INVITE_TRACE_FILE;
+        if (!destination) return;
+        if (details.topicsFieldSnapshot) lastTopicsFieldSnapshot = details.topicsFieldSnapshot;
+        appendFileSync(
+            destination,
+            `${JSON.stringify({
+                caseName,
+                file: 'src/pages/Links/AccountInvitesTab.test.tsx',
+                pid: process.pid,
+                traceId: `${process.pid}:${performance.timeOrigin}:${started}`,
+                phase,
+                atUTC: new Date().toISOString(),
+                elapsedMs: performance.now() - started,
+                inputs: [...document.querySelectorAll<HTMLInputElement>('input[role="combobox"]')].map((input) => ({
+                    id: input.id,
+                    value: input.value,
+                    focused: document.activeElement === input,
+                    expanded: input.getAttribute('aria-expanded'),
+                    controls: input.getAttribute('aria-controls'),
+                    disabled: input.disabled,
+                })),
+                options: [...document.querySelectorAll<HTMLElement>('[role="option"]')].map((option) => ({
+                    text: option.textContent,
+                    selected: option.getAttribute('aria-selected'),
+                    hidden: option.hidden,
+                    ariaHidden: option.getAttribute('aria-hidden'),
+                })),
+                listboxes: [...document.querySelectorAll<HTMLElement>('[role="listbox"]')].map((list) => ({
+                    id: list.id,
+                    text: list.textContent,
+                    hidden: list.hidden,
+                })),
+                topicControls: [...document.querySelectorAll('button')]
+                    .map((button) => button.textContent)
+                    .filter((text) => text?.startsWith('Themen & Fachbereiche')),
+                // Preserve the last pre/post-query field state even if teardown has emptied the DOM.
+                lastTopicsFieldSnapshot,
+                searchArgs: mocks.searchInviteAgencies.mock.calls,
+                agencyDefaultArgs: mocks.getAgencyDataById.mock.calls,
+                ...details,
+            })}\n`,
+        );
+    };
+    // The native finish hook also runs after an assertion failure or timeout.
+    if (process.env.ACCOUNT_INVITE_TRACE_FILE) onTestFinished(() => trace('test:finished'));
+    return trace;
+};
 
 describe('TenantInvitesTab Träger-ID field', () => {
     beforeEach(() => {
@@ -290,6 +429,69 @@ describe('TenantInvitesTab Träger-ID field', () => {
  * into the generic "Could not create link" left the admin guessing — the toast
  * must explain the role problem, preferring the backend's own message.
  */
+describe('TenantInvitesTab single delete (ORISO-Admin#1522)', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+    });
+
+    it('asks first, deletes on confirm and reloads the list', { timeout: 90_000 }, async () => {
+        let deleted = false;
+        mocks.listAccountInvites.mockImplementation(async () =>
+            invitesPage(deleted ? [] : [invite(31, 3, 'EMAIL_SENT')]),
+        );
+        mocks.deleteAccountInvite.mockImplementation(async () => {
+            deleted = true;
+        });
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken31@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+
+        expect(await screen.findByText('links.accountInvites.deleteConfirmTitle')).toBeInTheDocument();
+        expect(mocks.deleteAccountInvite).not.toHaveBeenCalled();
+
+        await user.click(screen.getByRole('button', { name: 'links.accountInvites.deleteConfirmOk' }));
+
+        await waitFor(() => expect(mocks.deleteAccountInvite).toHaveBeenCalledWith(31));
+        expect(await screen.findByText('Einladung gelöscht')).toBeInTheDocument();
+        // The reload shows the server's list: the deleted row is gone.
+        await waitFor(() => expect(screen.queryByText('taken31@example.org')).not.toBeInTheDocument());
+    });
+
+    it('deletes nothing when the confirmation is cancelled', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(32, 3, 'EXPIRED')]));
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken32@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+        await user.click(await screen.findByRole('button', { name: 'links.bulk.deleteConfirmCancel' }));
+
+        await waitFor(() =>
+            expect(screen.queryByText('links.accountInvites.deleteConfirmTitle')).not.toBeInTheDocument(),
+        );
+        expect(mocks.deleteAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it('says so when the delete fails', { timeout: 90_000 }, async () => {
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([invite(33, 3, 'DRAFT')]));
+        mocks.deleteAccountInvite.mockRejectedValue(new Error('409'));
+        renderTenantTab();
+        const user = userEvent.setup();
+
+        const row = within((await screen.findByText('taken33@example.org')).closest('tr') as HTMLElement);
+        await user.click(row.getByRole('button', { name: 'Einladung löschen' }));
+        await user.click(await screen.findByRole('button', { name: 'links.accountInvites.deleteConfirmOk' }));
+
+        expect(await screen.findByText('Einladung konnte nicht gelöscht werden')).toBeInTheDocument();
+    });
+});
+
 describe('TenantInvitesTab 403 role surfacing (UserService#1006)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -606,19 +808,38 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('resets Rolle to Berater:in after the guided BST-Admin invite went out', async () => {
+        const trace = createInviteTrace('resets Rolle to Berater:in after the guided BST-Admin invite went out');
+        trace('fill:before');
         const user = await fill();
-        await user.click(
-            await screen.findByRole('button', { name: 'Stattdessen als BST-Admin einladen' }, { timeout: 10_000 }),
+        trace('fill:after');
+        trace('guided-bst-admin:find:before');
+        const guided = await screen.findByRole(
+            'button',
+            { name: 'Stattdessen als BST-Admin einladen' },
+            { timeout: 10_000 },
         );
+        trace('guided-bst-admin:find:after');
+        trace('guided-bst-admin:click:before');
+        await user.click(guided);
+        trace('guided-bst-admin:click:after');
+        trace('invite:enabled:before');
         await waitFor(() => expect(screen.getByRole('button', { name: 'Anlegen & einladen' })).toBeEnabled());
+        trace('invite:enabled:after');
+        trace('invite:send:before');
         await user.click(screen.getByRole('button', { name: 'Anlegen & einladen' }));
+        trace('invite:send:after');
+        trace('invite:created:before');
         await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        trace('invite:created:after');
 
         // The next person typed into the fresh bar is a counsellor again, not a second BST-Admin.
+        trace('role:reset:before');
         await waitFor(() =>
             expect(screen.getByRole('button', { name: /^Rolle bearbeiten/ })).toHaveTextContent('Berater:in'),
         );
+        trace('role:reset:after');
         expect(screen.queryByRole('button', { name: /^Berät auch bearbeiten/ })).not.toBeInTheDocument();
+        trace('test:finished');
     });
 
     // The invite card rests its selects as value pills from the start; only typed fields open expanded.
@@ -1011,43 +1232,106 @@ describe('CounsellorInvitesTab — invite wiring', () => {
     });
 
     it('applies the next agency’s default again after an earlier manual choice', async () => {
-        mocks.searchInviteAgencies.mockImplementation(async (query: string) => ({
-            hits: query.startsWith('Diak')
-                ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
-                : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
-            total: 1,
-            hasMore: false,
-            page: 1,
-        }));
-        mocks.getAgencyDataById.mockImplementation(async (id: string) => ({
-            _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
-        }));
-        render(<CounsellorInvitesTab />);
+        const trace = createInviteTrace('next agency default after manual choice');
+        trace('test:start');
+        mocks.searchInviteAgencies.mockImplementation(async (query: string) => {
+            trace('search:called', { query });
+            return {
+                hits: query.startsWith('Diak')
+                    ? [{ id: 14, name: 'Diakonie Lahr', tenantId: 79, topics: ['Schulden'] }]
+                    : [{ id: 15, name: 'Caritas Offenburg', tenantId: 79, topics: ['Sucht'] }],
+                total: 1,
+                hasMore: false,
+                page: 1,
+            };
+        });
+        mocks.getAgencyDataById.mockImplementation(async (id: string) => {
+            const result = {
+                _embedded: { id, settings: { counsellorTopicPermission: String(id) === '15' ? 'CREATE' : 'NONE' } },
+            };
+            trace('agencyDefault:answered', { id, result });
+            return result;
+        });
+        const { container } = render(<CounsellorInvitesTab />);
+        const fieldSlot = (key: 'topics' | 'agency') => {
+            // Resolve the current node on each use; do not retain a slot across rerenders.
+            const slots = container.querySelectorAll<HTMLElement>(`[data-field-key="${key}"]`);
+            expect(slots).toHaveLength(1);
+            return slots[0];
+        };
         const user = userEvent.setup();
-        const agency = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgency:before');
+        const agency = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgency:after');
+        trace('typeDiak:before');
         await user.type(agency, 'Diak');
-        await user.click(await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW));
+        trace('typeDiak:after');
+        trace('findDiak:before');
+        const diakOption = await screen.findByRole('option', { name: /Diakonie Lahr/ }, SLOW);
+        trace('findDiak:after');
+        await user.click(diakOption);
+        trace('clickDiak:after');
+        trace('default14:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('14'), SLOW);
-        const topics = screen.queryByRole('combobox', { name: 'Themen & Fachbereiche' });
-        await user.click(topics ?? screen.getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }));
-        await user.click(await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW));
+        trace('default14:after');
+        trace('queryTopics:before');
+        const topicsQueryStarted = performance.now();
+        const topics = within(fieldSlot('topics')).queryByRole('combobox', { name: 'Themen & Fachbereiche' });
+        trace('queryTopics:after', { queryDurationMs: performance.now() - topicsQueryStarted });
+        trace('openTopics:before');
+        await user.click(
+            topics ?? within(fieldSlot('topics')).getByRole('button', { name: /^Themen & Fachbereiche bearbeiten/ }),
+        );
+        trace('openTopics:after');
+        trace('findManualPermission:before');
+        const manualPermission = await screen.findByTitle('Darf weitere Fachbereiche auswählen', undefined, SLOW);
+        trace('findManualPermission:after');
+        await user.click(manualPermission);
+        trace('chooseManualPermission:after');
 
-        const agencyPill = screen.queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:before');
+        const agencyPillQueryStarted = performance.now();
+        const agencyPill = within(fieldSlot('agency')).queryByRole('button', { name: /^Beratungsstelle bearbeiten/ });
+        trace('queryAgencyPill:after', { queryDurationMs: performance.now() - agencyPillQueryStarted });
+        trace('openAgencyPill:before', { present: !!agencyPill });
         if (agencyPill) await user.click(agencyPill);
-        const agencyField = await screen.findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('openAgencyPill:after');
+        trace('findAgencyField:before');
+        const agencyField = await within(fieldSlot('agency')).findByRole('combobox', { name: 'Beratungsstelle' }, SLOW);
+        trace('findAgencyField:after');
+        trace('clearAgency:before');
         await user.clear(agencyField);
+        trace('clearAgency:after');
+        trace('typeCari:before');
         await user.type(agencyField, 'Cari');
-        await user.click(await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW));
+        trace('typeCari:after');
+        trace('findCari:before');
+        const cariOption = await screen.findByRole('option', { name: /Caritas Offenburg/ }, SLOW);
+        trace('findCari:after');
+        await user.click(cariOption);
+        trace('clickCari:after');
 
         // The new agency's default applies again: the earlier manual choice belonged to Diakonie Lahr.
+        trace('default15:before');
         await waitFor(() => expect(mocks.getAgencyDataById).toHaveBeenCalledWith('15'), SLOW);
+        trace('default15:after');
+        trace('assertCreateDefault:before', {
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
+        const createDefaultQueryStarted = performance.now();
         expect(
-            await screen.findByRole(
-                'button',
-                { name: /^Themen & Fachbereiche bearbeiten: Darf weitere Themen anlegen/ },
-                SLOW,
-            ),
+            await within(fieldSlot('topics')).findByRole('button', { name: requiredTopicsDefaultName }, SLOW),
         ).toBeInTheDocument();
+        const createDefaultQueryDurationMs = performance.now() - createDefaultQueryStarted;
+        trace('assertCreateDefault:after', {
+            queryDurationMs: createDefaultQueryDurationMs,
+            topicsFieldSnapshot: process.env.ACCOUNT_INVITE_TRACE_FILE
+                ? captureTopicsFieldSnapshot(fieldSlot('topics'))
+                : undefined,
+        });
+        trace('test:done');
     });
 
     it('drops the agency default again when the admin switches to a new agency', async () => {
@@ -1485,6 +1769,24 @@ describe('CSV import payload per tab', () => {
         expect(counsellorCall).not.toHaveProperty('importBatchId');
     });
 
+    it('holds back every row of a Träger-ID column on the counsellor tab instead of reading it as a Beratungsstellen-ID', async () => {
+        mocks.findInviteTenant.mockResolvedValue(null);
+        mocks.listInviteEmailTemplates.mockResolvedValue([{ ...TEMPLATE, kind: 'COUNSELLOR_INVITE' }]);
+        render(<CounsellorInvitesTab />);
+        const user = userEvent.setup();
+
+        await waitFor(() => expect(mocks.listInviteEmailTemplates).toHaveBeenCalled());
+        await importCsv(
+            user,
+            'E-Mail;Vorname;Name;Träger-ID;Ziel;Rolle\r\n' +
+                'pinned@example.org;Anna;Beispiel;42;bestehend;Berater:in\r\n',
+        );
+
+        // The table is mocked here: the rejected row shows as an empty batch instead of "1 Empfänger anlegen".
+        expect(await screen.findByRole('button', { name: '0 Empfänger anlegen' })).toBeDisabled();
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
     it('lists only the columns each tab imports in the CSV menu hint', async () => {
         mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
         const { unmount } = renderTenantTab();
@@ -1501,6 +1803,45 @@ describe('CSV import payload per tab', () => {
         const agencyHint = await screen.findByText(/^Spalten:/, undefined, { timeout: 10_000 });
         expect(agencyHint).toHaveTextContent('Themen & Fachbereiche');
         expect(agencyHint).toHaveTextContent('Berät auch');
+    });
+
+    it('keeps omitted CSV tenant IDs AUTO after a query hides reserved IDs on another page', async () => {
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.searchTenantData.mockResolvedValue({ data: [{ id: 1 }], total: 1 });
+        // ID 2 is reserved outside this visible page. Allocation must stay authoritative.
+        mocks.listAccountInvites.mockResolvedValue({ ...invitesPage([]), totalElements: 40, totalPages: 2 });
+        mocks.createAccountInvite.mockImplementation(
+            async (body: { tenantIdAllocationMode?: string; tenantId?: number }) => {
+                expect(body.tenantIdAllocationMode).toBe('AUTO');
+                expect(body.tenantId).toBeUndefined();
+                return { ...invite(91, 3, 'EMAIL_SENT'), recipientEmail: 'auto@example.org' };
+            },
+        );
+        renderTenantTab();
+        const user = userEvent.setup();
+        const nextPage = await screen.findByRole('button', { name: 'Nächste Seite' });
+        await waitFor(() => expect(nextPage).toBeEnabled());
+        await user.click(nextPage);
+        await waitFor(() =>
+            expect(mocks.listAccountInvites).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1 })),
+        );
+        await user.type(await screen.findByRole('searchbox'), 'hidden');
+        await waitFor(
+            () =>
+                expect(mocks.listAccountInvites).toHaveBeenLastCalledWith(
+                    expect.objectContaining({ query: 'hidden', page: 0 }),
+                ),
+            { timeout: 10_000 },
+        );
+        await importCsv(user, 'E-Mail;Vorname;Name;Träger-ID\r\nauto@example.org;Anna;Beispiel;\r\n');
+        await user.click(await screen.findByRole('button', { name: '1 Empfänger anlegen' }));
+        await waitFor(() => expect(mocks.createAccountInvite).toHaveBeenCalledTimes(1));
+        expect(mocks.createAccountInvite.mock.calls[0][0]).toMatchObject({
+            tenantIdAllocationMode: 'AUTO',
+            tenantId: undefined,
+        });
+        await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     });
 
     it('keeps the Träger id column a tenant id, without touching the agency space', async () => {
@@ -1581,4 +1922,69 @@ describe('CSV entries in the more-menu', () => {
         expect(picker).toHaveAttribute('accept', '.csv,text/csv');
         click.mockRestore();
     });
+});
+
+describe('TenantInvitesTab deleted template selection', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        window.localStorage.clear();
+        mocks.parseUserAuthInfo.mockReturnValue({});
+        mocks.listInviteEmailTemplates.mockResolvedValue([TEMPLATE]);
+        mocks.listAccountInvites.mockResolvedValue(invitesPage([]));
+        mocks.searchTenantData.mockResolvedValue({ data: [], total: 0 });
+        mocks.acceptBaseUrlForRole.mockReturnValue('https://admin.example/account-invite');
+    });
+
+    it('removes the selected deleted template locally and blocks sending when refresh fails', async () => {
+        renderTenantTab();
+        const user = userEvent.setup();
+        await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
+        const send = screen.getByRole('button', { name: 'Anlegen & einladen' });
+        await waitFor(() => expect(send).toBeEnabled());
+        await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }));
+        await user.click(screen.getByRole('button', { name: 'Standard' }));
+        mocks.listInviteEmailTemplates.mockRejectedValue(new Error('refresh failed'));
+        await user.click(screen.getByRole('button', { name: 'Delete selected template in dialog' }));
+        await waitFor(() => expect(send).toBeDisabled());
+        expect(screen.queryByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' })).not.toBeInTheDocument();
+        expect(await screen.findByText('Could not load templates')).toBeInTheDocument();
+        await user.click(send);
+        expect(mocks.createAccountInvite).not.toHaveBeenCalled();
+    });
+
+    it.each(['resolve', 'reject'] as const)(
+        'ignores a pre-deletion template reload that later %ss',
+        async (outcome) => {
+            let resolveOld!: (templates: (typeof TEMPLATE)[]) => void;
+            let rejectOld!: (error: Error) => void;
+            const oldReload = new Promise<(typeof TEMPLATE)[]>((resolve, reject) => {
+                resolveOld = resolve;
+                rejectOld = reject;
+            });
+            const errorToast = vi.spyOn(snackbar, 'error');
+            renderTenantTab();
+            const user = userEvent.setup();
+            await user.type(await screen.findByLabelText('E-Mail'), 'new@example.org');
+            const send = screen.getByRole('button', { name: 'Anlegen & einladen' });
+            await waitFor(() => expect(send).toBeEnabled());
+            await user.click(screen.getByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }));
+            await user.click(screen.getByRole('button', { name: 'Standard' }));
+            mocks.listInviteEmailTemplates.mockReturnValueOnce(oldReload).mockResolvedValueOnce([]);
+            await user.click(screen.getByRole('button', { name: 'Refresh selected template in dialog' }));
+            await user.click(screen.getByRole('button', { name: 'Delete selected template in dialog' }));
+            await waitFor(() => expect(send).toBeDisabled());
+            expect(mocks.listInviteEmailTemplates).toHaveBeenCalledTimes(3);
+            await act(async () => {
+                if (outcome === 'resolve') resolveOld([TEMPLATE]);
+                else rejectOld(new Error('obsolete reload failed'));
+                await oldReload.catch(() => undefined);
+            });
+            expect(send).toBeDisabled();
+            expect(
+                screen.queryByRole('button', { name: 'E-Mail-Vorlage bearbeiten: Standard' }),
+            ).not.toBeInTheDocument();
+            expect(errorToast).not.toHaveBeenCalled();
+            errorToast.mockRestore();
+        },
+    );
 });

@@ -1,5 +1,5 @@
-// @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+// @vitest-environment oriso-jsdom
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const runtimeEnvKeys = [
     'USE_HTTPS',
@@ -112,6 +112,35 @@ describe('runtimeConfig observability', () => {
     });
 });
 
+// ORISO-Admin#1558: feature pages on ORISO Understand; the host is deployment config, never in the bundle.
+describe('understandUrl', () => {
+    it('is empty when not configured, so no link is shown', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({});
+
+        expect(runtimeConfig.understandUrl).toBe('');
+    });
+
+    it('accepts an http(s) address without a trailing slash', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ UNDERSTAND_URL: 'https://understand.example.org/' });
+
+        expect(runtimeConfig.understandUrl).toBe('https://understand.example.org');
+    });
+
+    it('drops a query or hash, so feature paths are appended to the path', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({
+            UNDERSTAND_URL: 'https://understand.example.org/docs/?lang=de#top',
+        });
+
+        expect(runtimeConfig.understandUrl).toBe('https://understand.example.org/docs');
+    });
+
+    it('rejects anything but http(s)', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ UNDERSTAND_URL: 'ftp://understand.example.org' });
+
+        expect(runtimeConfig.understandUrl).toBe('');
+    });
+});
+
 describe('bundle build identity', () => {
     it('keeps the full baked commit when runtime configuration claims another build', async () => {
         const baked = 'a6b74669b6fe20a515c277228bdb42d67eb5a9a9';
@@ -168,5 +197,18 @@ describe('runtimeConfig app base URL', () => {
         });
 
         expect(runtimeConfig.appBaseUrl).toBe('https://app.example.org');
+    });
+});
+
+describe('runtimeConfig configuredAppUrl', () => {
+    it('is empty when APP_URL is unset, while appBaseUrl still falls back to the API', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'api.example.org' });
+        expect(runtimeConfig.configuredAppUrl).toBe('');
+        expect(runtimeConfig.appBaseUrl).toBe('https://api.example.org');
+    });
+
+    it('is the configured APP_URL', async () => {
+        const { runtimeConfig } = await loadRuntimeConfig({ API_URL: 'api.example.org', APP_URL: 'app.example.org' });
+        expect(runtimeConfig.configuredAppUrl).toBe('https://app.example.org');
     });
 });

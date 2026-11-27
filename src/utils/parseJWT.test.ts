@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import parseJwt from './parseJWT';
 
 // jsdom's atob is stricter than the browser's (rejects unpadded base64url and

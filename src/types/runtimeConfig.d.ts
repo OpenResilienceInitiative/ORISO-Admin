@@ -5,6 +5,7 @@ export interface AppRuntimeConfig {
     AGENCY_SERVICE_ORIGIN?: string;
     TENANT_SERVICE_ORIGIN?: string;
     CONSULTING_TYPE_SERVICE_ORIGIN?: string;
+    ADDON_SERVICE_ORIGIN?: string;
     KEYCLOAK_ORIGIN?: string;
     APP_URL?: string;
     MATRIX_URL?: string;
@@ -24,7 +25,11 @@ export interface AppRuntimeConfig {
      * Absent or anything else keeps the AI media toggles disabled.
      */
     MEDIA_AI_SCAN_AVAILABLE?: string;
+    /** Journeys in Funktionszugriff (ORISO-Admin#1571); only "true" switches them on. */
+    JOURNEYS_ENABLED?: string;
     OTEL_METRICS_URL?: string;
+    /** ORISO Understand (feature pages); unset hides the "Mehr erfahren" links (#1558). */
+    UNDERSTAND_URL?: string;
     OTEL_EXPORT_INTERVAL_MS?: string;
     PLATFORM_VERSION?: string;
 }

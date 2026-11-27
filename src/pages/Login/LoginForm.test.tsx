@@ -2,9 +2,10 @@ import React from 'react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import less from 'less';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { snackbar } from '../../components/Snackbar';
 import LoginForm from './LoginForm';
 import m3ButtonStyles from '../../components/M3Button/styles.module.scss';
 import { FETCH_ERRORS } from '../../api/fetchData';
@@ -62,6 +63,7 @@ const t = (key: string, options?: Record<string, unknown>) => {
     return translations[key] || key;
 };
 let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+let snackbarErrorSpy: ReturnType<typeof vi.spyOn>;
 
 const STYLES_ROOT = resolve(__dirname, '../../styles');
 
@@ -101,17 +103,6 @@ vi.mock('react-router-dom', async () => {
         ...actual,
         useNavigate: () => mocks.navigate,
         useLocation: () => ({ search: mocks.search }),
-    };
-});
-
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        message: {
-            ...actual.message,
-            error: mocks.messageError,
-        },
     };
 });
 
@@ -159,6 +150,12 @@ describe('LoginForm', () => {
     beforeEach(() => {
         mocks.loginAsync.mockReset();
         mocks.messageError.mockReset();
+        // Records the call and still raises the pop-up, so a test can see what the person sees.
+        const raise = snackbar.error.bind(snackbar);
+        snackbarErrorSpy = vi.spyOn(snackbar, 'error').mockImplementation(((...args: Parameters<typeof raise>) => {
+            mocks.messageError(...args);
+            return raise(...args);
+        }) as never);
         mocks.navigate.mockReset();
         mocks.search = '';
         mocks.recordLoginFailure.mockReset();
@@ -167,6 +164,7 @@ describe('LoginForm', () => {
 
     afterEach(() => {
         consoleWarnSpy.mockRestore();
+        snackbarErrorSpy.mockRestore();
     });
 
     it('keeps the first-centre continuation through the password and OTP challenge', async () => {
@@ -322,7 +320,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -335,7 +333,7 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent(
+        expect(await screen.findByTestId('login-credentials-hint')).toHaveTextContent(
             'Sign-in was not possible. Please check your username/email and password. If you were invited to this platform, please first complete your registration via the invitation link from your email.',
         );
         expect(mocks.messageError).not.toHaveBeenCalled();
@@ -425,7 +423,9 @@ describe('LoginForm', () => {
 
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByRole('alert')).toHaveTextContent('Your account is not fully set up yet.');
+        expect(await screen.findByTestId('login-setup-incomplete-hint')).toHaveTextContent(
+            'Your account is not fully set up yet.',
+        );
         expect(screen.queryByTestId('login-credentials-hint')).not.toBeInTheDocument();
         expect(screen.queryByPlaceholderText('One-time password')).not.toBeInTheDocument();
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
@@ -453,9 +453,12 @@ describe('LoginForm', () => {
         await user.type(otpField, '123456');
         await user.click(screen.getByRole('button', { name: 'Sign in' }));
 
-        expect(await screen.findByTestId('login-credentials-hint')).toBeInTheDocument();
+        const hint = await screen.findByTestId('login-credentials-hint');
         // The OTP field stays so the person can correct the code, not start over.
         expect(screen.getByPlaceholderText('One-time password')).toBeInTheDocument();
+        // The jump button points at the code, not at the user name.
+        await user.click(within(hint).getByRole('button', { name: 'snackbar.jump' }));
+        await waitFor(() => expect(screen.getByPlaceholderText('One-time password')).toHaveFocus());
     });
 
     /*
@@ -526,6 +529,8 @@ describe('LoginForm', () => {
                 'Too many attempts. Please wait about 7 minutes before trying again.',
             );
         });
+        // The pop-up reaches the host: an error, with the sign-in lead line.
+        expect(await screen.findByTestId('snackbar')).toHaveAttribute('data-severity', 'error');
         expect(mocks.recordLoginFailure).toHaveBeenCalledWith({
             outcome: 'rate_limited',
             transport: 'too_many_requests',
@@ -642,8 +647,9 @@ describe('LoginForm', () => {
         mocks.loginAsync.mockRejectedValueOnce({ message: FETCH_ERRORS.TIMEOUT });
         await user.click(screen.getByRole('button', { name: 'Send a new code' }));
 
-        expect(await screen.findByText('The code could not be requested. Please try again.')).toBeInTheDocument();
-        expect(screen.queryByRole('status')).not.toBeInTheDocument();
+        expect(await screen.findByText(/The code could not be requested\. Please try again\./)).toBeInTheDocument();
+        // The failure is an error pop-up; the "request sent" confirmation must not appear next to it.
+        expect(screen.queryByText(/Request sent\./)).not.toBeInTheDocument();
     });
 
     /*

@@ -1,11 +1,17 @@
 import { getAccentDark, getAccentLight, getSignal, TenantSeeds } from '../themeSeeds';
 import { brandSeedCannotYieldPalette } from './seedUsability';
 import { contrastRatio } from '../contrastRatio';
+import { toneOf } from './neutralTone';
 
-export type OrisoSchemeName = 'light' | 'inverted';
+export type OrisoSchemeName = 'light' | 'inverted' | 'dark';
+export type AdminContrast = 'standard' | 'medium' | 'high';
 
-/** Angular hue distance (degrees) below which error and brand read as the same family. */
-export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 30;
+/**
+ * Angular hue distance (degrees) below which error and brand read as the same family.
+ * Calibrated so the shipped pair — Caritas-Rot #a5000a and the system error #b1005e,
+ * about 28° apart — does not warn: with 30 the editor warned on untouched defaults (#1374).
+ */
+export const SIGNAL_BRAND_HUE_MIN_DISTANCE = 25;
 
 export interface OrisoPaletteResult {
     tokens: Record<string, string>;
@@ -50,6 +56,25 @@ const mix = (a: string, b: string, amount: number) => {
     );
 };
 
+/**
+ * The brand tone, moved towards black (on a light background) or white (on a
+ * dark one) in small steps until it reaches `target` contrast (ORISO-Admin#1322).
+ * Keeps the hue as long as possible instead of jumping to black or white; the
+ * default seed already passes and comes back unchanged.
+ */
+const keepReadableOn = (foreground: string, background: string | string[], target = 4.5): string => {
+    const fills = typeof background === 'string' ? [background] : background;
+    const lowestContrast = (color: string) => Math.min(...fills.map((fill) => contrastRatio(color, fill)));
+    const towards = lowestContrast('#000000') >= lowestContrast('#ffffff') ? '#000000' : '#ffffff';
+    for (let step = 0; step <= 20; step += 1) {
+        const candidate = step === 0 ? foreground : mix(foreground, towards, step / 20);
+        if (lowestContrast(candidate) >= target) {
+            return candidate;
+        }
+    }
+    return towards;
+};
+
 const DEFAULT_ACCENT_DARK = '#a5000a';
 /** Default error/signal seed — matches Frontend `DEFAULT_SIGNAL.light.error`. */
 const SYSTEM_ERROR = '#b1005e';
@@ -84,10 +109,23 @@ export const hueDistance = (hexA: string, hexB: string): number => {
     return Math.min(delta, 360 - delta);
 };
 
+/** Spread between the strongest and weakest RGB channel below which a colour reads as grey. */
+const ACHROMATIC_SPREAD = 26;
+
+/** Greys have no meaningful hue (`hueDegrees` returns 0, i.e. red). */
+const isAchromatic = (hex: string): boolean => {
+    const { r, g, b } = hexToRgb(hex);
+    return Math.max(r, g, b) - Math.min(r, g, b) < ACHROMATIC_SPREAD;
+};
+
 export const signalTooCloseToBrand = (seeds: TenantSeeds): boolean => {
     const brand = normalizeHex(getAccentDark(seeds));
     const signal = normalizeHex(getSignal(seeds));
     if (!brand || !signal) {
+        return false;
+    }
+    // A grey reads as hue 0 and would "match" every red brand; it is not the same colour family.
+    if (isAchromatic(brand) !== isAchromatic(signal)) {
         return false;
     }
     return hueDistance(brand, signal) < SIGNAL_BRAND_HUE_MIN_DISTANCE;
@@ -104,6 +142,11 @@ const resolveErrorSeed = (seeds: TenantSeeds): string => normalizeHex(getSignal(
  * src/app.css, which is the static fallback for exactly this seed.
  */
 const DEFAULT_ACCENT_LIGHT = '#ffe2de';
+/**
+ * Ink on `--m3-primary-fixed` (the sidebar's active pill). #410001 on the default rose; a tenant
+ * that sets a dark light-accent gets it lifted until it reads at 4.5:1 (same rule as `keepReadableOn`).
+ */
+const DEFAULT_ON_PRIMARY_FIXED = '#410001';
 const DEFAULT_ACCENT_DIM = '#ffb4aa';
 const DEFAULT_ACCENT_ACTION = '#cc1e1c';
 /**
@@ -123,9 +166,14 @@ const DEFAULT_NAV_INDICATOR = '#410001';
  * src/app.css before renaming or re-valuing this.
  */
 const STAGE_SURFACE = '#281715';
-const DARK_TEXT = '#141c25';
+export const DARK_TEXT = '#141c25';
 const ADMIN_TABLE_TOKENS = {
-    '--admin-workspace-background': '#e4e2e2',
+    // M3 surface: tiles/dialogs (surface-container-high) sit on the lightest tier.
+    '--admin-workspace-background': '#fcf9f9',
+    // Pictures stay as drawn: tiles and dialogs keep their light surface in the inverted
+    // scheme (see the surface tokens), and the drawings are dark ink. A dark workspace sets
+    // PICTURE_FILTER_ON_DARK here together with its dark card surfaces, not before.
+    '--admin-picture-filter': 'none',
     // Keep in lockstep with src/app.css — the search control sits on
     // `--m3-surface-container-high`, the same surface as the outlined fields.
     '--admin-search-surface': '#eae7e8',
@@ -149,8 +197,15 @@ const ADMIN_TABLE_TOKENS = {
 };
 
 /**
+ * Tile pictures are dark pen drawings on a transparent ground. Set on a dark workspace
+ * surface, this filter flips the strokes light (and turns the red accent back to red), so
+ * the same picture reads there too. Nothing uses it yet: see `--admin-picture-filter` above.
+ */
+export const PICTURE_FILTER_ON_DARK = 'invert(1) hue-rotate(180deg)';
+
+/**
  * Field anatomy tokens (#313): form-field surfaces sit one step LIGHTER than
- * `--admin-workspace-background` (#e4e2e2, surface-container-highest tier) so
+ * the card surface (#eae7e8, surface-container-high tier) so
  * inputs read as raised instead of muddy, with a subtle outline-variant border.
  * Selection is an "illuminated" light primary-container tonal derived from the
  * tenant seed. `--admin-form-field-surface` above is the legacy alias consumed
@@ -162,7 +217,7 @@ const adminFieldTokens = (accentLight: string, onAccentLightVariant: string) => 
     '--admin-field-outline': '#c4c7c8',
     '--admin-field-surface-hover': '#f6f3f3',
     '--admin-field-selected-surface': accentLight,
-    '--admin-field-selected-text': onAccentLightVariant,
+    '--admin-field-selected-text': keepReadableOn(onAccentLightVariant, accentLight),
 });
 
 const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) => {
@@ -190,7 +245,8 @@ const defaultAccentTokens = (accentDark: string, explicitAccentLight?: string) =
     };
 };
 
-const readableOn = (background: string) =>
+/** Text colour the theme draws on `background`: the better of white and {@link DARK_TEXT}. */
+export const readableOn = (background: string) =>
     contrastRatio(DARK_TEXT, background) >= contrastRatio('#ffffff', background) ? DARK_TEXT : '#ffffff';
 
 /**
@@ -230,7 +286,9 @@ const invertedTokens = (
         '--m3-on-primary': readableOn(primary),
         '--m3-primary-container': primaryContainer,
         '--m3-on-primary-container': readableOn(primaryContainer),
+        '--admin-accent-on-container': keepReadableOn(primary, primaryContainer),
         '--m3-primary-fixed': accentLight,
+        '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
         '--m3-primary-fixed-dim': accentDim,
         '--m3-on-primary-fixed-variant': onAccentLightVariant,
         '--m3-secondary': '#cbd6e2',
@@ -256,6 +314,15 @@ const invertedTokens = (
         '--m3-on-background': STAGE_SURFACE,
         '--m3-inverse-surface': '#fcf9f9',
         '--m3-inverse-on-surface': '#1a1c1e',
+        // Dark scheme: the inverse roles are the light scheme's, so the snackbar action keeps the brand red.
+        '--m3-inverse-primary': keepReadableOn(accentDark, '#fcf9f9'),
+        '--m3-success-container': '#39414b',
+        '--m3-on-success-container': '#e7effc',
+        '--m3-success-action': keepReadableOn(primary, '#39414b'),
+        // The tertiary container stays light in the dark scheme, so the warning snackbar has its own dark pair.
+        '--m3-warning-container': '#5a3a36',
+        '--m3-on-warning-container': '#ffdad6',
+        '--m3-warning-action': keepReadableOn(primary, '#5a3a36'),
         '--oriso-app-accent': primary,
         '--oriso-app-accent-dark': accentDark,
         '--oriso-app-accent-light': accentLight,
@@ -267,7 +334,105 @@ const invertedTokens = (
     };
 };
 
-export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName = 'light'): OrisoPaletteResult => {
+// Neutral roles match the ORISO Frontend Dark fixture. The admin-specific
+// aliases below describe where these surfaces are used in the workspace.
+const darkSurface = '#131314';
+const darkLowest = '#0e0e0f';
+const darkLow = '#1b1b1c';
+const darkContainer = '#1f1f20';
+const darkHigh = '#2a2a2b';
+const darkHighest = '#353535';
+const darkInk = '#e4e2e2';
+const darkMuted = '#c4c7c8';
+const darkOutline = '#8e9192';
+const darkDivider = '#444748';
+
+/**
+ * Text that keeps its legacy light colour (e.g. #1b1b1c, #273270, #63636a) reads
+ * `var(--admin-scheme-on-surface[-variant], <that literal>)` (borders: `--admin-scheme-outline`).
+ * Only the dark scheme writes these, so light renders exactly as before and dark gets the on-surface roles.
+ */
+const personalDarkSurfaceTokens = {
+    '--admin-scheme-on-surface': darkInk,
+    '--admin-scheme-on-surface-variant': darkMuted,
+    '--admin-scheme-outline': darkOutline,
+    '--m3-surface': darkSurface,
+    '--m3-background': darkSurface,
+    '--m3-on-surface': darkInk,
+    '--m3-surface-container-lowest': darkLowest,
+    '--m3-surface-container-low': darkLow,
+    '--m3-surface-container': darkContainer,
+    '--m3-surface-container-high': darkHigh,
+    '--m3-surface-container-highest': darkHighest,
+    '--m3-on-surface-variant': darkMuted,
+    '--m3-outline': darkOutline,
+    '--m3-outline-variant': darkDivider,
+    '--m3-surface-variant': darkDivider,
+    '--admin-workspace-background': darkSurface,
+    '--admin-picture-filter': PICTURE_FILTER_ON_DARK,
+    '--admin-search-surface': darkHigh,
+    '--admin-search-text': darkMuted,
+    '--admin-search-placeholder': darkMuted,
+    '--admin-search-icon': darkMuted,
+    '--admin-search-hover-surface': darkHighest,
+    '--admin-table-surface': darkLow,
+    '--admin-table-header-surface': darkHighest,
+    '--admin-table-row-hover-surface': darkContainer,
+    '--admin-table-footer-surface': darkHighest,
+    '--admin-table-border': darkDivider,
+    '--admin-table-text': darkMuted,
+    '--admin-table-header-text': darkInk,
+    '--admin-table-chip-surface': darkHighest,
+    '--admin-table-chip-border': darkOutline,
+    '--admin-table-chip-text': darkMuted,
+    '--admin-form-card-surface': darkHigh,
+    '--admin-form-field-surface': darkLowest,
+    '--admin-form-field-text': darkInk,
+    '--admin-form-muted-text': darkMuted,
+    '--admin-form-disabled-text': darkMuted,
+    '--admin-form-label-text': darkMuted,
+    '--admin-field-surface': darkLowest,
+    '--admin-field-outline': darkOutline,
+    '--admin-field-surface-hover': darkLow,
+    '--admin-dialog-scrim': 'rgba(0, 0, 0, 0.7)',
+};
+
+const applyPersonalContrast = (tokens: Record<string, string>, contrast: Exclude<AdminContrast, 'standard'>) => {
+    const minimum = contrast === 'high' ? 7 : 5.5;
+    const surfaces = [
+        tokens['--admin-form-card-surface'],
+        tokens['--admin-field-surface'],
+        tokens['--admin-field-surface-hover'],
+        tokens['--m3-surface-container'],
+    ];
+    const ink = keepReadableOn(tokens['--m3-on-surface'], surfaces, minimum);
+    const muted = keepReadableOn(tokens['--m3-on-surface-variant'], surfaces, minimum);
+    const link = keepReadableOn(tokens['--m3-primary'], surfaces, minimum);
+    const selectedSurface = tokens['--admin-field-selected-surface'];
+    const selectedInk = keepReadableOn(tokens['--admin-field-selected-text'], selectedSurface, minimum);
+    const readableSelection = keepReadableOn(selectedSurface, selectedInk, minimum);
+
+    return {
+        ...tokens,
+        '--m3-on-surface': ink,
+        '--m3-on-surface-variant': muted,
+        // Dark only: light never writes the scheme ink, so its legacy literals stay as they were.
+        ...(tokens['--admin-scheme-on-surface'] && {
+            '--admin-scheme-on-surface': ink,
+            '--admin-scheme-on-surface-variant': muted,
+        }),
+        '--admin-form-field-text': ink,
+        '--admin-form-label-text': muted,
+        '--admin-form-muted-text': muted,
+        '--admin-link-text': link,
+        '--admin-field-outline': keepReadableOn(tokens['--admin-field-outline'], surfaces, 3),
+        '--admin-field-focus': keepReadableOn(tokens['--m3-primary'], surfaces, 3),
+        '--admin-field-selected-surface': readableSelection,
+        '--admin-field-selected-text': selectedInk,
+    };
+};
+
+const computeBasePalette = (seeds: TenantSeeds, scheme: OrisoSchemeName): OrisoPaletteResult => {
     const accentDark = normalizeHex(getAccentDark(seeds)) ?? DEFAULT_ACCENT_DARK;
     const explicitAccentLight = normalizeHex(getAccentLight(seeds));
     const errorSeed = resolveErrorSeed(seeds);
@@ -281,11 +446,14 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
     const tooPale = brandSeedCannotYieldPalette(getAccentDark(seeds));
     const signalTooClose = signalTooCloseToBrand(seeds);
 
-    if (scheme === 'inverted') {
+    if (scheme !== 'light') {
         return {
             tooPale,
             signalTooClose,
-            tokens: invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant, errorSeed),
+            tokens: {
+                ...invertedTokens(accentDark, accentLight, accentDim, onAccentLightVariant, errorSeed),
+                ...(scheme === 'dark' && personalDarkSurfaceTokens),
+            },
         };
     }
 
@@ -300,9 +468,15 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--m3-on-primary': onAccentDark,
             '--m3-primary-container': accentLight,
             '--m3-on-primary-container': onAccentLight,
+            // Brand-tinted text and icons ON the light container (mobile menu tiles).
+            '--admin-accent-on-container': keepReadableOn(accentDark, accentLight),
             '--m3-primary-fixed': accentLight,
+            '--m3-on-primary-fixed': keepReadableOn(DEFAULT_ON_PRIMARY_FIXED, accentLight),
             '--m3-primary-fixed-dim': accentDim,
             '--m3-on-primary-fixed-variant': onAccentLightVariant,
+            // Snackbar action text on the success and warning containers, whatever the brand seed.
+            '--m3-success-action': keepReadableOn(accentDark, '#e7effc'),
+            '--m3-warning-action': keepReadableOn(accentDark, '#ffdad6'),
             '--m3-secondary': '#4c555f',
             '--m3-on-secondary': '#ffffff',
             '--m3-secondary-container': '#646d78',
@@ -329,4 +503,65 @@ export const computeOrisoPalette = (seeds: TenantSeeds, scheme: OrisoSchemeName 
             '--oriso-app-on-action': onAccentAction,
         },
     };
+};
+
+/**
+ * Ink tones of the personal "high" contrast level, same values as the Frontend
+ * (ORISO-Frontend#2544). Surfaces keep the scheme's own; only text, icons and borders move toward
+ * black (light) or white (dark), so the choice is visible even where the standard palette already
+ * passes 7:1 and `applyPersonalContrast` alone would change nothing.
+ */
+export const HIGH_CONTRAST_INK_TONES = {
+    light: { onSurface: 0, onSurfaceVariant: 20, outline: 30, outlineVariant: 50 },
+    dark: { onSurface: 100, onSurfaceVariant: 92, outline: 80, outlineVariant: 60 },
+} as const;
+
+/** Tokens that paint a fill; the ink remap must never touch them. */
+const isFillToken = (name: string) => /surface|background|scrim|container|picture-filter/.test(name);
+
+/**
+ * Moves the four neutral ink roles to their high-contrast tones, and every text or border token
+ * that shares one of those colours with them (field outline, table and search text, scheme ink).
+ */
+const applyHighContrastInk = (tokens: Record<string, string>, scheme: 'light' | 'dark'): Record<string, string> => {
+    const tones = HIGH_CONTRAST_INK_TONES[scheme];
+    const roles = [
+        ['--m3-on-surface', tones.onSurface],
+        ['--m3-on-surface-variant', tones.onSurfaceVariant],
+        ['--m3-outline', tones.outline],
+        ['--m3-outline-variant', tones.outlineVariant],
+    ] as const;
+    const remap = new Map<string, string>();
+    roles.forEach(([name, tone]) => {
+        const current = tokens[name]?.toLowerCase();
+        if (current && !remap.has(current)) remap.set(current, toneOf(current, tone));
+    });
+    const next: Record<string, string> = {};
+    Object.entries(tokens).forEach(([name, value]) => {
+        const lifted = remap.get(value.toLowerCase());
+        next[name] = lifted && !isFillToken(name) ? lifted : value;
+    });
+    roles.forEach(([name, tone]) => {
+        if (tokens[name]) next[name] = toneOf(tokens[name], tone);
+    });
+    // Fields are drawn with the outline role in high contrast.
+    next['--admin-field-outline'] = next['--m3-outline'];
+    // Texts that keep a legacy literal in light (`var(--admin-scheme-*, <literal>)`) follow high
+    // contrast too; standard and medium light still never write these.
+    next['--admin-scheme-on-surface'] = next['--m3-on-surface'];
+    next['--admin-scheme-on-surface-variant'] = next['--m3-on-surface-variant'];
+    next['--admin-scheme-outline'] = next['--m3-outline'];
+    return next;
+};
+
+export const computeOrisoPalette = (
+    seeds: TenantSeeds,
+    scheme: OrisoSchemeName = 'light',
+    contrast: AdminContrast = 'standard',
+): OrisoPaletteResult => {
+    const palette = computeBasePalette(seeds, scheme);
+    if (contrast === 'standard' || scheme === 'inverted') return palette;
+    const inked = contrast === 'high' ? applyHighContrastInk(palette.tokens, scheme) : palette.tokens;
+
+    return { ...palette, tokens: applyPersonalContrast(inked, contrast) };
 };

@@ -3,6 +3,9 @@ import { useEffect } from 'react';
 // eslint-disable-next-line import/no-unresolved -- SB10 subpath export, invisible to the eslint import resolver
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { http, HttpResponse } from 'msw';
+import { findPopup } from '../../test/storyPopups';
+import { expectPanelsFitAtEveryWidth, PanelLayoutFrame } from '../../test/panelLayoutGuard';
+import { walkThroughTileHelp } from '../../components/TileHelp/tileHelpStory.matrix';
 import { UserRole } from '../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../utils/storybook/adminStoryDecorators';
 import { useAppConfigContext } from '../../context/useAppConfig';
@@ -75,7 +78,8 @@ const savedSettingsHandlers = (pendingAfterSave = false) => {
 };
 
 const meta = {
-    title: 'Organisms/Pages/Settings/PlatformSmtp',
+    title: 'Settings/Einstellungen/Email Server/PlatformSmtp',
+    id: 'organisms-pages-settings-platformsmtp',
     component: GlobalSmtpSettingsPage,
     render: () => <SavedSettingsExample />,
     parameters: { layout: 'fullscreen' },
@@ -116,12 +120,12 @@ export const Configured: Story = {
         ).toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Abbrechen' }));
 
-        const password = canvas.getByLabelText('SMTP Passwort');
-        const helpText = canvasElement.ownerDocument.getElementById(password.getAttribute('aria-describedby') || '');
-        if (!helpText) throw new Error('The write-only password explanation must be associated with its field.');
-        const senderLabel = canvas.getByText('Absender E-Mail', { selector: 'label' });
+        const username = canvas.getByLabelText('SMTP Benutzername');
+        const helpText = canvasElement.ownerDocument.getElementById(username.getAttribute('aria-describedby') || '');
+        if (!helpText) throw new Error('The write-only username explanation must be associated with its field.');
+        const passwordLabel = canvas.getByText('SMTP Passwort', { selector: 'label' });
         await expect(helpText.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-            senderLabel.getBoundingClientRect().top,
+            passwordLabel.getBoundingClientRect().top,
         );
     },
 };
@@ -131,6 +135,9 @@ export const Unavailable: Story = {
         msw: {
             handlers: [
                 http.get(userUrl, () => HttpResponse.json({ email: 'admin@example.org' })),
+                http.get('*/service/settingsadmin/smtp-sync-status', () =>
+                    HttpResponse.json({ revision: 1, appliedRevision: 1, status: 'APPLIED' }),
+                ),
                 http.get(summaryUrl, () =>
                     HttpResponse.json({ message: 'Platform SMTP Admin Settings are unavailable' }, { status: 502 }),
                 ),
@@ -139,7 +146,11 @@ export const Unavailable: Story = {
     },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await expect(await canvas.findByRole('alert')).toBeInTheDocument();
+        // The tile cannot load: one error pop-up with retry, quiet text in the tile and no sync status line.
+        const popup = await findPopup(canvasElement, 'Globale Einstellungen', 'error');
+        await expect(within(popup).getByRole('button', { name: 'Erneut laden' })).toBeInTheDocument();
+        await expect(canvas.getByText('Dieser Bereich konnte nicht geladen werden.')).toBeInTheDocument();
+        await expect(canvas.queryByText(/Das Anmeldesystem verwendet jetzt/)).toBeNull();
         await expect(canvas.getByRole('button', { name: 'Test-E-Mail senden' })).toBeDisabled();
     },
 };
@@ -161,11 +172,31 @@ export const PendingAfterSave: Story = {
         ).toBeInTheDocument();
         await expect(
             await canvas.findByText(
-                /applied to Keycloak mail within about 5 minutes|innerhalb von etwa 5 Minuten für Keycloak/,
+                /sign-in system.*within about 5 minutes|Anmeldesystem übernimmt.*innerhalb von etwa 5 Minuten/,
             ),
         ).toBeInTheDocument();
         await waitFor(() =>
             expect(canvas.getByRole('button', { name: /Test-E-Mail senden|Send test email/ })).toBeEnabled(),
         );
+    },
+};
+
+export const HelpSlideshow: Story = {
+    ...Configured,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
+/** At every laptop and desktop width the switches stay in their panel and keep room for their label. */
+export const PanelsFitAtLaptopWidths: Story = {
+    parameters: { msw: { handlers: savedSettingsHandlers() } },
+    render: () => (
+        <PanelLayoutFrame>
+            <SavedSettingsExample />
+        </PanelLayoutFrame>
+    ),
+    play: async ({ canvasElement }) => {
+        await within(canvasElement).findByRole('button', { name: 'Test-E-Mail senden' });
+        await userEvent.click(within(canvasElement).getByRole('button', { name: 'Bearbeiten' }));
+        await expectPanelsFitAtEveryWidth(canvasElement);
     },
 };

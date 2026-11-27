@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { snackbar } from '../Snackbar';
 import '../../i18n';
 
 const mocks = vi.hoisted(() => ({
@@ -10,14 +11,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../api/tenant/uploadTenantMedia', () => ({
     uploadTenantMedia: mocks.uploadTenantMedia,
 }));
-vi.mock('antd', async () => {
-    const actual = await vi.importActual<typeof import('antd')>('antd');
-    return {
-        ...actual,
-        notification: { ...actual.notification, error: mocks.notificationError },
-    };
-});
-
 import { imageFilesFrom, useEditorImageUpload } from './useEditorImageUpload';
 
 const makeEditor = () => {
@@ -32,6 +25,7 @@ const file = (name: string, type: string, bytes = 8) => new File([new Uint8Array
 
 describe('useEditorImageUpload', () => {
     beforeEach(() => {
+        vi.spyOn(snackbar, 'error').mockImplementation(mocks.notificationError as never);
         mocks.uploadTenantMedia.mockReset();
         mocks.notificationError.mockReset();
     });

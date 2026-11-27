@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
+import type { EditorState } from '@tiptap/pm/state';
 import { collectAnchors, HeadingAnchor } from './headingAnchors';
+
+export const anchorBubbleOptions = { placement: 'top' } as const;
 
 // CSS.escape is not available in every embedded browser we target.
 export const escapeCssId = (id: string) =>
@@ -40,8 +43,7 @@ const findScrollViewport = (node: HTMLElement): HTMLElement | null => {
 export type HeadingAnchorNav = {
     /** Current anchor list (source for the chip row). */
     anchors: HeadingAnchor[];
-    /** Same list through a ref, for callbacks registered once (BubbleMenu shouldShow). */
-    anchorsRef: React.MutableRefObject<HeadingAnchor[]>;
+    shouldShowAnchorMenu: (options: { state: EditorState }) => boolean;
     /** The anchor last jumped to / currently at the top while scrolling read-only. */
     activeAnchorId: string | null;
     scrollToAnchor: (anchorId: string) => void;
@@ -65,6 +67,10 @@ export const useHeadingAnchorNav = (
     const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
     const anchorsRef = useRef(anchors);
     anchorsRef.current = anchors;
+    const shouldShowAnchorMenu = useCallback(
+        ({ state }: { state: EditorState }) => !state.selection.empty && anchorsRef.current.length > 0,
+        [],
+    );
     /**
      * Where a chapter JUMP parked the scroll viewport. While the viewport
      * still sits exactly there, the scroll spy stays parked: near the end of
@@ -227,7 +233,7 @@ export const useHeadingAnchorNav = (
         scrollToAnchor((link.getAttribute('href') || '').slice(1));
     };
 
-    return { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture };
+    return { anchors, shouldShowAnchorMenu, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture };
 };
 
 export default useHeadingAnchorNav;

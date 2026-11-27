@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -57,22 +57,20 @@ describe('DoneStep', () => {
     });
 
     /**
-     * #594.11 — the check used to be MUI's CheckCircle painted with
-     * `--admin-status-success`, i.e. GREEN. Green is a table-row status colour
-     * and not part of this surface's palette. The glyph is now the `Verified`
-     * icon from the admin's own gallery (Atoms/CustomIcons), coloured with the
-     * product's secondary token.
+     * #594.11 stays true under #1273: the confirmation is never green. The
+     * shared lead graphic draws the check in the ORISO red; the old green
+     * status token must not come back.
      */
-    it('draws the confirmation with the product icon, not with a foreign green check', () => {
+    it('draws the confirmation with the shared lead graphic, not with a foreign green check', () => {
         renderDone();
 
         const icon = screen.getByTestId('onboarding-done-success-icon');
         const styles = readFileSync(resolve(__dirname, 'styles.module.scss'), 'utf8');
         const doneIcon = styles.match(/\.doneIcon \{([\s\S]*?)\n\}/)?.[1] ?? '';
 
-        expect(icon).toHaveClass('anticon');
-        expect(doneIcon).toMatch(/color:\s*var\(--m3-secondary/);
+        expect(icon.querySelector('svg')).toBeInTheDocument();
         expect(doneIcon).not.toMatch(/admin-status-success/);
+        expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     });
 
     it('makes the single primary action a real M3 button that goes to the login', async () => {

@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { walkThroughTileHelp } from '../../../../TileHelp/tileHelpStory.matrix';
 import { DataProcessingAgreementCard } from './index';
+import { LONG_DPA_HTML } from '../../../../DpaLegalForm/dpaStoryText';
 
 const meta = {
-    title: 'Organisms/Legal/DataProcessingAgreementCard',
+    title: 'Settings/Einstellungen/Rechtliches/DataProcessingAgreementCard',
+    id: 'organisms-legal-dataprocessingagreementcard',
     component: DataProcessingAgreementCard,
     parameters: { layout: 'padded' },
     // Storybook has no JWT, so the role for the help texts is pinned explicitly.
@@ -129,5 +132,23 @@ export const WithStaleDraft: Story = {
     args: {
         ...WithRestoredDraft.args,
         draftStale: true,
+    },
+};
+
+export const HelpSlideshow: Story = {
+    ...WithHistory,
+    play: async ({ canvasElement }) => walkThroughTileHelp(canvasElement, 4),
+};
+
+/** Published document stays readable when a later publication fails. */
+export const FehlerBeimVeroeffentlichen: Story = {
+    args: {
+        ...WithHistory.args,
+        initialContentByLanguage: {
+            de: LONG_DPA_HTML.replace('<h1>Vertragsunterlagen</h1>', '<h1>Auftragsverarbeitungsvertrag</h1>'),
+        },
+        collapsible: true,
+        defaultOpen: true,
+        errorMessage: 'Die neue Fassung konnte nicht veröffentlicht werden. Ihr Entwurf bleibt erhalten.',
     },
 };

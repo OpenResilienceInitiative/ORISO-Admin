@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const h = vi.hoisted(() => ({
     useDepartmentDpp: vi.fn(),
@@ -122,7 +122,7 @@ const renderContainer = (props: Record<string, unknown> = {}) =>
     );
 
 const selectDepartment = async (name: string) => {
-    await userEvent.click(screen.getByRole('button', { name: 'Fachbereich wählen' }));
+    await userEvent.click(screen.getByRole('button', { name: /Fachbereich wählen/ }));
     await userEvent.click(await screen.findByText(name));
 };
 

@@ -50,9 +50,12 @@ delivery rules"). Summary:
     `In review`. Merge only on an explicit, per-PR instruction naming that PR.
 -   **Request reviewers in the same step that opens the PR.** A PR without
     requested reviewers is not open for review.
--   **"Pre-Dev is free" means the server, not the branch.** Deploying images,
-    mutating config or data and running E2E on the Pre-Dev server needs no
-    approval; the `dev` _branch_ is review-gated like any shared branch.
+-   **Branches:** open PRs against `dev`; `main` is the release branch, and agents
+    never target it (releases are done by Hassan). `ORISO-E2E` is the explicit
+    exception and integrates into `pre-dev`.
+-   **Pre-Dev changes need explicit authorization.** Deploying images, mutating
+    config or data on the Pre-Dev server only happens with an explicit per-task
+    instruction from Frank that names Pre-Dev. Read-only inspection is fine.
 -   **Restore what you borrowed.** Record image reference _and_ `imagePullPolicy`
     before swapping anything on Pre-Dev, put both back before reporting done, and
     say so in the report.
@@ -100,3 +103,23 @@ text may be changed. They do not relax the delivery rules above.
     which ticket survives. A ticket that came back from Caritas — raised by
     `BjoernLudwig` or `HelenaSKloeckner` — is the one that stays open. Close the
     agent-created duplicate against it and link the survivor.
+
+For Matt Pocock engineering workflows, read the `Agent skills` section in `CLAUDE.md`.
+
+<!-- BEGIN:storybook-skills -->
+<!-- Storybook updates this section on upgrade. Remove both markers to keep your own edits. -->
+
+## Storybook
+
+For every change to how the UI looks (you create, change, or delete a component, story, style, theme, or design token), follow these steps in order. Each step has a Storybook skill. First invoke the skills of all the steps, before you edit any file. Then follow each skill at its step.
+
+1. `component-docs`: look up the components to reuse, with their props and usage examples, before you edit any file. Also when the user asks about a component's props, API, or usage.
+2. `write-stories`: every component you create or change gets stories.
+3. `test-stories`: run the story tests after every change, the way this skill says, never with a `package.json` test script, and fix what fails. Also when the user asks to run or fix story tests.
+4. `ui-review`: publish a review that shows the user what changed, as your last step. Also when the user asks to see components or stories.
+
+<!-- END:storybook-skills -->
+
+Before opening a PR, the repository gate still applies: the `test-stories` step above is the
+per-change loop; `npm run test:storybook` and the other validation commands in this file are the
+final check.

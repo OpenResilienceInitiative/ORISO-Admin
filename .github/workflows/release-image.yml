@@ -12,24 +12,31 @@ env:
     STORYBOOK_IMAGE_NAME: oriso-admin-storybook
     RELEASE_PREFIX: release/admin-
 
-permissions:
-    contents: write
-    packages: write
+permissions: {}
 
 jobs:
-    release:
-        name: validate, tag and publish release images
+    build:
+        name: Validate, scan and publish release images
         if: ${{ github.event.deleted == false }}
         runs-on: ubuntu-latest
         timeout-minutes: 45
+        permissions:
+            contents: read
+            packages: write
+
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+            app_digest: ${{ steps.publish_app.outputs.digest }}
+            storybook_digest: ${{ steps.publish_storybook.outputs.digest }}
 
         steps:
             - name: Checkout release branch
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   fetch-depth: 0
 
             - name: Validate release branch
+              id: version
               shell: bash
               run: |
                   set -euo pipefail
@@ -53,71 +60,114 @@ jobs:
                   fi
 
                   echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+                  echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
                   echo "APP_IMAGE=${REGISTRY}/${ORG}/${APP_IMAGE_NAME}:${VERSION}" >> "${GITHUB_ENV}"
                   echo "STORYBOOK_IMAGE=${REGISTRY}/${ORG}/${STORYBOOK_IMAGE_NAME}:${VERSION}" >> "${GITHUB_ENV}"
 
             - name: Build admin application
               uses: ./.github/actions/node-build
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v4
+            - name: Build and scan the versioned Admin image
+              id: app_archive
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: ${{ env.APP_IMAGE_NAME }}
+                  image_tags: ${{ env.APP_IMAGE }}
+                  image_labels: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ github.sha }}
+                      org.opencontainers.image.version=${{ env.VERSION }}
 
-            - name: Login to GHCR
+            - name: Build and scan the versioned Storybook image
+              id: storybook_archive
+              uses: ./.github/actions/docker-build-push
+              with:
+                  push_to_ghcr: false
+                  image_name: ${{ env.STORYBOOK_IMAGE_NAME }}
+                  dockerfile: Dockerfile.storybook
+                  image_tags: ${{ env.STORYBOOK_IMAGE }}
+                  image_labels: |
+                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                      org.opencontainers.image.revision=${{ github.sha }}
+                      org.opencontainers.image.version=${{ env.VERSION }}
+
+            # A failure in either scan must stop the release before any registry write.
+            - name: Login to GitHub Container Registry
               uses: docker/login-action@v4
               with:
                   registry: ${{ env.REGISTRY }}
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Build and push admin image
-              id: app_image
-              uses: docker/build-push-action@v7
-              with:
-                  context: .
-                  file: Dockerfile
-                  push: true
-                  tags: ${{ env.APP_IMAGE }}
-                  labels: |
-                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-                      org.opencontainers.image.revision=${{ github.sha }}
-                      org.opencontainers.image.version=${{ env.VERSION }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+            - name: Publish the scanned Admin image
+              id: publish_app
+              shell: bash
+              env:
+                  IMAGE_ARCHIVE: ${{ steps.app_archive.outputs.archive }}
+                  IMAGE_TAGS: ${{ env.APP_IMAGE }}
+                  EXPECTED_DIGEST: ${{ steps.app_archive.outputs.archive_digest }}
+                  EXPECTED_ARCHIVE_SHA256: ${{ steps.app_archive.outputs.archive_sha256 }}
+              run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
 
-            - name: Reject fixable admin image vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-              with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}@${{ steps.app_image.outputs.digest }}
-                  format: table
-                  exit-code: '1'
-                  ignore-unfixed: true
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
+            - name: Publish the scanned Storybook image
+              id: publish_storybook
+              shell: bash
+              env:
+                  IMAGE_ARCHIVE: ${{ steps.storybook_archive.outputs.archive }}
+                  IMAGE_TAGS: ${{ env.STORYBOOK_IMAGE }}
+                  EXPECTED_DIGEST: ${{ steps.storybook_archive.outputs.archive_digest }}
+                  EXPECTED_ARCHIVE_SHA256: ${{ steps.storybook_archive.outputs.archive_sha256 }}
+              run: bash .github/actions/docker-build-push/publish-image-archive.sh "$IMAGE_ARCHIVE" "$EXPECTED_DIGEST" "$EXPECTED_ARCHIVE_SHA256"
 
-            - name: Build and push admin Storybook image
-              id: storybook_image
-              uses: docker/build-push-action@v7
-              with:
-                  context: .
-                  file: Dockerfile.storybook
-                  push: true
-                  tags: ${{ env.STORYBOOK_IMAGE }}
-                  labels: |
-                      org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-                      org.opencontainers.image.revision=${{ github.sha }}
-                      org.opencontainers.image.version=${{ env.VERSION }}
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+    attest:
+        name: Sign the published release images
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            packages: write
+            id-token: write
+            attestations: write
 
-            - name: Reject fixable Storybook image vulnerabilities
-              uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        steps:
+            - name: Login for release attestation
+              uses: docker/login-action@v4
               with:
-                  image-ref: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}@${{ steps.storybook_image.outputs.digest }}
-                  format: table
-                  exit-code: '1'
-                  ignore-unfixed: true
-                  vuln-type: os,library
-                  severity: CRITICAL,HIGH
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Attest the published Admin image
+              uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}
+                  subject-digest: ${{ needs.build.outputs.app_digest }}
+                  push-to-registry: true
+                  create-storage-record: false
+
+            - name: Attest the published Storybook image
+              uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+              with:
+                  subject-name: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}
+                  subject-digest: ${{ needs.build.outputs.storybook_digest }}
+                  push-to-registry: true
+                  create-storage-record: false
+
+    release:
+        name: Tag and create the GitHub Release
+        needs: [build, attest]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        env:
+            VERSION: ${{ needs.build.outputs.version }}
+
+        steps:
+            - name: Check out the source to tag
+              uses: actions/checkout@v6
+              with:
+                  ref: ${{ github.sha }}
 
             - name: Create and push release tag
               shell: bash
@@ -128,7 +178,7 @@ jobs:
                   git push origin "v${VERSION}"
 
             - name: Create GitHub Release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@v3
               with:
                   tag_name: v${{ env.VERSION }}
                   target_commitish: ${{ github.sha }}
@@ -136,8 +186,8 @@ jobs:
                   generate_release_notes: true
                   body: |
                       Docker images:
-                      `${{ env.APP_IMAGE }}`
-                      `${{ env.STORYBOOK_IMAGE }}`
+                      `${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.APP_IMAGE_NAME }}:${{ env.VERSION }}`
+                      `${{ env.REGISTRY }}/${{ env.ORG }}/${{ env.STORYBOOK_IMAGE_NAME }}:${{ env.VERSION }}`
 
                       Source branch:
                       `${{ github.ref_name }}`

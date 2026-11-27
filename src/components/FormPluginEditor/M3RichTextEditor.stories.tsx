@@ -7,6 +7,7 @@ import { TemplateSplitButton } from '../PlaceholderTemplate';
 import { legalTextTokensFor, PlaceholderTokenDef } from '../PlaceholderTemplate/placeholderTokens';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
 import { EditorSnackbarQueue } from './EditorSnackbarQueue';
+import { ensureHeadingAnchorIds } from './headingAnchors';
 import { M3RichTextEditor } from './M3RichTextEditor';
 import { SplitDropdown } from './SplitDropdown';
 
@@ -202,7 +203,7 @@ export const WithAnchorNavigation: Story = {
     render: (args) => <ControlledEditor {...args} />,
     args: {
         title: 'Auftragsdaten Verabeitungsvertrag',
-        value: anchoredContent,
+        value: ensureHeadingAnchorIds(anchoredContent),
         languages: [{ value: 'de', label: 'Deutsch' }],
         language: 'de',
     },
@@ -211,6 +212,24 @@ export const WithAnchorNavigation: Story = {
         await waitFor(() => {
             expect(canvas.getByRole('navigation')).toBeInTheDocument();
             expect(canvas.getAllByText('Geltungsbereich').length).toBeGreaterThan(0);
+        });
+
+        await userEvent.click(canvas.getByRole('button', { name: /Bearbeiten|Edit/ }));
+        const editor = await canvas.findByRole('textbox');
+        const paragraph = editor.querySelector('p');
+        const text = paragraph?.firstChild;
+        if (!paragraph || !text) throw new Error('Missing anchored editor paragraph');
+
+        editor.focus();
+        document.getSelection()?.setBaseAndExtent(text, 0, text, 'Dieser Vertrag'.length);
+        await userEvent.click(await canvas.findByRole('button', { name: /Mit Abschnitt verknüpfen|Link to section/ }));
+        await userEvent.click(await canvas.findByRole('menuitem', { name: 'Unterauftragsverhältnisse' }));
+
+        await waitFor(() => {
+            expect(within(paragraph).getByRole('link', { name: 'Dieser Vertrag' })).toHaveAttribute(
+                'href',
+                '#unterauftragsverhaltnisse',
+            );
         });
     },
 };
@@ -614,9 +633,9 @@ export const EditorErrorSnackbars: Story = {
     },
 };
 
-// Browser-level regression coverage for the narrow layout: the notice stack
-// reserves its own row, the chapter navigation remains available, and the first
-// function-bar control starts inside the viewport.
+// Browser-level regression coverage for the narrow layout: the notice is a pop-up outside the editor
+// (no layout row, no shift), the chapter navigation remains available, and the first function-bar
+// control starts inside the viewport.
 export const ResponsiveHintAndFunctionBar: Story = {
     render: (args) => <ResponsiveHintEditor {...args} />,
     args: {
@@ -637,19 +656,15 @@ export const ResponsiveHintAndFunctionBar: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await waitFor(() => expect(canvas.getByRole('status')).toBeInTheDocument());
+        const body = within(canvasElement.ownerDocument.body);
+        // The hint is a pop-up on the shared channel: it overlays the screen corner, outside the
+        // editor, and reserves no row in the layout.
+        const popup = await body.findByTestId('snackbar');
+        await expect(canvasElement.contains(popup)).toBe(false);
+        await expect(canvas.queryByRole('region', { name: 'Hinweise zum Editor' })).not.toBeInTheDocument();
 
         const scrollContainer = canvasElement.querySelector<HTMLElement>('[class*="editorContentScroll"]');
         expect(scrollContainer).not.toBeNull();
-        // The snackbar now reserves a flex row below the text rather than
-        // borrowing padding inside the scrollport.
-        // Measure the stable dock, because the entering snackbar rotates above it.
-        const noticeStack = canvas.getByRole('region', { name: 'Hinweise zum Editor' });
-        await waitFor(() =>
-            expect(scrollContainer!.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-                noticeStack.getBoundingClientRect().top,
-            ),
-        );
         expect(canvas.getByRole('navigation')).toBeVisible();
 
         const languageControl = canvas.getByTitle('Sprache wählen');
@@ -657,8 +672,11 @@ export const ResponsiveHintAndFunctionBar: Story = {
             canvasElement.getBoundingClientRect().left,
         );
 
-        await userEvent.click(canvas.getByRole('button', { name: 'Hinweis ausblenden' }));
-        await waitFor(() => expect(canvas.queryByRole('status')).not.toBeInTheDocument());
+        // The editor does not move when the pop-up goes away.
+        const before = scrollContainer!.getBoundingClientRect().height;
+        await userEvent.click(within(popup).getByRole('button', { name: 'Meldung schließen' }));
+        await waitFor(() => expect(body.queryByTestId('snackbar')).not.toBeInTheDocument());
+        expect(scrollContainer!.getBoundingClientRect().height).toBe(before);
     },
 };
 
@@ -886,13 +904,16 @@ export const AgencyFooterWithConsentTemplate: Story = {
         const bar = await waitFor(() => canvas.getByTestId('m3-editor-function-bar'));
 
         // Left to right: language, consent template, topic, version.
-        const positions = ['Sprache wählen', 'Vorlagenmenü öffnen', 'Fachbereich wählen', 'Versionsverlauf'].map(
-            (name) => {
-                const control = canvas.getByRole('button', { name });
-                expect(bar).toContainElement(control);
-                return Array.from(bar.children).findIndex((child) => child.contains(control));
-            },
-        );
+        const positions = [
+            'DE Sprache wählen',
+            'Vorlagenmenü öffnen',
+            'Sucht Fachbereich wählen',
+            'Variante #3 Versionsverlauf',
+        ].map((name) => {
+            const control = canvas.getByRole('button', { name });
+            expect(bar).toContainElement(control);
+            return Array.from(bar.children).findIndex((child) => child.contains(control));
+        });
         expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
         // A narrow card inside a wide Storybook viewport still acts like mobile.

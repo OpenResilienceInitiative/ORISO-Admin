@@ -1,12 +1,16 @@
 import { Modal as AntModal } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import styles from './styles.module.scss';
 
-export { DialogButton } from './DialogButton';
+import { DialogButton } from './DialogButton';
+
+export { DialogButton };
 
 export interface ModalProps {
+    /** Pass explicitly to keep the dialog mounted through dismissal and restore trigger focus. */
+    open?: boolean;
     titleKey?: string;
     titleKeyOptions?: Record<string, unknown>;
     /** Raw title node for dynamic titles that are not an i18n key. Ignored if `titleKey` is set. */
@@ -51,6 +55,8 @@ export interface ModalProps {
     showDivider?: boolean;
     /** Disables the confirm text button (e.g. while submitting). */
     confirmDisabled?: boolean;
+    /** Shows the spinner on the confirm button and disables it while a request is pending. */
+    confirmLoading?: boolean;
     /** Show the top-right close (X) affordance. Defaults to true. */
     closable?: boolean;
     /**
@@ -69,6 +75,8 @@ export interface ModalProps {
      * dialogs keep the cap.
      */
     descriptionFullWidth?: boolean;
+    /** Scroll the body within the viewport while keeping header and footer visible. */
+    scrollableBody?: boolean;
 }
 
 /**
@@ -79,6 +87,7 @@ export interface ModalProps {
  * for genuinely custom action rows.
  */
 export const Modal = ({
+    open = true,
     titleKey,
     titleKeyOptions,
     title,
@@ -101,13 +110,27 @@ export const Modal = ({
     icon,
     showDivider = true,
     confirmDisabled = false,
+    confirmLoading = false,
     closable = true,
     maskClosable = true,
     keyboard = true,
     className,
     descriptionFullWidth = false,
+    scrollableBody = false,
 }: ModalProps) => {
     const { t } = useTranslation();
+
+    // The dialog is always open and goes away when its parent removes it, so antd never restores
+    // focus. Give it back to whatever opened the dialog, unless focus has moved on by itself.
+    useEffect(() => {
+        const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        return () => {
+            window.setTimeout(() => {
+                const now = document.activeElement;
+                if (opener?.isConnected && (now === null || now === document.body)) opener.focus();
+            });
+        };
+    }, []);
 
     const hasStandardActions = Boolean(cancelLabelKey || okLabelKey);
 
@@ -119,15 +142,15 @@ export const Modal = ({
                 </button>
             )}
             {okLabelKey && (
-                <button
-                    type="button"
+                <DialogButton
+                    primary
                     aria-describedby={confirmDescribedBy}
-                    className={classNames(styles.actionButton, styles.actionButtonPrimary)}
                     disabled={confirmDisabled}
+                    loading={confirmLoading}
                     onClick={onConfirm}
                 >
                     {t(okLabelKey)}
-                </button>
+                </DialogButton>
             )}
         </div>
     ) : null;
@@ -136,9 +159,12 @@ export const Modal = ({
 
     return (
         <AntModal
-            className={classNames(styles.modal, className)}
+            className={classNames(styles.modal, { [styles.scrollableBody]: scrollableBody }, className)}
             styles={{
-                mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
+                mask: {
+                    background: 'var(--admin-dialog-scrim, rgba(255, 255, 255, 0.8))',
+                    backdropFilter: 'blur(4px)',
+                },
             }}
             title={
                 titleKey || title ? (
@@ -161,8 +187,8 @@ export const Modal = ({
                     </div>
                 ) : null
             }
-            open
-            destroyOnClose
+            open={open}
+            destroyOnHidden
             centered
             maskClosable={maskClosable}
             keyboard={keyboard}

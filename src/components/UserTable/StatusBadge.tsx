@@ -9,13 +9,16 @@ import MailOutlineOutlinedIcon from '@mui/icons-material/MailOutlineOutlined';
 import NorthEastIcon from '@mui/icons-material/NorthEast';
 import PendingOutlinedIcon from '@mui/icons-material/PendingOutlined';
 import classNames from 'classnames';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import routePathNames from '../../appConfig';
 import type { DisplayStatus } from '../../types/userDisplayStatus';
+import { entityStatusListAttributes } from '../EntityStatusCard/presentation';
 import styles from './statusBadge.module.scss';
 
 /** active = primary container, pending = tertiary container, ended = secondary container. */
-type Tone = 'active' | 'pending' | 'ended';
+export type BadgeTone = 'active' | 'pending' | 'ended';
+type Tone = BadgeTone;
 
 const STATUS: Record<DisplayStatus, { label: string; tone: Tone; Icon: typeof CheckIcon }> = {
     ACTIVE: { label: 'Aktiv', tone: 'active', Icon: CheckIcon },
@@ -30,14 +33,32 @@ const STATUS: Record<DisplayStatus, { label: string; tone: Tone; Icon: typeof Ch
     null: { label: 'Unbekannt', tone: 'pending', Icon: HelpOutlineOutlinedIcon },
 };
 
+/** The same tonal chip for states that are not account states (e.g. a Beratungsstelle's visibility). */
+export const ToneBadge = ({
+    tone,
+    Icon,
+    children,
+}: {
+    tone: BadgeTone;
+    Icon: typeof CheckIcon;
+    children: ReactNode;
+}) => (
+    <span className={classNames(styles.badge, styles[tone])} data-tone={tone}>
+        <Icon className={styles.icon} aria-hidden />
+        {children}
+    </span>
+);
+
 export interface StatusBadgeProps {
     status: DisplayStatus;
     /** Target of the „Eingeladen" link; defaults to the invite section. */
     inviteTo?: string;
+    /** Own-row authority metadata, shared by desktop cells and phone cards. */
+    accountStatus?: { id: string; active?: boolean | null };
 }
 
 /** Account status as a word; the icon only repeats it. „Eingeladen" links to the invite. */
-export const StatusBadge = ({ status, inviteTo = routePathNames.links }: StatusBadgeProps) => {
+export const StatusBadge = ({ status, inviteTo = routePathNames.links, accountStatus }: StatusBadgeProps) => {
     const { t } = useTranslation();
     const { label, tone, Icon } = STATUS[status] ?? STATUS.null;
     const word = t(`userTable.status.${status}`, label);
@@ -45,6 +66,8 @@ export const StatusBadge = ({ status, inviteTo = routePathNames.links }: StatusB
         className: classNames(styles.badge, styles[tone], { [styles.link]: status === 'INVITED' }),
         'data-status': status,
         'data-tone': tone,
+        // `data-active` is the confirmed own flag, not the word: a row can read "In Bearbeitung" and still be active.
+        ...(accountStatus ? entityStatusListAttributes('account', accountStatus.id, accountStatus.active) : {}),
     };
     const content = (
         <>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { ProductTourAdapter } from './ProductTourAdapter';
 import type { TourDefinition, TourEvent } from './types';
 
@@ -237,5 +237,17 @@ describe('ProductTourAdapter', () => {
 
         await waitFor(() => expect(onTerminal).toHaveBeenCalledWith(expect.objectContaining({ status: 'skipped' })));
         expect(joyrideProps!.run).toBe(false);
+    });
+
+    it('reports an abort when no step of the tour can be presented', async () => {
+        const onAbort = vi.fn();
+        const unreachableTour: TourDefinition = {
+            ...tour,
+            steps: [{ id: 'gone', target: 'never-rendered', titleKey: 't0', contentKey: 'c0' }],
+        };
+        const { onTerminal } = renderAdapter({ tour: unreachableTour, onAbort });
+
+        await waitFor(() => expect(onAbort).toHaveBeenCalledTimes(1));
+        expect(onTerminal).not.toHaveBeenCalled();
     });
 });

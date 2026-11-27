@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { useEditor, EditorContent, Editor, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -47,6 +48,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import DOMPurify from 'dompurify';
 import type { MenuProps } from 'antd';
+import { M3Button } from '../M3Button';
 import { ResolvingImage } from './createResolvingImage';
 import {
     CrossReferenceIcon,
@@ -65,9 +67,10 @@ import { TrailingParagraph } from './trailingParagraph';
 import { HeadingMenu } from './HeadingMenu';
 import { SplitDropdown } from './SplitDropdown';
 import { EditorHintSnackbar } from './EditorHintSnackbar';
+import { EditorJumpContext } from './EditorJumpContext';
 import { EditorSnackbarQueue, editorSnackbarItems } from './EditorSnackbarQueue';
 import AnchorChips from './AnchorChips';
-import { useHeadingAnchorNav } from './useHeadingAnchorNav';
+import { anchorBubbleOptions, useHeadingAnchorNav } from './useHeadingAnchorNav';
 import styles from './M3RichTextEditor.module.scss';
 
 /** A saved, published version the editor can look back at (read-only). */
@@ -190,6 +193,15 @@ export type M3RichTextEditorProps = {
      * accessible name of the reading region.
      */
     hideHeader?: boolean;
+    /** Visible label for a dedicated action above the document. */
+    fullscreenLabel?: string;
+    /**
+     * Plain-text mode for fields whose reader cannot show formatting (the Erstantwort chat bubble
+     * prints text only): no formatting bar and no fullscreen control, pasted content is reduced to
+     * its plain text (line breaks kept as paragraphs), and the bold/italic/underline shortcuts are
+     * off. The value is still `<p>…</p>` HTML. Default `false` keeps every other editor unchanged.
+     */
+    plainText?: boolean;
     /** Replaces the built-in language split button (e.g. the legal MT-aware language select). */
     languageSlot?: React.ReactNode;
     /**
@@ -197,6 +209,8 @@ export type M3RichTextEditorProps = {
      * directly under the header, before the language row (Figma 1227-17235).
      */
     helpSlot?: React.ReactNode;
+    /** Control placed in the corner of the icon + title row, e.g. the tile's explanation button. */
+    headerAction?: React.ReactNode;
     /**
      * Dismissible functionality hint rendered below the editor surface. It is
      * deliberately kept in the document flow so it never obscures legal text.
@@ -288,6 +302,60 @@ export type M3RichTextEditorProps = {
     onSaveDraft?: (html: string) => void | boolean | Promise<void | boolean>;
 };
 
+/** Plain-text mode: paste as text (blank-line-free paragraphs), no formatting shortcuts. */
+const plainTextEditorHandlers = (getEditor: () => Editor | null) => ({
+    // Dropping rich content is deliberately rejected; normal paste inserts text.
+    handleDOMEvents: {
+        drop: (_view: unknown, event: DragEvent) => {
+            event.preventDefault();
+            return true;
+        },
+    },
+    handlePaste: (_view: unknown, event: ClipboardEvent) => {
+        const text = event.clipboardData?.getData('text/plain');
+        const target = getEditor();
+        if (text === undefined || !target) return false;
+        const lines = text
+            .replace(/\r\n?/g, '\n')
+            .split('\n')
+            .filter((line) => line.trim() !== '');
+        if (lines.length === 0) return true;
+        target
+            .chain()
+            .focus()
+            .insertContent(
+                lines.length === 1
+                    ? { type: 'text', text: lines[0] }
+                    : lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line }] })),
+            )
+            .run();
+        return true;
+    },
+    handleKeyDown: (_view: unknown, event: KeyboardEvent) => {
+        if (event.key === 'Enter' && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+            return getEditor()?.chain().focus().splitBlock().run() ?? false;
+        }
+        return (event.metaKey || event.ctrlKey) && ['b', 'i', 'u'].includes(event.key.toLowerCase());
+    },
+});
+
+/** Preserve existing line separation when a plain-text value predates the paragraph-only schema. */
+const normalizePlainTextBreaks = (html: string): string => {
+    if (!/<br\b/i.test(html)) return html;
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    document.body.querySelectorAll('p').forEach((paragraph) => {
+        if (!paragraph.querySelector('br')) return;
+        paragraph.querySelectorAll('br').forEach((lineBreak) => lineBreak.replaceWith('\n'));
+        const lines = (paragraph.textContent ?? '').split('\n').map((line) => {
+            const replacement = document.createElement('p');
+            replacement.textContent = line;
+            return replacement;
+        });
+        paragraph.replaceWith(...lines);
+    });
+    return document.body.innerHTML;
+};
+
 const isEmptyHtml = (html: string) => html === '' || html === '<p></p>';
 
 /**
@@ -314,7 +382,7 @@ export const EDITOR_FULLSCREEN_Z_INDEX = 1400;
  * viewport around it carries the labelled `region` instead.
  */
 const editorSurfaceAttributes = (readOnly: boolean | undefined, title: string) =>
-    readOnly ? {} : { 'aria-label': title, role: 'textbox' };
+    readOnly ? { role: 'presentation' } : { 'aria-label': title, role: 'textbox' };
 
 /** Version ids are ISO activation dates (DPA container) — null when they aren't parseable. */
 export const parseVersionDate = (id: string): Date | null => {
@@ -479,7 +547,15 @@ const Toolbar = ({
                 mobile fullscreen) — only the rest of the bar scrolls sideways. */}
             {leading}
             {leading && <span className={styles.vDivider} />}
-            <div className={styles.toolbarScroll}>
+            {/* The disabled toolbar has no focusable descendants; its named scroll region must remain
+                keyboard reachable. This is the documented scroll-region exception to the lint rule. */}
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- scrollable region with disabled controls */}
+            <div
+                className={styles.toolbarScroll}
+                tabIndex={disabled ? 0 : undefined}
+                role="region"
+                aria-label={t('editor.toolbar.label', 'Formatting toolbar')}
+            >
                 {/* A disabled fieldset natively disables every formatting control inside
                 (read mode / version look-back) without touching each button. */}
                 <fieldset className={styles.toolFieldset} disabled={disabled}>
@@ -783,6 +859,7 @@ const Toolbar = ({
                     )}
                 </fieldset>
             </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
         </div>
     );
 };
@@ -815,12 +892,15 @@ export const M3RichTextEditor = ({
     fluid,
     contentLanguage,
     hideHeader,
+    fullscreenLabel,
+    plainText = false,
     languageSlot,
     consentSlot,
     topicSlot,
     onPublishTemplate,
     publishTemplateDisabledReason,
     helpSlot,
+    headerAction,
     snackbarSlot,
     comparison,
     aboveEditorSlot,
@@ -843,8 +923,18 @@ export const M3RichTextEditor = ({
         [flatVersions, versionSections],
     );
     const publishTemplateReasonId = useId();
+    const editorDomId = useId();
+    const titleDomId = `${editorDomId}-title`;
     const { t, i18n } = useTranslation();
     const [maximized, setMaximized] = useState(false);
+    const fullscreenActionRef = useRef<HTMLDivElement>(null);
+    const restoreFullscreenFocus = useRef(false);
+    useEffect(() => {
+        if (!maximized && restoreFullscreenFocus.current) {
+            restoreFullscreenFocus.current = false;
+            fullscreenActionRef.current?.querySelector('button')?.focus();
+        }
+    }, [maximized]);
     const [templateMaximized, setTemplateMaximized] = useState(false);
     const [localComparisonOpen, setLocalComparisonOpen] = useState(false);
     const comparisonOpen = comparison?.open ?? localComparisonOpen;
@@ -913,21 +1003,27 @@ export const M3RichTextEditor = ({
         versionSnackbar && { key: `viewing-version:${viewingVersionId}`, node: versionSnackbar },
         ...editorSnackbarItems(snackbarSlot, 'editor-hint'),
     ];
-    const editorNotices = noticeItems.some(Boolean) ? <EditorSnackbarQueue items={noticeItems} /> : null;
+    // "Ansehen" of a notice raised inside the editor lands on the editor's own heading (or its card
+    // when the header is hidden): a visible, non-empty target, not the wrapper the pop-up marker sits in.
+    const editorNotices = noticeItems.some(Boolean) ? (
+        <EditorJumpContext.Provider value={hideHeader ? editorDomId : titleDomId}>
+            <EditorSnackbarQueue items={noticeItems} />
+        </EditorJumpContext.Provider>
+    ) : null;
     // What the editor surface shows: a looked-at version, else the live draft.
     const displayedContent = viewingVersion ? viewingVersion.content : value;
     // Editable only when not read-only AND not looking at an old version.
     const editorEditable = !readOnly && !viewingVersion && (!onSaveDraft || editing || canSaveDraft);
     // Anchors only make sense for the built-in editor; an editorSlot brings
     // its own TiptapEditor with its own anchor row.
-    const anchorsEnabled = enableAnchors && !editorSlot;
+    const anchorsEnabled = enableAnchors && !editorSlot && !plainText;
     // Published before chapter navigation existed, many legal documents have
     // headings without ids. Editing may persist ids on change; a reader must
     // stay non-mutating, so stamp them only into the display copy.
-    const editorContent = useMemo(
-        () => (!editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(displayedContent) : displayedContent),
-        [anchorsEnabled, displayedContent, editorEditable],
-    );
+    const editorContent = useMemo(() => {
+        const content = plainText ? normalizePlainTextBreaks(displayedContent ?? '') : displayedContent;
+        return !editorEditable && anchorsEnabled ? ensureHeadingAnchorIds(content) : content;
+    }, [anchorsEnabled, displayedContent, editorEditable, plainText]);
 
     // Image upload (WP-3b): editor + handler live behind refs so the drop/paste
     // handlers captured at editor creation always see the current instances.
@@ -938,35 +1034,64 @@ export const M3RichTextEditor = ({
     const uploadAndInsertRef = useRef(imageUpload.uploadAndInsert);
     uploadAndInsertRef.current = imageUpload.uploadAndInsert;
 
+    const buildEditorProps = () => ({
+        attributes: editorSurfaceAttributes(!editorEditable, title),
+        ...(plainText
+            ? plainTextEditorHandlers(() => editorRef.current)
+            : createImageDropPasteHandlers((files) => {
+                  if (editorRef.current?.isEditable) {
+                      uploadAndInsertRef.current(files);
+                  }
+              })),
+    });
+
     const editor = useEditor({
-        extensions: [
-            StarterKit,
-            Underline,
-            Link.configure({ openOnClick: false, autolink: false }),
-            ResolvingImage,
-            Highlight.configure({ multicolor: true }),
-            TaskList,
-            TaskItem.configure({ nested: true }),
-            Subscript,
-            Superscript,
-            TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            Placeholder.configure({ placeholder }),
-            // Word contract: empty space below a final heading belongs to a
-            // body paragraph — created on demand, never in the read-only
-            // reader (see trailingParagraph.ts).
-            TrailingParagraph,
-            ...(anchorsEnabled ? [HeadingAnchors] : []),
-        ],
+        shouldRerenderOnTransaction: true,
+        enableInputRules: !plainText,
+        enablePasteRules: !plainText,
+        extensions: plainText
+            ? [
+                  StarterKit.configure({
+                      bold: false,
+                      italic: false,
+                      strike: false,
+                      code: false,
+                      codeBlock: false,
+                      heading: false,
+                      bulletList: false,
+                      orderedList: false,
+                      listItem: false,
+                      blockquote: false,
+                      horizontalRule: false,
+                      hardBreak: false,
+                      link: false,
+                      underline: false,
+                      listKeymap: false,
+                      trailingNode: false,
+                  }),
+                  Placeholder.configure({ placeholder }),
+              ]
+            : [
+                  StarterKit.configure({ link: false, underline: false, listKeymap: false, trailingNode: false }),
+                  Underline,
+                  Link.configure({ openOnClick: false, autolink: false }),
+                  ResolvingImage,
+                  Highlight.configure({ multicolor: true }),
+                  TaskList,
+                  TaskItem.configure({ nested: true }),
+                  Subscript,
+                  Superscript,
+                  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+                  Placeholder.configure({ placeholder }),
+                  // Word contract: empty space below a final heading belongs to a
+                  // body paragraph — created on demand, never in the read-only
+                  // reader (see trailingParagraph.ts).
+                  TrailingParagraph,
+                  ...(anchorsEnabled ? [HeadingAnchors] : []),
+              ],
         content: editorContent,
         editable: editorEditable,
-        editorProps: {
-            attributes: editorSurfaceAttributes(!editorEditable, title),
-            ...createImageDropPasteHandlers((files) => {
-                if (editorRef.current?.isEditable) {
-                    uploadAndInsertRef.current(files);
-                }
-            }),
-        },
+        editorProps: buildEditorProps(),
         onUpdate: ({ editor: e }) => {
             if (e.isEditable && !syncingContentRef.current) {
                 if (dirty === undefined && onSaveDraft) setLocalDirty(true);
@@ -995,14 +1120,7 @@ export const M3RichTextEditor = ({
         // Keep the drop/paste image handlers when re-pinning the label — setOptions
         // replaces editorProps wholesale.
         editor?.setOptions({
-            editorProps: {
-                attributes: editorSurfaceAttributes(!editorEditable, title),
-                ...createImageDropPasteHandlers((files) => {
-                    if (editorRef.current?.isEditable) {
-                        uploadAndInsertRef.current(files);
-                    }
-                }),
-            },
+            editorProps: buildEditorProps(),
         });
     }, [editor, title, editorEditable]);
 
@@ -1026,7 +1144,7 @@ export const M3RichTextEditor = ({
     }, [editor, anchorsEnabled, autoChapters]);
 
     // Shared anchor-navigation behavior — same hook as the form-bound TiptapEditor.
-    const { anchors, anchorsRef, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
+    const { anchors, shouldShowAnchorMenu, activeAnchorId, scrollToAnchor, removeAnchor, handleContentClickCapture } =
         useHeadingAnchorNav(editor, { enabled: anchorsEnabled, editable: editorEditable });
 
     useEffect(() => {
@@ -1040,7 +1158,7 @@ export const M3RichTextEditor = ({
             syncingContentRef.current = true;
             try {
                 if (syncedVersionIdRef.current !== viewingVersionId || !editorEditable) editor.setEditable(false);
-                editor.commands.setContent(incoming, false);
+                editor.commands.setContent(incoming, { emitUpdate: false });
             } finally {
                 syncingContentRef.current = false;
             }
@@ -1115,7 +1233,9 @@ export const M3RichTextEditor = ({
 
     // Reader: no formatting bar at all. The version control only earns its
     // place when there is something to look back at.
-    const showToolbar = !editorSlot && !readOnly;
+    const showToolbar = !editorSlot && !readOnly && (!fullscreenLabel || editorEditable);
+    const showNamedFullscreenAction = !plainText && !maximized && !!fullscreenLabel;
+    const showEditorHeader = !hideHeader || (maximized && !!fullscreenLabel);
     // Disable, never hide (admin design rule): a tenant with a single active
     // language keeps the control — inert — so the admin sees WHICH language the
     // text is written in and that further languages exist as a concept at all.
@@ -1243,13 +1363,19 @@ export const M3RichTextEditor = ({
         <div
             className={`${styles.module} ${comparisonOpen && comparison ? styles.moduleComparing : ''} ${
                 maximized ? styles.inDialog : ''
-            } ${readMode ? styles.readMode : ''} ${fluid ? styles.fluid : ''}`}
+            } ${readMode ? styles.readMode : ''} ${fluid ? styles.fluid : ''} ${
+                fullscreenLabel ? styles.documentReader : ''
+            }`}
+            id={editorDomId}
             data-testid="m3-editor"
         >
-            {!hideHeader && (
+            {showEditorHeader && (
                 <div className={styles.header}>
-                    <IconComponent className={styles.headerIcon} />
-                    <h2 className={styles.title}>{title}</h2>
+                    <IconComponent className={styles.headerIcon} aria-hidden />
+                    <h2 id={titleDomId} className={styles.title}>
+                        {title}
+                    </h2>
+                    {headerAction}
                 </div>
             )}
 
@@ -1261,13 +1387,36 @@ export const M3RichTextEditor = ({
                 explicitly part of "alles innerhalb blauer area"). */}
             {!hideHeader && helpSlot}
 
-            {!hideHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
+            {showEditorHeader && <hr className={`${styles.divider} ${styles.headerDivider}`} />}
 
-            {showToolbar ? (
+            {showNamedFullscreenAction && (
+                <div className={styles.fullscreenAction} ref={fullscreenActionRef}>
+                    <M3Button
+                        variant="tonal"
+                        icon={<MaximizeContentIcon />}
+                        onClick={() => {
+                            restoreFullscreenFocus.current = true;
+                            setMaximized(true);
+                        }}
+                    >
+                        {fullscreenLabel}
+                    </M3Button>
+                </div>
+            )}
+
+            {fullscreenLabel && maximized && (
+                <div className={styles.readerFullscreenToolbar}>
+                    <M3Button variant="tonal" icon={<MinimizeContentIcon />} onClick={() => setMaximized(false)}>
+                        {t('legal.m3Editor.closeDialog')}
+                    </M3Button>
+                </div>
+            )}
+
+            {!plainText && showToolbar && (
                 <Toolbar
                     editor={editor}
                     disabled={!editorEditable}
-                    leading={maximizeButton}
+                    leading={fullscreenLabel ? undefined : maximizeButton}
                     anchorsEnabled={anchorsEnabled}
                     autoChapters={autoChapters}
                     onToggleAutoChapters={toggleAutoChapters}
@@ -1276,9 +1425,8 @@ export const M3RichTextEditor = ({
                     onInsertImage={imageUpload.openImagePicker}
                     imageUploading={imageUpload.uploading}
                 />
-            ) : (
-                <div className={styles.toolbar}>{maximizeButton}</div>
             )}
+            {!plainText && !showToolbar && !fullscreenLabel && <div className={styles.toolbar}>{maximizeButton}</div>}
 
             {aboveEditorSlot && <div className={styles.contentInset}>{aboveEditorSlot}</div>}
 
@@ -1374,16 +1522,13 @@ export const M3RichTextEditor = ({
             </div>
 
             {anchorsEnabled && editorEditable && (
-                // Stable host div: the BubbleMenu plugin detaches its element
-                // from the React tree (tippy re-parents it), so it must not be
-                // a direct sibling that React repositions or removes.
                 <div className={styles.anchorBubbleHost}>
                     <BubbleMenu
                         editor={editor}
                         pluginKey="anchorLinkBubble"
                         updateDelay={150}
-                        tippyOptions={{ placement: 'top', maxWidth: 'none' }}
-                        shouldShow={({ state }) => !state.selection.empty && anchorsRef.current.length > 0}
+                        options={anchorBubbleOptions}
+                        shouldShow={shouldShowAnchorMenu}
                     >
                         <div className={styles.anchorBubble}>
                             <Dropdown
@@ -1443,7 +1588,11 @@ export const M3RichTextEditor = ({
                         {showVersionControl && (
                             <SplitDropdown
                                 icon={<VersionHistoryIcon />}
-                                title={t('legal.m3Editor.versionHistory')}
+                                title={
+                                    fullscreenLabel
+                                        ? `${t('legal.m3Editor.versionHistory')}: ${displayedVersionName}`
+                                        : t('legal.m3Editor.versionHistory')
+                                }
                                 tooltip={versionTooltip}
                                 className={styles.versionHistoryControl}
                                 label={displayedVersionName}
@@ -1705,6 +1854,7 @@ export const M3RichTextEditor = ({
                     open
                     closable={false}
                     footer={null}
+                    title={fullscreenLabel ? <span className={styles.fullscreenDialogName}>{title}</span> : undefined}
                     centered
                     width="min(1512px, calc(100vw - 96px))"
                     className={styles.dialogModal}
@@ -1714,6 +1864,7 @@ export const M3RichTextEditor = ({
                     styles={{
                         mask: { background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' },
                         content: { padding: 0, background: 'transparent', boxShadow: 'none' },
+                        header: fullscreenLabel ? { position: 'absolute', margin: 0 } : undefined,
                     }}
                     aria-label={title}
                 >

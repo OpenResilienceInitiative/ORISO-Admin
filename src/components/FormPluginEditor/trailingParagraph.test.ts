@@ -1,6 +1,6 @@
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { TrailingParagraph } from './trailingParagraph';
 
 /*
@@ -18,7 +18,7 @@ let editors: Editor[] = [];
 const createEditor = (content: string, editable = true): Editor => {
     const editor = new Editor({
         element: document.createElement('div'),
-        extensions: [StarterKit, TrailingParagraph],
+        extensions: [StarterKit.configure({ trailingNode: false }), TrailingParagraph],
         content,
         editable,
     });

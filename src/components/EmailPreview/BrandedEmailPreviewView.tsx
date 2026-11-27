@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
-import Alert from '@mui/material/Alert';
 import { ThemeProvider } from '@mui/material/styles';
 import MarkEmailReadOutlinedIcon from '@mui/icons-material/MarkEmailReadOutlined';
 import { Card } from '../Card';
-import { M3Button } from '../M3Button';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import type { InviteEmailPreviewDTO } from '../../api/accountInvites/accountInvites';
 import { EmailPreviewFrame } from './EmailPreviewFrame';
 import styles from './styles.module.scss';
+import { Notify } from '../Notify';
+import { HintText } from '../HintText';
 
 export interface BrandedEmailPreviewViewProps {
     preview?: InviteEmailPreviewDTO | null;
@@ -40,28 +40,22 @@ export const BrandedEmailPreviewView = ({ preview, isLoading, isError, onRetry }
             >
                 <div className={styles.previewBody}>
                     {isError && (
-                        <Alert
+                        <Notify
+                            quietText={t('notify.tile.notLoaded')}
+                            title={t('notify.title.emailPreview')}
                             severity="error"
-                            action={
-                                <M3Button variant="text" onClick={onRetry}>
-                                    {t('tenants.appSettings.emailPreview.retry')}
-                                </M3Button>
-                            }
+                            actions={[{ label: t('tenants.appSettings.emailPreview.retry'), onClick: onRetry }]}
                         >
                             {t('tenants.appSettings.emailPreview.error')}
-                        </Alert>
+                        </Notify>
                     )}
 
-                    {!isError && !preview && (
-                        <Alert severity="info">{t('tenants.appSettings.emailPreview.empty')}</Alert>
-                    )}
+                    {!isError && !preview && <HintText>{t('tenants.appSettings.emailPreview.empty')}</HintText>}
 
                     {!isError && preview && (
                         <>
                             {preview.branding?.logoRendering === 'TEXT_WORDMARK' && (
-                                <Alert severity="info">
-                                    {t('tenants.appSettings.emailPreview.branding.textWordmark')}
-                                </Alert>
+                                <HintText>{t('tenants.appSettings.emailPreview.branding.textWordmark')}</HintText>
                             )}
 
                             <dl className={styles.metaList}>

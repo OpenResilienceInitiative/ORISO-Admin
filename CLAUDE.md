@@ -48,3 +48,37 @@ Keep them short — they are read by humans and re-read by AI reviewers on every
 ## Validation
 
 `npm run test`, `npx eslint . --max-warnings=0`, `npx prettier . --check`, `npm run build` (see `AGENTS.md` for scope-narrowing guidance).
+
+## Agent skills
+
+For Matt Pocock engineering workflows, resolve `~/.config/agent-routing/paths.env` and follow `${PROJECT_ORISO_ROOT}/AGENTS.md`. Reuse shared installed skills; load these adapters on demand.
+
+### Issue tracker
+
+GitHub Issues in `OpenResilienceInitiative/ORISO-Admin`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Reuse existing labels; leave unmapped roles unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context; shared knowledge stays in the project Core. See `docs/agents/domain.md`.
+
+<!-- BEGIN:storybook-skills -->
+<!-- Storybook updates this section on upgrade. Remove both markers to keep your own edits. -->
+
+## Storybook
+
+For every change to how the UI looks (you create, change, or delete a component, story, style, theme, or design token), follow these steps in order. Each step has a Storybook skill. First invoke the skills of all the steps, before you edit any file. Then follow each skill at its step.
+
+1. `component-docs`: look up the components to reuse, with their props and usage examples, before you edit any file. Also when the user asks about a component's props, API, or usage.
+2. `write-stories`: every component you create or change gets stories.
+3. `test-stories`: run the story tests after every change, the way this skill says, never with a `package.json` test script, and fix what fails. Also when the user asks to run or fix story tests.
+4. `ui-review`: publish a review that shows the user what changed, as your last step. Also when the user asks to see components or stories.
+
+<!-- END:storybook-skills -->
+
+Before opening a PR, the repository gate still applies: the `test-stories` step above is the
+per-change loop; `npm run test:storybook` and the other validation commands in this file are the
+final check.

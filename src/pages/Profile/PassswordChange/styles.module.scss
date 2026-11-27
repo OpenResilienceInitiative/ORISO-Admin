@@ -16,9 +16,10 @@
     font-weight: 700;
     font-size: 16px;
     line-height: 24px;
-    color: var(--black-60);
+    color: var(--m3-on-surface-variant);
 
     &:hover {
-        color: var(--primary);
+        color: var(--m3-on-surface);
+        text-decoration: underline;
     }
 }

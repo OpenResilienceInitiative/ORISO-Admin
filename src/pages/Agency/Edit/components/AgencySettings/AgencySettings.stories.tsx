@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { useEffect } from 'react';
 import { Form } from 'antd';
+import { http, HttpResponse } from 'msw';
 import { ThemeProvider } from '@mui/material/styles';
 // eslint-disable-next-line import/no-unresolved -- valid `storybook` package-exports subpath; the eslint resolver predates exports maps
 import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { orisoMuiTheme } from '../../../../../theme/orisoMuiTheme';
-import { withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
+import { UserRole } from '../../../../../enums/UserRole';
+import { setStoryAuth, withAdminProviders } from '../../../../../utils/storybook/adminStoryDecorators';
+import { findPopup, popupsOf } from '../../../../../test/storyPopups';
 import { AgencySettings } from './index';
 
 const FormValue = () => {
@@ -14,8 +18,10 @@ const FormValue = () => {
 
 /** Settings card of an existing Beratungsstelle, incl. the topic permission default for invited counsellors. */
 const meta: Meta<typeof AgencySettings> = {
-    title: 'Organisms/Agency/AgencySettings',
+    title: 'Settings/Beratungsstellen/Stammdaten & Mehr/AgencySettings',
+    id: 'organisms-agency-agencysettings',
     component: AgencySettings,
+    parameters: { msw: { handlers: [http.get('*/service/topic/', () => HttpResponse.json([]))] } },
     decorators: [
         (Story) => (
             <ThemeProvider theme={orisoMuiTheme}>
@@ -31,7 +37,7 @@ const meta: Meta<typeof AgencySettings> = {
         ),
         withAdminProviders,
     ],
-    args: { isEditMode: true, asFields: true, persistedTeamAgency: false },
+    args: { isEditMode: true, asFields: true },
 };
 
 export default meta;
@@ -66,5 +72,85 @@ export const CreateModeWithoutDefault: Story = {
                 name: /Themen & Fachbereiche neuer Berater:innen|Topics & departments of new counsellors/,
             }),
         ).toBeNull();
+    },
+};
+
+let tenantRequests = 0;
+let tenantsRecovered = false;
+/**
+ * AG3: a platform admin opens the settings and the Träger list cannot be loaded - one error pop-up with
+ * "Erneut versuchen"; the select keeps quiet text. The retry asks again and the select fills.
+ */
+export const TenantsLoadErrorRetry: Story = {
+    decorators: [
+        (Story) => {
+            // Edit mode shows the tenant of the agency in a disabled select: it names it once the list has loaded.
+            const form = Form.useFormInstance();
+            useEffect(() => form.setFieldValue('tenantId', 3), [form]);
+            return <Story />;
+        },
+    ],
+    parameters: {
+        msw: {
+            handlers: [
+                http.get('*/service/topic/', () => HttpResponse.json([])),
+                http.get('*/service/tenantadmin/search*', () => {
+                    tenantRequests += 1;
+                    return tenantsRecovered
+                        ? HttpResponse.json({ _embedded: [{ _embedded: { id: 3, name: 'Träger Nord' } }], total: 1 })
+                        : new HttpResponse(null, { status: 500 });
+                }),
+            ],
+        },
+    },
+    beforeEach: () => {
+        tenantRequests = 0;
+        tenantsRecovered = false;
+        setStoryAuth([UserRole.AgencyAdmin, UserRole.TenantAdmin], 0);
+    },
+    play: async ({ canvasElement }) => {
+        const popup = await findPopup(canvasElement, 'Träger konnten nicht geladen werden', 'error');
+        await expect(popup).toHaveTextContent('Beratungsstelle');
+        await expect(within(canvasElement).getByText('Dieser Bereich konnte nicht geladen werden.')).toBeVisible();
+        const before = tenantRequests;
+        tenantsRecovered = true;
+        await userEvent.click(within(popup).getByRole('button', { name: /Erneut/ }));
+        await waitFor(() => expect(tenantRequests).toBeGreaterThan(before));
+        await waitFor(() => expect(popupsOf(canvasElement)).toHaveLength(0));
+        // The response reached the select: the disabled field names the Träger.
+        await waitFor(() => expect(within(canvasElement).getByDisplayValue('Träger Nord')).toBeVisible());
+    },
+};
+
+const LIVE_CHAT_SWITCH = /Weitere Beratung im Live-Chat empfehlen|Recommend further counselling in the live chat/;
+
+/**
+ * ORISO-Frontend#2251: a Träger admin sees the centre switch „Weitere Beratung im Live-Chat empfehlen“,
+ * off by default, and can switch it on.
+ */
+export const LiveChatFurtherCounsellingTraegerAdmin: Story = {
+    beforeEach: () => {
+        setStoryAuth([UserRole.TenantAdmin], 3);
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const toggle = await canvas.findByRole('switch', { name: LIVE_CHAT_SWITCH });
+        await expect(toggle).not.toBeChecked();
+        await userEvent.click(toggle);
+        await waitFor(() => expect(toggle).toBeChecked());
+    },
+};
+
+/** ORISO-Frontend#2251: a restricted counselling-centre admin does not get the switch. */
+export const LiveChatFurtherCounsellingHiddenForCentreAdmin: Story = {
+    beforeEach: () => {
+        setStoryAuth([UserRole.RestrictedAgencyAdmin], 3);
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await canvas.findByRole('combobox', {
+            name: /Themen & Fachbereiche neuer Berater:innen|Topics & departments of new counsellors/,
+        });
+        await expect(canvas.queryByRole('switch', { name: LIVE_CHAT_SWITCH })).toBeNull();
     },
 };

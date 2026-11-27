@@ -1,0 +1,27 @@
+/* The supervision section of the Mail-Beratung tile, and the Team-Chat tile built the same way:
+   one sentence, then the button that opens the features. */
+
+.description {
+    max-width: 72ch;
+    margin: 0 8px 16px;
+    color: var(--admin-form-muted-text, var(--m3-on-surface-variant, #444748));
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0 8px 8px;
+    gap: 12px;
+
+    > span {
+        margin-top: 0;
+    }
+}
+
+/* Inside a tile section the panel already has its padding. */
+.sectionActions {
+    margin: 8px 0 0;
+}

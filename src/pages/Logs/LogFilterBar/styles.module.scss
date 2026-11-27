@@ -1,0 +1,5 @@
+@use '../../../styles/muiSpacing' as mui;
+
+.bar {
+    margin-bottom: mui.$mui-unit * 2;
+}

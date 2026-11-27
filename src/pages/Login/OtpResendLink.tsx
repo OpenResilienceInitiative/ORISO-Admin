@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { M3Button } from '../../components/M3Button';
+import { Notify } from '../../components/Notify';
 
 /** Used when the realm reports no cooldown of its own (a Keycloak from before #1338). */
 export const RESEND_FALLBACK_COOLDOWN_SECONDS = 30;
@@ -172,14 +173,9 @@ const OtpResendLink = ({ onResend, cooldownSeconds }: OtpResendLinkProps) => {
                 {t('login.otp.resend.onlyNewest')}
             </Typography>
             {hasFailed && (
-                <Typography
-                    variant="caption"
-                    component="p"
-                    sx={{ color: 'var(--admin-status-error, #cc0000)' }}
-                    role="alert"
-                >
+                <Notify title={t('notify.title.login')} severity="error">
                     {t('login.otp.resend.failed')}
-                </Typography>
+                </Notify>
             )}
         </Box>
     );

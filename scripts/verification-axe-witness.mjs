@@ -1,0 +1,86 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { validateControlCapsule } from './verification-profile.mjs';
+
+const require = createRequire(import.meta.url);
+const hash = (value) => createHash('sha256').update(value).digest('hex');
+export const callsiteSignature = 'axe.run(context, optionsWithDisabledRules)';
+const runnerRelative = './_browser-chunks/chunk-2GOJIXVN.js';
+const pinnedAddonHash = '7c6b816f85256b13960fc7a7f95418be33d029c13eb9f48437d53c0ceb29398e';
+const pinnedAxeHash = 'aae0b8b36278089962105b2351ea64f4da7d3d440b54e162e21616d597aa0d6f';
+const readerSignature = 'export const readInstalledAxeWitness = () => undefined;';
+
+export const installedAxeWitness = (root = process.cwd()) => {
+    const preview = require.resolve('@storybook/addon-a11y/preview');
+    const entry = readFileSync(preview, 'utf8');
+    assert.equal(entry.split(`from "${runnerRelative}"`).length - 1, 1, 'Installed preview runner import changed');
+    const runner = realpathSync(path.resolve(path.dirname(preview), runnerRelative));
+    const axePath = realpathSync(createRequire(runner).resolve('axe-core'));
+    const identity = (name, file) => ({
+        version: JSON.parse(readFileSync(require.resolve(`${name}/package.json`), 'utf8')).version,
+        resolvedRelativePath: path.relative(root, file),
+        sha256: hash(readFileSync(file)),
+    });
+    const addon = { ...identity('@storybook/addon-a11y', runner), callsiteSignature };
+    const axe = identity('axe-core', axePath);
+    assert.equal(addon.version, '11.0.0-beta.5', 'Unreviewed addon version');
+    assert.equal(addon.sha256, pinnedAddonHash, 'Installed addon source changed');
+    assert.equal(axe.version, '4.14.0', 'Unreviewed axe version');
+    assert.equal(axe.sha256, pinnedAxeHash, 'Installed axe source changed');
+    return { addon, axe };
+};
+
+// The only write to the private counter is injected immediately at the actual
+// installed callsite. Read-only exports cannot manufacture a positive receipt.
+export const instrumentAxeCallsite = (source, capsule) => {
+    validateControlCapsule(capsule);
+    assert.equal(source.split(callsiteSignature).length - 1, 1, 'Expected exactly one installed axe callsite');
+    assert.equal(hash(source), capsule.witness.addon.sha256, 'Served addon source differs from pinned identity');
+    const receipt = {
+        ...capsule.witness,
+        invocationId: capsule.invocationId,
+        phase: capsule.phase,
+        source: capsule.source,
+    };
+    const increment = capsule.witness.observation === 'attached' ? '__orisoAxeCalls += 1' : 'void 0';
+    return `let __orisoAxeCalls = 0;\nexport const readOrisoAxeWitness = () => ({ ...${JSON.stringify(
+        receipt,
+    )}, moduleLoaded: true, invocationCount: __orisoAxeCalls });\n${source.replace(
+        callsiteSignature,
+        `(${increment}, ${callsiteSignature})`,
+    )}`;
+};
+
+export const axeWitnessPlugin = (capsule) => {
+    const witness = capsule?.selection === 'axe-witness1';
+    if (witness) {
+        validateControlCapsule(capsule);
+        const installed = installedAxeWitness();
+        assert.deepEqual(installed.addon, capsule.witness.addon, 'Capsule addon mismatch');
+        assert.deepEqual(installed.axe, capsule.witness.axe, 'Capsule axe mismatch');
+    }
+    const runner = witness ? realpathSync(path.resolve(capsule.witness.addon.resolvedRelativePath)) : undefined;
+    return {
+        name: 'oriso-installed-axe-witness',
+        enforce: 'pre',
+        transform(source, id) {
+            if (!witness) return undefined;
+            const file = id.split('?')[0];
+            if (file === path.resolve('.storybook/axeWitness.ts')) {
+                assert.equal(source.split(readerSignature).length - 1, 1, 'Witness reader signature changed');
+                return {
+                    code: source.replace(
+                        readerSignature,
+                        `export { readOrisoAxeWitness as readInstalledAxeWitness } from ${JSON.stringify(runner)};`,
+                    ),
+                    map: null,
+                };
+            }
+            if (file !== runner) return undefined;
+            return { code: instrumentAxeCallsite(source, capsule), map: null };
+        },
+    };
+};

@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Form, Spin } from 'antd';
 import type { ValidateErrorEntity } from 'rc-field-form/lib/interface';
 import DOMPurify from 'dompurify';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ThemeProvider } from '@mui/material/styles';
-import Alert from '@mui/material/Alert';
 import Draw from '@mui/icons-material/Draw';
 import Logout from '@mui/icons-material/Logout';
 import Refresh from '@mui/icons-material/Refresh';
 import { orisoMuiTheme } from '../../theme/orisoMuiTheme';
 import { DpaIcon } from '../CustomIcons/LegalIcons';
-import { DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
+import { DPA_CONSENT_ANCHOR_ID, DpaFormSection, focusDpaConsent } from '../DpaLegalForm/DpaFormSection';
 import { DpaDeadlineInfo } from '../DpaLegalForm/DpaDeadlineInfo';
 import { M3Button } from '../M3Button';
 import { pickLegalContentLanguage } from '../Tenants/LegalSettings/utils/legalContentLanguages';
@@ -20,6 +19,8 @@ import { focusFirstInvalidField } from '../../utils/formErrorNavigation';
 import { DpaForwardDialog, DpaForwardResult } from '../DpaForwardDialog/DpaForwardDialog';
 import { DpaForwardOutcome } from '../../api/tenantOnboarding/dpaForward';
 import styles from './styles.module.scss';
+import { jumpTo } from '../Snackbar';
+import { HintText } from '../HintText';
 
 export interface DpaBlockerSignData {
     signerName: string;
@@ -103,8 +104,11 @@ export const DpaBlocker = ({
     const [dpaAccepted, setDpaAccepted] = useState(false);
     const [acceptTouched, setAcceptTouched] = useState(false);
     const [forwardOpen, setForwardOpen] = useState(false);
-    // Why the last submit did not go through — surfaced AT the button (#594.6).
+    // Why the last submit did not go through — shown at the button, inside the dialog (#594.6).
     const [submitBlocker, setSubmitBlocker] = useState<'fields' | 'consent' | null>(null);
+    // "Ansehen" of a failed sign or submit lands on what has to be fixed: the sign button, the missing
+    // consent box or the first invalid field, never on the card's first focusable (a far-away control).
+    const signActionsId = useId();
 
     // Scroll-lock the app behind the overlay for as long as the blocker exists.
     useEffect(() => {
@@ -199,9 +203,9 @@ export const DpaBlocker = ({
 
                         {showContentUnavailable && (
                             <>
-                                <Alert severity="error" sx={{ mb: 2 }}>
+                                <HintText tone="error" style={{ marginBottom: 16 }}>
                                     {t('dpaBlocker.contentUnavailable')}
-                                </Alert>
+                                </HintText>
                                 {forwardButton}
                             </>
                         )}
@@ -243,27 +247,43 @@ export const DpaBlocker = ({
                                 />
 
                                 {signFailed && (
-                                    <Alert severity="error" sx={{ mt: 2 }} role="alert">
+                                    // Inside the dialog, like the submit blocker: a pop-up renders outside this modal, so a
+                                    // screen-reader user could miss why signing failed (or why the button is disabled).
+                                    <HintText tone="error" role="alert" title={t('notify.title.dpa')}>
                                         {t(signStale ? 'dpaBlocker.sign.staleVersion' : 'dpaBlocker.sign.error')}
-                                    </Alert>
+                                    </HintText>
                                 )}
 
                                 {submitBlocker && (
-                                    <Alert
-                                        severity="error"
+                                    // Field validation stays in the dialog: a pop-up renders outside this modal, where a
+                                    // keyboard user cannot Tab to it.
+                                    <HintText
+                                        tone="error"
                                         role="alert"
                                         data-testid="dpa-blocker-submit-error"
-                                        sx={{ mt: 2 }}
+                                        title={t('notify.title.dpa')}
+                                        actions={[
+                                            {
+                                                label: t('snackbar.jump'),
+                                                onClick: () =>
+                                                    jumpTo({
+                                                        target:
+                                                            submitBlocker === 'consent'
+                                                                ? DPA_CONSENT_ANCHOR_ID
+                                                                : '[data-testid="dpa-blocker"] [aria-invalid="true"]',
+                                                    }),
+                                            },
+                                        ]}
                                     >
                                         {t(
                                             submitBlocker === 'consent'
                                                 ? 'tenantOnboarding.dpa.acceptRequired'
                                                 : 'tenantOnboarding.validation.incomplete',
                                         )}
-                                    </Alert>
+                                    </HintText>
                                 )}
 
-                                <div className={styles.actions}>
+                                <div id={signActionsId} className={styles.actions}>
                                     <M3Button
                                         type="submit"
                                         variant="filled"

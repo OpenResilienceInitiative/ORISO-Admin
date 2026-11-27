@@ -1,13 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { http, HttpResponse } from 'msw';
+// eslint-disable-next-line import/no-unresolved -- Storybook subpath export
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { UserRole } from '../../../../enums/UserRole';
 import { setStoryAuth, withAdminProviders } from '../../../../utils/storybook/adminStoryDecorators';
 import { OtherFunctionsSettings } from './index';
 
 /**
- * ORISO-Admin#988 / Frank 2026-09-16: supervision moved here from the (wrongly wired)
- * "groupInternal" chat-type card — its master and seven feature toggles now sit next to
- * "Allow group chat" as their own "Supervision" block.
+ * The tile of the Träger tab "Weitere" (ORISO-Admin#1577): topics and counsellor statistics in one
+ * folding section. Calls, group chats, Team-Chat and supervision live in Funktionszugriff.
  */
 
 // All authenticated calls must be mocked: an unmocked one 401s and fetchData force-logs-out,
@@ -27,7 +28,8 @@ const handlers = (settings: Record<string, unknown> = {}) => {
 };
 
 const meta = {
-    title: 'Organisms/AppSettings/OtherFunctionsSettings',
+    title: 'Settings/Einstellungen/Weitere/OtherFunctionsSettings',
+    id: 'organisms-appsettings-otherfunctionssettings',
     component: OtherFunctionsSettings,
     parameters: { layout: 'fullscreen' },
     args: { tenantId: '7' },
@@ -42,7 +44,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Träger admin view: "Allow group chat" followed by the Supervision block (master + seven feature switches). */
+/** Träger admin view: topics on, statistics off, each with what it does. */
 export const TenantView: Story = {
-    parameters: { msw: { handlers: handlers({ featureGroupChatV2Enabled: true, featureSupervisionEnabled: true }) } },
+    parameters: { msw: { handlers: handlers({ featureTopicsEnabled: true, featureStatisticsEnabled: false }) } },
+};
+
+export const HelpSlideshow: Story = {
+    ...TenantView,
+    // One slide (topics and statistics): the explanation opens without steps.
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        await userEvent.click(
+            await canvas.findByRole('button', { name: /erklärung öffnen|open explanation/i }, { timeout: 8000 }),
+        );
+        const dialog = await within(canvasElement.ownerDocument.body).findByRole('dialog');
+        await waitFor(() => expect(dialog).toBeVisible());
+    },
+};
+
+/** ORISO-Frontend#1870: the Träger switched the agency-link label on Erstanfragen off. */
+export const AgencyLinkLabelOff: Story = {
+    parameters: {
+        msw: {
+            handlers: handlers({
+                featureTopicsEnabled: true,
+                featureStatisticsEnabled: true,
+                featureAgencyLinkLabelEnabled: false,
+            }),
+        },
+    },
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const toggle = await canvas.findByRole(
+            'switch',
+            { name: /beratungsstellen-link|counselling centre link/i },
+            { timeout: 8000 },
+        );
+        await expect(toggle).not.toBeChecked();
+    },
 };

@@ -49,7 +49,8 @@ export const M3Button = ({
         className={classNames(styles.button, styles[variant], { [styles.block]: block }, className)}
     >
         {loading && (
-            <span className={styles.icon}>
+            // The button itself says it is busy (aria-busy); the spinner is only a picture of that.
+            <span className={styles.icon} aria-hidden>
                 <CircularProgress size={18} color="inherit" />
             </span>
         )}

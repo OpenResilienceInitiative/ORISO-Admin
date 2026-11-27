@@ -1,0 +1,135 @@
+/* Opening hours editor. Surfaces follow the admin tiers; colours are M3 tokens only. */
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.week {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.day {
+    display: grid;
+    align-items: start;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--m3-outline-variant, #c4c7c8);
+    gap: 8px 16px;
+    grid-template-columns: minmax(150px, 190px) 1fr;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.dayHead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dayName {
+    color: var(--m3-on-surface, #1d1b20);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.dayClosed .dayName {
+    color: var(--m3-on-surface-variant, #444748);
+    font-weight: 400;
+}
+
+.dayBody {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding-top: 6px;
+    gap: 8px;
+}
+
+.closed {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 14px;
+}
+
+.range {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.range .time {
+    flex: 1 1 130px;
+    width: auto;
+    min-width: 0;
+    max-width: 170px;
+}
+
+.rangeError {
+    flex-basis: 100%;
+    color: var(--form-error, var(--m3-error, #ba1a1a));
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+}
+
+.dayActions {
+    display: flex;
+    margin-left: -8px;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Helper text under the field, not a box: events are pop-ups, state is plain hint text. */
+.note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 0;
+    color: var(--m3-on-surface-variant, #444748);
+    font-family: var(--m3-body-font-family);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.convert {
+    align-self: flex-start;
+}
+
+.formItem {
+    margin-bottom: 0;
+}
+
+/* Narrow panels (390px phone, 392px tile rail): switch row above its ranges. */
+@media (max-width: 520px) {
+    .day {
+        grid-template-columns: 1fr;
+    }
+
+    .dayBody {
+        padding-top: 0;
+        padding-left: 4px;
+    }
+}
+
+/* Read-only (disabled) values stay at full contrast: the day switches show what is set,
+   so grey values next to a red "on" switch read as broken. Only the border stays tonal. */
+
+.range .time :global(.Mui-disabled) {
+    -webkit-text-fill-color: var(--m3-on-surface, #1d1b20);
+    color: var(--m3-on-surface, #1d1b20);
+}
+
+.range .time :global(.MuiInputLabel-root.Mui-disabled) {
+    -webkit-text-fill-color: var(--m3-on-surface-variant, #444748);
+    color: var(--m3-on-surface-variant, #444748);
+}

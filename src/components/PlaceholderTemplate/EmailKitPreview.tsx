@@ -8,6 +8,7 @@ import {
     type InviteEmailTemplateKind,
 } from '../../api/accountInvites/accountInvites';
 import styles from './EmailKitPreview.module.scss';
+import { Notify } from '../Notify';
 
 export interface EmailKitPreviewProps {
     /**
@@ -180,12 +181,14 @@ export const EmailKitPreview = ({
                 </strong>
             </div>
             {failed ? (
-                <div className={styles.error} role="status">
-                    <span>{t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}</span>
-                    <button className={styles.retry} type="button" onClick={retry}>
-                        {t('placeholderTemplate.preview.retry', 'Retry')}
-                    </button>
-                </div>
+                <Notify
+                    quietText={t('notify.tile.notLoaded')}
+                    title={t('notify.title.emailPreview')}
+                    severity="error"
+                    actions={[{ label: t('placeholderTemplate.preview.retry', 'Retry'), onClick: retry }]}
+                >
+                    {t('placeholderTemplate.preview.failed', 'Preview could not be rendered.')}
+                </Notify>
             ) : (
                 <iframe
                     ref={ref}

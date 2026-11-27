@@ -1,35 +1,39 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { validatePasswordCriteria } from './validateInputValue';
 
+const SIXTEEN = 'Abcdefghij12345!';
+const FIFTEEN = 'Abcdefghij1234!';
+
 describe('validatePasswordCriteria', () => {
-    it('accepts a password meeting all four criteria', () => {
-        // mixed case + digit + special + length > 8
-        expect(validatePasswordCriteria('Abcdef12!')).toBe(true);
+    it('accepts a password meeting all four criteria at 16 characters', () => {
+        expect(SIXTEEN).toHaveLength(16);
+        expect(validatePasswordCriteria(SIXTEEN)).toBe(true);
     });
 
-    it('requires length strictly greater than 8 (8 chars fails)', () => {
-        expect(validatePasswordCriteria('Abcde12!')).toBe(false); // exactly 8
-        expect(validatePasswordCriteria('Abcde123!')).toBe(true); // 9
+    it('requires at least 16 characters (15 fails, 16 passes)', () => {
+        expect(FIFTEEN).toHaveLength(15);
+        expect(validatePasswordCriteria(FIFTEEN)).toBe(false);
+        expect(validatePasswordCriteria('Abcde123!')).toBe(false); // the old 9-character rule
     });
 
     it('rejects when the digit is missing', () => {
-        expect(validatePasswordCriteria('Abcdefgh!')).toBe(false);
+        expect(validatePasswordCriteria('Abcdefghijklmnop!')).toBe(false);
     });
 
     it('rejects when the special character is missing', () => {
-        expect(validatePasswordCriteria('Abcdefg12')).toBe(false);
+        expect(validatePasswordCriteria('Abcdefghijkl12345')).toBe(false);
     });
 
     it('rejects when not mixed-case', () => {
-        expect(validatePasswordCriteria('abcdef12!')).toBe(false); // no uppercase
-        expect(validatePasswordCriteria('ABCDEF12!')).toBe(false); // no lowercase
+        expect(validatePasswordCriteria('abcdefghij12345!')).toBe(false); // no uppercase
+        expect(validatePasswordCriteria('ABCDEFGHIJ12345!')).toBe(false); // no lowercase
     });
 
     it('counts German umlauts as letters for the mixed-case rule', () => {
-        expect(validatePasswordCriteria('Äbcdef12!')).toBe(true);
+        expect(validatePasswordCriteria('Äbcdefghij12345!')).toBe(true);
     });
 
     it('treats whitespace as a special character', () => {
-        expect(validatePasswordCriteria('Abcdef1  ')).toBe(true);
+        expect(validatePasswordCriteria('Abcdefghijkl123  ')).toBe(true);
     });
 });

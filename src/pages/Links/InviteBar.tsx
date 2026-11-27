@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { DefaultOptionType } from 'antd/es/select';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
 import ForwardToInboxOutlinedIcon from '@mui/icons-material/ForwardToInboxOutlined';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlineOutlined';
+import FaceOutlinedIcon from '@mui/icons-material/FaceOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import type { MenuProps } from 'antd';
 import { CollapsibleField } from '../../components/CollapsibleField';
@@ -13,6 +14,7 @@ import { FloatingLabelSelect } from '../../components/FloatingLabelSelect';
 import { IdAllocationField, type IdUnitOption } from '../../components/IdAllocationField';
 import { M3Button } from '../../components/M3Button';
 import { NavGlyph } from '../../components/NavGlyph';
+import { LocalizedInviteSuggestionDialog } from '../../components/OnboardingDesign/LocalizedInviteSuggestionDialog';
 import { SplitButton } from '../../components/GlobalSearch/SplitButton';
 import { ReactComponent as MailIcon } from '../../resources/img/svg/oriso/mail_24px.svg';
 import { ReactComponent as SendIcon } from '../../resources/img/svg/oriso/send_400_24px.svg';
@@ -131,7 +133,13 @@ export const InviteBarFields = ({ draft, clients, variant = 'bar' }: InviteBarFi
     const topicsLabel = t('links.composer.topics', 'Themen & Fachbereiche');
     const roleLabel = (value: InviteRole) => t(...ROLE_LABEL_KEYS[value]);
     const topicTitle = (value: TopicPermission) => t(...TOPIC_PERMISSION_LABEL_KEYS[value].title);
-    const { email, firstName, lastName, role, tenant, agency, topics, alsoCounsellor, pills } = draft;
+    const { email, firstName, lastName, role, tenant, agency, topics, alsoCounsellor, suggestion, pills } = draft;
+    const [suggestOpen, setSuggestOpen] = useState(false);
+    const hasSuggestion = Boolean(suggestion.value.displayName.trim() || suggestion.value.avatar.avatarKind);
+    const inviteeName =
+        `${firstName.value} ${lastName.value}`.trim() ||
+        email.value.trim() ||
+        t('links.composer.suggest.thisPerson', 'diese Person');
     const panel = variant === 'panel';
     // Card-only presentation: full-width rows with the field's own glyph instead of the ✓.
     const row = (icon: ReactNode, className?: string) =>
@@ -332,6 +340,30 @@ export const InviteBarFields = ({ draft, clients, variant = 'bar' }: InviteBarFi
                     variant={variant}
                     onChange={(next) => alsoCounsellor.set(next === 'yes')}
                 />
+            )}
+            {suggestion.available && (
+                <>
+                    <M3Button
+                        variant={hasSuggestion ? 'tonal' : 'text'}
+                        icon={<FaceOutlinedIcon fontSize="small" />}
+                        onClick={() => setSuggestOpen(true)}
+                    >
+                        {hasSuggestion
+                            ? t('links.composer.suggest.change', 'Vorschlag ändern')
+                            : t('links.composer.suggest.open', 'Name und Icon vorschlagen')}
+                    </M3Button>
+                    {suggestOpen && (
+                        <LocalizedInviteSuggestionDialog
+                            inviteeName={inviteeName}
+                            value={suggestion.value}
+                            onCancel={() => setSuggestOpen(false)}
+                            onConfirm={(next) => {
+                                suggestion.set(next);
+                                setSuggestOpen(false);
+                            }}
+                        />
+                    )}
+                </>
             )}
         </>
     );

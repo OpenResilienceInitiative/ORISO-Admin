@@ -163,27 +163,17 @@
 .done {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     gap: 16px;
-    text-align: center;
+    text-align: left;
 }
 
-/* The confirmation glyph is the product's own `Verified` icon (Atoms/CustomIcons
-   gallery), in the product's own SECONDARY colour (#594.11). It used to be MUI's
-   CheckCircle in `--admin-status-success` — a GREEN that belongs to table row
-   states, not to this surface, and the same class of defect as the Material
-   default-green fallbacks and the invented navy: a foreign palette entering
-   through a component written from scratch. Comparable elements in the gallery
-   carry primary or secondary; secondary is the quieter and here the better one. */
+/* The lead graphic of the done page is the shared one (#1273); the wrapper only
+   gives the test a stable hook and keeps the art at its natural width. */
 
 .doneIcon {
-    color: var(--m3-secondary, #4c555f);
-    font-size: 56px;
-
-    svg {
-        width: 56px;
-        height: 56px;
-    }
+    display: block;
+    width: 100%;
 }
 
 /* The assigned ID as a labelled detail, not inline in the prose. A hairline

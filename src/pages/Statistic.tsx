@@ -1,38 +1,34 @@
-import { Close } from '@mui/icons-material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { CSVLink } from 'react-csv';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import ActiveAgenciesIcon from '@mui/icons-material/HomeWorkOutlined';
+import ConversationsIcon from '@mui/icons-material/QuestionAnswerOutlined';
+import PhoneCallsIcon from '@mui/icons-material/PhoneOutlined';
+import RequestsIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import TextMessagesIcon from '@mui/icons-material/KeyboardOutlined';
+import TopicIcon from '@mui/icons-material/CategoryOutlined';
+import VideoCallsIcon from '@mui/icons-material/VideocamOutlined';
+import VoiceMessagesIcon from '@mui/icons-material/MicNoneOutlined';
 import routePathNames from '../appConfig';
-import { AdminSegmentedTabs } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
 import { DashboardEmptyState } from '../components/DashboardEmptyState/DashboardEmptyState';
 import { Page } from '../components/Page';
-import { GlobalSearchBar } from '../components/GlobalSearch';
+import { CardGrid } from '../components/CardGrid';
+import cardStyles from '../components/Card/styles.module.scss';
 import Spinner from '../components/Spinner/Spinner';
 import { AnimatedValue, StatisticCard } from '../components/StatisticCard/StatisticCard';
 import { UserRole } from '../enums/UserRole';
 import { useUserRoles } from '../hooks/useUserRoles.hook';
 import { ReactComponent as DownloadIcon } from '../resources/img/svg/download.svg';
-import { ReactComponent as ActiveAgenciesIcon } from '../resources/img/svg/statistics-dashboard/active-agencies.svg';
+import statisticsPreviewIllustration from '../resources/img/tile-help/statistics/tracking.webp';
 import { ReactComponent as CalendarIcon } from '../resources/img/svg/statistics-dashboard/calendar.svg';
 import { ReactComponent as ChevronDownIcon } from '../resources/img/svg/statistics-dashboard/chevron-down.svg';
-import { ReactComponent as ConversationsIcon } from '../resources/img/svg/statistics-dashboard/conversations.svg';
-import { ReactComponent as PhoneCallsIcon } from '../resources/img/svg/statistics-dashboard/phone-calls.svg';
-import { ReactComponent as RequestsIcon } from '../resources/img/svg/statistics-dashboard/requests.svg';
 import { ReactComponent as ScopeAgencyIcon } from '../resources/img/svg/statistics-dashboard/scope-agency.svg';
 import { ReactComponent as ScopePlatformIcon } from '../resources/img/svg/statistics-dashboard/scope-platform.svg';
 import { ReactComponent as ScopeTenantIcon } from '../resources/img/svg/statistics-dashboard/scope-tenant.svg';
-import { ReactComponent as TextMessagesIcon } from '../resources/img/svg/statistics-dashboard/text-messages.svg';
-import { ReactComponent as TopicIcon } from '../resources/img/svg/statistics-dashboard/topic.svg';
-import { ReactComponent as VideoCallsIcon } from '../resources/img/svg/statistics-dashboard/video-calls.svg';
-import { ReactComponent as VoiceMessagesIcon } from '../resources/img/svg/statistics-dashboard/voice-messages.svg';
-import {
-    casePeriodOptions,
-    conversationPeriodOptions,
-    defaultSelectedCaseDayByScope,
-    scopeOrder,
-} from './Statistic/statisticConstants';
+import { conversationPeriodOptions, defaultSelectedCaseDayByScope, scopeOrder } from './Statistic/statisticConstants';
+import { StatisticScopePicker, type ScopePickerLevel, type ScopePickerTarget } from './Statistic/StatisticScopePicker';
 import {
     buildDonutSegments,
     getCaseAxisLabels,
@@ -47,10 +43,25 @@ import {
 } from './Statistic/statisticPreferences';
 import {
     buildCaseChartDateLabels,
+    buildCasePeriodOptions,
+    buildConversationPeriodOptions,
+    buildCaseWeekOverview,
+    CASE_WEEK_OVERVIEW_KEY,
     caseChartDayCodes,
+    casePeriodKeyForWeek,
+    DEFAULT_CHART_WEEKS,
+    DEFAULT_TOPIC_MONTHS,
+    emptyCaseCharts,
     getTodayDayCode,
+    addTrackedMetricValues,
     NO_DATA_LABEL,
-    SUPPRESSED_DETAIL,
+    noDataTopics,
+    resolveDrillTenantId,
+    agenciesOfTenant,
+    resolveStatisticView,
+    tenantTargetId,
+    topicMenuKeyForMonth,
+    agencyTargetId,
 } from './Statistic/statisticDashboardData';
 import type {
     ConversationValues,
@@ -58,11 +69,14 @@ import type {
     FilterTargetMetricStats,
     FilterTargetStatistics,
     MetricValue,
+    StatisticAgencyEntry,
     StatisticData,
+    TrackedMetricValue,
     TopicStatistic,
 } from './Statistic/statisticDashboardData';
 import { TutorialStatisticsSection } from './Statistic/TutorialStatisticsSection';
-import { useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
+import { StatisticInfoRow } from './Statistic/StatisticInfoRow';
+import { useStatisticAgencyDirectory, useStatisticDashboardData } from './Statistic/useStatisticDashboardData.hook';
 import type {
     CardMenuKey,
     CardMenuOption,
@@ -79,15 +93,21 @@ import type {
     SelectedCardMenuByScope,
     StatisticCardBlueprint,
     StatisticCardDefinition,
+    StatisticEmptyKind,
     TrendBadgeDefinition,
 } from './Statistic/types';
-import type { AdminSegmentedTabItem } from '../components/AdminSegmentedTabs/AdminSegmentedTabs';
+import { Notify } from '../components/Notify';
+import { HintText } from '../components/HintText';
+import { toIntlLocale } from '../utils/language';
+
+/** Visible anchor of the dashboard's load state: where "Ansehen" and the quiet text live. */
+const STATISTIC_STATE_ID = 'statistic-dashboard-state';
 
 const conversationSegmentBlueprint = [
-    { label: 'Mail', color: '#bd000d' },
-    { label: 'Live', color: '#ffaaa3' },
-    { label: 'Gesprächskreise', displayLabel: 'Gesprächs\nkreise', color: '#ffd8d5' },
-    { label: 'Interna', color: '#c10072' },
+    { label: 'Mail', color: 'var(--statistic-series-mail)' },
+    { label: 'Live', color: 'var(--statistic-series-live)' },
+    { label: 'Gesprächskreise', displayLabel: 'Gesprächs\nkreise', color: 'var(--statistic-series-groups)' },
+    { label: 'Interna', color: 'var(--statistic-series-internal)' },
 ];
 
 const createConversationSegments = (values: [number, number, number, number]) =>
@@ -125,7 +145,6 @@ const dashboardTextKeyByValue: Record<string, string> = {
     'Auf Beratungsstellenebene': 'statistic.dashboard.scope.agency',
     'Auf Trägerebene': 'statistic.dashboard.scope.tenant',
     Beratende: 'statistic.dashboard.text.counselors',
-    'Beratende im Dienst': 'statistic.dashboard.text.counselorsOnDuty',
     Beratungsfälle: 'statistic.dashboard.text.counselingCases',
     Beratungsgespräche: 'statistic.dashboard.text.counselingConversations',
     Beratungsstellen: 'statistic.dashboard.text.agencyUnits',
@@ -153,9 +172,11 @@ const dashboardTextKeyByValue: Record<string, string> = {
     'Keine Daten': 'statistic.dashboard.text.noData',
     'wird noch nicht erfasst': 'statistic.dashboard.empty.notTracked',
     'noch keine Daten': 'statistic.dashboard.empty.noDataYet',
+    'konnte nicht geladen werden': 'statistic.dashboard.empty.loadFailed',
     'zeigt sich ab dem ersten Gespräch': 'statistic.dashboard.empty.topicPending',
     'Aktuell in Beratung': 'statistic.dashboard.text.currentlyInCounselling',
     'Statistik unterdrückt': 'statistic.dashboard.filter.suppressed',
+    'Geschützt – zu wenige aktive Beratende': 'statistic.dashboard.empty.protected',
     'Keine Filter verfügbar': 'statistic.dashboard.filter.noFilters',
     'Letzter Monat': 'statistic.dashboard.text.lastMonth',
     Live: 'statistic.dashboard.text.live',
@@ -241,6 +262,13 @@ const formatDashboardNumberText = (value: string, locale: string) => {
     });
 };
 
+const countedDashboardLabels: Array<{ pattern: RegExp; key: string }> = [
+    { pattern: /^vor (\d+) Wochen$/, key: 'statistic.dashboard.period.weeksAgo' },
+    { pattern: /^(\d+) Wochen im Überblick$/, key: 'statistic.dashboard.period.weekOverview' },
+    { pattern: /^Thema vor (\d+) Monaten$/, key: 'statistic.dashboard.text.topicMonthsAgo' },
+    { pattern: /^Vor (\d+) Monaten$/, key: 'statistic.dashboard.text.monthsAgo' },
+];
+
 const translateDashboardText = (translate: DashboardTranslate, value = '', locale = 'de-DE') => {
     if (!value) {
         return value;
@@ -275,7 +303,20 @@ const translateDashboardText = (translate: DashboardTranslate, value = '', local
 
     const key = dashboardTextKeyByValue[value];
 
-    return key ? translateDashboardKey(translate, key, value) : value;
+    if (key) {
+        return translateDashboardKey(translate, key, value);
+    }
+
+    // Labels generated for the configurable chart and topic windows (UserService#1544)
+    const countedLabel = countedDashboardLabels.find(({ pattern }) => pattern.test(value));
+
+    if (countedLabel) {
+        const count = Number(value.match(countedLabel.pattern)?.[1]);
+
+        return translateDashboardKey(translate, countedLabel.key, value, { count });
+    }
+
+    return value;
 };
 
 const translateDashboardValue = (translate: DashboardTranslate, value: string, locale: string) => {
@@ -290,8 +331,16 @@ const translateDashboardWeekday = (translate: DashboardTranslate, day: string) =
     return weekdayKey ? translateDashboardKey(translate, `statistic.dashboard.weekday.${weekdayKey}`, day) : day;
 };
 
+const translateCalendarWeek = (translate: DashboardTranslate, label: string) =>
+    label.replace(/^KW (\d+)/, (calendarWeek, week: string) =>
+        translateDashboardKey(translate, 'statistic.dashboard.chart.calendarWeek', calendarWeek, { week }),
+    );
+
 const translateDashboardDateLabel = (translate: DashboardTranslate, dateLabel: string) =>
-    dateLabel.replace(/^(Mo|Di|Mi|Do|Fr|Sa|So)(?=,)/, (day) => translateDashboardWeekday(translate, day));
+    translateCalendarWeek(
+        translate,
+        dateLabel.replace(/^(Mo|Di|Mi|Do|Fr|Sa|So)(?=,)/, (day) => translateDashboardWeekday(translate, day)),
+    );
 
 const localizeCardMenuOption = (
     option: CardMenuOption,
@@ -350,10 +399,10 @@ const getConversationSegmentPercentage = (segment: ConversationSegment, segments
 };
 
 const getAllowedStatisticScopes = (
-    isSuperAdmin: boolean,
+    hasPlatformView: boolean,
     hasRole: (role: UserRole | UserRole[]) => boolean,
 ): ScopeKey[] => {
-    if (isSuperAdmin) {
+    if (hasPlatformView) {
         return scopeOrder;
     }
 
@@ -367,6 +416,8 @@ const getAllowedStatisticScopes = (
 
     return ['agency'];
 };
+
+const NO_AGENCY_DIRECTORY: StatisticAgencyEntry[] = [];
 
 const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
     platform: {
@@ -385,8 +436,6 @@ const scopeDefinitions: Record<ScopeKey, ScopeDefinition> = {
         icon: ScopeAgencyIcon,
     },
 };
-
-const normalizeFilterSearch = (value: string, locale: string) => value.trim().toLocaleLowerCase(locale);
 
 const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]> = {
     platform: [
@@ -450,14 +499,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -501,30 +550,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             title: 'aktive Gespräche',
             icon: ConversationsIcon,
             iconTone: 'muted',
-        },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
         },
     ],
     tenant: [
@@ -588,14 +613,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -639,30 +664,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             title: 'aktive Gespräche',
             icon: ConversationsIcon,
             iconTone: 'muted',
-        },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
         },
     ],
     agency: [
@@ -726,14 +727,14 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
         },
         {
             key: 'phoneShare',
-            label: 'Anruf-Anteil',
+            label: 'Anrufe',
             title: 'Anrufe',
             icon: PhoneCallsIcon,
             iconTone: 'coral',
         },
         {
             key: 'videoShare',
-            label: 'Videoanruf-Anteil',
+            label: 'Videoanrufe',
             title: 'Videoanrufe',
             icon: VideoCallsIcon,
             iconTone: 'danger',
@@ -759,12 +760,6 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             icon: ActiveAgenciesIcon,
         },
         {
-            key: 'counselors',
-            label: 'Beratende im Dienst',
-            title: 'Beratende im Dienst',
-            icon: ActiveAgenciesIcon,
-        },
-        {
             key: 'messagesPerSession',
             label: 'Ø Nachrichten/Gespräch',
             title: 'Nachrichten pro Gespräch',
@@ -778,32 +773,36 @@ const dashboardMetricOptionsByScope: Record<ScopeKey, CardMenuOptionBlueprint[]>
             icon: ConversationsIcon,
             iconTone: 'muted',
         },
-        {
-            key: 'topTopic',
-            label: 'Häufigstes Thema',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'previousMonth',
-            label: 'Thema letzter Monat',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'twoMonthsAgo',
-            label: 'Thema vor 2 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
-        {
-            key: 'threeMonthsAgo',
-            label: 'Thema vor 3 Monaten',
-            title: 'Häufigstes Thema',
-            icon: TopicIcon,
-        },
     ],
 };
+
+const topicMenuLabel = (monthsAgo: number) => {
+    if (monthsAgo === 0) {
+        return 'Häufigstes Thema';
+    }
+
+    return monthsAgo === 1 ? 'Thema letzter Monat' : `Thema vor ${monthsAgo} Monaten`;
+};
+
+const topicMonthDetail = (monthsAgo: number) => {
+    if (monthsAgo === 0) {
+        return 'Dieser Monat';
+    }
+
+    return monthsAgo === 1 ? 'Letzter Monat' : `Vor ${monthsAgo} Monaten`;
+};
+
+/**
+ * One "most frequent topic" entry per month of the configured topic window (UserService#1544),
+ * appended to every scope's metric menu. The first four keep their established keys and labels.
+ */
+const buildTopicMetricOptions = (topicMonths: number): CardMenuOptionBlueprint[] =>
+    Array.from({ length: topicMonths }, (unused, monthsAgo) => ({
+        key: topicMenuKeyForMonth(monthsAgo),
+        label: topicMenuLabel(monthsAgo),
+        title: 'Häufigstes Thema',
+        icon: TopicIcon,
+    }));
 
 const duplicatedCommunicationMetricKeys = new Set<CardMenuKey>([
     'conversationsTotal',
@@ -828,12 +827,12 @@ const defaultMetricKeyByCardKey: Record<string, CardMenuKey> = {
 const metricMenuDescriptionByKey: Record<CardMenuKey, string> = {
     activeAgencies: 'Zeigt, welche Beratungsstellen aktiv eingebunden sind und wo Kapazität entsteht.',
     activeConversations: 'Macht heute aktive Gespräche sichtbar, damit Spitzen früh erkannt werden.',
-    activeCounselors: 'Zeigt aktive Beratende und hilft bei Dienst- und Vertretungsplanung.',
+    activeCounselors: 'Zeigt, wie viele Beratende aktiv sind.',
     all: 'Bündelt alle Anfragen über die verfügbaren Chattypen hinweg.',
     cases: 'Zeigt aktive Beratungsfälle und macht Falllasten schneller einschätzbar.',
     consultations: 'Zeigt Beratungsgespräche und macht Nutzungsintensität je Zeitraum sichtbar.',
     conversationsTotal: 'Zeigt laufende Gespräche für einen schnellen Blick auf die Aktivität.',
-    counselors: 'Zeigt verfügbare Beratende für Tagessteuerung und Auslastung.',
+    counselors: 'Zeigt, wie viele Beratende aktiv sind.',
     groups: 'Macht Gruppenanfragen sichtbar und unterstützt die Planung von Gesprächskreisen.',
     liveChat: 'Zeigt Sofortkontakte, damit Live-Beratungszeiten besser geplant werden.',
     messagesCounselors: 'Misst Antworten der Beratenden und unterstützt die Auslastungssteuerung.',
@@ -853,12 +852,18 @@ const metricMenuDescriptionByKey: Record<CardMenuKey, string> = {
 
 const withMetricMenuDescription = (option: CardMenuOption): CardMenuOption => ({
     ...option,
-    description: option.description || metricMenuDescriptionByKey[option.key],
+    description:
+        option.description ||
+        metricMenuDescriptionByKey[option.key] ||
+        'Zeigt, welches Thema in diesem Zeitraum die Beratung geprägt hat.',
 });
 
 const formatIntegerMetric = (value: number) => value.toLocaleString('de-DE');
 
-const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
+const getEmptyFilterTargetStatistics = (
+    chartWeeks = DEFAULT_CHART_WEEKS,
+    topicMonths = DEFAULT_TOPIC_MONTHS,
+): FilterTargetStatistics => ({
     suppressed: false,
     enquiriesPreviousMonth: null,
     metrics: {
@@ -868,26 +873,18 @@ const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
         conversationsTotal: null,
         counselors: null,
         groups: null,
-        liveChat: null,
-        messagesCounselors: null,
-        messagesSeekers: null,
+        // communication counts start as "not tracked"; the first target that sends one sets it
+        liveChat: undefined,
+        messagesCounselors: undefined,
+        messagesSeekers: undefined,
         oneToOne: null,
-        phoneCalls: null,
-        textMessagesTotal: null,
-        videoCalls: null,
-        voiceMessages: null,
-        topTopic: { label: NO_DATA_LABEL, share: 0 },
-        previousMonth: { label: NO_DATA_LABEL, share: 0 },
-        twoMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
-        threeMonthsAgo: { label: NO_DATA_LABEL, share: 0 },
+        phoneCalls: undefined,
+        textMessagesTotal: undefined,
+        videoCalls: undefined,
+        voiceMessages: undefined,
+        topicsByMonth: noDataTopics(topicMonths),
     },
-    caseCharts: {
-        thisWeek: [0, 0, 0, 0, 0, 0, 0],
-        lastWeek: [0, 0, 0, 0, 0, 0, 0],
-        twoWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-        threeWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-        fourWeeksAgo: [0, 0, 0, 0, 0, 0, 0],
-    },
+    caseCharts: emptyCaseCharts(chartWeeks),
     conversation: {
         today: [0, 0, 0, 0],
         yesterday: [0, 0, 0, 0],
@@ -901,10 +898,7 @@ const getEmptyFilterTargetStatistics = (): FilterTargetStatistics => ({
 const pickStrongerTopic = (currentTopic: TopicStatistic, nextTopic: TopicStatistic) =>
     nextTopic.share > currentTopic.share ? nextTopic : currentTopic;
 
-type NumericFilterMetricKey = keyof Omit<
-    FilterTargetMetricStats,
-    'topTopic' | 'previousMonth' | 'twoMonthsAgo' | 'threeMonthsAgo'
->;
+type NumericFilterMetricKey = keyof Omit<FilterTargetMetricStats, 'topicsByMonth'>;
 
 const numericFilterMetricKeys: NumericFilterMetricKey[] = [
     'activeAgencies',
@@ -926,7 +920,31 @@ const numericFilterMetricKeys: NumericFilterMetricKey[] = [
 const addMetricValues = (first: MetricValue, second: MetricValue): MetricValue =>
     first === null && second === null ? null : (first ?? 0) + (second ?? 0);
 
-const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Record<string, FilterTargetStatistics>) =>
+const communicationMetricKeys = new Set<NumericFilterMetricKey>([
+    'liveChat',
+    'messagesCounselors',
+    'messagesSeekers',
+    'phoneCalls',
+    'textMessagesTotal',
+    'videoCalls',
+    'voiceMessages',
+]);
+
+const combineFilterMetric = (
+    metricKey: NumericFilterMetricKey,
+    first: TrackedMetricValue,
+    second: TrackedMetricValue,
+): TrackedMetricValue =>
+    communicationMetricKeys.has(metricKey)
+        ? addTrackedMetricValues(first, second)
+        : addMetricValues(first ?? null, second ?? null);
+
+const aggregateFilterTargetStatistics = (
+    targetIds: string[],
+    statisticsById: Record<string, FilterTargetStatistics>,
+    chartWeeks: number,
+    topicMonths: number,
+) =>
     targetIds.reduce<FilterTargetStatistics>((aggregatedStats, targetId) => {
         const targetStats = statisticsById[targetId];
 
@@ -938,31 +956,22 @@ const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Re
         const metrics = numericFilterMetricKeys.reduce<FilterTargetMetricStats>(
             (nextMetrics, metricKey) => ({
                 ...nextMetrics,
-                [metricKey]: addMetricValues(aggregatedStats.metrics[metricKey], targetStats.metrics[metricKey]),
+                [metricKey]: combineFilterMetric(
+                    metricKey,
+                    aggregatedStats.metrics[metricKey],
+                    targetStats.metrics[metricKey],
+                ),
             }),
             {
                 ...aggregatedStats.metrics,
-                previousMonth: pickStrongerTopic(
-                    aggregatedStats.metrics.previousMonth,
-                    targetStats.metrics.previousMonth,
+                topicsByMonth: aggregatedStats.metrics.topicsByMonth.map((topic, monthsAgo) =>
+                    pickStrongerTopic(topic, targetStats.metrics.topicsByMonth[monthsAgo] ?? topic),
                 ),
-                threeMonthsAgo: pickStrongerTopic(
-                    aggregatedStats.metrics.threeMonthsAgo,
-                    targetStats.metrics.threeMonthsAgo,
-                ),
-                topTopic: pickStrongerTopic(aggregatedStats.metrics.topTopic, targetStats.metrics.topTopic),
-                twoMonthsAgo: pickStrongerTopic(aggregatedStats.metrics.twoMonthsAgo, targetStats.metrics.twoMonthsAgo),
             },
         );
 
-        const caseCharts = casePeriodOptions.reduce<Record<CasePeriodKey, number[]>>(
-            (nextCharts, { key }) => ({
-                ...nextCharts,
-                [key]: aggregatedStats.caseCharts[key].map(
-                    (value, index) => value + targetStats.caseCharts[key][index],
-                ),
-            }),
-            {} as Record<CasePeriodKey, number[]>,
+        const caseCharts = aggregatedStats.caseCharts.map((days, weeksAgo) =>
+            days.map((value, dayIndex) => value + (targetStats.caseCharts[weeksAgo]?.[dayIndex] ?? 0)),
         );
 
         const conversation = conversationPeriodOptions.reduce<Record<ConversationPeriodKey, ConversationValues>>(
@@ -985,7 +994,7 @@ const aggregateFilterTargetStatistics = (targetIds: string[], statisticsById: Re
             conversation,
             metrics,
         };
-    }, getEmptyFilterTargetStatistics());
+    }, getEmptyFilterTargetStatistics(chartWeeks, topicMonths));
 
 const getEffectiveStatisticTargetIds = (
     activeScope: ScopeKey,
@@ -1019,13 +1028,8 @@ const activityMetricKeys = numericFilterMetricKeys.filter(
 const isFilterStatsEmpty = (stats: FilterTargetStatistics): boolean =>
     !stats.enquiriesPreviousMonth &&
     activityMetricKeys.every((metricKey) => !stats.metrics[metricKey]) &&
-    [
-        stats.metrics.topTopic,
-        stats.metrics.previousMonth,
-        stats.metrics.twoMonthsAgo,
-        stats.metrics.threeMonthsAgo,
-    ].every((topic) => topic.share === 0) &&
-    Object.values(stats.caseCharts).every((weekValues) => weekValues.every((value) => value === 0)) &&
+    stats.metrics.topicsByMonth.every((topic) => topic.share === 0) &&
+    stats.caseCharts.every((weekValues) => weekValues.every((value) => value === 0)) &&
     Object.values(stats.conversation).every((segmentValues) => segmentValues.every((value) => value === 0));
 
 const buildChangeTrend = (current: MetricValue, previous: MetricValue): TrendBadgeDefinition | undefined => {
@@ -1049,8 +1053,24 @@ const buildTopicTrend = (topic: TopicStatistic): TrendBadgeDefinition | undefine
 // German seed strings for the calm empty presentation (translated like every other
 // dashboard seed via dashboardTextKeyByValue).
 const NOT_TRACKED_HINT = 'wird noch nicht erfasst';
+const THIS_MONTH_DETAIL = 'Dieser Monat';
+const PROTECTED_HINT = 'Geschützt – zu wenige aktive Beratende';
 const NO_DATA_YET_HINT = 'noch keine Daten';
+/** Width of the Träger/Beratungsstelle filter; the stylesheet reads it as --statistic-filter-width. */
+/** After a failed load the figure is unknown, not absent (#1374). */
+const LOAD_FAILED_HINT = 'konnte nicht geladen werden';
 const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
+
+type EmptyState = Pick<CardMenuOption, 'emptyHint' | 'emptyKind'>;
+const noEmptyState: EmptyState = { emptyHint: undefined, emptyKind: undefined };
+/** A metric without an application-layer source: honest "not tracked yet" card. */
+const notTrackedOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint' | 'emptyKind'>> = {
+    value: NO_DATA_LABEL,
+    detail: undefined,
+    trend: undefined,
+    emptyHint: NOT_TRACKED_HINT,
+    emptyKind: 'notTracked',
+};
 
 /**
  * Maps aggregated real statistics onto the dashboard metric slots. Metrics without an
@@ -1065,6 +1085,7 @@ const TOPIC_PENDING_HINT = 'zeigt sich ab dem ersten Gespräch';
 const buildMetricOverridesFromFilterStats = (
     stats: FilterTargetStatistics,
     allTargetsSuppressed = false,
+    loadFailed = false,
 ): Record<CardMenuKey, Partial<CardMenuOption>> => {
     const requestTrend = buildChangeTrend(stats.metrics.oneToOne, stats.enquiriesPreviousMonth);
     const requestDetail =
@@ -1072,120 +1093,137 @@ const buildMetricOverridesFromFilterStats = (
             ? `Vormonat gesamt ${formatIntegerMetric(stats.enquiriesPreviousMonth)}`
             : undefined;
     // null = withheld (all targets KDG-suppressed) or simply not there yet.
-    const emptyMetricHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : NO_DATA_YET_HINT;
-    const emptyTopicHint = allTargetsSuppressed ? SUPPRESSED_DETAIL : TOPIC_PENDING_HINT;
-    const metricEmptyHint = (value: MetricValue) => (value === null ? emptyMetricHint : undefined);
-    const topicEmptyHint = (topic: TopicStatistic) => (topic.label === NO_DATA_LABEL ? emptyTopicHint : undefined);
+    const emptyKind: StatisticEmptyKind = allTargetsSuppressed ? 'protected' : 'pending';
+    const pendingHint = loadFailed ? LOAD_FAILED_HINT : NO_DATA_YET_HINT;
+    const pendingTopicHint = loadFailed ? LOAD_FAILED_HINT : TOPIC_PENDING_HINT;
+    const emptyMetricHint = allTargetsSuppressed ? PROTECTED_HINT : pendingHint;
+    const emptyTopicHint = allTargetsSuppressed ? PROTECTED_HINT : pendingTopicHint;
+    const metricEmptyState = (value: MetricValue): EmptyState =>
+        value === null ? { emptyHint: emptyMetricHint, emptyKind } : noEmptyState;
+    /** A communication count of this month; a metric the backend does not track keeps the dashed card. */
+    const trackedOverride = (value: TrackedMetricValue): Partial<CardMenuOption> =>
+        // with every target withheld or the load failed, nobody knows whether it is tracked
+        value === undefined && !allTargetsSuppressed && !loadFailed
+            ? notTrackedOverride
+            : {
+                  value: formatMetricValue(value ?? null),
+                  ...metricEmptyState(value ?? null),
+                  detail: THIS_MONTH_DETAIL,
+                  trend: undefined,
+              };
+    const topicEmptyState = (topic: TopicStatistic): EmptyState =>
+        topic.label === NO_DATA_LABEL ? { emptyHint: emptyTopicHint, emptyKind } : noEmptyState;
+    const topicOverride = (monthsAgo: number): Partial<CardMenuOption> => {
+        const topic = stats.metrics.topicsByMonth[monthsAgo] ?? { label: NO_DATA_LABEL, share: 0 };
+
+        return {
+            value: topic.label,
+            ...topicEmptyState(topic),
+            detail: topicMonthDetail(monthsAgo),
+            trend: buildTopicTrend(topic),
+        };
+    };
+    // months beyond the four named keys, when the topic window is longer (UserService#1544)
+    const furtherTopicOverrides = Object.fromEntries(
+        stats.metrics.topicsByMonth
+            .map((unusedTopic, monthsAgo) => monthsAgo)
+            .filter((monthsAgo) => monthsAgo >= 4)
+            .map((monthsAgo) => [topicMenuKeyForMonth(monthsAgo), topicOverride(monthsAgo)]),
+    ) as Partial<Record<CardMenuKey, Partial<CardMenuOption>>>;
 
     return {
         activeAgencies: {
             value: formatMetricValue(stats.metrics.activeAgencies),
-            emptyHint: metricEmptyHint(stats.metrics.activeAgencies),
+            ...metricEmptyState(stats.metrics.activeAgencies),
             detail: 'zugeordnete Beratungsstellen',
             trend: undefined,
         },
         activeConversations: {
             value: formatMetricValue(stats.metrics.activeConversations),
-            emptyHint: metricEmptyHint(stats.metrics.activeConversations),
+            ...metricEmptyState(stats.metrics.activeConversations),
             detail: 'heute aktiv',
             trend: undefined,
         },
         activeCounselors: {
             value: formatMetricValue(stats.metrics.counselors),
-            emptyHint: metricEmptyHint(stats.metrics.counselors),
+            ...metricEmptyState(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         all: {
             value: formatMetricValue(stats.metrics.oneToOne),
-            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
+            ...metricEmptyState(stats.metrics.oneToOne),
             detail: requestDetail,
             trend: requestTrend,
         },
         cases: {
             value: formatMetricValue(stats.metrics.cases),
-            emptyHint: metricEmptyHint(stats.metrics.cases),
+            ...metricEmptyState(stats.metrics.cases),
             detail: 'Aktuell in Beratung',
             trend: undefined,
         },
-        consultations: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        consultations: notTrackedOverride,
         conversationsTotal: {
             value: formatMetricValue(stats.metrics.conversationsTotal),
-            emptyHint: metricEmptyHint(stats.metrics.conversationsTotal),
+            ...metricEmptyState(stats.metrics.conversationsTotal),
             detail: 'gesamt',
             trend: undefined,
         },
         counselors: {
             value: formatMetricValue(stats.metrics.counselors),
-            emptyHint: metricEmptyHint(stats.metrics.counselors),
+            ...metricEmptyState(stats.metrics.counselors),
             detail: undefined,
             trend: undefined,
         },
         groups: {
             value: formatMetricValue(stats.metrics.groups),
-            emptyHint: metricEmptyHint(stats.metrics.groups),
+            ...metricEmptyState(stats.metrics.groups),
             detail: 'gesamt',
             trend: undefined,
         },
-        liveChat: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesCounselors: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesPerSession: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        messagesSeekers: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        liveChat: notTrackedOverride,
+        messagesCounselors: trackedOverride(stats.metrics.messagesCounselors),
+        messagesPerSession: notTrackedOverride,
+        messagesSeekers: trackedOverride(stats.metrics.messagesSeekers),
         oneToOne: {
             value: formatMetricValue(stats.metrics.oneToOne),
-            emptyHint: metricEmptyHint(stats.metrics.oneToOne),
+            ...metricEmptyState(stats.metrics.oneToOne),
             detail: '1:1-Anfragen',
             trend: requestTrend,
         },
-        phoneShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        previousMonth: {
-            value: stats.metrics.previousMonth.label,
-            emptyHint: topicEmptyHint(stats.metrics.previousMonth),
-            detail: 'Letzter Monat',
-            trend: buildTopicTrend(stats.metrics.previousMonth),
-        },
-        textMessagesTotal: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        threeMonthsAgo: {
-            value: stats.metrics.threeMonthsAgo.label,
-            emptyHint: topicEmptyHint(stats.metrics.threeMonthsAgo),
-            detail: 'Vor 3 Monaten',
-            trend: buildTopicTrend(stats.metrics.threeMonthsAgo),
-        },
-        topTopic: {
-            value: stats.metrics.topTopic.label,
-            emptyHint: topicEmptyHint(stats.metrics.topTopic),
-            detail: 'Dieser Monat',
-            trend: buildTopicTrend(stats.metrics.topTopic),
-        },
-        twoMonthsAgo: {
-            value: stats.metrics.twoMonthsAgo.label,
-            emptyHint: topicEmptyHint(stats.metrics.twoMonthsAgo),
-            detail: 'Vor 2 Monaten',
-            trend: buildTopicTrend(stats.metrics.twoMonthsAgo),
-        },
-        videoCallCount: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        videoShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
-        voiceShare: { value: NO_DATA_LABEL, detail: undefined, trend: undefined, emptyHint: NOT_TRACKED_HINT },
+        phoneShare: trackedOverride(stats.metrics.phoneCalls),
+        previousMonth: topicOverride(1),
+        textMessagesTotal: trackedOverride(stats.metrics.textMessagesTotal),
+        threeMonthsAgo: topicOverride(3),
+        topTopic: topicOverride(0),
+        twoMonthsAgo: topicOverride(2),
+        videoCallCount: trackedOverride(stats.metrics.videoCalls),
+        videoShare: trackedOverride(stats.metrics.videoCalls),
+        voiceShare: trackedOverride(stats.metrics.voiceMessages),
+        ...furtherTopicOverrides,
     };
 };
 
+/** Seven day bars per week of the chart window, plus the week overview with one bar per week. */
 const buildCaseChartsFromFilterStats = (
     stats: FilterTargetStatistics,
-    dateLabelsByPeriod: Record<CasePeriodKey, string[]>,
+    dateLabelsByWeek: string[][],
     todayDayCode: string,
-): Record<CasePeriodKey, CaseChartBar[]> =>
-    casePeriodOptions.reduce(
-        (charts, { key }) => ({
-            ...charts,
-            [key]: caseChartDayCodes.map((day, index) => ({
+    now: Date,
+): Partial<Record<CasePeriodKey, CaseChartBar[]>> => ({
+    ...Object.fromEntries(
+        stats.caseCharts.map((days, weeksAgo) => [
+            casePeriodKeyForWeek(weeksAgo),
+            caseChartDayCodes.map((day, index) => ({
                 day,
-                dateLabel: dateLabelsByPeriod[key][index],
-                value: stats.caseCharts[key][index],
+                dateLabel: dateLabelsByWeek[weeksAgo]?.[index] ?? '',
+                value: days[index],
                 isDefaultSelected: day === todayDayCode,
             })),
-        }),
-        {} as Record<CasePeriodKey, CaseChartBar[]>,
-    );
+        ]),
+    ),
+    [CASE_WEEK_OVERVIEW_KEY]: buildCaseWeekOverview(stats.caseCharts, now),
+});
 
 const buildConversationByPeriodFromFilterStats = (
     stats: FilterTargetStatistics,
@@ -1198,12 +1236,7 @@ const buildConversationByPeriodFromFilterStats = (
         {} as Record<ConversationPeriodKey, ConversationPeriodData>,
     );
 
-const noSourceMetricOverride: Required<Pick<CardMenuOption, 'value' | 'detail' | 'trend' | 'emptyHint'>> = {
-    value: NO_DATA_LABEL,
-    detail: undefined,
-    trend: undefined,
-    emptyHint: NOT_TRACKED_HINT,
-};
+const noSourceMetricOverride = notTrackedOverride;
 
 /**
  * Resolves the value/detail/trend for a card or menu-option blueprint. Every
@@ -1254,6 +1287,8 @@ const getPersonalizedMetricCard = (
     card: StatisticCardBlueprint,
     activeScope: ScopeKey,
     metricOverrides: Partial<Record<CardMenuKey, Partial<CardMenuOption>>>,
+    topicMonths: number,
+    isFixedStand: boolean,
 ): StatisticCardDefinition => {
     const displayCard = getDisplayMetricCard(card, metricOverrides);
 
@@ -1262,9 +1297,23 @@ const getPersonalizedMetricCard = (
         defaultMenuKey: defaultMetricKeyByCardKey[card.key],
         menuAriaLabel: 'Kennzahl in diesem Dashboard-Slot auswählen',
         menuLabel: 'Meine Kennzahl',
-        menuOptions: dashboardMetricOptionsByScope[activeScope]
+        menuOptions: [...dashboardMetricOptionsByScope[activeScope], ...buildTopicMetricOptions(topicMonths)]
             .filter((option) => !duplicatedCommunicationMetricKeys.has(option.key))
+            .filter((option) => !isFixedStand || option.key !== 'activeConversations')
             .map((option) => withMetricMenuDescription(applyMenuOptionOverride(option, metricOverrides, option.key))),
+    };
+};
+
+/** A fixed stand holds no "active today", so its menus do not offer it. */
+const withoutActiveToday = (dashboard: ScopeDashboardBlueprint): ScopeDashboardBlueprint => {
+    const withoutOption = (card: StatisticCardBlueprint): StatisticCardBlueprint => ({
+        ...card,
+        menuOptions: card.menuOptions?.filter((option) => option.key !== 'activeConversations'),
+    });
+    return {
+        ...dashboard,
+        topCards: dashboard.topCards.map(withoutOption),
+        communicationCards: dashboard.communicationCards.map(withoutOption),
     };
 };
 
@@ -1582,12 +1631,6 @@ const dashboardByScope: Record<ScopeKey, ScopeDashboardBlueprint> = {
                         iconTone: 'muted',
                     },
                     {
-                        key: 'counselors',
-                        label: 'Beratende im Dienst',
-                        title: 'Beratende im Dienst',
-                        icon: ActiveAgenciesIcon,
-                    },
-                    {
                         key: 'messagesPerSession',
                         label: 'Ø Nachrichten/Gespräch',
                         title: 'Nachrichten pro Gespräch',
@@ -1786,158 +1829,6 @@ const DonutChart = ({
     );
 };
 
-interface StatisticFilterBarProps {
-    availableTargets: FilterTarget[];
-    locale: string;
-    onAddFirstSuggestion: () => void;
-    onAddTarget: (targetId: string) => void;
-    onRemoveTarget: (targetId: string) => void;
-    onSearchChange: (value: string) => void;
-    searchValue: string;
-    selectedTargets: FilterTarget[];
-    suggestions: FilterTarget[];
-    translate: DashboardTranslate;
-}
-
-const StatisticFilterBar = ({
-    availableTargets,
-    locale,
-    onAddFirstSuggestion,
-    onAddTarget,
-    onRemoveTarget,
-    onSearchChange,
-    searchValue,
-    selectedTargets,
-    suggestions,
-    translate,
-}: StatisticFilterBarProps) => {
-    const [isSuggestionMenuOpen, setIsSuggestionMenuOpen] = useState(false);
-    const visibleSuggestions = (() => {
-        if (searchValue.trim() || suggestions.length) {
-            return suggestions;
-        }
-
-        return availableTargets
-            .filter((target) => !selectedTargets.some((selectedTarget) => selectedTarget.id === target.id))
-            .slice(0, 6);
-    })();
-    const hasSuggestions = visibleSuggestions.length > 0;
-
-    const addFirstVisibleSuggestion = () => {
-        if (visibleSuggestions[0]) {
-            onAddTarget(visibleSuggestions[0].id);
-        } else {
-            onAddFirstSuggestion();
-        }
-    };
-
-    const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            addFirstVisibleSuggestion();
-            setIsSuggestionMenuOpen(false);
-        }
-
-        if (event.key === 'Escape') {
-            setIsSuggestionMenuOpen(false);
-        }
-    };
-
-    return (
-        <div
-            className="statisticDashboard__filterBar"
-            aria-label={translateDashboardText(translate, 'Statistik eingrenzen', locale)}
-        >
-            <div
-                className="statisticDashboard__filterSearchWrap"
-                onBlur={(event) => {
-                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                        setIsSuggestionMenuOpen(false);
-                    }
-                }}
-            >
-                <GlobalSearchBar
-                    defaultExpanded
-                    expandedWidth={499}
-                    className="statisticDashboard__filterSearch"
-                    ariaLabel={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.searchAria',
-                        'Beratungsstellen oder Träger suchen',
-                    )}
-                    value={searchValue}
-                    onInputClick={() => setIsSuggestionMenuOpen(true)}
-                    onInputFocus={() => setIsSuggestionMenuOpen(true)}
-                    onInputKeyDown={handleSearchKeyDown}
-                    onSearchChange={(value) => {
-                        setIsSuggestionMenuOpen(true);
-                        onSearchChange(value);
-                    }}
-                    onSearch={() => {
-                        addFirstVisibleSuggestion();
-                        setIsSuggestionMenuOpen(false);
-                    }}
-                    searchPlaceholder={translateDashboardKey(
-                        translate,
-                        'statistic.dashboard.filter.placeholder',
-                        'Suche',
-                    )}
-                />
-
-                {isSuggestionMenuOpen && hasSuggestions && (
-                    <div className="statisticDashboard__filterSuggestions" role="listbox">
-                        {visibleSuggestions.map((target) => (
-                            <button
-                                key={target.id}
-                                type="button"
-                                className="statisticDashboard__filterSuggestion"
-                                role="option"
-                                aria-selected="false"
-                                onClick={() => {
-                                    onAddTarget(target.id);
-                                    setIsSuggestionMenuOpen(false);
-                                }}
-                            >
-                                <span>
-                                    <strong>{target.label}</strong>
-                                    <small>{translateDashboardText(translate, target.detail, locale)}</small>
-                                </span>
-                                <em>{translateDashboardText(translate, target.type, locale)}</em>
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {!!selectedTargets.length && (
-                <div
-                    className="statisticDashboard__filterChips"
-                    aria-label={translateDashboardKey(translate, 'statistic.dashboard.filter.active', 'Aktive Filter')}
-                >
-                    {selectedTargets.map((target) => (
-                        <span key={target.id} className="statisticDashboard__filterChip">
-                            <small>{translateDashboardText(translate, target.type, locale)}</small>
-                            <span>{target.label}</span>
-                            <button
-                                type="button"
-                                aria-label={translateDashboardKey(
-                                    translate,
-                                    'statistic.dashboard.filter.removeTarget',
-                                    `${target.label} entfernen`,
-                                    { target: target.label },
-                                )}
-                                onClick={() => onRemoveTarget(target.id)}
-                            >
-                                <Close aria-hidden="true" />
-                            </button>
-                        </span>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
 interface PeriodSelectProps<OptionKey extends string> {
     ariaLabel: string;
     onSelect: (key: OptionKey) => void;
@@ -2036,8 +1927,15 @@ export const Statistic = () => {
     const translate: DashboardTranslate = (key, options) =>
         translateSource?.(key, options) || String(options?.defaultValue || key);
     const locale = getDashboardLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language);
-    const { hasRole, isSuperAdmin } = useUserRoles();
-    const allowedScopeKeys = useMemo(() => getAllowedStatisticScopes(isSuperAdmin, hasRole), [hasRole, isSuperAdmin]);
+    const { hasRole, isSuperAdmin, isStatisticsReader } = useUserRoles();
+    // A Statistik-Leser·in reads the platform statistics exactly like a platform admin — scopes,
+    // Träger drill-down and tutorials — without becoming a super admin anywhere else
+    // (ORISO-UserService#1666). Editing stays out of reach: the page has no edit controls for it.
+    const hasPlatformView = isSuperAdmin || isStatisticsReader;
+    const allowedScopeKeys = useMemo(
+        () => getAllowedStatisticScopes(hasPlatformView, hasRole),
+        [hasRole, hasPlatformView],
+    );
     const allowedScopeKey = allowedScopeKeys.join('|');
     const defaultScope = allowedScopeKeys[0] || 'agency';
     const [activeScope, setActiveScope] = useState<ScopeKey>(defaultScope);
@@ -2045,15 +1943,10 @@ export const Statistic = () => {
         useState<SelectedCardMenuByScope>(readStoredCardMenuSelection);
     const [selectedFilterTargetIdsByScope, setSelectedFilterTargetIdsByScope] =
         useState<SelectedFilterTargetIdsByScope>(readStoredFilterTargetSelection);
-    const [filterSearchByScope, setFilterSearchByScope] = useState<Record<ScopeKey, string>>({
-        platform: '',
-        tenant: '',
-        agency: '',
-    });
     const [selectedCasePeriodByScope, setSelectedCasePeriodByScope] = useState<Record<ScopeKey, CasePeriodKey>>({
-        platform: 'thisWeek',
-        tenant: 'thisWeek',
-        agency: 'thisWeek',
+        platform: casePeriodKeyForWeek(0),
+        tenant: casePeriodKeyForWeek(0),
+        agency: casePeriodKeyForWeek(0),
     });
     const [selectedConversationPeriodByScope, setSelectedConversationPeriodByScope] = useState<
         Record<ScopeKey, ConversationPeriodKey>
@@ -2071,18 +1964,49 @@ export const Statistic = () => {
     });
     const [selectedCaseDayByScope, setSelectedCaseDayByScope] =
         useState<Record<ScopeKey, string>>(defaultSelectedCaseDayByScope);
+    // The platform dashboard stops at Träger. A platform admin who picks a Beratungsstelle (or a Träger)
+    // gets that Träger's dashboard loaded on top, so its Beratungsstellen have numbers. Only the
+    // Beratungsstellen level uses it, so only that level asks for it.
+    const {
+        data: agencyDirectoryData,
+        isError: hasAgencyDirectoryError,
+        isLoading: isAgencyDirectoryLoading,
+    } = useStatisticAgencyDirectory(hasPlatformView, isStatisticsReader);
+    const agencyDirectory = agencyDirectoryData ?? NO_AGENCY_DIRECTORY;
+    const drillTenantId =
+        hasPlatformView && activeScope === 'agency'
+            ? resolveDrillTenantId(selectedFilterTargetIdsByScope, agencyDirectory)
+            : undefined;
     const {
         data: statisticData,
         isError: hasStatisticLoadError,
-        isLoading: isStatisticLoading,
-    } = useStatisticDashboardData();
+        isLoading: isDashboardLoading,
+        isUnavailable: isStatisticUnavailable,
+        drill,
+    } = useStatisticDashboardData({ drillTenantId, isStatisticsReader });
+    const { isLoading: isStatisticLoading, agencyLevelHint } = resolveStatisticView({
+        isSuperAdmin: hasPlatformView,
+        activeScope,
+        pickedAgencyIds: selectedFilterTargetIdsByScope.agency || [],
+        isDashboardLoading,
+        isDirectoryLoading: isAgencyDirectoryLoading,
+        isDirectoryError: hasAgencyDirectoryError,
+        drillTenantId,
+        drill,
+        data: statisticData,
+    });
     const navigate = useNavigate();
-    const caseChartDateLabelsByPeriod = useMemo(() => buildCaseChartDateLabels(new Date()), []);
-    const todayDayCode = useMemo(() => getTodayDayCode(new Date()), []);
-    const dashboard = dashboardByScope[activeScope];
+    // A fixed stand is read from its own time: its "this week" must not slide with today.
+    const chartNow = useMemo(() => statisticData.referenceDate ?? new Date(), [statisticData.referenceDate]);
+    const todayDayCode = useMemo(() => getTodayDayCode(chartNow), [chartNow]);
+    const isFixedStand = statisticData.snapshotInterval !== 'LIVE';
+    const isWeeklyStand = statisticData.snapshotInterval === 'WEEKLY';
+    const dashboard = useMemo(
+        () => (isFixedStand ? withoutActiveToday(dashboardByScope[activeScope]) : dashboardByScope[activeScope]),
+        [activeScope, isFixedStand],
+    );
     const availableFilterTargets = statisticData.targetsByScope[activeScope];
     const selectedFilterTargetIds = selectedFilterTargetIdsByScope[activeScope] || [];
-    const filterSearch = filterSearchByScope[activeScope];
     const visibleFilterTargetIds = selectedFilterTargetIds.filter((targetId) =>
         availableFilterTargets.some((target) => target.id === targetId),
     );
@@ -2090,28 +2014,94 @@ export const Statistic = () => {
         () => getEffectiveStatisticTargetIds(activeScope, selectedFilterTargetIds, statisticData),
         [activeScope, selectedFilterTargetIds, statisticData],
     );
+    const { chartWeeks, topicMonths } = statisticData;
+    const caseChartDateLabelsByWeek = useMemo(
+        () => buildCaseChartDateLabels(chartNow, chartWeeks),
+        [chartNow, chartWeeks],
+    );
     const filteredStats = useMemo(
-        () => aggregateFilterTargetStatistics(effectiveStatisticTargetIds, statisticData.statisticsById),
-        [effectiveStatisticTargetIds, statisticData.statisticsById],
+        () =>
+            aggregateFilterTargetStatistics(
+                effectiveStatisticTargetIds,
+                statisticData.statisticsById,
+                chartWeeks,
+                topicMonths,
+            ),
+        [chartWeeks, effectiveStatisticTargetIds, statisticData.statisticsById, topicMonths],
     );
     const suppressedSelectedTargetCount = useMemo(
         () =>
             effectiveStatisticTargetIds.filter((targetId) => statisticData.statisticsById[targetId]?.suppressed).length,
         [effectiveStatisticTargetIds, statisticData.statisticsById],
     );
+    // A total is what the page shows when nothing is picked: the platform row, or a Träger admin's own
+    // Träger row. Neither is in the picker, so a hidden one is told apart from a hidden centre.
+    const hiddenTotalShown = useMemo(
+        () =>
+            effectiveStatisticTargetIds.some(
+                (targetId) =>
+                    statisticData.statisticsById[targetId]?.suppressed &&
+                    !availableFilterTargets.some((target) => target.id === targetId),
+            ),
+        [availableFilterTargets, effectiveStatisticTargetIds, statisticData.statisticsById],
+    );
+    const hiddenRowShown = suppressedSelectedTargetCount > (hiddenTotalShown ? 1 : 0);
     const allTargetsSuppressed =
         effectiveStatisticTargetIds.length > 0 && suppressedSelectedTargetCount === effectiveStatisticTargetIds.length;
     const metricOverrides = useMemo(
-        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed),
-        [allTargetsSuppressed, filteredStats],
+        () => buildMetricOverridesFromFilterStats(filteredStats, allTargetsSuppressed, hasStatisticLoadError),
+        [allTargetsSuppressed, filteredStats, hasStatisticLoadError],
     );
     const isDashboardEmpty = useMemo(() => isFilterStatsEmpty(filteredStats), [filteredStats]);
-    const showEmptyHero = isDashboardEmpty && !isStatisticLoading && !hasStatisticLoadError && !allTargetsSuppressed;
+    // A stand with zeros is a real statement, so it shows them like any other value. A level without
+    // any target has nothing to state, even when the stand holds numbers for another level.
+    const showEmptyHero =
+        isDashboardEmpty &&
+        !(isFixedStand && effectiveStatisticTargetIds.length > 0) &&
+        !isStatisticLoading &&
+        !hasStatisticLoadError &&
+        !isStatisticUnavailable &&
+        !agencyLevelHint &&
+        !allTargetsSuppressed;
+    // After a failed load the page says so; a preview would read as "not enough data yet".
+    const showPreviewPanel = (showEmptyHero || allTargetsSuppressed) && !hasStatisticLoadError;
+    const previewHighlights = [
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.timeline.title', 'Verlauf über Zeit'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.timeline.text',
+                'Anfragen und Gespräche pro Woche, mit Vorjahresvergleich.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.compare.title', 'Träger im Vergleich'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.compare.text',
+                'Auslastung je Träger – nur wenn jeder Wert groß genug ist.',
+            ),
+        },
+        {
+            title: translateDashboardKey(translate, 'statistic.dashboard.preview.topics.title', 'Themen'),
+            text: translateDashboardKey(
+                translate,
+                'statistic.dashboard.preview.topics.text',
+                'Welche Themen am häufigsten angefragt werden.',
+            ),
+        },
+    ];
     const csvExportRows = useMemo(
         () => [
             ...dashboard.topCards.map((card) => {
                 const localized = localizeStatisticCard(
-                    getPersonalizedMetricCard(card, activeScope, metricOverrides),
+                    getPersonalizedMetricCard(
+                        card,
+                        activeScope,
+                        metricOverrides,
+                        statisticData.topicMonths,
+                        isFixedStand,
+                    ),
                     translate,
                     locale,
                 );
@@ -2122,20 +2112,36 @@ export const Statistic = () => {
                 return { title: localized.title, value: localized.value };
             }),
         ],
-        [activeScope, dashboard, locale, metricOverrides, translate],
+        [activeScope, dashboard, locale, metricOverrides, topicMonths, translate],
     );
     const filteredCaseCharts = useMemo(
-        () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByPeriod, todayDayCode),
-        [caseChartDateLabelsByPeriod, filteredStats, todayDayCode],
+        () => buildCaseChartsFromFilterStats(filteredStats, caseChartDateLabelsByWeek, todayDayCode, chartNow),
+        [caseChartDateLabelsByWeek, chartNow, filteredStats, todayDayCode],
     );
     const filteredConversationByPeriod = useMemo(
         () => buildConversationByPeriodFromFilterStats(filteredStats),
         [filteredStats],
     );
-    const selectedCasePeriod = selectedCasePeriodByScope[activeScope];
-    const selectedConversationPeriod = selectedConversationPeriodByScope[activeScope];
+    // a period beyond a shortened window falls back to this week; a weekly stand has only week bars
+    let selectedCasePeriod = casePeriodKeyForWeek(0);
+    if (isWeeklyStand) {
+        selectedCasePeriod = CASE_WEEK_OVERVIEW_KEY;
+    } else if (filteredCaseCharts[selectedCasePeriodByScope[activeScope]]) {
+        selectedCasePeriod = selectedCasePeriodByScope[activeScope];
+    }
+    const isWeekOverview = selectedCasePeriod === CASE_WEEK_OVERVIEW_KEY;
+    const conversationPeriods = useMemo(
+        () => buildConversationPeriodOptions(statisticData.snapshotInterval, statisticData.dataUntil, locale),
+        [locale, statisticData.dataUntil, statisticData.snapshotInterval],
+    );
+    // a period the current stand does not hold falls back to its newest one
+    const selectedConversationPeriod = conversationPeriods.some(
+        ({ key }) => key === selectedConversationPeriodByScope[activeScope],
+    )
+        ? selectedConversationPeriodByScope[activeScope]
+        : conversationPeriods[0].key;
     const selectedConversationSegment = selectedConversationSegmentByScope[activeScope];
-    const caseChart = filteredCaseCharts[selectedCasePeriod];
+    const caseChart = filteredCaseCharts[selectedCasePeriod] ?? [];
     const conversationData = filteredConversationByPeriod[selectedConversationPeriod];
     const selectedConversationSegmentLabel = conversationData.segments.some(
         (segment) => segment.label === selectedConversationSegment,
@@ -2151,39 +2157,52 @@ export const Statistic = () => {
     const caseAxisMax = useMemo(() => getCaseAxisMax(maxCaseValue), [maxCaseValue]);
     const yAxisLabels = useMemo(() => getCaseAxisLabels(maxCaseValue, locale), [locale, maxCaseValue]);
     const localizedCasePeriodOptions = useMemo(
-        () => localizePeriodOptions(casePeriodOptions, translate, locale),
-        [locale, translate],
+        () =>
+            localizePeriodOptions(
+                buildCasePeriodOptions(chartWeeks).filter(
+                    ({ key }) => !isWeeklyStand || key === CASE_WEEK_OVERVIEW_KEY,
+                ),
+                translate,
+                locale,
+            ),
+        [chartWeeks, isWeeklyStand, locale, translate],
     );
     const localizedConversationPeriodOptions = useMemo(
-        () => localizePeriodOptions(conversationPeriodOptions, translate, locale),
-        [locale, translate],
+        () => localizePeriodOptions(conversationPeriods, translate, locale),
+        [conversationPeriods, locale, translate],
     );
     const chartAnimationKey = `${activeScope}-${selectedCasePeriod}-${effectiveStatisticTargetIds.join('-')}`;
     const donutAnimationKey = `${activeScope}-${selectedConversationPeriod}-${effectiveStatisticTargetIds.join('-')}`;
+    // Beratungsstellen a platform admin can pick before their Träger's numbers are loaded.
+    const directoryTargets = useMemo<ScopePickerTarget[]>(() => {
+        const tenantNames = new Map(statisticData.targetsByScope.tenant.map((target) => [target.id, target.label]));
+        return agencyDirectory.map((agency) => ({
+            id: agencyTargetId(agency.id),
+            label: agency.name,
+            type: 'Beratungsstelle',
+            detail: tenantNames.get(tenantTargetId(agency.tenantId)) ?? '',
+            scope: 'agency',
+        }));
+    }, [agencyDirectory, statisticData.targetsByScope.tenant]);
     const selectedFilterTargets = useMemo(
         () =>
-            visibleFilterTargetIds
-                .map((targetId) => availableFilterTargets.find((target) => target.id === targetId))
+            (hasPlatformView && activeScope === 'agency' ? selectedFilterTargetIds : visibleFilterTargetIds)
+                .map(
+                    (targetId) =>
+                        availableFilterTargets.find((target) => target.id === targetId) ??
+                        (hasPlatformView ? directoryTargets.find((target) => target.id === targetId) : undefined),
+                )
                 .filter((target): target is FilterTarget => Boolean(target)),
-        [availableFilterTargets, visibleFilterTargetIds],
+        [
+            activeScope,
+            availableFilterTargets,
+            directoryTargets,
+            hasPlatformView,
+            selectedFilterTargetIds,
+            visibleFilterTargetIds,
+        ],
     );
-    const filterSuggestions = useMemo(() => {
-        const normalizedSearch = normalizeFilterSearch(filterSearch, locale);
-
-        return availableFilterTargets
-            .filter((target) => !visibleFilterTargetIds.includes(target.id))
-            .filter((target) =>
-                normalizedSearch
-                    ? [
-                          target.label,
-                          translateDashboardText(translate, target.detail, locale),
-                          translateDashboardText(translate, target.type, locale),
-                      ].some((value) => normalizeFilterSearch(value, locale).includes(normalizedSearch))
-                    : true,
-            )
-            .slice(0, 6);
-    }, [availableFilterTargets, filterSearch, locale, translate, visibleFilterTargetIds]);
-    const scopeTabItems: AdminSegmentedTabItem[] = allowedScopeKeys.map((scopeKey) => {
+    const pickerLevels: ScopePickerLevel[] = allowedScopeKeys.map((scopeKey) => {
         const scope = scopeDefinitions[scopeKey];
         const ScopeIcon = scope.icon;
 
@@ -2193,6 +2212,24 @@ export const Statistic = () => {
             icon: <ScopeIcon />,
         };
     });
+    // Every Träger and Beratungsstelle once, on the level that shows its own numbers: a Träger on the
+    // Träger level, a Beratungsstelle on the Beratungsstellen level (where the role has that level).
+    const pickerTargets = useMemo(() => {
+        const byId = new Map<string, ScopePickerTarget>();
+        allowedScopeKeys.forEach((scopeKey) => {
+            statisticData.targetsByScope[scopeKey].forEach((target) => {
+                const ownLevel: ScopeKey = target.type === 'Träger' ? 'tenant' : 'agency';
+                if (!byId.has(target.id) || scopeKey === ownLevel) {
+                    byId.set(target.id, { ...target, scope: scopeKey });
+                }
+            });
+        });
+        // A platform admin finds every Beratungsstelle, not only those of the Träger already loaded.
+        directoryTargets.forEach((target) => {
+            if (!byId.has(target.id)) byId.set(target.id, target);
+        });
+        return [...byId.values()];
+    }, [allowedScopeKeys, directoryTargets, statisticData.targetsByScope]);
     const updateCardMenuSelection = (cardKey: string, menuKey: CardMenuKey) => {
         setSelectedCardMenuByScope((currentSelection) => ({
             ...currentSelection,
@@ -2202,41 +2239,54 @@ export const Statistic = () => {
             },
         }));
     };
-    const updateFilterSearch = (value: string) => {
-        setFilterSearchByScope((currentSearch) => ({
-            ...currentSearch,
-            [activeScope]: value,
-        }));
+    /** The whole level: no Träger or Beratungsstelle picked on it any more. */
+    const selectScopeLevel = (scopeKey: ScopeKey) => {
+        setActiveScope(scopeKey);
+        setSelectedFilterTargetIdsByScope((currentSelection) => ({ ...currentSelection, [scopeKey]: [] }));
     };
-    const addFilterTarget = (targetId: string) => {
-        const nextTarget = availableFilterTargets.find((target) => target.id === targetId);
-
-        if (!nextTarget) {
+    /** Switches to the target's level and adds it; targets of another type on that level make way. */
+    const selectScopeTarget = (nextTarget: ScopePickerTarget) => {
+        const levelTargets = statisticData.targetsByScope[nextTarget.scope];
+        setActiveScope(nextTarget.scope);
+        if (hasPlatformView && nextTarget.scope === 'agency') {
+            // One Träger's numbers are loaded at a time: Beratungsstellen of another Träger make way.
+            const tenantOf = (targetId: string) =>
+                agencyDirectory.find((agency) => agencyTargetId(agency.id) === targetId)?.tenantId;
+            setSelectedFilterTargetIdsByScope((currentSelection) => {
+                const sameTenant = (currentSelection.agency || []).filter(
+                    (targetId) => tenantOf(targetId) === tenantOf(nextTarget.id),
+                );
+                return sameTenant.includes(nextTarget.id)
+                    ? currentSelection
+                    : { ...currentSelection, agency: [...sameTenant, nextTarget.id] };
+            });
             return;
         }
-
         setSelectedFilterTargetIdsByScope((currentSelection) => {
-            const currentScopeSelection = (currentSelection[activeScope] || []).filter((currentTargetId) => {
-                const currentTarget = availableFilterTargets.find((target) => target.id === currentTargetId);
+            const sameType = (currentSelection[nextTarget.scope] || []).filter(
+                (targetId) => levelTargets.find((target) => target.id === targetId)?.type === nextTarget.type,
+            );
+            // The newest pick decides which Träger the Beratungsstellen level looks into.
+            const agency =
+                hasPlatformView && nextTarget.type === 'Träger'
+                    ? agenciesOfTenant(currentSelection.agency || [], nextTarget.id, agencyDirectory)
+                    : currentSelection.agency;
 
-                return currentTarget?.type === nextTarget.type;
-            });
+            // A re-picked Träger moves to the end, so the stored order always ends with the newest pick.
+            const movesToEnd = hasPlatformView && nextTarget.type === 'Träger';
+            const alreadyLast = sameType[sameType.length - 1] === nextTarget.id;
+            const unchanged = sameType.includes(nextTarget.id) && (!movesToEnd || alreadyLast);
 
-            if (currentScopeSelection.includes(targetId)) {
-                return currentSelection;
-            }
-
-            return {
-                ...currentSelection,
-                [activeScope]: [...currentScopeSelection, targetId],
-            };
+            return unchanged && agency === currentSelection.agency
+                ? currentSelection
+                : {
+                      ...currentSelection,
+                      agency,
+                      [nextTarget.scope]: unchanged
+                          ? sameType
+                          : [...sameType.filter((targetId) => targetId !== nextTarget.id), nextTarget.id],
+                  };
         });
-        updateFilterSearch('');
-    };
-    const addFirstFilterSuggestion = () => {
-        if (filterSuggestions[0]) {
-            addFilterTarget(filterSuggestions[0].id);
-        }
     };
     const removeFilterTarget = (targetId: string) => {
         setSelectedFilterTargetIdsByScope((currentSelection) => ({
@@ -2276,33 +2326,72 @@ export const Statistic = () => {
     return (
         <Page>
             <Page.Title>
-                <AdminSegmentedTabs
-                    className="statisticDashboard__scopeTabs"
-                    activeId={activeScope}
-                    ariaLabel={translateDashboardText(translate, 'Statistik-Ebene', locale)}
-                    items={scopeTabItems}
-                    onChange={(scopeKey) => setActiveScope(scopeKey as ScopeKey)}
-                />
+                {/* One picker for level and Träger/Beratungsstelle (ORISO-Admin#1510), one divider under it. */}
+                <div className="statisticDashboard__headerRow">
+                    <StatisticScopePicker
+                        levels={pickerLevels}
+                        activeLevel={activeScope}
+                        targets={pickerTargets}
+                        selectedTargets={selectedFilterTargets}
+                        onSelectLevel={selectScopeLevel}
+                        onSelectTarget={selectScopeTarget}
+                        onRemoveTarget={removeFilterTarget}
+                        locale={locale}
+                        describe={(text) => translateDashboardText(translate, text, locale)}
+                        labels={{
+                            picker: translateDashboardKey(translate, 'statistic.dashboard.scope.picker', 'Ansicht'),
+                            levels: translateDashboardText(translate, 'Statistik-Ebene', locale),
+                            search: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.searchAria',
+                                'Beratungsstellen oder Träger suchen',
+                            ),
+                            noMatch: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.scope.noMatch',
+                                'Kein Träger und keine Beratungsstelle gefunden',
+                            ),
+                            selected: translateDashboardKey(
+                                translate,
+                                'statistic.dashboard.filter.active',
+                                'Aktive Filter',
+                            ),
+                            remove: (target) =>
+                                translateDashboardKey(
+                                    translate,
+                                    'statistic.dashboard.filter.removeTarget',
+                                    `${target} entfernen`,
+                                    { target },
+                                ),
+                        }}
+                    />
+                </div>
             </Page.Title>
-            <div className="statisticDashboardPage">
+            <div
+                className="statisticDashboardPage"
+                lang={toIntlLocale(i18nInstance?.resolvedLanguage || i18nInstance?.language)}
+            >
                 <div className="statisticDashboard">
-                    {activeScope !== 'agency' && (
-                        <StatisticFilterBar
-                            availableTargets={availableFilterTargets}
-                            locale={locale}
-                            onAddFirstSuggestion={addFirstFilterSuggestion}
-                            onAddTarget={addFilterTarget}
-                            onRemoveTarget={removeFilterTarget}
-                            onSearchChange={updateFilterSearch}
-                            searchValue={filterSearch}
-                            selectedTargets={selectedFilterTargets}
-                            suggestions={filterSuggestions}
-                            translate={translate}
-                        />
-                    )}
-
                     <div key={activeScope} className="statisticDashboard__animatedContent">
-                        {isStatisticLoading ? (
+                        {isStatisticUnavailable && (
+                            <div id={STATISTIC_STATE_ID}>
+                                <Notify
+                                    quietText={translate('notify.tile.notLoaded')}
+                                    title={translate('notify.title.statistics')}
+                                    severity="error"
+                                    causeKey="statistic:dashboard"
+                                    jump={STATISTIC_STATE_ID}
+                                    retry
+                                >
+                                    {translateDashboardKey(
+                                        translate,
+                                        'statistic.dashboard.unavailable',
+                                        'Die Statistik ist vorübergehend nicht verfügbar. Es werden keine Zahlen angezeigt. Bitte versuchen Sie es später noch einmal.',
+                                    )}
+                                </Notify>
+                            </div>
+                        )}
+                        {isStatisticLoading && (
                             <div className="statisticDashboard__loading" role="status" aria-live="polite">
                                 <Spinner />
                                 <p>
@@ -2313,356 +2402,455 @@ export const Statistic = () => {
                                     )}
                                 </p>
                             </div>
-                        ) : (
+                        )}
+                        {!isStatisticLoading && !isStatisticUnavailable && (
                             <>
                                 {hasStatisticLoadError && (
-                                    <p
-                                        className="statisticDashboard__notice statisticDashboard__notice--error"
-                                        role="alert"
-                                    >
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.loadError',
-                                            'Statistikdaten konnten nicht geladen werden.',
-                                        )}
-                                    </p>
+                                    <div id={STATISTIC_STATE_ID}>
+                                        <Notify
+                                            quietText={translate('notify.tile.notLoaded')}
+                                            title={translate('notify.title.statistics')}
+                                            severity="error"
+                                            causeKey="statistic:dashboard"
+                                            jump={STATISTIC_STATE_ID}
+                                            retry
+                                        >
+                                            {translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.loadError',
+                                                'Statistikdaten konnten nicht geladen werden.',
+                                            )}
+                                        </Notify>
+                                    </div>
                                 )}
                                 {statisticData.suppressionDisabled && (
-                                    <p
-                                        className="statisticDashboard__notice statisticDashboard__notice--warning"
-                                        role="alert"
-                                    >
+                                    <HintText className="statisticDashboard__caption">
                                         {translateDashboardKey(
                                             translate,
                                             'statistic.dashboard.suppressionDisabledNotice',
                                             'Kleinzellen-Schutz deaktiviert – nur für Testumgebungen',
                                         )}
-                                    </p>
+                                    </HintText>
                                 )}
-                                {suppressedSelectedTargetCount > 0 && (
-                                    <p className="statisticDashboard__notice statisticDashboard__notice--info">
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.suppressedNotice',
-                                            'Für Bereiche mit weniger als fünf Beratenden werden aus Datenschutzgründen keine Statistiken angezeigt.',
-                                        )}
-                                    </p>
+                                {agencyLevelHint && (
+                                    <HintText className="statisticDashboard__caption" data-testid="agency-level-hint">
+                                        {translate(`statistic.dashboard.agencyLevel.${agencyLevelHint}`)}
+                                    </HintText>
                                 )}
-                                {showEmptyHero && (
+                                <StatisticInfoRow
+                                    stand={
+                                        statisticData.generatedAt &&
+                                        !hasStatisticLoadError &&
+                                        (statisticData.snapshotInterval === 'LIVE' || statisticData.dataUntil)
+                                            ? {
+                                                  dataUntil: statisticData.dataUntil,
+                                                  snapshotInterval: statisticData.snapshotInterval,
+                                              }
+                                            : null
+                                    }
+                                    privacyReasons={[
+                                        ...(hiddenRowShown
+                                            ? [
+                                                  translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.suppressedNotice',
+                                                      'Einige Bereiche zeigen aus Datenschutzgründen keine Zahlen. Das gilt für Bereiche mit weniger aktiven Beratenden als der festgelegten Mindestzahl. Es kann auch einen größeren Bereich treffen, wenn sich seine Zahlen sonst aus der Gesamtzahl ausrechnen ließen.',
+                                                  ),
+                                              ]
+                                            : []),
+                                        ...(hiddenTotalShown
+                                            ? [
+                                                  translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.suppressedTotalNotice',
+                                                      'Die Gesamtzahl wird aus Datenschutzgründen nicht angezeigt, weil sie auf zu wenigen aktiven Beratenden beruht oder die Zahlen eines kleinen Bereichs verraten würde.',
+                                                  ),
+                                              ]
+                                            : []),
+                                    ]}
+                                />
+                                {/* a file of "Keine Daten" would look like "not tracked"; after a load error, or while the
+                                    hint stands in for the figures, there is nothing to export */}
+                                {!allTargetsSuppressed && !hasStatisticLoadError && !agencyLevelHint && (
+                                    <div className="statisticDashboard__export">
+                                        <CSVLink
+                                            className="statisticDashboard__exportLink"
+                                            data={csvExportRows}
+                                            filename={`${translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.csvExport.filename',
+                                                'Statistik',
+                                            )} - ${activeScope} - ${new Date().toISOString().slice(0, 10)}.csv`}
+                                            headers={[
+                                                {
+                                                    key: 'title',
+                                                    label: translateDashboardKey(
+                                                        translate,
+                                                        'statistic.dashboard.csvExport.metricColumn',
+                                                        'Kennzahl',
+                                                    ),
+                                                },
+                                                {
+                                                    key: 'value',
+                                                    label: translateDashboardKey(
+                                                        translate,
+                                                        'statistic.dashboard.csvExport.valueColumn',
+                                                        'Wert',
+                                                    ),
+                                                },
+                                            ]}
+                                            separator=";"
+                                        >
+                                            <DownloadIcon aria-hidden="true" focusable="false" />
+                                            {translateDashboardKey(
+                                                translate,
+                                                'statistic.dashboard.csvExport.label',
+                                                'Statistik als CSV herunterladen',
+                                            )}
+                                        </CSVLink>
+                                    </div>
+                                )}
+                                {/* All eight figures in one raster: four per row on a desktop, so the
+                                    channel tiles line up under the key figures (ORISO-Admin#1374). */}
+                                {!agencyLevelHint && (
+                                    <CardGrid
+                                        raster
+                                        fluid
+                                        minCardWidth={280}
+                                        className={`statisticDashboard__summaryGrid${
+                                            showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
+                                        }`}
+                                    >
+                                        {dashboard.topCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getPersonalizedMetricCard(
+                                                            card,
+                                                            activeScope,
+                                                            metricOverrides,
+                                                            statisticData.topicMonths,
+                                                            isFixedStand,
+                                                        ),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    menuValue={selectedCardMenuByScope[activeScope][card.key]}
+                                                    onMenuChange={updateCardMenuSelection}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                        {dashboard.communicationCards.map((card) => (
+                                            <CardGrid.Item key={card.key}>
+                                                <StatisticCard
+                                                    card={localizeStatisticCard(
+                                                        getDisplayMetricCard(card, metricOverrides),
+                                                        translate,
+                                                        locale,
+                                                    )}
+                                                    locale={locale}
+                                                    translate={translate}
+                                                />
+                                            </CardGrid.Item>
+                                        ))}
+                                    </CardGrid>
+                                )}
+
+                                {/* Nothing to chart yet (no data, or every figure protected): say what will
+                                    appear here instead of drawing empty charts (ORISO-Admin#1374). */}
+                                {showPreviewPanel && (
                                     <DashboardEmptyState
                                         className="statisticDashboard__emptyHero"
-                                        icon={<ConversationsIcon />}
-                                        title={translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.empty.heroTitle',
-                                            'Ihr Dashboard füllt sich mit der ersten Beratung',
-                                        )}
-                                        description={translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.empty.heroDescription',
-                                            'Sobald Anfragen eingehen, sehen Sie hier Gespräche, Themen und Auslastung auf einen Blick.',
-                                        )}
-                                        action={{
-                                            label: translateDashboardKey(
-                                                translate,
-                                                'statistic.dashboard.empty.heroAction',
-                                                'Beratende verwalten',
-                                            ),
-                                            onClick: () => navigate(routePathNames.consultants),
-                                        }}
+                                        illustration={statisticsPreviewIllustration}
+                                        title={
+                                            showEmptyHero
+                                                ? translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.empty.heroTitle',
+                                                      'Ihr Dashboard füllt sich mit der ersten Beratung',
+                                                  )
+                                                : translateDashboardKey(
+                                                      translate,
+                                                      'statistic.dashboard.preview.title',
+                                                      'Das sehen Sie hier, sobald genug Daten da sind',
+                                                  )
+                                        }
+                                        highlights={previewHighlights}
+                                        action={
+                                            // A Statistik-Leser·in manages no counsellors.
+                                            showEmptyHero && !isStatisticsReader
+                                                ? {
+                                                      label: translateDashboardKey(
+                                                          translate,
+                                                          'statistic.dashboard.empty.heroAction',
+                                                          'Beratende verwalten',
+                                                      ),
+                                                      onClick: () => navigate(routePathNames.consultants),
+                                                  }
+                                                : undefined
+                                        }
                                     />
                                 )}
-                                <div className="statisticDashboard__export">
-                                    <CSVLink
-                                        className="statisticDashboard__exportLink"
-                                        data={csvExportRows}
-                                        filename={`${translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.csvExport.filename',
-                                            'Statistik',
-                                        )} - ${activeScope} - ${new Date().toISOString().slice(0, 10)}.csv`}
-                                        headers={[
-                                            {
-                                                key: 'title',
-                                                label: translateDashboardKey(
-                                                    translate,
-                                                    'statistic.dashboard.csvExport.metricColumn',
-                                                    'Kennzahl',
-                                                ),
-                                            },
-                                            {
-                                                key: 'value',
-                                                label: translateDashboardKey(
-                                                    translate,
-                                                    'statistic.dashboard.csvExport.valueColumn',
-                                                    'Wert',
-                                                ),
-                                            },
-                                        ]}
-                                        separator=";"
+                                {/* hidden figures or a failed load: no chart, a chart of zeros would read as "nothing happened" */}
+                                {/* With a hint for the Beratungsstellen level there are no numbers to show: no empty cards. */}
+                                {!showPreviewPanel && !hasStatisticLoadError && !agencyLevelHint && (
+                                    <CardGrid
+                                        raster
+                                        fillers={false}
+                                        className={`statisticDashboard__chartGrid${
+                                            showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
+                                        }`}
                                     >
-                                        <DownloadIcon aria-hidden="true" focusable="false" />
-                                        {translateDashboardKey(
-                                            translate,
-                                            'statistic.dashboard.csvExport.label',
-                                            'Statistik als CSV herunterladen',
-                                        )}
-                                    </CSVLink>
-                                </div>
-                                <div
-                                    className={`statisticDashboard__summaryGrid${
-                                        showEmptyHero ? ' statisticDashboard__summaryGrid--quiet' : ''
-                                    }`}
-                                >
-                                    {dashboard.topCards.map((card) => (
-                                        <StatisticCard
-                                            key={card.key}
-                                            card={localizeStatisticCard(
-                                                getPersonalizedMetricCard(card, activeScope, metricOverrides),
-                                                translate,
-                                                locale,
-                                            )}
-                                            locale={locale}
-                                            menuValue={selectedCardMenuByScope[activeScope][card.key]}
-                                            onMenuChange={updateCardMenuSelection}
-                                            translate={translate}
-                                        />
-                                    ))}
-                                </div>
-
-                                <div
-                                    className={`statisticDashboard__communicationGrid${
-                                        showEmptyHero ? ' statisticDashboard__communicationGrid--quiet' : ''
-                                    }`}
-                                >
-                                    {dashboard.communicationCards.map((card) => (
-                                        <StatisticCard
-                                            key={card.key}
-                                            card={localizeStatisticCard(
-                                                getDisplayMetricCard(card, metricOverrides),
-                                                translate,
-                                                locale,
-                                            )}
-                                            locale={locale}
-                                            translate={translate}
-                                        />
-                                    ))}
-                                </div>
-
-                                <div
-                                    className={`statisticDashboard__chartGrid${
-                                        showEmptyHero ? ' statisticDashboard__chartGrid--quiet' : ''
-                                    }`}
-                                >
-                                    <section className="statisticDashboard__chartCard statisticDashboard__caseChartCard">
-                                        <div className="statisticDashboard__chartHeader">
-                                            <h2>{translateDashboardText(translate, 'Beratungsfälle', locale)}</h2>
-                                            <PeriodSelect<CasePeriodKey>
-                                                ariaLabel={translateDashboardKey(
-                                                    translate,
-                                                    'statistic.dashboard.chart.casePeriodAria',
-                                                    'Zeitraum für Beratungsfälle',
-                                                )}
-                                                onSelect={(periodKey) =>
-                                                    setSelectedCasePeriodByScope((currentPeriods) => ({
-                                                        ...currentPeriods,
-                                                        [activeScope]: periodKey,
-                                                    }))
-                                                }
-                                                options={localizedCasePeriodOptions}
-                                                value={selectedCasePeriod}
-                                            />
-                                        </div>
-
-                                        <div className="statisticDashboard__barChart">
-                                            <div className="statisticDashboard__axisLabels" aria-hidden="true">
-                                                {yAxisLabels.map((label) => (
-                                                    <span key={label}>{label}</span>
-                                                ))}
-                                            </div>
-                                            <div className="statisticDashboard__barStage">
-                                                {gridLinePositions.map((position) => (
-                                                    <span
-                                                        key={position}
-                                                        className="statisticDashboard__gridLine"
-                                                        style={{ top: `${position}%` }}
-                                                    />
-                                                ))}
-                                                <div className="statisticDashboard__bars">
-                                                    {caseChart.map((bar, index) => {
-                                                        const height = Math.round((bar.value / caseAxisMax) * 100);
-                                                        const isSelected = bar.day === selectedCaseBar.day;
-                                                        const barStyle = {
-                                                            '--bar-index': index,
-                                                            height: `${height}%`,
-                                                        } as CSSProperties;
-                                                        const tooltipLift = height <= 35 ? 48 : 18;
-                                                        const tooltipStyle = {
-                                                            '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
-                                                        } as CSSProperties;
-                                                        const barValue = bar.value.toLocaleString(locale);
-                                                        const dateLabel = translateDashboardDateLabel(
+                                        <CardGrid.Item span={2}>
+                                            <section
+                                                className={`${cardStyles.card} statisticDashboard__chartCard statisticDashboard__caseChartCard`}
+                                            >
+                                                <div className="statisticDashboard__chartHeader">
+                                                    <h2>
+                                                        {translateDashboardText(translate, 'Beratungsfälle', locale)}
+                                                    </h2>
+                                                    <PeriodSelect<CasePeriodKey>
+                                                        ariaLabel={translateDashboardKey(
                                                             translate,
-                                                            bar.dateLabel,
-                                                        );
-                                                        const dayLabel = translateDashboardWeekday(translate, bar.day);
+                                                            'statistic.dashboard.chart.casePeriodAria',
+                                                            'Zeitraum für Beratungsfälle',
+                                                        )}
+                                                        onSelect={(periodKey) =>
+                                                            setSelectedCasePeriodByScope((currentPeriods) => ({
+                                                                ...currentPeriods,
+                                                                [activeScope]: periodKey,
+                                                            }))
+                                                        }
+                                                        options={localizedCasePeriodOptions}
+                                                        value={selectedCasePeriod}
+                                                    />
+                                                </div>
 
-                                                        return (
-                                                            <button
-                                                                key={bar.day}
-                                                                type="button"
-                                                                className={`statisticDashboard__barSlot ${
-                                                                    isSelected
-                                                                        ? 'statisticDashboard__barSlot--selected'
-                                                                        : ''
-                                                                }`}
-                                                                aria-label={translateDashboardKey(
+                                                <div className="statisticDashboard__barChart">
+                                                    <div className="statisticDashboard__axisLabels" aria-hidden="true">
+                                                        {yAxisLabels.map((label) => (
+                                                            <span key={label}>{label}</span>
+                                                        ))}
+                                                    </div>
+                                                    <div className="statisticDashboard__barStage">
+                                                        {gridLinePositions.map((position) => (
+                                                            <span
+                                                                key={position}
+                                                                className="statisticDashboard__gridLine"
+                                                                style={{ top: `${position}%` }}
+                                                            />
+                                                        ))}
+                                                        <div
+                                                            className={`statisticDashboard__bars${
+                                                                isWeekOverview ? ' statisticDashboard__bars--weeks' : ''
+                                                            }`}
+                                                            style={{ '--bar-count': caseChart.length } as CSSProperties}
+                                                        >
+                                                            {caseChart.map((bar, index) => {
+                                                                const height = Math.round(
+                                                                    (bar.value / caseAxisMax) * 100,
+                                                                );
+                                                                const isSelected = bar.day === selectedCaseBar?.day;
+                                                                const barStyle = {
+                                                                    '--bar-index': index,
+                                                                    height: `${height}%`,
+                                                                } as CSSProperties;
+                                                                const tooltipLift = height <= 35 ? 48 : 18;
+                                                                const tooltipStyle = {
+                                                                    '--statistic-dashboard-tooltip-bottom': `calc(${height}% + ${tooltipLift}px)`,
+                                                                } as CSSProperties;
+                                                                const barValue = bar.value.toLocaleString(locale);
+                                                                const dateLabel = translateDashboardDateLabel(
                                                                     translate,
-                                                                    'statistic.dashboard.chart.caseBarAria',
-                                                                    `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
-                                                                    { date: dateLabel, value: barValue },
-                                                                )}
-                                                                aria-current={isSelected ? 'true' : undefined}
-                                                                aria-pressed={isSelected}
-                                                                data-day={bar.day}
-                                                                onClick={() => selectCaseDay(bar.day)}
-                                                                onFocus={() => selectCaseDay(bar.day)}
-                                                                onPointerDown={() => selectCaseDay(bar.day)}
-                                                            >
-                                                                {isSelected && (
-                                                                    <div
-                                                                        className="statisticDashboard__barTooltip"
-                                                                        style={tooltipStyle}
+                                                                    bar.dateLabel,
+                                                                );
+                                                                // week overview: many bars, so only the week number below each
+                                                                const dayLabel = isWeekOverview
+                                                                    ? bar.day.replace(/^KW /, '')
+                                                                    : translateDashboardWeekday(translate, bar.day);
+
+                                                                return (
+                                                                    <button
+                                                                        key={bar.day}
+                                                                        type="button"
+                                                                        className={`statisticDashboard__barSlot ${
+                                                                            isSelected
+                                                                                ? 'statisticDashboard__barSlot--selected'
+                                                                                : ''
+                                                                        }`}
+                                                                        aria-label={
+                                                                            isWeekOverview
+                                                                                ? translateDashboardKey(
+                                                                                      translate,
+                                                                                      'statistic.dashboard.chart.weekBarAria',
+                                                                                      `${bar.value} Beratungsfälle in ${bar.dateLabel}`,
+                                                                                      {
+                                                                                          date: dateLabel,
+                                                                                          value: barValue,
+                                                                                      },
+                                                                                  )
+                                                                                : translateDashboardKey(
+                                                                                      translate,
+                                                                                      'statistic.dashboard.chart.caseBarAria',
+                                                                                      `${bar.value} Beratungsfälle am ${bar.dateLabel}`,
+                                                                                      {
+                                                                                          date: dateLabel,
+                                                                                          value: barValue,
+                                                                                      },
+                                                                                  )
+                                                                        }
+                                                                        aria-current={isSelected ? 'true' : undefined}
+                                                                        aria-pressed={isSelected}
+                                                                        data-day={bar.day}
+                                                                        onClick={() => selectCaseDay(bar.day)}
+                                                                        onFocus={() => selectCaseDay(bar.day)}
+                                                                        onPointerDown={() => selectCaseDay(bar.day)}
                                                                     >
-                                                                        <strong>
-                                                                            <span />
-                                                                            {barValue}
-                                                                        </strong>
-                                                                        <small>{dateLabel}</small>
-                                                                    </div>
-                                                                )}
-                                                                <span
-                                                                    key={`${chartAnimationKey}-${bar.day}`}
-                                                                    className={`statisticDashboard__bar ${
+                                                                        {isSelected && (
+                                                                            <div
+                                                                                className="statisticDashboard__barTooltip"
+                                                                                style={tooltipStyle}
+                                                                            >
+                                                                                <strong>
+                                                                                    <span />
+                                                                                    {barValue}
+                                                                                </strong>
+                                                                                <small>{dateLabel}</small>
+                                                                            </div>
+                                                                        )}
+                                                                        <span
+                                                                            key={`${chartAnimationKey}-${bar.day}`}
+                                                                            className={`statisticDashboard__bar ${
+                                                                                isSelected
+                                                                                    ? 'statisticDashboard__bar--highlight'
+                                                                                    : ''
+                                                                            } ${
+                                                                                bar.value === 0
+                                                                                    ? 'statisticDashboard__bar--empty'
+                                                                                    : ''
+                                                                            }`}
+                                                                            style={barStyle}
+                                                                        />
+                                                                        <small className="statisticDashboard__barDayLabel">
+                                                                            {dayLabel}
+                                                                        </small>
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        </CardGrid.Item>
+
+                                        <CardGrid.Item>
+                                            <section
+                                                className={`${cardStyles.card} statisticDashboard__chartCard statisticDashboard__donutCard`}
+                                            >
+                                                <div className="statisticDashboard__chartHeader">
+                                                    <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
+                                                    <PeriodSelect<ConversationPeriodKey>
+                                                        ariaLabel={translateDashboardKey(
+                                                            translate,
+                                                            'statistic.dashboard.chart.conversationPeriodAria',
+                                                            'Zeitraum für Gesprächstyp',
+                                                        )}
+                                                        onSelect={(periodKey) =>
+                                                            setSelectedConversationPeriodByScope((currentPeriods) => ({
+                                                                ...currentPeriods,
+                                                                [activeScope]: periodKey,
+                                                            }))
+                                                        }
+                                                        options={localizedConversationPeriodOptions}
+                                                        value={selectedConversationPeriod}
+                                                    />
+                                                </div>
+
+                                                <div className="statisticDashboard__donutContent">
+                                                    <DonutChart
+                                                        animationKey={donutAnimationKey}
+                                                        data={conversationData}
+                                                        locale={locale}
+                                                        onSegmentSelect={selectConversationSegment}
+                                                        selectedSegmentLabel={selectedConversationSegmentLabel}
+                                                        translate={translate}
+                                                    />
+
+                                                    <div className="statisticDashboard__legend">
+                                                        {conversationData.segments.map((segment) => {
+                                                            const segmentPercentage = getConversationSegmentPercentage(
+                                                                segment,
+                                                                conversationData.segments,
+                                                            );
+                                                            const isSelected =
+                                                                segment.label === selectedConversationSegmentLabel;
+                                                            const segmentLabel = translateDashboardText(
+                                                                translate,
+                                                                segment.displayLabel || segment.label,
+                                                                locale,
+                                                            );
+                                                            const segmentAriaLabel = translateDashboardText(
+                                                                translate,
+                                                                segment.label,
+                                                                locale,
+                                                            );
+                                                            const segmentValue = formatDashboardNumberText(
+                                                                `${segment.value}`,
+                                                                locale,
+                                                            );
+
+                                                            return (
+                                                                <button
+                                                                    key={segment.label}
+                                                                    type="button"
+                                                                    className={`statisticDashboard__legendItem ${
                                                                         isSelected
-                                                                            ? 'statisticDashboard__bar--highlight'
-                                                                            : ''
-                                                                    } ${
-                                                                        bar.value === 0
-                                                                            ? 'statisticDashboard__bar--empty'
+                                                                            ? 'statisticDashboard__legendItem--active'
                                                                             : ''
                                                                     }`}
-                                                                    style={barStyle}
-                                                                />
-                                                                <small className="statisticDashboard__barDayLabel">
-                                                                    {dayLabel}
-                                                                </small>
-                                                            </button>
-                                                        );
-                                                    })}
+                                                                    aria-pressed={isSelected}
+                                                                    onClick={() =>
+                                                                        selectConversationSegment(segment.label)
+                                                                    }
+                                                                >
+                                                                    <span
+                                                                        className="statisticDashboard__legendDot"
+                                                                        style={{ backgroundColor: segment.color }}
+                                                                    />
+                                                                    <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
+                                                                    <span
+                                                                        className="statisticDashboard__legendMeta"
+                                                                        aria-label={translateDashboardKey(
+                                                                            translate,
+                                                                            'statistic.dashboard.chart.segmentMetaAria',
+                                                                            `${segment.value} Gespräche, ${segmentPercentage}%`,
+                                                                            {
+                                                                                percentage: segmentPercentage,
+                                                                                value: segmentValue,
+                                                                            },
+                                                                        )}
+                                                                    >
+                                                                        <strong>{segmentValue}</strong>
+                                                                        <small>{segmentPercentage}%</small>
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section className="statisticDashboard__chartCard statisticDashboard__donutCard">
-                                        <div className="statisticDashboard__chartHeader">
-                                            <h2>{translateDashboardText(translate, 'Gesprächstyp', locale)}</h2>
-                                            <PeriodSelect<ConversationPeriodKey>
-                                                ariaLabel={translateDashboardKey(
-                                                    translate,
-                                                    'statistic.dashboard.chart.conversationPeriodAria',
-                                                    'Zeitraum für Gesprächstyp',
-                                                )}
-                                                onSelect={(periodKey) =>
-                                                    setSelectedConversationPeriodByScope((currentPeriods) => ({
-                                                        ...currentPeriods,
-                                                        [activeScope]: periodKey,
-                                                    }))
-                                                }
-                                                options={localizedConversationPeriodOptions}
-                                                value={selectedConversationPeriod}
-                                            />
-                                        </div>
-
-                                        <div className="statisticDashboard__donutContent">
-                                            <DonutChart
-                                                animationKey={donutAnimationKey}
-                                                data={conversationData}
-                                                locale={locale}
-                                                onSegmentSelect={selectConversationSegment}
-                                                selectedSegmentLabel={selectedConversationSegmentLabel}
-                                                translate={translate}
-                                            />
-
-                                            <div className="statisticDashboard__legend">
-                                                {conversationData.segments.map((segment) => {
-                                                    const segmentPercentage = getConversationSegmentPercentage(
-                                                        segment,
-                                                        conversationData.segments,
-                                                    );
-                                                    const isSelected =
-                                                        segment.label === selectedConversationSegmentLabel;
-                                                    const segmentLabel = translateDashboardText(
-                                                        translate,
-                                                        segment.displayLabel || segment.label,
-                                                        locale,
-                                                    );
-                                                    const segmentAriaLabel = translateDashboardText(
-                                                        translate,
-                                                        segment.label,
-                                                        locale,
-                                                    );
-                                                    const segmentValue = formatDashboardNumberText(
-                                                        `${segment.value}`,
-                                                        locale,
-                                                    );
-
-                                                    return (
-                                                        <button
-                                                            key={segment.label}
-                                                            type="button"
-                                                            className={`statisticDashboard__legendItem ${
-                                                                isSelected
-                                                                    ? 'statisticDashboard__legendItem--active'
-                                                                    : ''
-                                                            }`}
-                                                            aria-pressed={isSelected}
-                                                            onClick={() => selectConversationSegment(segment.label)}
-                                                        >
-                                                            <span
-                                                                className="statisticDashboard__legendDot"
-                                                                style={{ backgroundColor: segment.color }}
-                                                            />
-                                                            <p aria-label={segmentAriaLabel}>{segmentLabel}</p>
-                                                            <span
-                                                                className="statisticDashboard__legendMeta"
-                                                                aria-label={translateDashboardKey(
-                                                                    translate,
-                                                                    'statistic.dashboard.chart.segmentMetaAria',
-                                                                    `${segment.value} Gespräche, ${segmentPercentage}%`,
-                                                                    {
-                                                                        percentage: segmentPercentage,
-                                                                        value: segmentValue,
-                                                                    },
-                                                                )}
-                                                            >
-                                                                <strong>{segmentValue}</strong>
-                                                                <small>{segmentPercentage}%</small>
-                                                            </span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    </section>
-                                </div>
+                                            </section>
+                                        </CardGrid.Item>
+                                    </CardGrid>
+                                )}
                             </>
                         )}
                     </div>
-                    {(isSuperAdmin || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
-                        <TutorialStatisticsSection />
-                    )}
+                    {!isStatisticUnavailable &&
+                        (hasPlatformView || hasRole([UserRole.TenantAdmin, UserRole.SingleTenantAdmin])) && (
+                            <TutorialStatisticsSection />
+                        )}
                 </div>
             </div>
         </Page>

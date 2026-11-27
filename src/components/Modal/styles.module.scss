@@ -11,7 +11,7 @@
             min-width: 280px;
             padding: 0;
             border-radius: 28px;
-            background: var(--m3-surface-container-high, #eae7e8);
+            background: var(--admin-form-card-surface, var(--m3-surface-container-high, #eae7e8));
         }
 
         .ant-modal-header {
@@ -37,9 +37,9 @@
         .ant-modal-body {
             padding: 16px 24px 0;
             color: var(--m3-on-surface-variant, #444748);
-            font-size: 14px;
+            font-size: calc(0.875rem * var(--admin-personal-text-scale, 1));
             letter-spacing: 0.25px;
-            line-height: 20px;
+            line-height: calc(1.25rem * var(--admin-personal-text-scale, 1));
         }
 
         .ant-modal-footer {
@@ -84,10 +84,10 @@
 .title {
     margin: 0;
     color: var(--m3-on-surface, #1b1b1c);
-    font-size: 24px;
+    font-size: calc(1.5rem * var(--admin-personal-text-scale, 1));
     font-weight: 400;
     letter-spacing: 0;
-    line-height: 32px;
+    line-height: calc(2rem * var(--admin-personal-text-scale, 1));
     text-align: center;
 }
 
@@ -99,9 +99,9 @@
     max-width: 52ch;
     margin: 0;
     color: var(--m3-on-surface-variant, #444748);
-    font-size: 14px;
+    font-size: calc(0.875rem * var(--admin-personal-text-scale, 1));
     font-weight: 400;
-    line-height: 20px;
+    line-height: calc(1.25rem * var(--admin-personal-text-scale, 1));
     text-align: center;
 }
 
@@ -172,7 +172,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 40px;
+    min-height: 40px;
     padding: 10px 16px;
     border: 0;
     border-radius: 100px;
@@ -180,14 +180,18 @@
     color: var(--m3-on-surface-variant, #444748);
     cursor: pointer;
     font-family: inherit;
-    font-size: 14px;
+    font-size: calc(0.875rem * var(--admin-personal-text-scale, 1));
     font-weight: 500;
     letter-spacing: 0.1px;
-    line-height: 20px;
+    line-height: calc(1.25rem * var(--admin-personal-text-scale, 1));
     transition: background-color 150ms ease;
 
     &:hover:not(:disabled) {
         background: color-mix(in srgb, currentColor 8%, transparent);
+    }
+
+    html[data-admin-personal-contrast] &:hover:not(:disabled) {
+        background: var(--admin-field-surface-hover);
     }
 
     &:focus-visible {
@@ -203,7 +207,7 @@
 
 /* Primary/confirming action — brand primary colour. */
 .actionButtonPrimary {
-    color: var(--m3-primary, #a5000a);
+    color: var(--admin-link-text, var(--m3-primary, #a5000a));
 }
 
 /* Destructive action (discard, delete) — the M3 error role, which in this
@@ -226,5 +230,25 @@
 @keyframes actionSpin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+/* Optional working-sheet layout: the footer never scrolls with a long editor. */
+.scrollableBody {
+    :global(.ant-modal-content) {
+        display: flex;
+        max-height: calc(100dvh - 32px);
+        flex-direction: column;
+    }
+
+    :global(.ant-modal-header),
+    :global(.ant-modal-footer) {
+        flex: none;
+    }
+
+    :global(.ant-modal-body) {
+        overflow: auto;
+        min-height: 0;
+        overscroll-behavior: contain;
     }
 }

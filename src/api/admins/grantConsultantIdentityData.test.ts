@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
+import { describe, it, expect, vi, beforeEach, Mock } from 'vite-plus/test';
 import { grantConsultantIdentityData } from './grantConsultantIdentityData';
 import { fetchData, FETCH_METHODS } from '../fetchData';
 

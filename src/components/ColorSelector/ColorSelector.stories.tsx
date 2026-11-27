@@ -33,3 +33,15 @@ export const Default: Story = {
 export const Loading: Story = {
     args: { isLoading: true },
 };
+
+/** Hex code with the WCAG contrast badge, as the theme colour fields show it (#1374). */
+export const WithContrast: Story = {
+    args: { showContrast: true },
+    render: (args) => <StatefulColorSelector {...args} />,
+};
+
+/** A mid-grey that reaches 4.5 : 1 with neither white nor dark text: warning badge. */
+export const WeakContrast: Story = {
+    args: { showContrast: true, tenantColor: '#808080' },
+    render: (args) => <StatefulColorSelector {...args} />,
+};

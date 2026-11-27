@@ -4,7 +4,7 @@ import { Route, Routes, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 // eslint-disable-next-line import/no-unresolved -- Storybook's subpath export
-import { expect, userEvent, waitFor, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { AgencySetupPage } from './AgencySetupPage';
 import { getSessionAccessToken, getSessionRefreshToken, setSessionTokens } from '../../api/auth/tokenSessionStore';
 import {
@@ -13,6 +13,9 @@ import {
     setTokenExpiryInLocalStorage,
 } from '../../api/auth/accessSessionLocalStorage';
 import i18n from '../../i18n';
+import { findPopup } from '../../test/storyPopups';
+
+const UNAVAILABLE = /Diese Beratungsstelle ist derzeit nicht für Sie verfügbar/;
 
 /** Real authenticated route + real shared form/update mutation. Only HTTP is mocked.
  * Fixtures are not deployed registration/Keycloak acceptance or real permissions. */
@@ -146,7 +149,8 @@ export const SaveFailure: Story = {
         const phone = await canvas.findByLabelText('Telefon');
         await userEvent.type(phone, '03012345');
         await userEvent.click(canvas.getByRole('button', { name: 'Speichern und Einrichtung abschließen' }));
-        await waitFor(() => expect(canvas.getByRole('alert')).toHaveTextContent('Ihre Eingaben bleiben erhalten'));
+        const popup = await findPopup(canvasElement, 'Ihre Eingaben bleiben erhalten', 'error');
+        await expect(popup).toHaveTextContent('Beratungsstelle');
         await expect(phone).toHaveValue('03012345');
     },
 };
@@ -154,7 +158,7 @@ export const UnassignedCentre: Story = {
     args: { id: '6' },
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await canvas.findByRole('alert');
+        await canvas.findByText(UNAVAILABLE);
         await expect(requests.reads).toBe(0);
         await expect(canvas.queryByDisplayValue('Beratung Mitte')).not.toBeInTheDocument();
     },
@@ -162,7 +166,7 @@ export const UnassignedCentre: Story = {
 export const RevokedCentre: Story = {
     parameters: { msw: { handlers: handlers(false, true) } },
     play: async ({ canvasElement }) => {
-        await within(canvasElement).findByRole('alert');
+        await within(canvasElement).findByText(UNAVAILABLE);
     },
 };
 
@@ -172,11 +176,7 @@ export const DeniedThenRestored: Story = {
         const canvas = within(canvasElement);
         await userEvent.type(await canvas.findByLabelText('Telefon'), '03012345');
         await userEvent.click(canvas.getByRole('button', { name: 'Speichern und Einrichtung abschließen' }));
-        await waitFor(() =>
-            expect(canvas.getByRole('alert')).toHaveTextContent(
-                'Diese Beratungsstelle ist derzeit nicht für Sie verfügbar',
-            ),
-        );
+        await canvas.findByText(UNAVAILABLE);
         await expect(canvas.queryByLabelText('Telefon')).not.toBeInTheDocument();
         await userEvent.click(canvas.getByRole('button', { name: 'Erneut versuchen' }));
         await expect(await canvas.findByLabelText('Telefon')).toHaveValue('03012345');

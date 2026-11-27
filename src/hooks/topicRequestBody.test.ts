@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { buildTopicRequestBody } from './topicRequestBody';
 
 const stored = { id: 4, name: { de: 'Sucht' }, description: { de: 'alt' }, status: 'ACTIVE' };

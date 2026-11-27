@@ -49,6 +49,34 @@
     list-style: none;
 }
 
+// Persistent cue for overlay-scrollbar platforms: more choices are below.
+.scrollHintAnchor {
+    position: sticky;
+    z-index: 1;
+    bottom: 0;
+    width: 0;
+    height: 0;
+    align-self: flex-end;
+    pointer-events: none;
+}
+
+.scrollHint {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--m3-primary-container, #ffe2de);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+    color: var(--admin-accent-on-container, #a5000a);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+}
+
 .item {
     display: flex;
     height: 56px;
@@ -91,6 +119,35 @@
     &:focus-visible {
         box-shadow: 0 0 0 3px var(--admin-nav-indicator-surface, #410001);
     }
+}
+
+// Pill with a supporting sentence: grows to two or three lines instead of one.
+.itemWithDescription {
+    height: auto;
+    // Fixed width: the absolute stack would otherwise shrink-wrap the pill to a word column.
+    width: min(320px, calc(100vw - 12px));
+    min-height: 56px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    // No shape token exists in this repo; 20px keeps a multi-line pill visibly a pill.
+    border-radius: 20px;
+    text-align: left;
+    white-space: normal;
+}
+
+.itemText {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+// Type comes from the global M3 scale class `m3-body-medium` (app.css); nothing to set here.
+.itemDescription {
+    display: block;
+    min-width: 0;
+    // Long tokens (URLs, compound words) must break inside a narrow pill.
+    overflow-wrap: anywhere;
 }
 
 .itemActive {
@@ -162,12 +219,12 @@
     // names. Keep the Figma roles local to this component so the policy menu
     // can match M3 without changing unrelated sidebar and field surfaces.
     //
-    // Only `--m3-*` tokens: applyAdminTheme.ts writes nothing else to the root,
-    // so the previous app-layer binding silently fell back to a fixed red on every
-    // Träger theme (#992). `--m3-primary` is the seeded brand colour the action
-    // FAB and the read-only value button already use; `--m3-primary-container`
-    // is the rose that reads on it (see src/app.css for the inverted naming).
-    --m3-fab-menu-primary-container: var(--m3-primary, #a5000a);
+    // Only tokens applyAdminTheme.ts writes to the root (`--m3-*`, `--admin-*`);
+    // an app-layer binding once silently fell back to a fixed red on every
+    // Träger theme (#992). The fill is the seeded brand colour, guarded so the
+    // rose `--m3-primary-container` on top of it stays readable for light
+    // Träger colours (#1322; see src/app.css for the inverted naming).
+    --m3-fab-menu-primary-container: var(--admin-accent-on-container, var(--m3-primary, #a5000a));
     --m3-fab-menu-on-primary-container: var(--m3-primary-container, #ffe2de);
     --m3-fab-menu-secondary: var(--m3-secondary, #4c555f);
     --m3-fab-menu-on-secondary-container: var(--m3-on-secondary-container, #e7effc);
@@ -178,12 +235,42 @@
         right: 0;
         left: auto;
         z-index: 20;
+        // Keep the available width for wrapped labels instead of shrinking
+        // to their smallest possible character column.
+        width: max-content;
         align-items: flex-end;
+        // A long action list remains recognisably scrollable when capped.
+        scrollbar-width: auto;
+
+        &::-webkit-scrollbar {
+            display: block;
+            width: 8px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            border-radius: 8px;
+            background: var(--m3-outline, #747778);
+        }
+    }
+
+    .stack > li:not(.scrollHintAnchor),
+    .item {
+        max-width: 100%;
     }
 
     .item {
+        height: auto;
+        min-height: 56px;
+        padding-right: 16px;
+        padding-left: 16px;
         background: var(--m3-fab-menu-primary-container);
         color: var(--m3-fab-menu-on-primary-container);
+        white-space: normal;
+    }
+
+    .itemLabel {
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 
     .item:focus-visible {
@@ -239,8 +326,7 @@
 
 @media screen and (max-width: 767px) {
     .action {
-        .stack,
-        .item {
+        .stack {
             max-width: calc(100vw - 12px);
         }
 

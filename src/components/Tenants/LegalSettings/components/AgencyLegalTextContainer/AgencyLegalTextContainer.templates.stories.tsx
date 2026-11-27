@@ -116,7 +116,8 @@ const LegalDelegation = ({ allowed = false, children }: { allowed?: boolean; chi
 };
 
 const meta = {
-    title: 'Organisms/Legal/AgencyLegalText/Received template (Beratungsstelle)',
+    title: 'Settings/Beratungsstellen/Rechtliches/AgencyLegalText/Received template (Beratungsstelle)',
+    id: 'organisms-legal-agencylegaltext-received-template-beratungsstelle',
     component: AgencyLegalTextWithTemplates,
     parameters: { layout: 'fullscreen', msw: { handlers } },
     decorators: [
@@ -142,7 +143,9 @@ export const AgencyWithNewTemplate: Story = {
     beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const region = await canvas.findByRole(
             'complementary',
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
@@ -160,7 +163,9 @@ export const AgencyAdoptsTemplate: Story = {
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
         const page = within(canvasElement.ownerDocument.body);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const adopt = await canvas.findByRole('button', { name: 'Vorlage übernehmen' }, LOAD);
         await waitFor(() => expect(adopt).toBeEnabled(), LOAD);
         await userEvent.click(adopt);
@@ -181,7 +186,9 @@ export const AgencyReadOnlyUnderPlatformLock: Story = {
     ],
     play: async ({ canvasElement }) => {
         const canvas = within(canvasElement);
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const region = await canvas.findByRole(
             'complementary',
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
@@ -229,13 +236,18 @@ export const AgencyMobile390: Story = {
         const originalWidth = storyCanvas.style.width;
         // Phone width includes the story's 16px gutters on either side.
         storyCanvas.style.width = '358px';
-        await userEvent.click(await canvas.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await userEvent.click(
+            await within(canvasElement.ownerDocument.body).findByRole('button', { name: 'Vorschau anzeigen' }, LOAD),
+        );
         const reference = await canvas.findByRole(
             'complementary',
             { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
             LOAD,
         );
-        await expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible();
+        // The document tile unfolds with an animation; wait until it is open.
+        await waitFor(() =>
+            expect(within(reference).getByRole('button', { name: 'Vorlage übernehmen' })).toBeVisible(),
+        );
         await Promise.all(
             within(reference)
                 .getAllByRole('button')
@@ -250,5 +262,37 @@ export const AgencyMobile390: Story = {
         await userEvent.click(within(reference).getByRole('button', { name: 'Vergleichsansicht schließen' }));
         await expect(canvas.queryByRole('complementary')).not.toBeInTheDocument();
         storyCanvas.style.width = originalWidth;
+    },
+};
+
+/** A newly received template remains discoverable while the shared legal tile is closed. */
+export const ClosedTileNewTemplate: Story = {
+    args: { collapsible: true },
+    beforeEach: () => setStoryAuth([UserRole.AgencyAdmin], TENANT_ID),
+    play: async ({ canvasElement }) => {
+        const canvas = within(canvasElement);
+        const page = within(canvasElement.ownerDocument.body);
+        const tileButton = await canvas.findByRole(
+            'button',
+            { name: /Datenschutzerklärung der Beratungsstelle/, expanded: false },
+            LOAD,
+        );
+        await expect(canvas.queryByTestId('m3-editor')).not.toBeInTheDocument();
+        await userEvent.click(await page.findByRole('button', { name: 'Vorschau anzeigen' }, LOAD));
+        await expect(tileButton).toHaveAttribute('aria-expanded', 'true');
+        const reference = await canvas.findByRole(
+            'complementary',
+            { name: /Vorlage Ihres Trägers · Datenschutzerklärung/ },
+            LOAD,
+        );
+        await waitFor(() => expect(reference).toBeVisible(), LOAD);
+        const editor = await canvas.findByTestId('m3-editor', {}, LOAD);
+        const owner = editor.parentElement!;
+        await waitFor(() => expect(owner.contains(canvasElement.ownerDocument.activeElement)).toBe(true), LOAD);
+        await userEvent.click(tileButton);
+        await expect(tileButton).toHaveAttribute('aria-expanded', 'false');
+        await userEvent.click(tileButton);
+        await waitFor(() => expect(reference).toBeVisible(), LOAD);
+        await expect(page.queryByRole('button', { name: 'Vorschau anzeigen' })).not.toBeInTheDocument();
     },
 };

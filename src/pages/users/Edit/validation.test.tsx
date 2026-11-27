@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { UserEditOrAdd } from './index';
 
 const mocks = vi.hoisted(() => ({
@@ -90,6 +90,9 @@ vi.mock('../../../hooks/useTenantTopics', () => ({
 vi.mock('../../../hooks/useCounselorById', () => ({
     useCounselorById: () => ({ data: undefined, isLoading: false }),
 }));
+vi.mock('../../../hooks/useContactPerson', () => ({
+    useAgencyContactPairs: () => ({ pairs: {}, failedIds: [], retryFailed: () => undefined, isLoading: false }),
+}));
 vi.mock('../../../hooks/useUserPermission', () => ({ useUserPermissions: () => ({ can: () => false }) }));
 // `hasRole` as well as `isSuperAdmin`: the form gates its admin-remarks field on
 // `hasRole([TenantAdmin, SingleTenantAdmin])`. False keeps this test on the same
@@ -118,7 +121,6 @@ describe('consultant form validation (#717)', () => {
         await user.type(screen.getByLabelText('Last name'), 'Simpson');
         await user.type(screen.getByLabelText('Email'), 'lisa@example.org');
         await user.type(screen.getByLabelText('Username'), 'lisa.simpson');
-        await user.type(screen.getByLabelText('Password'), 'Strong!Pass1');
         fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
         expect(await screen.findByText('Username contains invalid characters')).toBeVisible();

@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { UserRole } from '../enums/UserRole';
 import { UserPermissions } from '../types/UserPermission';
 import {
@@ -263,5 +263,62 @@ describe('useUserRolesToPermission — TenantAdminUser', () => {
         const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true, false);
 
         expect(permissions.Tenant).toEqual({ read: true, update: true, create: true, delete: true });
+    });
+});
+
+// ORISO-UserService#1666: the Statistik-Leser·in reads statistics and nothing else.
+describe('useUserRolesToPermission — statistics reader', () => {
+    const resolvePermissions = (
+        roles: UserRole[],
+        isSuperAdmin: boolean,
+        isTenantScopedAdmin: boolean,
+    ): UserPermissions => {
+        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin });
+
+        return renderHook(() => useUserRolesToPermission()).result.current;
+    };
+
+    it('grants a pure reader exactly Statistic.read', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader], false, false)).toEqual({ Statistic: { read: true } });
+    });
+
+    it('ignores non-admin roles next to the reader role', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader, UserRole.Consultant], false, false)).toEqual({
+            Statistic: { read: true },
+        });
+    });
+
+    it('lets only a platform admin manage Statistik-Leser accounts', () => {
+        const platform = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true, false);
+        const traeger = resolvePermissions([UserRole.TenantAdmin], false, true);
+        const agency = resolvePermissions([UserRole.AgencyAdmin, UserRole.UserAdmin], false, false);
+
+        expect(platform.StatisticsReaderUser).toEqual({ read: true, create: true, update: true, delete: true });
+        expect(traeger.StatisticsReaderUser).toEqual({ read: false, create: false, update: false, delete: false });
+        expect(agency.StatisticsReaderUser).toBeUndefined();
+    });
+
+    it('never lets a reader manage other readers', () => {
+        expect(resolvePermissions([UserRole.StatisticsReader], false, false).StatisticsReaderUser).toBeUndefined();
+    });
+});
+
+describe('useUserRolesToPermission — Topic', () => {
+    const resolvePermissions = (roles: UserRole[], isSuperAdmin: boolean): UserPermissions => {
+        hookMocks.useUserRoles.mockReturnValue({ roles, isSuperAdmin, isTenantScopedAdmin: !isSuperAdmin });
+
+        return renderHook(() => useUserRolesToPermission()).result.current;
+    };
+
+    it('lets the platform admin manage the topic catalogue without the topic-admin role', () => {
+        const permissions = resolvePermissions([UserRole.TenantAdmin, UserRole.AgencyAdmin], true);
+
+        expect(permissions.Topic).toEqual({ read: true, create: true, update: true, delete: true });
+    });
+
+    it('keeps the topic catalogue closed to a Träger admin', () => {
+        const permissions = resolvePermissions([UserRole.TenantAdmin], false);
+
+        expect(permissions.Topic?.update ?? false).toBe(false);
     });
 });

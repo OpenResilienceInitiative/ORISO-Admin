@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import { M3RichTextEditor } from './M3RichTextEditor';
 
@@ -58,7 +58,7 @@ describe('M3RichTextEditor consentSlot', () => {
         const language = screen.getByTestId('slot-language');
         const consent = screen.getByTestId('slot-consent');
         const topic = screen.getByTestId('slot-topic');
-        const version = screen.getByRole('button', { name: 'legal.m3Editor.versionHistory' });
+        const version = screen.getByRole('button', { name: /legal\.m3Editor\.versionHistory/ });
 
         // All four live in the same bar …
         expect(bar).toContainElement(language);

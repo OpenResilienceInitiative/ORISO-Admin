@@ -1,29 +1,18 @@
-ARG DOCKER_MATRIX=ghcr.io
-FROM $DOCKER_MATRIX/onlineberatung/onlineberatung-nginx/onlineberatung-nginx:dockerimage.v.005-main
+# Registry mirrors can override the full digest-pinned Alpine image reference.
+ARG ADMIN_RUNTIME_IMAGE=docker.io/library/nginx:1.30.7-alpine3.24@sha256:bef154735288bc38d99fac41ae63730684bcc661503673a04a0f9bc526ba8598
+FROM ${ADMIN_RUNTIME_IMAGE}
 
-# The nginx base image does not include Node.js; auth BFF sidecar requires it.
-RUN set -eux; \
-    if [ -f /etc/alpine-release ]; then \
-        apk upgrade --no-cache; \
-        apk add --no-cache nodejs; \
-    elif command -v apt-get >/dev/null 2>&1; then \
-        apt-get update; \
-        apt-get install -y --no-install-recommends ca-certificates curl gnupg; \
-        mkdir -p /etc/apt/keyrings; \
-        curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg; \
-        echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_18.x nodistro main" > /etc/apt/sources.list.d/nodesource.list; \
-        apt-get update; \
-        apt-get install -y --no-install-recommends nodejs; \
-        rm -rf /var/lib/apt/lists/*; \
-    else \
-        echo "Unsupported base image for Node.js installation" >&2; \
-        exit 1; \
-    fi; \
-    node --version
+# nginx proxies Admin authentication to the Node.js BFF.
+# libxml2 2.13.9-r3 fixes CVE-2026-86144. Naming it here also misses a cached
+# upgrade layer that still contains 2.13.9-r2.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache nodejs 'libxml2>=2.13.9-r3' \
+    && node --version
 
 COPY build /usr/share/nginx/html/admin
-COPY scripts /usr/share/nginx/html/admin-auth-bff
+COPY scripts/auth-bff-server.mjs scripts/auth-bff-handlers.mjs /opt/oriso/admin-auth-bff/
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-headers.conf /etc/nginx/admin-response-headers.conf
 COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 ENTRYPOINT ["/docker-entrypoint.sh"]

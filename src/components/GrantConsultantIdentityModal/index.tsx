@@ -1,8 +1,9 @@
-import { Button, Form, message } from 'antd';
+import { Button, Form } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LabeledValue } from 'antd/lib/select';
 import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import { useAdminFeedback } from '../../hooks/useAdminFeedback';
 import { MuiSelectField } from '../mui/MuiSelectField';
 import { Modal, DialogButton } from '../Modal';
 import { useAgenciesData } from '../../hooks/useAgencysData';
@@ -11,6 +12,7 @@ import { grantConsultantIdentityData } from '../../api/admins/grantConsultantIde
 import { isActiveDeleteDate } from '../../utils/deleteDate';
 import { topicOptionsForAgencies } from './topicOptionsForAgencies';
 import styles from './styles.module.scss';
+import { HintText } from '../HintText';
 
 interface GrantConsultantIdentityModalProps {
     adminId: string;
@@ -36,6 +38,7 @@ export const GrantConsultantIdentityModal = ({
     buttonLabelKey = 'grantConsultantIdentity.button',
     successMessageKey = 'message.grantConsultantIdentity.success',
 }: GrantConsultantIdentityModalProps) => {
+    const { message } = useAdminFeedback();
     const { t } = useTranslation();
     const [form] = Form.useForm<GrantConsultantIdentityFormValues>();
     const [open, setOpen] = useState(false);
@@ -107,7 +110,7 @@ export const GrantConsultantIdentityModal = ({
             if (error && typeof error === 'object' && 'errorFields' in error) {
                 return;
             }
-            message.error({ content: t('message.grantConsultantIdentity.error'), duration: 8 });
+            message.error({ content: t('message.grantConsultantIdentity.error') });
         } finally {
             setIsSubmitting(false);
         }
@@ -118,54 +121,54 @@ export const GrantConsultantIdentityModal = ({
             <Button type="default" disabled={disabled} onClick={() => setOpen(true)}>
                 {t(buttonLabelKey)}
             </Button>
-            {open && (
-                <Modal
-                    titleKey="grantConsultantIdentity.modal.title"
-                    icon={<AssignmentIndOutlinedIcon />}
-                    footer={
-                        <div className={styles.footerActions}>
-                            <DialogButton onClick={closeModal} disabled={isSubmitting}>
-                                {t('btn.cancel')}
-                            </DialogButton>
-                            <DialogButton primary loading={isSubmitting} disabled={hasNoTopics} onClick={onConfirm}>
-                                {t('grantConsultantIdentity.modal.confirm')}
-                            </DialogButton>
-                        </div>
-                    }
-                    onClose={closeModal}
-                >
-                    <Form form={form} layout="vertical" className={styles.fields}>
+            <Modal
+                open={open}
+                titleKey="grantConsultantIdentity.modal.title"
+                icon={<AssignmentIndOutlinedIcon />}
+                footer={
+                    <div className={styles.footerActions}>
+                        <DialogButton onClick={closeModal} disabled={isSubmitting}>
+                            {t('btn.cancel')}
+                        </DialogButton>
+                        <DialogButton primary loading={isSubmitting} disabled={hasNoTopics} onClick={onConfirm}>
+                            {t('grantConsultantIdentity.modal.confirm')}
+                        </DialogButton>
+                    </div>
+                }
+                onClose={closeModal}
+            >
+                <Form form={form} layout="vertical" className={styles.fields}>
+                    <MuiSelectField
+                        name="agencies"
+                        label="grantConsultantIdentity.modal.agencyLabel"
+                        labelInValue
+                        isMulti
+                        required
+                        loading={isLoading}
+                        placeholder="plsSelect"
+                        options={convertToOptions(availableAgencies, ['postcode', 'name', 'city'], 'id')}
+                    />
+                    {hasAgencies && !hasNoTopics && (
                         <MuiSelectField
-                            name="agencies"
-                            label="grantConsultantIdentity.modal.agencyLabel"
+                            name="topicIds"
+                            label="grantConsultantIdentity.modal.topicLabel"
+                            help={hasSingleTopic ? 'grantConsultantIdentity.modal.singleTopicHint' : undefined}
                             labelInValue
                             isMulti
                             required
-                            loading={isLoading}
+                            disabled={hasSingleTopic}
                             placeholder="plsSelect"
-                            options={convertToOptions(availableAgencies, ['postcode', 'name', 'city'], 'id')}
+                            options={topicOptions}
                         />
-                        {hasAgencies && !hasNoTopics && (
-                            <MuiSelectField
-                                name="topicIds"
-                                label="grantConsultantIdentity.modal.topicLabel"
-                                help={hasSingleTopic ? 'grantConsultantIdentity.modal.singleTopicHint' : undefined}
-                                labelInValue
-                                isMulti
-                                required
-                                disabled={hasSingleTopic}
-                                placeholder="plsSelect"
-                                options={topicOptions}
-                            />
-                        )}
-                        {hasNoTopics && (
-                            <p role="alert" className={styles.noTopics}>
-                                {t('grantConsultantIdentity.modal.noTopics')}
-                            </p>
-                        )}
-                    </Form>
-                </Modal>
-            )}
+                    )}
+                    {hasNoTopics && (
+                        // Appears after an agency is chosen and disables the confirm button: announce it.
+                        <HintText tone="error" role="alert">
+                            {t('grantConsultantIdentity.modal.noTopics')}
+                        </HintText>
+                    )}
+                </Form>
+            </Modal>
         </>
     );
 };

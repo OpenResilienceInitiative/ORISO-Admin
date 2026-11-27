@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import translationDe from './de/translation.json';
 import translationEn from './en/translation.json';
 import enManual from '../../scripts/en-translations-manual.json';
@@ -78,8 +78,8 @@ describe('secure-toggle description explains that OFF is mandatory STARTTLS, not
             expect(file[key]).toContain('587');
         });
         // The old copy implied OFF = unencrypted; the new copy must rule that out.
-        expect(de[key]).toContain('unverschlüsselter Versand');
-        expect(en[key]).toContain('Unencrypted sending');
+        expect(de[key]).toContain('Unverschlüsselt wird nie versendet');
+        expect(en[key]).toContain('never sent unencrypted');
     });
 });
 
