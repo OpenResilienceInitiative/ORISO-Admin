@@ -185,16 +185,14 @@ export const COUNSELLING_TYPES: CounsellingType[] = [
         icon: 'chat',
         title: '1:1-Chat',
         description:
-            'Synchrone und asynchrone Beratung für registrierte Ratsuchende. Zugriff weiterer ' +
-            'Beratender ausschließlich über das protokollierte Übergabeverfahren.',
+            'Synchrone und asynchrone Beratung für registrierte Ratsuchende. Zugriff weiterer Beratender ausschließlich über das protokollierte Übergabeverfahren (Abschnitt 5.7).',
     },
     {
         id: 'live-chat',
         icon: 'live-chats',
         title: 'Live-Einzelchat (anonym)',
         description:
-            'Ohne Registrierung nutzbar; systemgenerierter, pseudonymer Benutzername. Anonyme ' +
-            'Konten werden nach kurzer Frist automatisiert deaktiviert und gelöscht.',
+            'Ohne Registrierung nutzbar; systemgenerierter, pseudonymer Benutzername; auch hier Ende-zu-Ende-verschlüsselt. Anonyme Konten werden nach kurzer Frist automatisiert deaktiviert und gelöscht.',
     },
     {
         id: 'group-chat',
@@ -207,23 +205,22 @@ export const COUNSELLING_TYPES: CounsellingType[] = [
         icon: 'video-call',
         title: 'Video-Beratung',
         description:
-            'Browserbasiert (Element Call auf LiveKit-Infrastruktur) mit Medien-Ende-zu-Ende-' +
-            'Verschlüsselung; es ist keine Aufzeichnung konfiguriert.',
+            'Browserbasiert (Element Call auf LiveKit-Infrastruktur) mit Medien-Ende-zu-Ende-Verschlüsselung; es ist keine Aufzeichnung konfiguriert.',
     },
     {
         id: 'voice-message',
         icon: 'microphone',
         title: 'Sprachnachrichten',
-        description: 'Kurze Audionachrichten in allen Chat-Formen, je Träger und Chat-Typ abschaltbar.',
+        description:
+            'Kurze Audionachrichten in allen Chat-Formen, je Träger und Chat-Typ abschaltbar; Details und Schutzmaßnahmen in Abschnitt 5.5.',
     },
     {
         id: 'appointments',
         icon: 'calendar-check',
         title: 'Terminverwaltung',
-        planned: true,
         description:
-            'Nicht Bestandteil des aktuellen Leistungsumfangs. Geplant nach ADR-020; ausgeliefert ' +
-            'ist davon bisher nichts.',
+            'Nicht Bestandteil des aktuellen Leistungsumfangs. Geplant sind terminierte Kontakte, Einladungen und ein gemeinsamer Kontaktkalender nach ADR-020 (Status „Accepted“, 12.08.2026); ausgeliefert ist davon bisher nichts.',
+        planned: true,
     },
 ];
 
@@ -236,26 +233,10 @@ export const TECHNICAL_MEASURES: { icon: DpiaIconName; label: string }[] = [
 ];
 
 export interface KeyFigure {
+    asOfDate?: string;
     value: string;
     label: string;
 }
-
-/**
- * Sample figures for Storybook/preview only — NOT real release statistics.
- * `DpiaDocumentPage` renders these as its default `keyFigures` and marks them
- * as sample data in the UI (badge + footnote) whenever they are in use.
- *
- * The real, versioned numbers are meant to be injected via the `keyFigures`
- * prop from the DPIA operator master data (ORISO-Admin #735) once that feed
- * exists; wiring that data source is out of scope here — this only prepares
- * the seam so the caller can pass real figures in later.
- */
-export const SAMPLE_KEY_FIGURES: KeyFigure[] = [
-    { value: '12', label: 'Träger' },
-    { value: '148', label: 'Beratungsstellen' },
-    { value: '412', label: 'aktive Beratende' },
-    { value: '9.640', label: 'registrierte Ratsuchende' },
-];
 
 /** Chapter list of the full document; the page renders the overview subset. */
 export const CHAPTERS = [
