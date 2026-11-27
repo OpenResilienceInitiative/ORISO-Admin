@@ -50,6 +50,13 @@ export type CounsellorOnboardingState =
 /** Which submit failed retryably; link-death is modelled in the state instead. */
 export type CounsellorOnboardingSubmitError = 'registration' | 'topic-policy' | 'two-factor-code' | 'two-factor' | null;
 
+/**
+ * Issue #1049: the photo is stored AFTER the account exists, so a refused photo must never take
+ * the created account down with it. A failure is reported next to the following step instead, and
+ * the counsellor can add the photo later from their profile.
+ */
+export type CounsellorOnboardingPictureError = 'upload' | 'scanUnavailable' | 'visibility' | 'skipped' | null;
+
 /** Everything the wizard collects across its form steps. */
 export interface CounsellorWizardData {
     account: { username: string; password: string };
@@ -57,6 +64,8 @@ export interface CounsellorWizardData {
     names: { publicName: string; internalName: string };
     /** #1046/#1047: the avatar step is on. Empty = no choice made yet. */
     avatar: CounsellorAvatarValue;
+    /** Issue #1049: the counsellor's own photo, internal unless they publish it. */
+    picture: { file: File | null; publicToAdviceSeekers: boolean };
     topicIds: number[];
     /** Only collected when the invite creates a new agency (`invite.agencyExists === false`). */
     agency: { name: string };
@@ -69,6 +78,7 @@ const EMPTY_DATA: CounsellorWizardData = {
     person: { salutation: undefined, position: '', title: '' },
     names: { publicName: '', internalName: '' },
     avatar: {},
+    picture: { file: null, publicToAdviceSeekers: false },
     topicIds: [],
     agency: { name: '' },
     alsoCounsellor: true,
@@ -137,6 +147,7 @@ export const useCounsellorOnboardingFlow = (
     const [submitError, setSubmitError] = useState<CounsellorOnboardingSubmitError>(null);
     // The server refused the chosen password (existing-account setup); the link stays usable.
     const [passwordRejection, setPasswordRejection] = useState<AccountSetupPasswordRejection | null>(null);
+    const [pictureError, setPictureError] = useState<CounsellorOnboardingPictureError>(null);
     const [busy, setBusy] = useState(false);
     // Bumping re-runs the resolve effect — the retry for transient load failures.
     const [loadAttempt, setLoadAttempt] = useState(0);
@@ -317,6 +328,10 @@ export const useCounsellorOnboardingFlow = (
         setData((current) => ({ ...current, names: { ...current.names, ...patch } }));
     }, []);
 
+    const updatePicture = useCallback((patch: Partial<CounsellorWizardData['picture']>) => {
+        setData((current) => ({ ...current, picture: { ...current.picture, ...patch } }));
+    }, []);
+
     const updateAvatar = useCallback((avatar: CounsellorAvatarValue) => {
         setData((current) => ({ ...current, avatar }));
     }, []);
@@ -351,6 +366,33 @@ export const useCounsellorOnboardingFlow = (
         setSubmitError(retryable);
     };
 
+    const storePicture = useCallback(
+        async (picture: CounsellorWizardData['picture']) => {
+            if (!picture.file) return;
+            try {
+                await client.uploadOnboardingPicture(inviteToken, picture.file);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                // The virus scanner is down (503): say so, so nobody retries a "broken" photo.
+                setPictureError(
+                    error instanceof Error && error.message === 'PICTURE_SCAN_UNAVAILABLE'
+                        ? 'scanUnavailable'
+                        : 'upload',
+                );
+                return;
+            }
+            if (!picture.publicToAdviceSeekers) return;
+            try {
+                await client.setOnboardingPictureVisibility(inviteToken, false);
+            } catch (error) {
+                if (error instanceof InviteLinkError) throw error;
+                // The photo is stored and safely internal; only publishing it did not take.
+                setPictureError('visibility');
+            }
+        },
+        [client, inviteToken],
+    );
+
     const submitRegistration = useCallback(async () => {
         if (
             stateRef.current.phase !== 'form' ||
@@ -362,6 +404,7 @@ export const useCounsellorOnboardingFlow = (
         busyRef.current = true;
         setBusy(true);
         setSubmitError(null);
+        setPictureError(null);
         try {
             const { account, person, names, avatar, topicIds, agency, alsoCounsellor } = dataRef.current;
             const agencyAdmin = isAgencyAdminInvite(inviteRef.current);
@@ -398,15 +441,22 @@ export const useCounsellorOnboardingFlow = (
                 ...(createsAgency ? { agency: { name: agency.name.trim() } } : {}),
             };
             const result = await client.registerCounsellor(inviteToken, request);
-            if (result.phase === 'COMPLETED') {
-                // 2FA gate waived by the inviting admin — nothing left to set up.
-                setState({ phase: 'done' });
+            // Picture routes use the raw invite token. A COMPLETED registration has already
+            // consumed that token, so uploading here would replace success with CONSUMED.
+            // Only a profile owner has a photo: an agency admin without a counselling profile
+            // never sees the picture section, so a leftover file is never sent.
+            const picture = withProfile ? dataRef.current.picture : { file: null, publicToAdviceSeekers: false };
+            if (result.phase === 'PENDING_2FA_ACTIVATION') {
+                await storePicture(picture);
+                setState({
+                    phase: 'two-factor',
+                    result: { twoFactor: result.twoFactor, resumed: false },
+                });
                 return;
             }
-            setState({
-                phase: 'two-factor',
-                result: { twoFactor: result.twoFactor, resumed: false },
-            });
+            // The invite is already consumed: the photo cannot be stored through it any more.
+            if (picture.file) setPictureError('skipped');
+            setState({ phase: 'done' });
         } catch (error) {
             if (error instanceof Error && error.message === 'ONE_TOPIC_PER_AGENCY') {
                 setInvite((current) => (current ? { ...current, oneTopicPerAgencyEnabled: true } : current));
@@ -418,7 +468,7 @@ export const useCounsellorOnboardingFlow = (
             busyRef.current = false;
             setBusy(false);
         }
-    }, [client, inviteToken]);
+    }, [client, inviteToken, storePicture]);
 
     const submitAccountSetup = useCallback(
         async (password: string) => {
@@ -527,6 +577,7 @@ export const useCounsellorOnboardingFlow = (
         data,
         submitError,
         passwordRejection,
+        pictureError,
         busy,
         retryLoad,
         topicLanguageError,
@@ -534,6 +585,7 @@ export const useCounsellorOnboardingFlow = (
         updateAccount,
         updatePerson,
         updateNames,
+        updatePicture,
         updateAvatar,
         updateAgency,
         setTopics,

@@ -662,3 +662,31 @@ describe('fetchData – a 400 carries its reason only when the caller opts in', 
         expect(error.headers.get(FETCH_ERRORS.X_REASON)).toBe('SUBDOMAIN_INVALID');
     });
 });
+
+describe('fetchData – binary responses', () => {
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    it('returns the body as a Blob only when the caller opts in, and JSON otherwise', async () => {
+        getAccessTokenForRequests.mockReturnValue('access-token');
+        const bytes = new Blob(['png-bytes'], { type: 'image/png' });
+        const json = vi.fn(async () => ({ never: 'parsed' }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({ status: 200, headers: { get: () => null }, json, blob: async () => bytes }),
+        );
+
+        const picture = await fetchData({
+            url: 'https://api.test/service/useradmin/consultants/c-1/picture',
+            method: FETCH_METHODS.GET,
+            responseType: 'blob',
+        });
+
+        expect(picture).toBe(bytes);
+        expect(json).not.toHaveBeenCalled();
+
+        await fetchData({ url: 'https://api.test/service/useradmin/consultants/c-1', method: FETCH_METHODS.GET });
+        expect(json).toHaveBeenCalledTimes(1);
+    });
+});

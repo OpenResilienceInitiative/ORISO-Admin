@@ -64,6 +64,7 @@ jobs:
               uses: actions/checkout@v7
               with:
                   ref: ${{ github.sha }}
+                  fetch-depth: 2
                   persist-credentials: false
 
             - name: Set up Node.js
@@ -79,6 +80,8 @@ jobs:
                   npm run prepare:runtime
 
             - name: Verify configured lint failure controls
+              env:
+                  VERIFICATION_LINT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
               run: npm run test:lint-controls
 
             - name: Verify native unit teardown errors and healthy controls
@@ -122,7 +125,8 @@ jobs:
                   if-no-files-found: warn
 
     # Functional evidence retains rendering/play and integrity gates.
-    # Compliance is DEFERRED/NOT_RUN here; strict diagnostics are independent.
+    # The full inventory defers compliance. The selected product stories below
+    # also get a strict audit in this required check; diagnostics stay separate.
     storybook-tests:
         name: Storybook functional verification (compliance deferred)
         runs-on: ubuntu-latest
@@ -170,6 +174,12 @@ jobs:
               env:
                   VERIFICATION_SOURCE_SHA: ${{ github.sha }}
               run: npm run test:storybook:functional
+
+            - name: Enforce accessibility for selected product stories
+              if: ${{ !cancelled() && (steps.functional_controls.outcome == 'success' || steps.functional_controls.outcome == 'failure') }}
+              env:
+                  VERIFICATION_SOURCE_SHA: ${{ github.sha }}
+              run: npm run test:storybook:product-a11y
 
             - name: Upload Storybook verification evidence
               if: always()

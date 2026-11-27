@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState, type ComponentProps } from 'react';
+// eslint-disable-next-line import/no-unresolved -- Storybook's exports map resolves for TypeScript and Vite.
+import { expect, userEvent, within } from 'storybook/test';
 import { DirectInviteSection } from './index';
 import { PermissionsStoryFrame } from '../PermissionsStoryFrame';
 import type { PolicyValue } from '../../../../../types/permissionPolicy';
@@ -64,7 +66,23 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /** Platform default: all three allowed, every Träger may decide for itself. */
-export const PlatformDefault: Story = {};
+export const PlatformDefault: Story = {
+    play: async ({ canvasElement }) => {
+        const controls = within(canvasElement);
+        const chat = controls.getByRole('button', { name: 'Chat: Aktiviert – Deaktivieren' });
+        await userEvent.tab();
+        await userEvent.tab();
+        await expect(chat).toHaveFocus();
+        await userEvent.keyboard('{Enter}');
+        await expect(controls.getByRole('button', { name: 'Chat: Deaktiviert – Aktivieren' })).toHaveAttribute(
+            'aria-pressed',
+            'false',
+        );
+        await userEvent.keyboard('{Enter}');
+        await expect(chat).toHaveAttribute('aria-pressed', 'true');
+        chat.blur();
+    },
+};
 
 /** Platform forces video off and chat on: no Träger can change either. */
 export const PlatformForced: Story = {

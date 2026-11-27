@@ -74,6 +74,8 @@ vi.mock('../../../components/mui/MuiSelectField', async () => {
 
 vi.mock('../../../components/mui/MuiSwitchField', () => ({ MuiSwitchField: () => null }));
 vi.mock('../../../components/CreateAgencyModal', () => ({ CreateAgencyModal: () => null }));
+// The photo card has its own tests; this file is about the form's field validation.
+vi.mock('./ConsultantPictureControl', () => ({ ConsultantPictureControl: () => null }));
 vi.mock('../../../components/GrantConsultantIdentityModal', () => ({ GrantConsultantIdentityModal: () => null }));
 vi.mock('../../../hooks/useAddOrUpdateConsultantOrAgencyAdmin', () => ({
     useAddOrUpdateConsultantOrAdmin: () => ({ mutate: mocks.mutate }),
