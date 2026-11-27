@@ -9,7 +9,9 @@ import { describe, expect, it } from 'vitest';
  */
 
 // Lower this when files leave the list. Never raise it.
-const MAX_BASELINE = 263;
+// 292 = one-time re-snapshot on 2026-11-27: 263 (Oct 13) - 49 files that dropped AntD + 78 added on dev
+// before this gate merged. The 78 are listed as follow-ups in ORISO-Admin#1171.
+const MAX_BASELINE = 292;
 
 const root = resolve(__dirname, '../..');
 // Same scope as ESLint: imports, re-exports and require, exact package names only.
