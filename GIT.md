@@ -1,6 +1,8 @@
 # GIT.md — Git & GitHub workflow (ORISO)
 
-How we plan, branch, review, and close work across all ORISO repositories. `AGENTS.md` points here; treat this as the canonical process.
+How we plan, branch, review, and close work across all ORISO repositories. `AGENTS.md` points here.
+
+The contribution guide for all repositories, including external contributors and when a change needs an ADR, is [ORISO-Docs/CONTRIBUTING.md](https://github.com/OpenResilienceInitiative/ORISO-Docs/blob/dev/CONTRIBUTING.md). Where the two differ, the contribution guide wins; this file adds the Git and GitHub details.
 
 ## 1. Issue first — every PR has a parent issue
 
