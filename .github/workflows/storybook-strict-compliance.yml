@@ -10,9 +10,9 @@ jobs:
         timeout-minutes: 60
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
             - name: Set up Node.js
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v7
               with:
                   node-version-file: .nvmrc
                   cache: npm
@@ -30,7 +30,7 @@ jobs:
               run: npm run test:storybook:strict
             - name: Upload raw strict compliance evidence
               if: always()
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: storybook-full-strict-compliance
                   path: |
