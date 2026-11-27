@@ -73,6 +73,10 @@
                         "name": "antd/lib/select",
                         "importNames": ["default"],
                         "message": "Use M3Select for a shared select arrow."
+                    },
+                    {
+                        "name": "antd",
+                        "message": "AntD is being removed from the Admin panel (ORISO-Admin#1171). Use the approved design-system component from Storybook instead: Button -> M3Button, message/notification -> shared snackbar (#939), Modal -> components/Modal, icons -> icon catalog or @mui/icons-material."
                     }
                 ],
                 "patterns": [
@@ -84,21 +88,7 @@
                     {
                         "group": ["/antd/es/slider", "/antd/lib/slider"],
                         "message": "Use MuiSliderField from src/components/mui/MuiSliderField for Admin form ranges. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default"
-                    }
-                ]
-            }
-        ],
-        "react/no-unused-prop-types": "off",
-        "no-restricted-imports": [
-            "error",
-            {
-                "paths": [
-                    {
-                        "name": "antd",
-                        "message": "AntD is being removed from the Admin panel (ORISO-Admin#1171). Use the approved design-system component from Storybook instead: Button -> M3Button, message/notification -> shared snackbar (#939), Modal -> components/Modal, icons -> icon catalog or @mui/icons-material."
-                    }
-                ],
-                "patterns": [
+                    },
                     {
                         "group": ["antd/*", "@ant-design/*"],
                         "message": "AntD is being removed from the Admin panel (ORISO-Admin#1171). Use the approved design-system component from Storybook instead: Button -> M3Button, message/notification -> shared snackbar (#939), Modal -> components/Modal, icons -> icon catalog or @mui/icons-material."
@@ -106,6 +96,7 @@
                 ]
             }
         ],
+        "react/no-unused-prop-types": "off",
         "react/function-component-definition": [
             2,
             {
@@ -464,7 +455,59 @@
                 "src/utils/consultantCredentialRules.ts"
             ],
             "rules": {
-                "no-restricted-imports": "off"
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "paths": [
+                            {
+                                "name": "antd/es/message",
+                                "importNames": ["default"],
+                                "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                            },
+                            {
+                                "name": "antd/lib/message",
+                                "importNames": ["default"],
+                                "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                            },
+                            {
+                                "name": "antd/es/notification",
+                                "importNames": ["default"],
+                                "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                            },
+                            {
+                                "name": "antd/lib/notification",
+                                "importNames": ["default"],
+                                "message": "Raise toasts through the snackbar channel: import { snackbar } from 'components/Snackbar'."
+                            },
+                            {
+                                "name": "antd",
+                                "importNames": ["message", "notification", "Select"],
+                                "message": "Raise toasts through the snackbar channel (import { snackbar } from 'components/Snackbar'); use M3Select instead of the antd Select."
+                            },
+                            {
+                                "name": "antd/es/select",
+                                "importNames": ["default"],
+                                "message": "Use M3Select for a shared select arrow."
+                            },
+                            {
+                                "name": "antd/lib/select",
+                                "importNames": ["default"],
+                                "message": "Use M3Select for a shared select arrow."
+                            }
+                        ],
+                        "patterns": [
+                            {
+                                "group": ["/antd", "/antd/es", "/antd/lib"],
+                                "importNames": ["Slider"],
+                                "message": "Use MuiSliderField from src/components/mui/MuiSliderField for Admin form ranges. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default"
+                            },
+                            {
+                                "group": ["/antd/es/slider", "/antd/lib/slider"],
+                                "message": "Use MuiSliderField from src/components/mui/MuiSliderField for Admin form ranges. See https://dev.oriso.org/storybook-admin/?path=/story/molecules-muisliderfield--default"
+                            }
+                        ]
+                    }
+                ]
             }
         }
     ],
