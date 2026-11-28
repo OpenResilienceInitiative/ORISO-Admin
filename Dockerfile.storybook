@@ -32,7 +32,8 @@ RUN apk upgrade --no-cache
 
 ARG PORT=80
 
-RUN apk add --no-cache 'libxml2>=2.13.9-r3'
+# libxml2 2.13.9-r5 fixes CVE-2026-11979 and CVE-2026-86138 to CVE-2026-86143.
+RUN apk add --no-cache 'libxml2>=2.13.9-r5'
 
 # Copy Storybook build output to nginx html directory
 COPY --from=storybookbuild /app/storybook-static /usr/share/nginx/html
