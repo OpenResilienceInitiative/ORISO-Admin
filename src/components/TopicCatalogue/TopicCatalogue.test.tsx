@@ -98,6 +98,12 @@ describe('TopicCatalogue view', () => {
         expect(onRetry).toHaveBeenCalled();
     });
 
+    it('names a missing read access instead of the load error, without a retry (#1504)', () => {
+        setup({ topics: [], layout: [], loadError: true, loadErrorText: 'Kein Zugriff auf Themen.' });
+        expect(screen.getByRole('alert')).toHaveTextContent('Kein Zugriff auf Themen.');
+        expect(screen.queryByText('Erneut versuchen')).toBeNull();
+    });
+
     it('says so when there are no topics', () => {
         setup({ topics: [], layout: [] });
         expect(screen.getByText('Es gibt noch keine Themen.')).toBeInTheDocument();

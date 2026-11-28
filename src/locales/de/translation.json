@@ -2453,6 +2453,7 @@
     "topicCatalogue.moveDown": "„{{name}}“ nach unten",
     "topicCatalogue.empty": "Es gibt noch keine Themen.",
     "topicCatalogue.loadError": "Die Themen konnten nicht geladen werden.",
+    "topicCatalogue.noAccess": "Sie haben keinen Zugriff auf die Themen. Wenden Sie sich an Ihre Plattform-Administration.",
     "topicCatalogue.retry": "Erneut versuchen",
     "topicCatalogue.announce.editStarted": "Bearbeiten gestartet. Mit den Pfeiltasten auf dem Griff verschieben.",
     "topicCatalogue.announce.cancelled": "Änderungen verworfen.",

@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FETCH_ERRORS } from '../../../api/fetchData';
 import { CardGrid } from '../../../components/CardGrid';
 import { snackbar } from '../../../components/Snackbar';
 import { Page } from '../../../components/Page';
@@ -29,9 +30,12 @@ export const TopicList = () => {
         data: topicsData,
         isLoading,
         isError,
+        error,
         refetch,
     } = useTopicList({ current: 1, pageSize: CATALOGUE_PAGE_SIZE });
     const canChange = can(PermissionAction.Update, Resource.Topic);
+    // No read access: say so, without a retry that can only fail again (#1504).
+    const forbidden = error instanceof Error && error.message === FETCH_ERRORS.FORBIDDEN;
 
     const topics: CatalogueTopic[] = useMemo(
         () =>
@@ -91,7 +95,8 @@ export const TopicList = () => {
                         layout={layout}
                         isLoading={isLoading}
                         loadError={isError}
-                        onRetry={() => refetch()}
+                        loadErrorText={forbidden ? t('topicCatalogue.noAccess') : undefined}
+                        onRetry={forbidden ? undefined : () => refetch()}
                         onToggleActive={canChange ? onToggleActive : undefined}
                         pendingTopicIds={pendingTopicIds}
                         onOpenTopic={canChange ? (id) => navigate(`${routePathNames.topics}/${id}`) : undefined}
