@@ -3,9 +3,9 @@ ARG ADMIN_RUNTIME_IMAGE=docker.io/library/nginx:1.30.7-alpine3.24@sha256:bef1547
 FROM ${ADMIN_RUNTIME_IMAGE}
 
 # nginx proxies Admin authentication to the Node.js BFF.
-# libxml2 2.13.9-r5 fixes CVE-2026-86144, CVE-2026-11979 and CVE-2026-86138 to
-# CVE-2026-86143. Naming the version here also misses a cached upgrade layer
-# that still contains an older libxml2.
+# libxml2 2.13.9-r5 fixes CVE-2026-86144 (r3) and CVE-2026-11979, -86138,
+# -86139, -86140, -86142, -86143 (r5). Naming the floor here also misses a
+# cached upgrade layer that still contains an older libxml2.
 RUN apk upgrade --no-cache \
     && apk add --no-cache nodejs 'libxml2>=2.13.9-r5' \
     && node --version
